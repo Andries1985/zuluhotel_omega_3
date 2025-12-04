@@ -14,6 +14,7 @@ include "../pkg/items/currency/include/itemdesc";
 include ":accounts:accounts";
 include "../pkg/items/containers/include/storageAreas";
 include "include/randname";
+include "include/npcboosts";
 
 	var bank;
 	const REACT_THRESHOLD := 8;
@@ -40,9 +41,9 @@ program banker();
 	var next_wander := ReadGameClock() + 30;
 	var myanchor := GetObjProperty(me, "Anchor");
 	if(myanchor)
-		//MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
-		WalkHome();
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
 	endif
+	WalkHome();
 	
 	EnableEvents(SYSEVENT_ITEM_GIVEN);
 	EnableEvents(SYSEVENT_SPEECH, REACT_THRESHOLD);
@@ -50,6 +51,12 @@ program banker();
 	var text;
 	var splitted := {};
 	while(1)
+
+		if(!GetObjProperty(me, "lbc") || GetObjProperty(me, "lbc") < ReadGameClock())
+			SetObjProperty(me, "lbc", ReadGameClock()+5);
+			checkmymod(me);
+		endif
+
 		var ev;
 		ev := os::wait_for_event(1);
 		if(ev.type == SYSEVENT_SPEECH)
@@ -529,6 +536,7 @@ function walkhome()
 	if (!getobjproperty(me, "myhome"))
 		myhome[1] := me.x;
 		myhome[2] := me.y;
+		myhome[3] := me.z;
 		setobjproperty(me, "myhome", myhome);
 	else
 		myhome := getobjproperty(me, "myhome");
@@ -539,6 +547,8 @@ function walkhome()
 		return;
 	endif
 
+	var myanchor := GetObjProperty(me, "Anchor");
+
 	var i;
 	for (i := 1; i < 11; i := i + 1)
 		WalkTowardLocation(myhome[1], myhome[2]);
@@ -548,6 +558,11 @@ function walkhome()
 	endfor
 
 	var Anchor := GetObjProperty(me, "Anchor");
+
+	if (me.z != myhome[3])
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
+		Wander();
+	endif
 
 	if (me.x != myhome[1] and me.y != myhome[2] )
 		MoveObjectToLocation(me, Anchor[1], Anchor[2], Anchor[5], me.realm, MOVEOBJECT_FORCELOCATION);

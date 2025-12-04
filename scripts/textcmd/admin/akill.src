@@ -4,6 +4,7 @@ use os;
 use uo;
 
 include "include/attributes";
+include ":staff:include/staff";
 
 program akill( who, dist )
 	
@@ -11,22 +12,55 @@ program akill( who, dist )
         SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles." );
 
 	foreach mob in ListMobilesNearLocation( who.x, who.y, LIST_IGNORE_Z, dist, who.realm )
+		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
+			SendSysmessage(who, "You can only .kill NPCs.");
+			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
+			return;
+		endif
+		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
+			SendSysMessage( who , "You cant kill him, he is superior to you." );
+			SendSysMessage( mob , who.name + " is trying to kill you." );
+			return;
+		endif
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
+			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 		endif
 	endforeach
 		
 	foreach mob in ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_HIDDEN, who.realm )
+		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
+			SendSysmessage(who, "You can only .kill NPCs.");
+			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
+			return;
+		endif
+		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
+			SendSysMessage( who , "You cant kill him, he is superior to you." );
+			SendSysMessage( mob , who.name + " is trying to kill you." );
+			return;
+		endif
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
+			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 		endif
 	endforeach
 
 	foreach mob in ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_CONCEALED, who.realm )
+		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
+			SendSysmessage(who, "You can only .kill NPCs.");
+			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
+			return;
+		endif
+		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
+			SendSysMessage( who , "You cant kill him, he is superior to you." );
+			SendSysMessage( mob , who.name + " is trying to kill you." );
+			return;
+		endif
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
+			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 		endif
 	endforeach

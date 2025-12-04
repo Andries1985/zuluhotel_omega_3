@@ -74,6 +74,10 @@ program merchantai()
 	var RESPAWN_MINUTES := 25+Random(20);
 	var next_restock := ReadGameClock() + RESPAWN_MINUTES*60;
 
+	var myanchor := GetObjProperty(me, "Anchor");
+	if(myanchor)
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
+	endif
 	WalkHome();
 
 	EnableMainEvents();
@@ -106,7 +110,7 @@ program merchantai()
 				Wander();
 				wanders := wanders + 1;
 			endif
-			next_wander := ReadGameClock() + 2;
+			next_wander := ReadGameClock() + RandomDice( 2, 25, 10);
 			if (wanders > 10)
 				wanders := 0;
 				WalkHome();
@@ -118,7 +122,7 @@ program merchantai()
 
 		if (ev)
 			if (ProcessEvent(ev, mydestx, mydesty, steps))
-				next_wander := ReadGameClock() + 30;
+				next_wander := ReadGameClock() + RandomDice( 2, 25, 10);
 			endif
 		elseif (ReadGameClock() > next_restock)
 			if ( GetObjProperty(me, "restock") )
@@ -197,6 +201,7 @@ function walkhome()
 	if (!getobjproperty(me, "myhome"))
 		myhome[1] := me.x;
 		myhome[2] := me.y;
+		myhome[3] := me.z;
 		setobjproperty(me, "myhome", myhome);
 	else
 		myhome := getobjproperty(me, "myhome");
@@ -207,6 +212,8 @@ function walkhome()
 		return;
 	endif
 
+	var myanchor := GetObjProperty(me, "Anchor");
+
 	var i;
 	for (i := 1; i < 11; i := i + 1)
 		WalkTowardLocation(myhome[1], myhome[2]);
@@ -216,6 +223,11 @@ function walkhome()
 	endfor
 
 	var Anchor := GetObjProperty(me, "Anchor");
+
+	if (me.z != myhome[3])
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
+		Wander();
+	endif
 
 	if (me.x != myhome[1] and me.y != myhome[2] )
 		MoveObjectToLocation(me, Anchor[1], Anchor[2], Anchor[5], me.realm, MOVEOBJECT_FORCELOCATION);

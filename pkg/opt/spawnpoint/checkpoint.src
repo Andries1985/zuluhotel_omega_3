@@ -430,7 +430,7 @@ function CreateSpawnPointNpc( byref point, byref template, byref pt_data )
 	//Old Britannia Map
 	//critter	:= CreateNpcFromTemplate( template, 5283, 1184, 0, 0, "britannia");
 		critter	:= CreateNpcFromTemplate( template, 6338, 1581, 0, 0, "britannia_alt" );
-		Print("Creating NPC from template: "+template+" Serial: "+critter.serial);
+		//Print("Creating NPC from template: "+template+" Serial: "+critter.serial);
 
 	endif
 
