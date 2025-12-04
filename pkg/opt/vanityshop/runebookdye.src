@@ -1,0 +1,69 @@
+/////////////////////////////////////////////////////////////////////////////
+//	Runebook Dye System by Wintermute
+// Based on work by Zulu (zulu@cadvision.com) Jan 10, 2000
+//	make sure to change the usedyes.src to allow them to be used on the Runic Dye Tub
+//
+//
+/////////////////////////////////////////////////////////////////////////////
+
+use os;
+use uo;
+
+program runebookdyecheck( who, runicdyetub)
+
+	ReserveItem(runicdyetub);
+
+	var charges := GetObjProperty(runicdyetub, "charges");
+	if(charges < 1)
+		SendSysMessage(who, "The Runic Dye Tub disintegrates in your hands!", color:= 319);
+		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, runicdyetub.color, 3);
+		DestroyItem(runicdyetub);
+	endif
+
+	SendSysMessage(who, "Select the Runebook to dye", color:= 319);
+	
+	var item := Target( who, TGTOPT_NOCHECK_LOS );
+
+	ReserveItem(item);
+
+	if(!item)
+		SendSysMessage(who, "Canceled");
+		Releaseitem(runicdyetub);
+		Releaseitem(item);
+		return;
+	endif
+
+	if (NOT Accessible(who, item))
+		SendSysmessage( who, "You cannot reach that!" );
+		Releaseitem(runicdyetub);
+		Releaseitem(item);
+		return;
+	endif
+
+	if (item.objtype != 0x6100)
+		SendSysMessage(who, "Only Runebooks can resist the power of the Runic Dye Tub", color:= 319);
+		Releaseitem(runicdyetub);
+		Releaseitem(item);
+		return;
+	endif
+	
+	if (runicdyetub.color == 0)
+		runicdyetub.color := 746;
+	endif
+
+	item.color := runicdyetub.color;
+	PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, runicdyetub.color, 3);
+	
+	if (charges > 1)
+		charges -= 1;
+		SetObjProperty(runicdyetub, "charges", charges);
+		SendSysMessage(who, "You use some of the Runic Dye Tub's power, there's still "+charges+" charges left.", color:= 319);
+	else
+		SendSysMessage(who, "You use the last of the Runic Dye Tub's power and it disintegrates in your hands!", color:= 319);
+		DestroyItem(runicdyetub);
+	endif
+
+	Releaseitem(runicdyetub);
+	Releaseitem(item);
+
+endprogram

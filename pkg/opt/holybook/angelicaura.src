@@ -1,0 +1,92 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/classes";
+include "include/client";
+include "include/random";
+include "include/damages";
+
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_TOUCH_OF_GOD;
+const SPELL_EFFECT_ID		:= FX_SPELL_TOUCH_OF_GOD;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_TOUCH_OF_GOD;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_TOUCH_OF_GOD;
+
+program cast_natures_touch( parms )
+
+	var circle := GetCircle( SPELLID_TOUCH_OF_GOD );
+	var caster;
+	var cast_on;
+	var fromhit;
+
+ 	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		if( TryToCast( caster, SPELLID_TOUCH_OF_GOD ) != SUCCESS )
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+	endif
+	
+	var magery := GetAttribute( caster, ATTRIBUTEID_MAGERY );
+	var specbonus := 0;
+	if (GetObjProperty(caster, "IsMage"))
+		specbonus := GetObjProperty(caster, "IsMage");
+	elseif (GetObjProperty(caster, "IsPaladin"))
+		specbonus := GetObjProperty(caster, "IsPaladin");
+	endif
+	if (!specbonus)
+		specbonus := 0;
+	endif
+	var affected := ListMobilesNearLocation( caster.x , caster.y , caster.z , cint( (magery / 40)+specbonus ), caster.realm );
+
+	var caster_NPC := 0;
+	if (caster.npctemplate)
+		caster_NPC := 1;
+	endif
+	var selfheal := 0;
+
+	affected := SmartBoost(caster, affected);
+
+	foreach cast_near in affected
+		var cast_near_NPC := 0;
+		if (cast_near.npctemplate)
+			cast_near_NPC:= 1;
+		endif
+		if(cast_near_NPC != caster_NPC)			
+			if(cast_near.master != caster)
+				continue;
+			endif
+		endif
+		PlayObjectCenteredEffect(cast_near, SPELL_EFFECT_ID, SPELL_EFFECT_SPEED, SPELL_EFFECT_LOOP);
+		PlaySoundEffect( cast_near , SFX_SPELL_TOUCH_OF_GOD );
+		var healed := ModifyWithMagicEfficiency( caster , RandomDiceStr( "6d4+15" ) );
+		var bonus := GetObjProperty( cast_near , "HealingIncrease" );
+		if( bonus )
+			healed := healed + Cint( healed * bonus * 0.2 );
+		endif
+		if( healed < 0 )
+			healed := 0;
+		endif
+		HealDamage( cast_near , healed );
+		if(cast_near == caster)
+			selfheal := healed;
+		endif
+
+	endforeach
+	EraseObjProperty( caster , "#Casting" );
+	if (!fromhit)
+		SendSysmessage(caster , "Angelic Aura has restored " + selfheal + " damage." );
+		//SendSysmessage(cast_near , "Angelic Aura has restored " + healed + " damage." );
+	endif
+	
+endprogram

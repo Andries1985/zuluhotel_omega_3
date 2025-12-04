@@ -1,0 +1,29 @@
+use uo;
+use os;
+
+include "include/attributes";
+
+program Beast_Bond_View(parms)
+
+	var who := parms[1];
+	var beast := parms[2];
+
+	// This means the person is already vieweing beast
+	if (GetObjProperty(who, "#ViewingBeast"))
+		return 0;
+	else
+		SetObjProperty(who, "#ViewingBeast", 1);
+	endif
+
+	who.frozen := 1;
+	who.concealed := 1;
+	who.facing := beast.facing;
+
+	PrintTextAbovePrivate(who, "*You have entered the mind of the creature*", who, 3, 67);
+	Start_Script(":versebook:Beast_Bond_Cancel", who);
+	repeat
+		MoveObjectToLocation(who, beast.x, beast.y, beast.z, beast.realm, MOVEOBJECT_FORCELOCATION);
+		sleep(1);
+	until (!GetObjProperty(who, "#ViewingBeast") || !GetHP(beast) || GetObjProperty(who, "BeastalBondTimer") < ReadGameClock());
+
+endprogram

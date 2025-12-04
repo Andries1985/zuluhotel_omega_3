@@ -1,0 +1,74 @@
+
+use math;
+use uo;
+use polsys;
+
+include "include/client";
+
+const TEXT_COLOR 		:= 319;
+const TYPE_PENALTY 		:= 1;
+
+program mendingoil(who, mendingoil)
+
+	if (!ReserveItem(mendingoil))
+		return 0;
+	endif
+
+	SendSysMessage(who, "Select the equipment you'd like to repair.", FONT_NORMAL, TEXT_COLOR);
+	var item := Target( who, TGTOPT_NOCHECK_LOS );
+
+	if(!item || !ReserveItem(item))
+		SendSysMessage(who, "Canceled", FONT_NORMAL, 2595);
+		Releaseitem(mendingoil);
+		return 0;
+	elseif (!item.isa(POLCLASS_ITEM))
+		SendSysmessage( who, "You can only repair equipment!", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(mendingoil);
+		Releaseitem(item);
+		return 0;
+	elseif (item.container != who.backpack)
+		SendSysmessage( who, "That needs to be in your backpack", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(mendingoil);
+		Releaseitem(item);
+		return 0;
+	endif
+	if( item.hp == item.maxhp )
+		SendSysMessage( who, "That item is in perfect condition already.", FONT_NORMAL, TEXT_COLOR );
+		return 0;
+	endif
+	var item_quality := item.quality;
+	if (GetObjProperty(item, "IsGMItem") || GetObjProperty(item, "Artifact"))
+		item_quality += TYPE_PENALTY;
+	endif
+	var repair_efficiency := (pow(mendingoil.quality,2)/pow(item_quality,2));
+
+	if (repair_efficiency > 1.5)
+		SendSysMessage( who, "You use the high quality oil sparingly.", FONT_NORMAL, TEXT_COLOR );
+	elseif (repair_efficiency > 0.75)
+		SendSysMessage( who, "You need to use a lot of the oil.", FONT_NORMAL, TEXT_COLOR );
+	endif
+
+	var charge_efficiency := Ceil(GetObjProperty(mendingoil, "charges")*repair_efficiency);
+	var to_repair := item.maxhp-item.hp;
+	
+	if ( to_repair >= charge_efficiency)
+		item.hp += Cint(charge_efficiency);
+		DestroyItem(mendingoil);
+		SendSysMessage( who, "Your use up all the oil.", FONT_NORMAL, TEXT_COLOR );
+	else
+		item.hp := item.maxhp;
+		var leftover := Cint((charge_efficiency - to_repair)/repair_efficiency);
+		SetObjProperty(mendingoil, "charges", leftover);
+	endif
+
+	if (item.hp == item.maxhp)
+		SendSysMessage( who, "Your item is fully repaired!", FONT_NORMAL, TEXT_COLOR );
+	endif
+	IncRevision(mendingoil);
+	IncRevision(item);
+	Releaseitem(mendingoil);
+	Releaseitem(item);
+
+endprogram
+
+

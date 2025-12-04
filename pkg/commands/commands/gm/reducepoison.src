@@ -1,0 +1,17 @@
+use os;
+use uo;
+use party;
+
+include "include/client";
+
+program txtcmd_ReducePoison(who, mult)
+
+	mult := CDbl(mult);
+	
+	if( SetGlobalProperty( "ReducePoison" , mult ) )
+		SendSysMessage( who , "Poison damage is being multiplied by " + mult);
+	else
+		SendSysMessage( who , "Couldn't write the var property." );
+	endif
+	    
+endprogram

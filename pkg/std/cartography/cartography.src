@@ -1,0 +1,156 @@
+use uo;
+use os;
+
+include "include/objtype";
+include "include/client";
+include "include/classes";
+include "include/difficulty";
+
+const POINTS_MULTIPLIER := 15;
+
+program go_go_gadget_map( who, blank )
+
+	if (blank.objtype<>0x6001)
+	foreach item in EnumerateItemsInContainer(who.backpack)
+	if (item.objtype ==0x6001)
+	blank:=item;
+	break;
+	endif
+	endforeach
+	endif
+
+	if (blank.objtype<>0x6001) SendSysmessage( who , "You have no blank maps" ); return; endif
+	
+	var nextmsg :=CInt(GetObjProperty(who, "nextMap")), secclock:=ReadGameClock();
+	if ( secclock < nextmsg)
+		SendSysMessage( who, "You have to wait " + (nextmsg-secclock) + " seconds to make another map.");
+		return;
+	endif
+
+	if(!ReserveItem(blank)) return; endif
+
+	var choice := SelectMenuItem2( who , "Cartography");
+
+	if(!choice)
+		return;
+	endif
+
+	var props;
+	var difficulty;
+	
+	case (choice.index)
+		1: 	difficulty := 20;
+			sendDiff( who , difficulty );
+			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER)) )
+				props := array( "var" , who.x - 265 , who.y - 260 , who.x + 265 , who.y + 260 , 200 , 200 );
+				makemap( who , props , blank );
+			else
+				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
+				SubtractAmount( blank, 1 );
+			endif
+			break;
+		
+		2: 	difficulty := 50;
+			sendDiff( who , difficulty );
+			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
+				props := array( "regional" , who.x - 850 , who.y - 800 , who.x + 850 , who.y + 800 , 400 , 400 );
+				makemap( who , props , blank );
+			else
+				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
+				SubtractAmount( blank, 1 );
+			endif
+			break;
+		
+		3:	difficulty := 80;
+			sendDiff( who , difficulty );
+			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
+	   			props := array( "world" , 0 , 0 , 5119 , 4095 , 500 , 400 );
+				makemap( who , props , blank );
+			else
+				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
+				SubtractAmount( blank, 1 );
+			endif
+			break;
+		
+		4:	difficulty := 110;
+			sendDiff( who , difficulty );
+			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
+				makeNewmap( who , blank, 1 );
+			else
+				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
+				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
+					SubtractAmount( blank, 5 );
+				else
+					SubtractAmount( blank, 2 );
+				endif
+			endif
+			break;
+		
+		5:	difficulty := 110;
+			sendDiff( who , difficulty );
+			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
+				makeNewmap( who , blank, 2 );
+			else
+				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
+				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
+					SubtractAmount( blank, 5 );
+				else
+					SubtractAmount( blank, 2 );
+				endif
+			endif
+			break;
+			
+		default: SendSysmessage( who , "Oh Sh!t ... " );
+	endcase
+
+	SetObjProperty(who, "nextMap", ReadGameClock() + 3);
+endprogram
+
+function makemap( who, mapdef , blank )
+	
+	// Toadstool 19/04/2012
+	// Alteration to allow world maps to stack
+	// Their props don't alter like other maps.
+	// Making other maps stack is impossible in 093
+	var map;
+	if (mapdef[1] == "world")
+		map := CreateItemInBackpack( who, 0x631D );
+	else
+		map := CreateItemInBackpack( who, UOBJ_MAP2 );
+	endif
+
+	SetName( map , ("a completed " + mapdef[1] + " map") );
+	map.xwest := mapdef[2];
+	map.ynorth := mapdef[3];
+	map.xeast := mapdef[4];
+	map.ysouth := mapdef[5];
+	map.gumpwidth := mapdef[6];
+	map.gumpheight := mapdef[7];
+	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
+	SubtractAmount( blank, 1 );
+endfunction
+
+function makeNewmap( who, blank, choice )
+	var material := 10;
+	//Require half resources during Crafting PH
+	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
+		material := Ceil(material/2);
+	endif
+	if(blank.amount < material)
+		sendsysmessage(who, "You don't have enough materials to do that.");
+		return;
+	endif
+	var remove := SubtractAmount( blank, material );
+	if(!remove)
+		sendsysmessage(who, "Cancelled.");
+		return;
+	endif
+	if(choice == 1)
+		CreateItemInBackpack( who, 0x3D71 );
+	else
+		CreateItemInBackpack( who, 0x3D72 );
+	endif
+
+	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
+	return;
+endfunction

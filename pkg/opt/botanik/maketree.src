@@ -1,0 +1,113 @@
+// MakeTree:
+// it starts everytime you doubleclk a seed...
+// to do: put a sound at the plant creation
+
+use cfgfile;
+use uo;
+use os;
+
+include "include/checkcity";
+include "include/areas";
+include "botanik";
+
+const Scissor:=0x249;
+const Packit:=0x5a;
+const Rustle:=0x50;
+
+program tavernaz(user,item)
+
+	var PlacedBy := user.serial + " - " + user.name;
+
+	 if(!ReserveItem(item)) 
+		 return; 
+	 endif
+
+	 if(CheckCity(user)) 
+		 printtextaboveprivate(item,"You can't plant in cities.",user); 
+		 return; 
+	 endif
+
+	if(user.cmdlevel < 2)
+		if (IsInSafeArea(user) || IsInNOPKArea(user) || IsForbiddenAreaToMark(user)) 
+			sendsysmessage(user,"You can't plant that here."); 
+			return; 
+		endif
+	endif
+
+	var dungteles := ListItemsNearLocation(user.x, user.y, user.z, 5, user.realm);
+	foreach thing in dungteles
+		if (thing.objtype == 0x6200)
+			sendsysmessage(user,"You can't plant that here."); 
+			return 0;
+		endif
+	endforeach
+
+	 if (user.multi) 
+		sendsysmessage(user,"You can't plant inside houses."); 
+		return; 
+	endif
+
+	var check := 0;
+	if(item.objtype==0xe000)
+		foreach item in ListItemsAtLocation( user.x, user.y-2, user.z, user.realm )
+			check := 1;
+		endforeach
+		foreach item in ListItemsAtLocation( user.x, user.y-1, user.z, user.realm )
+			check := 1;
+		endforeach
+		foreach item in ListItemsAtLocation( user.x, user.y, user.z, user.realm )
+			check := 1;
+		endforeach
+		foreach item in ListItemsAtLocation( user.x, user.y+1, user.z, user.realm )
+			check := 1;
+		endforeach
+		foreach item in ListItemsAtLocation( user.x, user.y+2, user.z, user.realm )
+			check := 1;
+		endforeach
+	else
+		foreach item in ListItemsAtLocation( user.x, user.y, user.z, user.realm )
+			check := 1;
+		endforeach
+	endif
+	if(check)
+		sendsysmessage(user,"This place is already occupied by something else."); 
+		return; 
+	endif
+	
+	if(GetObjProperty(user, "LastPlanted") > ReadGameClock())
+		sendsysmessage(user,"You need to wait some time before planting again."); 
+		return; 
+	endif
+		
+	 var tree;
+	 var treex:=cint(user.x);
+	 var treey:=cint(user.y);
+	 var treez:=cint(user.z);
+	 var treerealm := user.realm;
+
+	 var cfg:=readconfigfile("tree");
+	 if (!cfg) 
+		 return; 
+	 endif
+
+	 if (item.objtype==0xe000)
+		tree := createitematlocation(treex,(treey-2),treez,0xd1d,1, treerealm);
+		SetObjProperty(tree,"PlacedBy", PlacedBy);
+		fixtree(tree,cfg[tree.objtype].regrown,10,PlacedBy);
+		tree:=createitematlocation(treex,treey,treez,0xd1e,1, treerealm);
+		SetObjProperty(tree,"PlacedBy", PlacedBy);
+	    fixtree(tree,cfg[tree.objtype].regrown,10,PlacedBy);
+	    tree := createitematlocation(treex,(treey+2),treez,0xd1b,1, treerealm);
+		SetObjProperty(tree,"PlacedBy", PlacedBy);
+	    fixtree(tree,cfg[tree.objtype].regrown,10,PlacedBy);
+	 else
+	    tree := createitematlocation(treex,treey,treez,cint(cfg[item.objtype].treetype),1, treerealm);
+		SetObjProperty(tree,"PlacedBy", PlacedBy);
+	    fixtree(tree,cfg[tree.objtype].regrown,cfg[item.objtype].maxamount,PlacedBy);
+	 endif
+
+	 SubtractAmount(item, 1);
+	 SetObjProperty(user, "LastPlanted", ReadGameClock()+2);
+	 //destroyitem(item);
+
+endprogram

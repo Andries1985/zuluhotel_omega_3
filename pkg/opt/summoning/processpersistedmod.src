@@ -1,0 +1,117 @@
+use uo;
+use os;
+use vitals;
+
+include "include/attributes";
+include "include/spelldata";
+include "include/dotempmods";
+
+program processpersistedmods( parms )
+
+	set_script_option( SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES , 1 );
+	
+	var who	:= parms[1];
+	var prop	:= parms[2];
+	var new_val	:= parms[3];
+	var old	:= parms[4];
+	var duration	:= cint(parms[5]);
+	var serial	:= who.serial;
+	
+	detach();
+
+	if( (!who.poisoned) )
+		// this person should not be poisoned
+		if ( GetHpRegenRate(who) != BaseRegenRate(who) )
+			SetHpRegenRate( who,  Cint(BaseRegenRate( who ) ));
+			who.setPoisoned(0);
+		endif
+	endif
+	
+	Set_Critical(1);
+	
+	var allmods	:= GetObjProperty( who , "mods" );
+	if (!allmods)
+		allmods := {};
+	endif
+	
+	var mmod := {};
+	mmod[1] := prop;
+	mmod[2] := old;
+
+	var pos := AddToPersistedMods( allmods , mmod );
+	if( !pos )
+		return;
+	endif
+
+	case( prop )
+        	"title_prefix": 
+			who.title_prefix := new_val;
+        	"title_suffix": 
+			who.title_suffix := new_val;
+        	"name": 
+			who.name := new_val;
+		"graphic":
+			dismount( who , 0 );
+			who.graphic := cint(new_val);
+		"color":
+			who.color := cint(new_val);
+		"gender":
+			who.gender := cint(new_val);
+		"spiritspeak":
+			GrantPrivilege( who , "hearghosts" );
+			who.enable( "hearghosts" );
+		"hair":
+			DestroyItem( GetEquipmentByLayer( who , LAYER_HAIR ) );
+			if( new_val )
+				var newhair := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y , DEFAULT_LOCATION_ITEM_CREATION_Z , cint(new_val) , 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+				newhair.color := RandomHairColor();
+				EquipItem( who , newhair );
+			endif
+		"beard":
+			DestroyItem( GetEquipmentByLayer( who , LAYER_BEARD ) );
+			if( new_val )
+				var newhair := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y , DEFAULT_LOCATION_ITEM_CREATION_Z , cint(new_val) , 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+				newhair.color := GetObjProperty( who ,"beardcolor" );
+				EquipItem( who , newhair );
+			endif
+	endcase
+
+	SetObjProperty( who , "mods" , allmods );
+
+	Set_Critical(0);
+	
+	Sleep(duration);
+	
+	if( !who )
+		who := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+	endif
+	
+	if( who )
+		Set_Critical(1);
+		allmods := GetObjProperty( who , "mods" );
+	
+		if( !allmods )
+			Set_Critical( 0 );
+			return;
+		endif
+	
+		var newmods := {};
+		var i;
+		for( i := 1 ; i <= len(allmods) ; i := i + 1 )
+			if( allmods[i][1] == prop )
+				UndoTheMod( who , allmods[i][1] , allmods[i][2] );
+			else	
+				newmods.append( allmods[i] );
+			endif
+		endfor
+	
+		if( len(newmods) )
+			SetObjProperty( who , "mods" , newmods );
+		else
+			EraseObjProperty( who , "mods" );
+		endif
+	
+		Set_Critical( 0 );
+	endif
+	
+endprogram

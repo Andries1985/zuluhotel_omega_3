@@ -1,0 +1,71 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SetProp() - Sets properties on objects
+//
+//////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+include ":staff:include/staff";
+
+program SetProp(who, text)
+
+text := SplitWords(text);
+
+// First word is always the prop name
+var pname := text[1];
+
+// Erase the first word from the array, name
+text.erase(1);
+
+// If there is more than 2 words, then it's more than likely a string
+// ie, for member.name, or member.suffix.
+// Don't think anything is an array...
+var pval;
+if (text.size() > 1)
+	pval := "";
+	foreach thing in text
+		pval := pval+thing+" ";
+	endforeach
+else
+	pval := text[1];
+endif
+
+// If no value set, abort
+if (!pval)
+	SendSysMessage(who, "You must enter a value for the member.");
+	return 0;
+endif
+
+var targ := Target(who, TGTOPT_NOCHECK_LOS);
+
+if (!targ)
+	return 0;
+endif
+
+// Again we basically only care about ints and strings
+case (TypeOf(targ.get_member(pname)))
+	"Integer":	pval := CInt(pval);
+	"String":	pval := CStr(pval);
+	default:	pval := CInt(pval);
+endcase	
+
+// Catch any errors
+if (targ.get_member(pname).errortext)
+	SendSysMessage(who, targ.get_member(pname).errortext, 3, 39);
+	return 0;
+endif
+
+// First part of the message
+SendSysMessage(who, "Object:  "+targ.name, 3, 53);
+SendSysMessage(who, "Old '"+pname+"': "+targ.get_member(pname), 3, 0);
+
+var res := targ.set_member(pname, pval);
+
+// Second half of the message
+SendSysMessage(who, "New '"+pname+"':'"+targ.get_member(pname), 3, 73);
+
+LogCommand(who, GetProcess(GetPid()).name, targ.name+"/"+targ.serial, pname+"/"+pval );
+
+endprogram

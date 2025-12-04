@@ -1,0 +1,15 @@
+use uo;
+use os;
+
+program gotoserial(who, what)
+
+	var whatobj := SystemFindObjectBySerial(CInt(what), SYSFIND_SEARCH_OFFLINE_MOBILES);
+
+	if (!whatobj)
+		SendSysMessage(who, "Nothing found with the serial: "+what);
+		return 0;
+	endif
+
+	MoveObjectToLocation(who, whatobj.x, whatobj.y, whatobj.z, whatobj.realm, MOVEOBJECT_FORCELOCATION);
+
+endprogram

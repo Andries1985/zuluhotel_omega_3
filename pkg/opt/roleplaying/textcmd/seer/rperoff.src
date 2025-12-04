@@ -1,0 +1,28 @@
+use uo;
+use os;
+
+include "include/client";
+
+program textcmd_rperoff(who)
+
+    SendSysMessage(who, "Who do you want to turn off [RPer] status for?", FONT_NORMAL, 2567 );
+
+	var targ := Target( who );
+    var IsRPer := GetObjProperty(targ, "IsRPer");
+
+	if( !targ )
+        SendSysMessage(who, "Canceled!", FONT_NORMAL, 2595 );
+		return;
+	endif
+    
+    if(!IsRPer)
+        SendSysMessage(who, "Canceled! Target isn't part of the [RPer] faction.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    EraseObjProperty(targ, "IsRPer");
+    SetObjProperty(targ, "WasRPer", 1);
+    SendSysMessage(who, "RPer status removed on " +targ.name, FONT_NORMAL, 2567 );
+    SendSysMessage(targ, "RPer status removed.", FONT_NORMAL, 2567 );
+
+endprogram

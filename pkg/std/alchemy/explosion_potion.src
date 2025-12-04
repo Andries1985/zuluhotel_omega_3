@@ -1,0 +1,62 @@
+use uo;
+use os;
+use cfgfile;
+
+include "include/checkcity";
+include "include/areas";
+
+const MOVING_EFFECT_PURPLE_POTION  := 0x0F0D; 
+
+program use_explosion( character, potion )
+
+
+	if( !Accessible( character , potion) )
+		SendSysmessage( character , "You can't get to that!" );
+		return;
+	endif
+
+	if(GetObjProperty(character, "ExplosionCD") > ReadGameClock())
+		SendSysmessage(character, "You need to wait before using this item again.");
+		return;
+	endif
+	SetObjProperty(character, "ExplosionCD", ReadGameClock()+5);
+
+	SendSysmessage( character , "Select a target" );
+	var where := TargetCoordinates( character );
+
+	if( IsInGuardedArea(character) )
+		SendSysmessage( character, "You can't use that in town!" );
+		return;
+	endif
+	
+	if(GetObjProperty(character, "InSafeArea"))
+		SendSysmessage( character, "You can't use that in safe zones!" );
+		return;
+	endif
+
+	if( IsInNOPKArea(character) )
+		SendSysmessage( character, "You can't use that in NO-PK zones!" );
+		return;
+	endif
+
+	if( !where )
+		return;
+	endif
+
+	if( !CheckLosAt( character, where.x, where.y, where.z ) )
+		SendSysmessage( character , "You can't see that!" );
+		return;
+	endif
+
+	PlayMovingEffectXYZ( character.x, character.y, character.z+15, where.x, where.y, where.z, MOVING_EFFECT_PURPLE_POTION, 8, 0, 0, where.realm );
+
+	Sleep(1);
+	
+	var parms := {};
+	parms[1] := character;
+	parms[2] := potion;
+	parms[3] := where;
+	
+	Start_script( ":alchemy:exploder" , parms );
+	
+endprogram

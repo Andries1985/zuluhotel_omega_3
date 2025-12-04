@@ -1,0 +1,32 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/dotempmods";
+
+const USE_TIME := 10; // in minutes
+
+program cainscrossbowoffulmination(who,xbow)
+
+if (!xbow.layer)
+	SendSysMessage(who, "You must be holding that to use it.");
+	return 0;
+endif
+
+var last_use := GetObjProperty(xbow, "LastUsed");
+
+if ((last_use + (USE_TIME*60)) > ReadGameClock())
+	SendSysMessage(who, "You can only harness the crossbows energy once every "+USE_TIME+" minutes.");
+	return 0;
+endif
+
+SetObjProperty(xbow, "LastUsed", ReadGameClock());
+PrintTextAbovePrivate(who, "*The crossbow brims with energy!*", who);
+SetObjProperty(xbow, "#Activated", 1);
+xbow.color := 1468;
+
+PlaySoundEffect(who, 0x104);
+
+
+endprogram

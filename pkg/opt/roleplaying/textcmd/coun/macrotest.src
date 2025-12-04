@@ -1,0 +1,65 @@
+use os;
+use uo;
+
+include "include/random";
+include "include/client";
+
+program warn_gump(who)
+
+	var gflayout := {
+			"noclose",
+			"nomove",
+			"nodispose",                                                
+			"page 0",                                                  
+			"GumpPic 860 300 9460",		                           		
+			"text 918 330 238 0",								// The main headline 
+			"page 1",	                                   		// Initialize the page
+			"text 893 360 190 1",
+			"text 893 375 190 2",
+			"text 888 390 190 3",
+			"button 956 420 249 248 1 0 1"						// Okay button
+		};
+
+	var gfdata := {
+			"<[ MACRO CHECK!!! ]>",
+			"This is a check for macroing.",
+			"You have 15 minutes to press",
+			"'OKAY' before you will be jailed."
+		};
+
+	SendSysMessage( who, "Select the person to macro test!", FONT_NORMAL, 2581 );
+
+	var player := Target(who, TGTOPT_NOCHECK_LOS);
+
+	if (player.npctemplate)
+		SendSysmessage( who, "Invalid selection." ); 
+		return; 
+	endif
+
+	if(!player)
+		SendSysmessage( who, "Invalid selection." ); 
+		return; 
+	endif
+
+	SetObjProperty(player,"starttime",readgameclock());
+	start_script(":roleplaying:macrotimer", player);
+	var gump := SendDialogGump( player, gflayout, gfdata );
+
+	if (!GetObjProperty(player,"starttime"))
+		return;
+	else
+		EraseObjProperty(player,"starttime");
+	endif
+
+	PlayLightningBoltEffect( player );
+
+	SendSysMessage(player,"You responded in time. Enjoy the rest of your day!", FONT_NORMAL, 2601 );
+	// Broadcast to staff
+	var responded := player.name + " responded in time for the macro-test!";
+	foreach staff in EnumerateOnlineCharacters()
+		if( staff.cmdlevel >= 1 )
+			SendSysMessage( staff, responded, 3, 2601 );
+		endif
+	endforeach
+	
+endprogram

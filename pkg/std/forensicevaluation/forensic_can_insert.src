@@ -1,0 +1,25 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool 29/04/2012
+//
+// A simple insert script for forensic view containers.
+// This only allows items FROM the container to be inserted.
+//
+// There is no remove script, as a single item is only shown.  This item has a
+// control script to put it back in the container every 200ms
+//
+////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use os;
+
+program Forensic_CanInsertScript(who, container, movetype, inserttype, item, existing_stack, amount_to_add)
+
+//movetype 2 is core, not player moved
+
+if ((GetObjProperty(item, "Container") == container.serial) || movetype == 2 )
+	return 1;
+endif
+
+return 0;
+
+endprogram

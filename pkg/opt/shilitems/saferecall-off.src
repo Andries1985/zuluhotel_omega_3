@@ -1,0 +1,45 @@
+use uo;
+use os;
+
+
+include "include/client";
+
+const DELAY_BETWEEN_USE	:= 30;
+
+program item_cast_spell( who , item )
+
+	if( !ReserveItem( item ) )
+		return;
+	endif
+
+	var last_use := Cint(GetObjProperty( item , "#last_use" ));
+	if( last_use and last_use > Cint(ReadGameClock() - DELAY_BETWEEN_USE) )
+		SendSysMessage( who , "You must wait before using it again." );
+		return;
+	endif
+		
+	SetObjProperty( item  , "#last_use" , Cint(ReadGameClock()) );
+	
+	if( !GetObjProperty( item , "RequireNoCharges" ) )
+		var charges := Cint(GetObjProperty( item , "charges" ));
+		if( !charges )
+			PrintTextAbovePrivate( item , "That is out of charges", who );
+			return;
+		else
+			charges := charges - 1;
+			SetObjProperty( item , "charges" , charges );
+		endif
+	endif
+		
+	PlaySoundEffect( who , SFX_SPELL_RECALL1 );
+	sleepms(250);
+	//Needs to be fixed for new maps
+	//MoveObjectToLocation( who , 1475 , 1645 , 20, "britannia" );
+	PlaySoundEffect( who , SFX_SPELL_RECALL2 );
+
+	Detach();
+	
+	Sleep( DELAY_BETWEEN_USE );
+	EraseObjProperty( item , "#last_use" );
+
+endprogram

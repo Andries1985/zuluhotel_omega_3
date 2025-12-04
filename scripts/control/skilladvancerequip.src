@@ -1,0 +1,657 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SkillAdvancerEquip() - Function that handles applying all mods/stats/skills to the player when 
+//			  equiping items. Probably needs a bit of a clean up.
+//
+// TODO: The SetRegenMod function has been commented out. Find out why.
+//	
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+use cfgfile;
+
+include "include/spelldata";
+include "include/client";
+include "include/namingbyenchant";
+include "include/attributes";
+include ":guilds:include/guilds";
+
+program equip( who, it )
+	
+	if(GetObjProperty(it, "GuildUniform") || GetObjProperty(it, "Entwined"))
+		if (!EquipGuildUniform(who, it))
+			return 0;
+		endif
+	endif
+	
+	FixWeapon(who, it);
+	FixProt(who, it);	
+
+	if( it.objtype == 0x86ef or it.objtype == 0x86df or (GetObjProperty( it , "noloot" ) and !who.npctemplate) )
+		Start_Script( ":shilitems:itemdestroyer" , it );
+		return 0;
+	endif
+	
+	EraseObjProperty(it, "BackPackXYZ");
+	if( it.objtype == 0x204f )
+		if (!EquipStaffRobe( who , it ))
+			return 0;
+		endif
+	endif
+	
+	if( GetObjProperty( it , "StayEquipped" ) and (GetObjProperty( it , "Cursed" )))
+		EraseObjProperty( it , "StayEquipped" );
+		return 1;
+	endif
+	
+	if( !who.cmdlevel )
+		if( IsProhibitedByClasse( who , it ) )
+			SendSysMessage( who , "Your class prevents you from equipping items such as this." );
+			if( GetObjProperty(it,"skilladv") or GetObjProperty(it,"skilladv")==0 )
+				var skillnum := Cint(GetObjProperty(it, "skilladv"));
+				var rawskill := Cint(GetBaseSkill(who, skillnum));
+				var amount   := Cint(GetObjProperty(who, "advamount" + skillnum + "s" + it.serial));
+				if( amount )
+					if( amount > rawskill )
+						amount := rawskill;
+					endif
+			
+					EraseObjProperty(who, "advamount" + skillnum + "s" + it.serial);
+					SetBaseSkill(who, skillnum , Cint(rawskill - amount));
+				endif
+			endif
+			UndoImmunity( who , it );
+			UndoProt( who , it );
+			return 0;
+		endif
+	endif
+
+	if (GetObjProperty( it, "WasCursed" ))
+		EraseObjProperty( it , "WasCursed" );
+	endif
+ 
+	if (!it.name)
+		SetName(it , it.desc);
+	endif
+		
+	if (GetObjProperty(it, "Cursed") == 1)
+		ApplyCurse( who , it );
+	endif
+
+	if (!it.hitscript)
+		AssignHitScript(it);
+	endif
+
+	DeathShroudMod( it );
+	DoStatMods( who , it);
+	DoSkillAdvance( who , it);
+	//DoRegenMods( who , it );
+	DoArMods( who , it );
+	//DoEquipSpell( who , it);
+	DoImmunity( who , it );
+	DoProt( who , it );
+	
+	if (GetObjProperty( it , "OfBlackrock" ) )
+		Setmana(who, 0);
+	endif
+	
+	SetObjProperty( it , "EquippedAlready" , 1 );
+	IncRevision(who);
+	return 1;
+
+endprogram
+
+// Fixes a rename prot, for level 6
+function FixProt(who, prot)
+
+	var name := SplitWords(prot.desc);
+	if ( name[name.size()] == "Preservation" || name[name.size()] == "Guidance")
+		if (!GetObjProperty(prot, "Fixed"))
+			SetNameByEnchant( prot  );
+			SendSysMessage(who, "An elemental protection item has been corrected.", 3, 53);
+			SetObjProperty(prot, "Fixed", 1);
+		endif
+	endif
+
+endfunction
+
+// This won't convert M or GM items!
+// this contains a lot of fixes for stuff i fucked up.  Not needed after an item wipe :P
+function FixWeapon(who, wep)
+
+	if (GetObjProperty(wep, "SlayType") == "Human1")
+		SetObjProperty(wep, "SlayType", "Human");
+	endif
+
+	if (wep.layer == 1)
+		if (GetObjProperty(wep, "skilladvamount"))
+			if (!GetObjProperty(wep, "WeapAdv") && !GetObjProperty(wep, "SpecMult"))
+				SetObjProperty(wep, "WeapAdv", 1);
+			elseif (GetObjProperty(wep, "SpecMult") && GetObjProperty(wep, "WeapAdv"))
+				EraseObjProperty(wep, "WeapAdv");
+			endif
+		endif
+	endif
+
+	var itemcfg := ReadConfigFile(":*:itemdesc");
+	var twohand := itemcfg[wep.objtype].TwoHanded;
+	if(twohand)
+		wep.TwoHanded := 1;
+	endif
+
+	if (!GetObjProperty(wep, "WeapAdv"))
+		return 0;
+	endif	
+
+endfunction
+////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// DoStatMod() - Applies the stat mods to the player.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
+
+function DoStatMods(who,it)
+
+	if ( GetObjProperty(it,"str") )
+		SetStrengthMod(who, GetStrengthMod(who) + cint(GetObjProperty(it,"str"))); 
+	endif
+	if ( GetObjProperty(it,"int") )
+		SetIntelligenceMod(who, GetIntelligenceMod(who) + cint(GetObjProperty(it,"int"))); 
+	endif
+	if ( GetObjProperty(it,"dex") )
+		SetDexterityMod(who, GetDexterityMod(who)+cint(GetObjProperty(it,"dex")));
+		endif
+	if ( GetObjProperty(it,"DefaultDex") )
+		SetDexterityMod(who, GetDexterityMod(who)+cint(GetObjProperty(it,"DefaultDex")));
+	endif
+
+endfunction
+
+// Rewrite skill adv to not use props
+
+function DoSkillAdvance(who,it)
+
+	if( GetObjProperty( it , "EquippedAlready" ))
+		return 0;
+	endif
+
+	// The skillID that is a prop on the item
+	var skillnum := GetObjProperty(it,"skilladv"); 
+
+	// If this exists, there is a skillgain, == 0 is the first skill, alchemy
+	if ( (skillnum) or (skillnum == 0) )
+
+		var BaseSkill := CInt(GetBaseSkill(who, skillnum));
+
+		var AllSkillItemsDic := dictionary;
+		AllSkillItemsDic.insert(GetMaxGain(it), GetObjProperty(it, "skilladvamount"));
+		var numiter := 0.01;
+		// Go through each equipped item looking for similar mods
+		foreach item in ListEquippedItems( who )
+
+			// Found a similar mod
+			if( GetObjProperty( item , "skilladv" ) == skillnum )
+
+				// It's NOT this item
+				if( item.serial != it.serial )
+					if (AllSkillItemsDic.exists(GetMaxGain(item)))
+						
+						AllSkillItemsDic.insert(GetMaxGain(item)+numiter, GetObjProperty(item, "skilladvamount"));
+						numiter := numiter + 0.01;
+					else
+						AllSkillItemsDic.insert(GetMaxGain(item), GetObjProperty(item, "skilladvamount"));
+					endif
+
+				endif
+			endif
+
+		endforeach
+
+
+		// Max level the particular item can get you to, ie 150 for gm
+		var Sub_MaxGain;
+
+		var adv_amount;
+		var TotalGain := 0;
+
+		// Go through each item of the same skill, sorted from lowest to highest
+		foreach item in (AllSkillItemsDic.keys())
+
+			// Get the max skill gain for the item (ie 85)
+			adv_amount := CInt(AllSkillItemsDic[item]);
+
+			// Get the items advance amount (ie 4)
+			Sub_MaxGain := CInt(item);
+
+			// Players base skill plus current mod level is lower than next one
+			if ( (BaseSkill + TotalGain) < Sub_MaxGain)
+
+				// The amount to gain is HIGHER than allowed, use only up to max
+				if ( (BaseSkill + TotalGain + adv_amount) > Sub_MaxGain )
+					
+					TotalGain := TotalGain + ( adv_amount - ((BaseSKill + TotalGain + adv_amount) - (Sub_MaxGain)) );
+
+				// We can use all the points to gain.
+				else
+	
+					TotalGain := TotalGain + adv_amount;
+
+
+				endif
+			endif
+
+		endforeach
+		
+		SetSkillTemporaryMod( who, skillnum, TotalGain);		
+	endif
+
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// DoRegenMods() - Applies the regen mods to the player.
+//		   I Left the old methods commented out, for reference.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
+function DoRegenMods( who , item )
+
+	if( GetObjProperty( item , "EquippedAlready" ) )
+		return 1;
+	endif
+	
+	var hp := GetObjProperty( item , "HpRegen" );
+	if( hp )
+		if( GetObjProperty( who , "baseregen" ) )
+			SetObjProperty( who , "baseregen" , GetObjProperty( who , "baseregen" ) + hp );
+		else
+			SetObjProperty( who , "baseregen" , hp );
+		endif
+		SetHPRegenRate(who, GetHPRegenRate(who)+hp);
+		//who.hp_regen_rate := who.hp_regen_rate + hp;
+	endif
+	
+	var mana := GetObjProperty( item , "ManaRegen" );
+	if( mana )
+		if( GetObjProperty( who , "basemanaregen" ) )
+			SetObjProperty( who , "basemanaregen" , GetObjProperty( who , "basemanaregen" ) + mana );
+		else
+			SetObjProperty( who , "basemanaregen" , mana );
+		endif
+		SetManaRegenRate(who, GetManaRegenRate(who)+mana);
+		//who.mana_regen_rate := who.mana_regen_rate + mana;
+	endif
+	
+	var stamina := GetObjProperty( item , "StamRegen" );
+	if( stamina )
+		if( GetObjProperty( who , "basestamregen" ) )
+			SetObjProperty( who , "basestamregen" , GetObjProperty( who , "basemanaregen" ) + stamina );
+		else
+			SetObjProperty( who , "basestamregen" , stamina );
+		endif
+		SetStaminaRegenRate(who, GetStaminaRegenRate(who)+stamina);
+		//who.stamina_regen_rate := who.stamina_regen_rate + stamina;
+	endif
+	
+endfunction
+	
+			
+function DoEquipSpell(who,it)
+
+	var spellname := getobjproperty(it,"equipspell");
+	if ( spellname )
+		var parms := { };
+		parms[1] := who;
+		parms[2] := it;
+		parms[3] := ReadGameClock();
+		setobjproperty(it,"equiptime",parms[3]);
+		start_script(":magic:"+spellname, parms);
+	endif
+
+endfunction
+
+
+function DeathShroudMod(it)
+
+	if (it.objtype == 0x204E) it.graphic := 0x204E; endif
+
+endfunction
+
+
+function ApplyCurse( who , item )
+
+	RevealCurse( item );
+	PlaySoundEffect( who, SFX_SPELL_CURSE);
+	PlayObjectCenteredEffect( who , FX_SPELL_CURSE , SPEED_SPELL_CURSE , LOOP_SPELL_CURSE );
+	SendSysmessage(who , "That item is cursed, and reveals itself to be a " + item.desc);
+	
+endfunction
+
+
+function AssignHitScript(it)
+
+	var weaponcfg := ReadConfigFile(":*:itemdesc");
+	var hitscript := weaponcfg[it.objtype].hitscript;
+	if( hitscript ) 
+		it.hitscript := hitscript; 
+	endif
+
+endfunction
+
+
+function DoProt( who , item )
+
+	if( GetObjProperty( item , "EquippedAlready" ) )
+		return 1;
+	endif
+	
+	var possibles := { "PoisonImmunity",
+			     "MagicImmunity",
+			     "SpellReflect" };
+			 
+			 
+	foreach prot in possibles
+		if( GetObjProperty( item, prot ) )
+			SetObjProperty( who, prot, item.serial );
+		endif
+	endforeach
+	
+	return 1;
+
+endfunction
+
+
+function DoImmunity( who , item )
+
+	if( GetObjProperty( item , "EquippedAlready" ) )
+		return 1;
+	endif
+	
+	// an experiment for necro prot, and stacking
+	if (GetObjProperty(item, "NecroProtection") || GetObjProperty(item, "StackingNecro") )
+		var necro := 0;
+		var nstack := 0;
+		var tnecro; 
+		var tstack;
+		var equippeditems := ListEquippedItems(who);
+		equippeditems.append(item);
+
+		foreach thing in equippeditems
+
+			tstack := GetObjProperty(thing, "StackingNecro");
+			tnecro := GetObjProperty(thing, "NecroProtection");
+			
+			if (tstack)
+				nstack := nstack + tstack;
+			endif
+			
+			// Find the highest necro level currently equipped
+			if (tnecro)
+				if (tnecro > necro)
+					necro := tnecro;
+				endif
+			endif
+			
+		endforeach
+		
+		SetObjProperty(who, "NecroProtection", necro);
+	endif
+	
+	// Phys prot done as well for dragon skin.  will eventuall incorporate everything into a nice little function if these work
+	if (GetObjProperty(item, "PhysicalProtection") || GetObjProperty(who, "#DragonSkin") )
+
+		var dskin := CInt(GetObjProperty(who, "#DragonSkin"));
+		var phys := 0;
+		var tphys := 0;
+		
+		var equippeditems := ListEquippedItems(who);
+		equippeditems.append(item);
+
+		foreach thing in equippeditems
+		
+			tphys := GetObjProperty(thing, "PhysicalProtection");
+			
+			// Find the highest phys level currently equipped
+			if (tphys)
+				if (tphys > phys)
+					phys := tphys;
+				endif
+			endif
+			
+		endforeach
+
+		SetObjProperty(who, "PhysicalProtection", phys);
+		
+	endif
+	
+		var possibles := { "PermPoisonImmunity",
+					 "PermMagicImmunity",
+					 "Permmr",
+					 "FireProtection",
+					 "WaterProtection",
+					 "AirProtection",
+					 "EarthProtection",
+					 "FreeAction",
+					 "HolyProtection",
+					 "HealingIncrease" };
+		
+		
+		
+		var level;
+
+		foreach prot in possibles
+			level := Cint( GetObjProperty( item, prot ) );
+			if( level )
+				if( Cint(GetObjProperty( who, prot )) < level )
+					SetObjProperty( who, prot, level );
+				endif
+			endif
+		endforeach
+		
+	
+	return 1;
+
+endfunction
+
+
+function EquipStaffRobe( who, item )
+
+	var playerlevel := who.cmdlevel;
+	if (who.npctemplate)
+		item.color := 0x0492;
+		SetObjProperty(item,"noloot",1);
+		return 1;
+	endif
+	case( who.cmdlevel )
+		0:	Start_Script( ":shilitems:itemdestroyer", item );
+			return 0;
+			
+		1:	if( GetObjProperty( who, "head" ) )
+				item.color := 0x0796;
+			else
+				item.color := 0x07AB;
+			endif
+			SetBaseStrength(who, 100);
+			SetBaseDexterity(who, 100);
+			SetBaseIntelligence(who, 100);	
+			for i := 0 to 48
+				SetBaseSkill( who , i , 100);
+			endfor
+			return 1;
+
+		2:	if( GetObjProperty( who, "head" ) )
+				item.color := 0x078A;
+			else
+				item.color := 0x0795;
+			endif
+			SetBaseStrength(who, 100);
+			SetBaseDexterity(who, 100);
+			SetBaseIntelligence(who, 100);	
+			for i := 0 to 48
+				SetBaseSkill( who , i , 100);
+			endfor
+			return 1;
+			
+		3:	if( GetObjProperty( who, "head" ) )
+				item.color := 0x079E;
+			else
+				item.color := 0x0799;
+			endif
+			SetBaseStrength(who, 100);
+			SetBaseDexterity(who, 100);
+			SetBaseIntelligence(who, 100);	
+			for i := 0 to 48
+				SetBaseSkill( who , i , 100);
+			endfor
+			return 1;
+			
+		4:	if( GetObjProperty( who, "head" ) )
+				item.color := 0x07A1;
+			else
+				item.color := 0x0485;
+			endif
+			SetBaseStrength(who, 6000);
+			SetBaseDexterity(who, 6000);
+			SetBaseIntelligence(who, 6000);	
+			return 1;
+
+		5:	if( GetObjProperty( who, "head" ) )
+				item.color := 0x079B;
+			else
+				item.color := 2473;
+			endif
+			SetBaseStrength(who, 6000);
+			SetBaseDexterity(who, 6000);
+			SetBaseIntelligence(who, 6000);	
+			return 1;
+
+	endcase
+
+	Start_Script( ":shilitems:itemdestroyer", item );
+	return 0;
+
+endfunction
+
+
+function DoArMods( who , item )
+
+	var ar := Cint(GetObjProperty( item, "ArBonus" ));
+	if( ar )
+		who.ar_mod := who.ar_mod + Cint(ar);
+	endif
+	
+endfunction
+
+
+function UndoImmunity( who , item )
+
+	var possibles := { "PermPoisonImmunity",
+			     "PermMagicImmunity",
+			     "Permmr",
+			     "FireProtection",
+			     "WaterProtection",
+			     "AirProtection",
+			     "EarthProtection",
+			     "FreeAction",
+			     "NecroProtection",
+			     "HolyProtection",
+			     "PhysicalProtection",
+			     "HealingIncrease" };
+	
+	var level;
+	var maxx := struct;
+	maxx.+item := 0;
+	maxx.+lvl  := 0;
+	
+	foreach prot in possibles
+		level := Cint( GetObjProperty( item, prot ) );
+		if( level )
+			EraseObjProperty( who, prot );
+			foreach thing in ListEquippedItems( who )
+				if( item != thing )
+					level := Cint( GetObjProperty( thing, prot ) );
+					if( level > maxx.lvl )
+						maxx.item := thing;
+						maxx.lvl  := level;
+					endif
+				endif
+			endforeach
+			
+			if( maxx.item )
+				SetObjProperty( who, prot, maxx.lvl );
+			endif
+			
+			maxx.item := 0;
+			maxx.lvl  := 0;
+		endif
+	endforeach
+	
+	return 1;
+
+endfunction
+
+
+function UndoProt( who, item )
+
+	var possibles := { "PoisonImmunity",
+			     "MagicImmunity",
+			     "SpellReflect" };
+			 
+			 
+	foreach prot in possibles
+		if( GetObjProperty( item, prot ) )
+			if( GetObjProperty( who, prot ) == item.serial )
+				EraseObjProperty( who , prot );
+				foreach thing in ListEquippedItems( who )
+					if( GetObjProperty( thing, prot ) )
+						if( thing != item )
+							SetObjProperty( who, prot, thing.serial );
+							break;
+						endif
+					endif
+				endforeach
+			endif
+		endif
+	endforeach
+	
+	return 1;
+
+endfunction
+
+
+function GetMaxGain(item)
+
+		// The skill amount, a prop on the item from 1 - 6 (journyman - gm)
+		var modamount := Cint(GetObjProperty( item , "skilladvamount" ));
+
+		// a modifiable modamount
+		var power := CInt(modamount);
+
+		// Weapons work differently, +5 to +30
+		if (GetObjProperty( item , "WeapAdv" ))
+			power := Cint( power / 5 );
+		endif
+
+		// Not sure what SpecMult is used on, leave this in - for bs hammers and picks!
+		var divider := Cint( GetObjProperty( item , "SpecMult" ) );
+		if( divider )
+			power := Cint( power / divider );
+		endif
+
+		var MaxGain;
+		// Defining the max gain for the item
+		case (power)
+			/*journeyman*/	1:	MaxGain := 75;
+			/*apprentice?*/	2:	MaxGain := 90;
+			/*Expert*/	3:	MaxGain := 110;
+			/*Adept*/	4:	MaxGain := 125;
+			/*Master*/	5:	MaxGain := 140;
+			/*G Master*/	6:	MaxGain := 150;
+					default: MaxGain := 150;
+		endcase
+
+		return MaxGain;
+endfunction

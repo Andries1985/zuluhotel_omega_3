@@ -1,0 +1,54 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// LeaveArea() - Called by the region.cfg for all towns
+//
+// Note: who.xy is the area stepped or teled INTO
+// RegionName is the Region LEAVING, weird.
+// Since IsInBox uses the chars position, we can't tie regions to areas
+// here atm. Must think of another way
+//
+// We are now using a InSafeArea prop this is applies on entry
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+use os;
+use uo;
+use datafile;
+
+include ":areas:include/areafunctions";
+
+include "include/areas";
+
+program LeaveArea(who)
+
+	/*
+	set_critical(1);
+
+	var file := OpenDataFile(":areas:LeaveArea");
+	var regionname := GetRegionName(who);
+
+	if (!file)
+		CreateDataFile( ":areas:LeaveArea");
+	endif
+
+	var region := file.FindElement(regionname);
+	UnloadDataFile(":areas:LeaveArea");
+
+	// Only one message by default.
+	if (!region)
+		SendSysMessage(who, "You have left "+regionname, 3, 999);
+	endif
+	*/
+	
+	// Safe area, remove privs
+	if (GetObjProperty(who, "InSafeArea"))
+		RemoveSafeAreaProperties(who);
+	endif
+
+	// NOPK area, remove privs
+	if (GetObjProperty(who, "NOPKAREA"))
+		RemoveNOPK(who);
+	endif
+
+endprogram
+

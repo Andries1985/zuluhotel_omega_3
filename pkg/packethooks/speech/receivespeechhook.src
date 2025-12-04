@@ -1,0 +1,71 @@
+////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ReceiveSpeechHook() - This is just used to log every word staff members say
+//
+////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use os;
+use cfgfile;
+use polsys;
+use datafile;
+
+include "include/time";
+
+program ReceiveSpeechHook()
+	Print("Hooking Speech Packet 0xAD");
+	return 1;
+endprogram
+
+exported function ReceiveSpeechPacket( character, byref packet )
+
+if (character.cmdlevel)
+   var speech := "";
+   var speechstart := 12;
+ if (packet.GetInt8(3) == 0xC0)
+      var triggers := packet.GetInt16(12)/16;
+      var bytes := CInt(triggers*1.5 + 2);
+      speechstart := CInt(speechstart + bytes);
+      var speechlen := packet.GetInt16(1) - 1 - speechstart;
+      speech := SendSysMessage(character, CStr(packet.GetString(speechstart, speechlen)));
+   else
+      var speechlen := (packet.GetInt16(1) - 13)/2;
+      speech := CChrZ(packet.GetUnicodeString(speechstart, speechlen));
+   endif 
+   //SendSysMessage(character, speech);
+   if (speech[1] != "." && speech[1] != "=") // don't log commands as they are done per basis in scripts
+      logspeech(character, speech);
+   endif
+endif
+
+return 0;
+	
+endfunction
+
+function logspeech(who, speech)
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+var time := timeanddate[2];
+var filename := CStr(who.acctname);
+var file := OpenDataFile(":staff:"+filename);
+if (!file)
+	CreateDataFile( ":staff:"+filename, flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(date);
+
+if (!currentelement)
+	currentelement := file.CreateElement(date);
+endif
+
+var settingprop := "["+time+" - "+who.x+","+who.y+","+who.z+"]"; // set log with time date, 
+
+currentelement.SetProp(settingprop, speech);
+
+UnloadDataFile(":staff:"+filename);
+
+SetObjProperty(who, "#LogXYZ", {who.x, who.y, who.z});
+
+endfunction

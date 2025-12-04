@@ -1,0 +1,55 @@
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+
+include "include/anchors";
+include "ai/main/killpcsloop";
+include "ai/combat/fight";
+include "ai/setup/killpcssetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+include "include/client";
+include "include/npcbackpacks";
+include "main/barracoon";
+
+const HALT_THRESHOLD := 14; // how close before he attacks?
+
+program KillPlayers()
+
+	if (GetObjProperty(me, "frozen"))
+		me.frozen := 1;
+	endif
+
+	SetWarMode( 0 );
+	main_AI_loop();
+
+endprogram
+
+function CloseDistance( opponent )
+
+	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
+	if (sleepdelay < 0) 
+		sleepdelay := 0; 
+	endif
+	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
+	if(MoveSpeed)
+		sleepdelay := GetSpeed(me, MoveSpeed);
+	endif
+
+	if( Distance( me, opponent ) <= 1)
+		return 1;
+	else
+		WalkToward( opponent );
+		Sleepms(sleepdelay);
+		return 0;
+	endif
+
+endfunction
+
+

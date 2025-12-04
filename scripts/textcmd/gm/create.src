@@ -1,0 +1,48 @@
+//
+// .create command - create items
+// Two forms:
+//   ".create [objtype] [amount]" - specify object type and amount
+//       amount defaults to 1
+//   ".create" - show the item creation menu, create one of that item
+//
+use cfgfile;
+use uo;
+include ":staff:include/staff";
+program textcmd_create( staff_member, text )
+    if( text )
+        var parameters := SplitWords(text);
+        var objtype    := CInt(parameters[1]);
+
+        if( !objtype )
+            objtype := GetObjtypeByName(parameters[1]);
+            if( !objtype )
+            	SendSysMessage(staff_member, parameters[1] + " isn't recognized as an existing objname.");
+            	return 0;
+            endif
+        endif
+        
+        if( objtype > 0x3FFF )
+        	var item_cfg  := ReadConfigFile(":*:itemdesc");
+        	var item_elem := FindConfigElem(item_cfg, objtype);
+        	if( !item_elem )
+        		SendSysMessage(staff_member, parameters[1] + " isn't recognized as an existing objtype.");
+				return 0;
+			endif
+		endif
+		
+		var item := CreateItemAtLocation(staff_member.x, staff_member.y, staff_member.z, objtype, 1, staff_member.realm);
+		if( item )
+			if(staff_member.cmdlevel < 5)
+				SetObjProperty(item, "LFucker", staff_member.serial+"/"+staff_member.name);
+			endif
+			LogCommand(staff_member, GetProcess(GetPid()).name, 0, item.desc+"/"+item.serial);
+			return 1;
+		else
+			SendSysMessage(staff_member, "Couldn't create item '" + parameters[1] + "', errortext: " + item.errortext);
+			return 0;
+		endif	
+	else
+		SendSysMessage(staff_member, "Usage is: .create <objtype> or .create <objname>");
+		return 0;
+    endif
+endprogram

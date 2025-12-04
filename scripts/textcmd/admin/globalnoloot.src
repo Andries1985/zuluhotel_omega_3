@@ -1,0 +1,36 @@
+use uo;
+use os;
+include "include/client";
+include ":staff:include/staff";
+
+program GlobalNoLoot( who , time )
+
+	if( !time || GetGlobalProperty( "GlobalNoLoot" ))
+		if(!GetGlobalProperty( "GlobalNoLoot" ))
+			SendSysMessage( who , "The command works this way .globalnoloot 60 , this will set no loot for the entire world with the duration of 60 minutes" );
+			return;
+		else
+			EraseGlobalProperty( "GlobalNoLoot" );
+    		Broadcast( "No loot area have been removed from the world.", FONT_BOLD, 33 );
+			return;
+		endif
+	endif
+	
+	time:=CInt(time*60);
+
+	SetGlobalProperty( "GlobalNoLoot", 1 );
+    Broadcast( "No loot area have been set for the entire world, duration: "+time+" minutes.", FONT_BOLD, 33 );
+    Broadcast( "This can be removed earlier if staff decides so, no pre-warning will be given.", FONT_BOLD, 33 );
+    Broadcast( "No ress killing or other bullshit to get around this, punishment will be very hard for this and no excuses will save you.", FONT_BOLD, 33 );
+	
+	LogCommand(who, GetProcess(GetPid()).name);
+	Sleep(1);
+	Sleep(time*60);
+
+	EraseGlobalProperty( "GlobalNoLoot" );
+    Broadcast( "No loot area have been removed from the world.", FONT_BOLD, 33 );
+
+endprogram
+
+
+	

@@ -1,0 +1,74 @@
+// This really covers drop item too don't it? 
+// Since ya gotta pick up to drop.
+
+use uo;
+use os;
+use polsys;
+use unicode;
+use util;
+
+include ":staff:include/staff";
+include "include/client";
+
+Const BLOCK_ENABLED := 0;
+Const COUNSELOUR    := 1;
+Const SEER    := 2;
+
+program PickUpItem()
+	Print("Hooking Pick Up Item Packet 0x07");
+	return 1;
+endprogram
+
+exported function PickUpItemPacket(who, byref packet)
+
+var item := SystemFindObjectBySerial(packet.GetInt32(1));
+var newpacket;
+// Not staff, continue as normal
+if (who.cmdlevel < 1)
+	if(item.multi && !who.multi)
+		newpacket := CreatePacket(0x27, 2);
+		newpacket.SendPacket(who);
+		return 1;
+	endif
+	return 0;
+endif
+
+	if(BLOCK_ENABLED)
+    // Check that the cmdlevel is NOT 0 (player).
+		if(who.cmdlevel != 0)
+		// Check to see if their cmdlevel is less than, or equal to the STAFFLEVEL to block.
+			if(who.cmdlevel <= COUNSELOUR)
+				// Create a new packet. This packet is used to send the Denied Pickup Request back to
+				// the client. Then. send the packet off. The "Return 1;" is used so that the pickup
+				// request is NOT sent on to the core to handle.
+				newpacket := CreatePacket(0x27, 2);
+				newpacket.SendPacket(who);
+				return 1;
+			elseif(who.cmdlevel <= SEER)
+				var OK := 0;
+				foreach it in EnumerateItemsInContainer( who.backpack );
+					if(it == item)
+						OK := 1;
+					endif
+				endforeach
+				if(!OK)
+					newpacket := CreatePacket(0x27, 2);
+					newpacket.SendPacket(who);
+					return 1;
+				endif
+			endif
+		endif
+	endif
+
+if (GetObjProperty(who, "#PickUpItem"))
+	// exists! log it!!
+	var item2 := SystemFindObjectBySerial( GetObjProperty(who, "#PickUpItem")[1] );
+
+	LogAction(who, "Move Item: "+item2.desc+"/"+GetObjProperty(who, "#PickUpItem")[1]+" - Unknown Drop Location! - Taken From: "+GetObjProperty(who, "#PickUpItem") );	
+endif
+
+SetObjProperty(who, "#PickUpItem", {item.serial, item.container.serial, {item.x, item.y, item.z}});
+
+return 0;
+
+endfunction

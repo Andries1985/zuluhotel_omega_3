@@ -1,0 +1,23 @@
+use uo;
+use os;
+
+include "include/constants";
+include "include/client";
+
+program forcespawn(who, input)
+    var spawnpoint;
+    if(!input)
+        SendSysMessage(who, "Select Spawnpoint");
+        spawnpoint := Targetcoordinates( who ).item;
+	else
+        spawnpoint := SystemFindObjectBySerial(Cint(input));
+		if(spawnpoint.objtype != 0xa300)
+			SendSysMessage( who, "That's not a Spawnpoint .forcespawn ([serial])", FONT_NORMAL, 2595);
+			return 0;
+		endif
+	endif
+	    
+    PrintTextAbovePrivate( spawnpoint, "*despawned*", who, FONT_NORMAL, 2595);
+    SendSysMessage(who, "Despawned everything from spawnpoint");
+	Start_Script( ":spawnpoint:despawner", spawnpoint );
+endprogram

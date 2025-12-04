@@ -1,0 +1,28 @@
+use uo;
+use os;
+
+include "include/client";
+
+program textcmd_rperon(who)
+
+    SendSysMessage(who, "Who do you want to turn on [RPer] status for?", FONT_NORMAL, 2567 );
+
+	var targ := Target( who );
+    var IsRPer := GetObjProperty(targ, "IsRPer");
+    var WasRPer := GetObjProperty(targ, "WasRPer");
+
+	if( !targ )
+        SendSysMessage(who, "Canceled!", FONT_NORMAL, 2595 );
+		return;
+	endif
+
+    if(!WasRPer)
+        SendSysMessage(who, "Canceled! Target isn't part of the [RPer] faction.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    SetObjProperty(targ, "IsRPer", 1);
+    SendSysMessage(who, "RPer status restored on " +targ.name, FONT_NORMAL, 2567 );
+    SendSysMessage(targ, "RPer status restored.", FONT_NORMAL, 2567 );
+
+endprogram

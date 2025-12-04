@@ -1,0 +1,55 @@
+//Author: Racalac, 1/10/99
+//Updated 10/9/99
+//20010405 Jaleem Added check for taking out auctioner's items
+
+use uo;
+
+include "include/spelldata";
+include "include/client";
+include "util/bank";
+
+program telekinesis ( caster, spell_id )
+
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(caster) == "Array")
+					spell_id := caster[2];
+			caster := caster[1];
+		endif
+	var circle := 3;
+
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+	var cast_on := CanTargetThing(caster, circle, TGTOPT_CHECK_LOS );
+
+	if (getobjproperty(cast_on, "cansteal"))
+		sendsysmessage(caster, "This item can not be moved"); 
+		exit;
+	endif	
+
+	if( !cast_on )
+		return 0;
+	elseif( !Accessible( caster, cast_on ) )
+		SendSysMessage( caster, "You can't reach that." );
+		return 0;
+	elseif( cast_on.IsA(POLCLASS_MOBILE) )
+		PrintTextAbovePrivate( caster, "You cannot will it to move.", caster );
+		return 0;
+	elseif( cast_on.IsA(POLCLASS_CORPSE) )
+		return 0;
+	elseif( cast_on.container )
+		return 0;
+	elseif( cast_on.multi )
+		SendSysmessage( caster, "You cannot use that on items inside houses." );
+		return 0;
+	endif
+
+	PlaySoundEffect( caster , SFX_SPELL_TELEKINESIS );
+	if (MoveItemToContainer( cast_on, caster.backpack, x := -1, y := -1 ))
+		PrintTextAbovePrivate( caster, "You pick up the item with your mind." , caster );
+	else
+		PrintTextAbovePrivate( caster, "You cannot will it to move." , caster );
+	endif
+
+endprogram

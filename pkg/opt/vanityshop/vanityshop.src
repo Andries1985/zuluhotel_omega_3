@@ -1,0 +1,222 @@
+use uo;
+use os;
+use math;
+use cfgfile;
+
+include "include/client";
+include ":gumps:include/gumps";
+
+
+const PROPID_MOBILE_BROWSING := "#browsingvanityshop";
+const GUILD_UNIFORM_PRICE := 666;
+const ICON_OMEGA_TOKEN := 0x3679;
+const OBJ_OMEGA_TOKEN := 0x8A20;
+
+var vanitystuff := array{};
+var gump;
+
+program VanityShop(who)
+
+	GetConfigItems(":*:itemdesc");
+	CreateGump();
+
+	if( GetObjProperty( who, PROPID_MOBILE_BROWSING) )
+		SendSysMessage( who, "You're already browsing the Vanity Shop.", FONT_NORMAL, 2595 );
+		return 0;
+	else
+		SetObjProperty( who, PROPID_MOBILE_BROWSING, 1 );
+	endif
+	
+	var ret := GFSendGump(who, gump);
+	if (ret[0])
+		ConfirmItemPurchase(who, ret[0] );
+	endif
+	
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+
+endprogram
+
+
+function GetConfigItems(file)
+	
+	var itemcfgfile := ReadConfigFile(file);
+	var keylist := GetConfigStringKeys(itemcfgfile);
+	
+	foreach key in keylist
+
+		var item := struct{"Type","Name","Desc","Graphic","Color","Cost"};
+		var element := FindConfigElem(itemcfgfile,key);
+		var isvanity := GetConfigString(element, "VanityCost");
+
+		if (isvanity)
+            var dirty_desc := GetConfigString(element, "Desc");
+            var clean_desc := SplitWords(dirty_desc,"%");
+			item.Type := key;
+			item.Name := GetConfigString(element, "Name");
+			item.Desc := clean_desc[1];
+			item.Graphic := GetConfigInt(element, "Graphic");
+			item.Color := GetConfigInt(element, "Color");
+			item.Cost := GetConfigInt(element, "VanityCost");
+
+			var i := vanitystuff.Size();
+			if (i)
+				while (i)
+					if (item.Cost >= vanitystuff[i].Cost)
+						vanitystuff.Insert(i+1,item);
+                        break;
+					elseif (i==1)
+                        vanitystuff.Insert(1,item);
+                    endif
+					i -= 1;
+				endwhile
+                
+			else
+				vanitystuff.append(item);
+			endif
+
+		endif
+
+	endforeach
+
+endfunction
+
+function CreateGump()
+
+	gump := GFCreateGump(500,200);
+	//GFClosable(gump, 1);
+	GFPage(gump, 0);
+	
+	//Top
+	GFGumpPic(gump, 0, 0, 150);
+	GFGumpPic(gump, 114, 0, 151);
+	GFGumpPic(gump, 171, 0, 151);
+	GFGumpPic(gump, 228, 0, 151);
+	GFGumpPic(gump, 285, 0, 152);
+	//mid 1
+	GFGumpPic(gump, 0, 140, 153);
+	GFGumpPic(gump, 114, 140, 154);
+	GFGumpPic(gump, 171, 140, 154);
+	GFGumpPic(gump, 228, 140, 154);
+	GFGumpPic(gump, 285, 140, 155);
+	//mid 2
+	GFGumpPic(gump, 0, 182, 153);
+	GFGumpPic(gump, 114, 182, 154);
+	GFGumpPic(gump, 171, 182, 154);
+	GFGumpPic(gump, 228, 182, 154);
+	GFGumpPic(gump, 285, 182, 155);
+	//mid 3
+	GFGumpPic(gump, 0, 224, 153);
+	GFGumpPic(gump, 114, 224, 154);
+	GFGumpPic(gump, 171, 224, 154);
+	GFGumpPic(gump, 228, 224, 154);
+	GFGumpPic(gump, 285, 224, 155);
+
+	//bottom
+	GFGumpPic(gump, 0, 266, 156);
+	GFGumpPic(gump, 114, 266, 157);
+	GFGumpPic(gump, 171, 266, 157);
+	GFGumpPic(gump, 228, 266, 157);
+	GFGumpPic(gump, 285, 266, 158);
+
+	GFTextLine(gump, 107, 7, 51, "Welcome to the Omega Vanity Shop!");
+	GFTextLine(gump, 62, 39, 50, "Select what you'd like to purchase:");
+		
+	GFPage(gump, 1);
+	var page := 1;
+	var count := 0;
+	var perpage := 8;
+	var prev_y := 20;
+	var prev_x := 43;
+	
+	foreach item in vanitystuff
+		if (count >= perpage)
+			if (page != 1)
+			// back
+			GFAddButton(gump, 351, 75, 9700, 5604, 0, page-1);
+			endif
+			page := page +1;
+			// next page
+			GFAddButton(gump, 351, 320, 9704, 5606, 0, page);
+			GFPage(gump, page);
+			prev_y := 20;
+			prev_x := 43;
+			count := 0;
+
+		elseif (_item_iter == vanitystuff.size())
+			if (page != 1)
+				GFAddButton(gump, 351, 75, 9700, 5604, 0, page-1);
+			endif
+		endif
+
+		GFAddButton(gump, prev_x, prev_y+54, 1209, 1210, 1, _item_iter);
+		GFTilePic(gump, prev_x+15, prev_y+50, item.Graphic, item.Color);
+		GFTextCrop(gump, prev_x+65, prev_y+50, 190, 25, 90, item.Desc);
+		GFTextLine(gump, prev_x+260, prev_y+50, 44, item.Cost);
+		GFTilePic(gump, prev_x+270, prev_y+50, ICON_OMEGA_TOKEN);
+
+		prev_y := prev_y+35;
+		count := count+1;
+		
+	endforeach
+
+endfunction
+
+function ConfirmItemPurchase(who, item)
+
+	var item_type := vanitystuff[item].Type;
+	var item_desc := vanitystuff[item].Desc;
+	var item_graphic := vanitystuff[item].Graphic;
+	var item_color := vanitystuff[item].Color;
+	var item_cost := vanitystuff[item].Cost;
+
+	var gump := GFCreateGump(20, 20, 180, 170);
+	GFResizePic(gump, 20, 20, 9260, 180, 170);
+
+	GFResizePic(gump, 30,30, 9350, 160, 150);
+	GFResizePic(gump, 44, 35, 9200, 130, 25);
+	GFTextLine(gump, 52, 36, 53, "Purchase Item?");
+	GFTextCrop(gump, 45, 61, 120, 10, 90, item_desc);
+	GFTilePic(gump, 85, 87, item_graphic, item_color);
+	GFTextLine(gump, 85, 125, 38, item_cost);
+	GFTilePic(gump, 105, 125, ICON_OMEGA_TOKEN);
+	GFHTMLArea(gump, 120, 80, 270, 70, "<CENTER>" ,0,0 );
+
+	GFAddButton(gump, 42, 150, 2128, 2129, 1, 10);
+	GFAddButton(gump, 120, 150, 2119, 2120, 1, 0);
+	var data := GFSendGump(who, gump);
+
+	if (data[0] == 10)
+		var token_amount := 0;
+		foreach item in EnumerateItemsInContainer( who.backpack )
+			if( item.objtype == OBJ_OMEGA_TOKEN )
+				print("found "+item.amount);
+				token_amount := token_amount + item.amount;
+			endif
+		endforeach
+
+		if (token_amount < item_cost)
+			SendSysMessage(who, "You don't have enough Omega Tokens.");
+			EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+			return 0;
+		endif
+		var cost_left := item_cost;
+		foreach item in EnumerateItemsInContainer( who.backpack )
+			if( item.objtype == OBJ_OMEGA_TOKEN )
+				cost_left := cost_left - item.amount;
+				var to_sub := Min(item.amount, item_cost);
+				SubtractAmount(item, to_sub);
+				if (cost_left <= 0)
+					break;
+				endif
+			endif
+		endforeach
+		
+		CreateItemInBackpack( who, item_type, 1 );
+		SendSysMessage(who, "The "+item_desc+" has been placed in your backpack, enjoy!", 3, 53);
+	else
+		SendSysMessage(who, "Purchase cancelled.");
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	endif
+
+endfunction

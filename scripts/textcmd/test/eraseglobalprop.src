@@ -1,0 +1,16 @@
+//erases a global property
+//Nathan "Sith" Van Ymeren
+
+
+use uo;
+
+program eraseglobalprop( who, prop )
+	
+	if(!prop)
+		SendSysMessage(who, "Usage: .eraseglobalprop propname");
+		return;
+	endif
+	
+	EraseGlobalProperty(prop);
+	
+endprogram

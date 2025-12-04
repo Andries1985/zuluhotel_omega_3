@@ -1,0 +1,10 @@
+use uo;
+
+program untamable(who)
+
+	SendSysmessage(who, "What creature do you want to make untamable?");
+	var npc := Target(who, "");
+	SetObjProperty(npc, "untamable", 1);
+	EraseObjProperty(npc, "tamableAt");
+
+endprogram

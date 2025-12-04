@@ -1,0 +1,139 @@
+//////////////////////////////////////////////////////////////////////////
+// Toadstool 16/04/2012 
+//
+// ReleaseInfo() - Displays information about where an animal was
+//		   released/hatched.
+//	Go button needs to be fixed
+//////////////////////////////////////////////////////////////////////////
+
+use uo;
+use os;
+
+include ":gumps:old-gumps";
+include ":staff:include/staff";
+
+program releaseinfo(who)
+
+SendSysMessage(who, "Target an NPC..");
+
+var targ := Target(who);
+LogCommand(who, GetProcess(GetPid()).name, targ.name+"/"+targ.serial);
+
+if (!targ.isa(POLCLASS_NPC))
+	SendSysMessage(who, "You must select an NPC");
+	return 0;
+endif
+
+var relinfo := GetObjProperty(targ, "ReleasedBy");
+var hatinfo := GetObjProperty(targ, "HatchedBy");
+
+GFInitGump();
+
+// entire pages
+GFResizePic( 10, 10, 9260, 380, 190);
+GFResizePic( 15, 15, 9350, 370, 180);
+
+// title bar
+GFResizePic( 60, 10, 9260, 280, 35);
+GFResizePic( 65, 15, 9350, 270, 25);
+
+// 2 bottom white pages
+GFResizePic( 15, 80, 9350, 185, 115);
+GFResizePic( 200, 80, 9350, 185, 115);
+
+// Title texts and creature names
+GFTextLine( 95, 16, 89, "Released/Hatched Information" );
+GFTextLine( 30, 50, 67, "Creature Name: " );
+GFTextLine( 145, 50, 0, targ.name );
+GFTextLine( 80, 80, 89, "Released" );
+GFTextLine( 260, 80, 89, "Hatched" );
+
+// Fill in the released info panel
+if (relinfo)
+	var relplayer := SplitWords(relinfo);
+	relplayer := SystemFindObjectBySerial(CInt(relplayer[2]), 1);
+		
+	GFTextLine( 20, 100, 67, "Acc:" );
+	GFTextLine( 70, 100, 0, relplayer.acctname );
+
+	GFTextLine( 20, 115, 67, "Char:" );
+	GFTextLine( 70, 115, 0, relplayer.name );
+
+	GFTextLine( 20, 135, 67, "X:" );
+	GFTextLine( 70, 135, 0, SplitWords(relinfo)[4] );
+
+	GFTextLine( 20, 150, 67, "Y:" );
+	GFTextLine( 70, 150, 0, SplitWords(relinfo)[5] );
+
+	GFTextLine( 20, 165, 67, "Z:" );
+	GFTextLine( 70, 165, 0, SplitWords(relinfo)[6] );
+
+		// DECO - lines to Go button
+	GFTextLine( 115, 150, 0, "-" );
+	GFTextLine( 115, 135, 0, "-" );
+	GFTextLine( 115, 165, 0, "-" );
+	GFTextLine( 120, 150, 0, "|" );
+	GFTextLine( 120, 140, 0, "|" );
+	GFTextLine( 120, 158, 0, "|" );
+	GFTextLine( 121, 150, 0, "|" );
+	GFTextLine( 121, 140, 0, "|" );
+	GFTextLine( 121, 158, 0, "|" );
+	GFTextLine( 121, 150, 0, "-" );
+	GFTextLine( 125, 150, 0, "-" );
+	GFTextLine( 160, 150, 33, "Go" );
+	GFButtonID( 140, 155, 0x93A, 0x939, 1, 5);
+else
+	GFTextLine( 35, 130, 0, "No previous release" );
+endif
+
+// Fill in the hatched info panel
+if (hatinfo)
+	var hatplayer := SplitWords(hatinfo);
+	hatplayer := SystemFindObjectBySerial(CInt(hatplayer[2]), 1);
+		
+	GFTextLine( 205, 100, 67, "Acc:" );
+	GFTextLine( 255, 100, 0, hatplayer.acctname );
+
+	GFTextLine( 205, 115, 67, "Char:" );
+	GFTextLine( 255, 115, 0, hatplayer.name );
+
+	GFTextLine( 205, 135, 67, "X:" );
+	GFTextLine( 255, 135, 0, SplitWords(hatinfo)[4] );
+
+	GFTextLine( 205, 150, 67, "Y:" );
+	GFTextLine( 255, 150, 0, SplitWords(hatinfo)[5] );
+
+	GFTextLine( 205, 165, 67, "Z:" );
+	GFTextLine( 255, 165, 0, SplitWords(hatinfo)[6] );
+
+	// DECO - lines to Go button
+	GFTextLine( 300, 150, 0, "-" );
+	GFTextLine( 300, 135, 0, "-" );
+	GFTextLine( 300, 165, 0, "-" );
+	GFTextLine( 305, 150, 0, "|" );
+	GFTextLine( 305, 140, 0, "|" );
+	GFTextLine( 305, 158, 0, "|" );
+	GFTextLine( 306, 150, 0, "|" );
+	GFTextLine( 306, 140, 0, "|" );
+	GFTextLine( 306, 158, 0, "|" );
+	GFTextLine( 306, 150, 0, "-" );
+	GFTextLine( 310, 150, 0, "-" );
+
+	GFTextLine( 345, 150, 33, "Go" );
+	GFButtonID( 325, 155, 0x93A, 0x939, 1, 10 );
+
+else
+	GFTextLine( 230, 130, 0, "Wasn't hatched" );
+endif
+
+var data := GFSendGump( who );
+
+// Teleport who to hatched or released location
+case (data[0])
+5: 	MoveObjectToLocation(who, CInt(SplitWords(relinfo)[4]), CInt(SplitWords(relinfo)[5]), CInt(SplitWords(relinfo)[6]), MOVEOBJECT_FORCELOCATION);
+	SendSysMessage(who, "Moved to where the creature went wild.");
+10:	MoveObjectToLocation(who, CInt(SplitWords(hatinfo)[4]), CInt(SplitWords(hatinfo)[5]), CInt(SplitWords(hatinfo)[6]), MOVEOBJECT_FORCELOCATION);
+	SendSysMessage(who, "Moved to where the creature was hatched.");
+endcase
+
+endprogram

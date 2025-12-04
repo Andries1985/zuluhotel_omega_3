@@ -1,0 +1,2685 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Guilds() - A totally new guild system.  Getting rid of stones all together, make it a bit friendlier
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use guilds;
+
+include ":guilds:include/guilds";
+include ":guilds:include/guildconstants";
+include "include/classes";
+include ":gumps:autoClose";
+
+
+const PROPID_MOBILE_BROWSING := "#BrowsingGuild";
+
+Set_Script_Option( SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES, 1 );
+Set_Script_Option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+program Guilds(who)
+
+if( GetObjProperty( who, PROPID_MOBILE_BROWSING) )
+	SendSysMessage( who, "You're already browsing the guild menu." );
+	return 0;
+else
+	SetObjProperty( who, PROPID_MOBILE_BROWSING, 1 );
+endif
+
+if (!who.guild)
+	GuildListGump(who, 0);
+else
+	GuildGump(who);
+endif
+
+endprogram
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GuildListGump() - Have to run this in a seperate gump to bypass the memory restrictions in the 
+// client.  It won't display, or crash if a gump is too large.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function GuildListGump(who, ginfo := 0, startat := 1)
+
+	if (ginfo == 0)
+		ginfo := "View information about all the guilds on Zuluhotel Omega.<br><br>* You may send a join request to multiple guilds.  The guilds leader will accept/deny, or ignore your request.<br><br>* You can view detailed information about a particular guild by pressing the 'Info' button.";
+	endif
+
+	var guilds := ListGuilds();
+
+	// Main Window
+	var gump := GFCreateGump(0, 0, 540, 540);
+	GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+	// Side Dragon Deco
+
+	GFGumpPic(gump, 0, 60, 10440);
+	GFGumpPic(gump, 518, 60, 10441);
+
+	// Bottom bar - guild information
+	GFResizePic(gump, 90, 340, 9200, 420, 20);
+	GFTextLine(gump, 245, 340, 999, "Guild Information");
+	GFHTMLArea(gump, 90, 370, 420, 100, ginfo , 1,1 );
+
+	GFResizePic(gump, 65, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center><u>GUILD LIST" , 0,0 );
+
+	// Buttons
+	GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 2);
+
+	GFResizePic(gump, 300, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD" , 0,0 );
+
+	// Title Bar
+	GFResizePic(gump, 295, 60, 9200, 10, 20);
+	GFResizePic(gump, 240, 45, 9200, 115, 25);
+	GFTextLine(gump, 255, 48, 990, "Guilds of ZHO");
+
+	GFResizePic(gump, 90, 75, 9200, 420, 20);
+
+	GFTextLine(gump, 95, 75, 999, "Guild Name");
+	GFTextLine(gump, 330, 75, 999, "Send Join Request");
+	GFTextLine(gump, 480, 75, 999, "Info");
+
+	var y := 100;
+	var perpage := 9;
+	var page := 1;
+
+	// page buttons
+	if (startat >= perpage)
+		// up arrow, previous page
+		GFAddButton(gump, 505, 100, 5600, 5604, 1, 10);
+
+	endif
+
+	if (startat+perpage <= guilds.size())
+		// down arrow, next page
+		GFAddButton(gump, 505, 320, 5602, 5606, 1,20);
+	endif
+
+	// PAGE 1  - GUILD LIST
+	GFPage(gump, page);
+
+	foreach guild in guilds
+		if (_guild_iter >= startat && _guild_iter < startat+perpage)
+			// instead of making a new var for this, increase per page
+			//perpage := perpage + perpage;
+			//page := page + 1;
+			//GFPage(gump, page);
+			//y := 100;
+		
+		GFTextLine(gump, 90, y, 99, guild.getprop("GuildName"));
+		// if player has guild, don't allow sending of guild join request
+		if (!who.guild)
+			GFAddButton(gump, 375, y, 4033, 4033, 1, (1000 + _guild_iter) );
+		endif
+		GFAddButton(gump, 480, y, 9026, 9027, 1, (2000 + _guild_iter) );
+		y := y + 25;
+		endif
+	endforeach
+
+	if (!guilds.size())
+		GFTextLine(gump, 180, 200, 78, "There are currently no guilds formed.");
+	endif
+
+	var data := GFSendGump(who, gump);
+	case (data[0])
+		0: EraseObjProperty( who, PROPID_MOBILE_BROWSING );	
+		10: GuildListGump(who, 0, startat-perpage);
+		20: GuildListGump(who, 0, startat+perpage);	
+	endcase
+
+	if (data[0] == 2)
+		return GuildGump(who);
+		
+	// View guild infio
+	elseif (data[0] > 2000)
+		DisplayGuildInfo(who, (data[0]-2000), startat);
+	// Send guild request
+	elseif (data[0] > 1000)
+		var guild := ListGuilds();
+		var thatguild := guild[data[0]-1000];
+		JoinGuildRequest(who, thatguild);
+	endif
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// DisplayGuildInfo() - Little function that looks up a guilds info, puts it into a html formatted
+// string, and boots up the main gild menu with it.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+function DisplayGuildInfo(who, guild, startat)
+
+	guild := ListGuilds()[guild];
+
+	var guildname := guild.getprop("GuildName");
+	var guildabv := guild.getprop("GuildAbv");
+	var guildmaster := SystemFindObjectBySerial(guild.getprop("GuildMaster"), SYSFIND_SEARCH_OFFLINE_MOBILES).name;
+	var guildcolour := guild.getprop("GuildColour");
+
+	if (!guildcolour)
+		guildcolour := "None";
+	endif
+
+	var guildmembers := "";
+
+	foreach member in (guild.members)
+		if (member.serial != guildmaster.serial)
+			guildmembers := guildmembers+"<br>"+member.name;
+		endif
+	endforeach
+
+	return GuildListGump(who, "<BASEFONT COLOR=DARKBLUE><CENTER><big><u>"+guildname+"</u></big></CENTER><BASEFONT ALIGN=LEFT><BASEFONT COLOR=black><br>Guild Master: "+guildmaster+"<br><br>Guild Abbreviation: "+guildabv+"<br><br>Guild Colour: "+guildcolour+"<br><br>Member List:<br>"+guildmembers, startat);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GuildGump() - Have to run this in a seperate gump to bypass the memory restrictions in the 
+// client.  It won't display, or crash if a gump is too large.
+//
+// This contains the gump for creating a guild, and the gump for having a guild. Not the guild
+// master functions or guild uniforms.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function GuildGump(who, info := 0)
+
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+// 1st page
+GFPage(gump, 1);
+
+// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center><u>GUILD" , 0,0 );
+
+// Player has no guild, show just the info 
+if (!who.guildid)
+
+// Title Bar
+GFResizePic(gump, 240, 45, 9200, 115, 25);
+GFTextLine(gump, 283, 48, 990, "Guild");
+
+	GFPage(gump, 1);
+
+	/*GFHTMLArea(gump, 90, 80, 420, 40, "<center>You are not a member of a guild.  Review any join requests, or create a guild of your own." , 0,0 );
+
+	GFTextLine(gump, 80, 130, 999, "Join Requests");
+	GFHTMLArea(gump, 80, 150, 440, 120, "" , 1,1 );
+
+	// Revoke request button
+	GFTextLine(gump, 115, 300, 78, "Revoke A Join Guild Request");
+//	GFAddButtoN(gump, 80, 300, 9026, 9027, 1, 5);
+	GFHTMLArea(gump, 115, 320, 350, 60, "Removes a pending or denied request/recruitment from your request log." , 0,0 );
+
+	// Create a Guild button
+	GFTextLine(gump, 115, 400, 78, "Create A Guild");
+	GFAddButtoN(gump, 80, 400, 9026, 9027, 0, 2);
+	GFHTMLArea(gump, 115, 420, 350, 60, "Form your own guild.  You will need enough gold coins and a house." , 0,0 );
+	GFTilePic(gump, 470, 400, 3796); // Grave stone
+
+
+	// Create a guild page!
+	GFPage(gump, 2);
+	// Title Bar
+	GFResizePic(gump, 229, 45, 9200, 145, 25);
+	GFTextLine(gump, 256, 48, 990, "Create A Guild");*/
+	
+	var houses := GetObjProperty(who, "Houses");
+	
+	// Player has no houses, or not enough money
+	if ( (houses.size() < 1 || !houses) || who.gold < GUILD_PRICE)
+	
+			GFHTMLArea(gump, 90, 90, 420, 380, "<center><BASEFONT COLOR=black>Any commoner may form a guild. The only determining factor being if he, or she, posseses the required capital." ,0,0 );
+		
+			GFTextLine(gump, 188, 160, 999, "Required resources to create a guild...");
+		
+			GFResizePic(gump, 100, 200, 9350, 400, 120);
+			GFResizePic(gump, 100, 330, 9350, 400, 120);
+			// house
+			GFTilePic(gump, 120, 220, 8949);	
+			GFTextLine(gump, 170, 235, 0, "Be the owner of a house, castle, tent, or keep.");
+			
+			// player has a house
+			if (GetObjProperty(who, "Houses").size() && houses)
+				GFTextLine(gump, 240, 265, 53, "- Requirement met!");
+			// player doesn't have enuf gold
+			else
+				GFTextLine(gump, 240, 265, 34, "- Requirement NOT met");
+			endif
+			
+			//gold pic
+			GFTilePic(gump, 110, 370, 3823);
+			GFTextLine(gump, 170, 370, 0, "Have "+GUILD_PRICE+" pieces of gold.");
+			
+			// player has enuf gold
+			if (who.gold >= GUILD_PRICE)
+				GFTextLine(gump, 240, 400, 53, "- Requirement met!");
+			// player doesn't have enuf gold
+			else
+				GFTextLine(gump, 240, 400, 34, "- Requirement NOT met");
+			endif
+	else
+	// Player MAY CREATE A GUILD!!!!
+		// guild name
+		GFTextLine(gump, 90, 100, 78, "Guild Name:");
+		GFResizePic(gump, 168, 100, 9350, 342, 20);
+		GFTextEntry(gump, 175, 100, 330, 20, 67, "Example Guild Name", TEXT_ENTRY_GUILDNAME);
+		GFTextLine(gump, 175, 125, 0, "Minimum 3 characters. Maximum 45 characters.");
+		// guild abv
+		GFTextLine(gump, 90, 170, 78, "Guild Abbreviation:");
+		GFResizePic(gump, 205, 170, 9350, 70, 20);
+		GFTextEntry(gump, 212, 170, 55, 20, 67, "EGN", TEXT_ENTRY_GUILDABV);
+		GFTextLine(gump, 175, 195, 0, "Minimum 1 character. Maximum 6 characters.");
+		
+		// Select House
+		GFTextLine(gump, 90, 240, 78, "Select the Guild House:");
+		GFTextLine(gump, 300, 240, 65, "I am standing in the desired house.");
+		GFRadioButton(gump, 260, 240, 9020, 9021, 1, 50);
+		// Display player house info
+		var hname, htype;
+		var y := 265;
+		foreach house in GetObjProperty(who, "Houses")
+			// only show 3 houses
+			if (_house_iter > 3)
+				break;
+			endif
+			
+			house := SystemFindObjectBySerial(house);
+			hname := GetObjProperty(house, "MultiName");
+			htype := GetObjProperty(house, "MultiType");
+			
+			// Player hasn't named this house
+			if (!hname)
+				GFTextLine(gump, 130, y, 65, htype+" ("+house.x+","+house.y+")");
+			else
+			// Player HAS named the house
+				GFTextLine(gump, 125, y,65, hname+" ("+house.x+","+house.y+")");
+			endif
+			
+			GFRadioButton(gump, 90, y, 9020, 9021, 0, _house_iter+50);
+					
+			y := y + 25;
+		endforeach
+		
+		GFTilePic(gump, 450, 275, 8960);
+		GFGumpPic(gump, 215, 353, 10420);
+		GFGumpPic(gump, 320, 353, 10430);
+		GFAddButton(gump, 270, 360, 2128, 2129,1, 100);
+		
+		GFHTMLArea(gump, 80, 390, 440, 80, "" , 1,1 );
+		
+	endif
+	// Buttons - guild list
+	GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);	
+	
+	// Buttons - guild
+	GFAddBUtton(gump, 300, 480, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 300, 490, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 369, 480, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 369, 490, 2440, 2440, 0, 1);
+
+	GFResizePic(gump, 65, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+	GFResizePic(gump, 300, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD" , 0,0 );
+
+else
+// PLAYER HAS A GUILD
+
+	// Title Bar
+	GFResizePic(gump, 90, 45, 9200, 420, 25);
+	GFHTMLArea(gump, 90, 49, 420, 30, "<CENTER><big>"+who.guild.getprop("GuildName") , 0,0 );
+
+	if (!info)
+		info := DisplayGuildMembers(who.guild);
+	endif
+
+	GFTextLine(gump, 120, 100, 78, "Display Guild Members");
+	if (!find(info, "Guild Members:", 0))
+		GFAddButton(gump, 90, 100, 9026, 9027, 1, 10);
+	else
+		GFAddButton(gump, 90, 100, 9027, 9027, 0, 1);
+	endif
+	
+	GFTextLine(gump, 120, 130, 78, "View Guild Relations");
+	GFAddButton(gump, 90, 130, 9026, 9027, 1, 15);
+	
+	GFTextLine(gump, 120, 160, 78, "Recruit A Member");
+	GFAddButton(gump, 90, 160, 9026, 9027, 1, 20);
+		
+	GFTextLine(gump, 120, 190, 78, "Resign From Guild");
+	GFAddbutton(gump, 90, 190, 9026, 9027, 1, 25);
+		
+	GFTextLine(gump, 120, 220, 78, "Request A Title");
+	GFAddButton(gump, 90, 220, 9026, 9027, 1, 30);
+	
+	GFTextLine(gump, 120, 250, 78, "Toggle Title On/Off");
+	GFAddButton(gump, 90,250, 9026, 9027, 1, 35);
+		
+	GFTextLine(gump, 120, 280, 78, "Purchase Guild Uniform");
+	GFAddButton(gump, 90, 280, 9026, 9027, 1, 40);
+		
+	if (who.guild.getprop("GuildMaster") == who.serial)
+		GFTextLine(gump, 360, 100, 78, "Guild Master Functions");
+		GFAddButton(gump, 330, 100, 9026, 9027, 1, 45);
+	endif
+
+	GFHTMLArea(gump, 90, 320, 420, 150, info ,1,1 );
+	
+	GFResizePic(gump, 350, 150, 5100, 140, 140);
+	GFTextLine(gump, 383, 155, 68, "Guild Master");
+	// guild icon
+	GFGumpPic(gump, 390, 180, 5547, who.guild.getprop("GuildColour"));
+	GFHTMLArea(gump, 355, 245, 130, 40, "<CENTER>"+SystemFindObjectBySerial(who.guild.getprop("GuildMaster"), SYSFIND_SEARCH_OFFLINE_MOBILES).name ,0,0 );
+
+endif
+
+var data := GFSendGump(who, gump);
+case (data[0])
+	// Guild List button pressed
+	2: return GuildListGump(who, 0);
+	// Create A Guild Button pressed
+	100: FormGuild(who, data);
+	10: GuildGump(who);
+	15: ViewGuildRelations(who);
+	20: RecruitMember(who);
+	25: ResignFromGuild(who);
+	30: RequestTitle(who);
+	35: ToggleTitle(who);
+	40:	PurchaseUniform(who);
+	45: GuildMasterGump(who);
+	1: EraseObjProperty( who, PROPID_MOBILE_BROWSING );		
+	0: EraseObjProperty( who, PROPID_MOBILE_BROWSING );		
+endcase
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// PurchaseUniform() - Seperate gump for uniforms, again, dont wanna overload the other ones
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function PurchaseUniform(who)
+
+	// Main Window
+	var gump := GFCreateGump(0, 0, 540, 540);
+	GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+	// Side Dragon Deco
+
+	GFGumpPic(gump, 0, 60, 10440);
+	GFGumpPic(gump, 518, 60, 10441);
+
+	// Buttons
+	GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+	// Buttons
+	GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+	GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+	GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+	GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);
+
+	GFResizePic(gump, 65, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+	GFResizePic(gump, 300, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD" , 0,0 );
+
+	// Title Bar
+	GFResizePic(gump, 90, 45, 9200, 420, 25);
+	GFHTMLArea(gump, 230, 49, 420, 30, "Purchase Guild Uniforms", 0,0 );
+
+	GFResizePic(gump, 90, 339, 9200, 420, 27);
+
+	var perpage := 12;
+	var x := 120;
+	var y := 98;
+	var i := 0;
+	var count := 0;
+	var page := 1;
+	GFPage(gump, 1);
+	GFTextLine(gump, 280, 343, 999, "Page "+page);
+	foreach item in CLOTHING
+		if (count >= perpage)
+			if (page != 1)
+				// back
+				GFAddButton(gump, 95, 342, 4014, 4015, 0, page-1);
+			endif
+			page := page + 1;
+			// next page
+			GFAddButton(gump, 475, 342, 4005, 4006, 0, page);
+			GFPage(gump, page);
+			GFTextLine(gump, 280, 343, 999, "Page "+page);
+			x := 120;
+			y := 98;
+			i := 0;
+			count := 0;
+			
+		// for the last page, as count may not be equal to page length thus no back button
+		elseif (_item_iter == CLOTHING.size())
+			if (page != 1)
+				GFAddButton(gump, 95, 342, 4014, 4015, 0, page-1);
+			endif
+		endif
+		
+		if ( i >=4 )
+			y := y + 90;
+			x := 120;
+			i := 0;
+		endif
+		GFAddButton(gump, x-20, y, 9020, 9021, 1, item);
+		GFTilePic(gump, x, y, item);
+		x := x + 110;
+		i := i + 1;
+		count := count + 1;
+	endforeach
+		
+		
+	GFPage(gump, 0);
+	GFHTMLArea(gump, 90, 370, 420, 100, "<CENTER>Price per item: <BASEFONT COLOR=DARKred>"+GUILD_UNIFORM_PRICE+"<BASEFONT COLOR=black> gold coins.</CENTER></BASEFONT><br>Guild uniforms are what set you apart from the common folk.  Any uniform you buy may be used with any future guild you join. These items are newbied, but NEED to be repaired or they will eventually break.<br><br><BASEFONT COLOR=DARKGREEN>Entwining: <BASEFONT COLOR=black>By double clicking the uniform, you may entwine it into another item of the same graphic.  This will entwine the guilds colour into the targetted item." ,1,1 );
+	var data := GFSendGump(who, gump);
+
+	case (data[0])
+		2: return GuildListGump(who);
+		3: return GuildGump(who);
+		0: GuildGump(who);
+	endcase
+
+	// If its greater than 10 its a purchase!
+	if (data[0] > 10)
+		ConfirmUniformPurchase(who, data[0]);
+	endif
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+
+endfunction
+
+function ConfirmUniformPurchase(who, uniform)
+
+	var gump := GFCreateGump(20, 20, 180, 170);
+	GFResizePic(gump, 20, 20, 9260, 180, 170);
+
+	GFResizePic(gump, 30,30, 9350, 160, 150);
+	GFResizePic(gump, 44, 35, 9200, 130, 25);
+	GFTextLine(gump, 52, 36, 53, "Purchase Uniform?");
+	GFTextLine(gump, 82, 130, 67, GUILD_UNIFORM_PRICE+"k");
+	GFTilePic(gump, 80, 85, uniform);
+	GFHTMLArea(gump, 120, 80, 270, 70, "<CENTER>" ,0,0 );
+
+
+	GFAddButton(gump, 42, 150, 2128, 2129, 1, 10);
+	GFAddButton(gump, 120, 150, 2119, 2120, 1, 0);
+	var data := GFSendGump(who, gump);
+
+	if (data[0] == 10)
+		if (!who.spendgold(GUILD_UNIFORM_PRICE))
+			SendSysMessage(who, "You don't have enough gold coins.");
+			EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+			return 0;
+		endif
+		
+		uniform := CreateItemInBackpack( who, uniform, 1 );
+		SetObjProperty(uniform, "GuildUniform", 1);
+		SetObjProperty(uniform, "Graphic", uniform.graphic);
+		uniform.newbie := 1;
+		uniform.usescript := ":guilds:guild_uniform";
+		NameUniform(uniform);
+		SetObjProperty(uniform, "Undyeable", 1);
+		SendSysMessage(who, "The uniform has been placed in your backpack.", 3, 53);
+	else
+		SendSysMessage(who, "Cancelled.");
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	endif
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GuildMasterGump() - Seperate function for GM functions. Don't wanna overload gump
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function GuildMasterGump(who)
+
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+GFPage(gump, 1);
+
+// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+// Buttons
+GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);
+
+GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD" , 0,0 );
+
+// Title Bar
+GFResizePic(gump, 90, 45, 9200, 420, 25);
+GFHTMLArea(gump, 230, 49, 420, 30, "Guild Master Functions", 0,0 );
+
+
+GFTextLine(gump, 120, 100, 78, "Manage Guild Applicants");
+GFAddbutton(gump, 90, 100, 9026, 9027, 1, 13);
+
+GFTextLine(gump, 120, 130, 78, "Manage Guild Members");
+GFAddbutton(gump, 90, 130, 9026, 9027, 1, 6);
+
+GFTextLine(gump, 120, 160, 78, "Manage Guild Relations");
+GFAddbutton(gump, 90, 160, 9026, 9027, 1, 10);
+
+GFTextLine(gump, 120, 190, 78, "Set The Guild Colour");
+GFAddbutton(gump, 90, 190, 9026, 9027, 1, 4);
+
+GFTextLine(gump, 120, 220, 78, "Change The Guild Name");
+GFAddbutton(gump, 90, 220, 9026, 9027, 1, 5);
+
+GFTextLine(gump, 120, 250, 78, "Change The Guild House");
+GFAddbutton(gump, 90, 250, 9026, 9027, 1, 12);
+
+GFTextLine(gump, 120, 280, 78, "Change Guild Master");
+GFAddbutton(gump, 90, 280, 9026, 9027, 1, 14);
+
+GFTextLine(gump, 120, 310, 78, "Disband The Guild");
+GFAddbutton(gump, 90, 310, 9026, 9027, 1, 11);
+
+GFHTMLArea(gump, 90, 340, 420, 130, "This is the main guildmaster menu. Here you can recruit applicants and manage guild relations, titles and colors." ,1,1 );
+
+
+var data := GFSendGump(who, gump);
+case (data[0])
+	2: GuildListGump(who);
+	3: GuildGump(who);
+	4: SetGuildColour(who);
+	5: ChangeGuildName(who);
+	6: ManageGuildMembers(who);
+	10: ManageGuildRelations(who);
+	11: RemoveGuild(who);
+	12: ChangeGuildHouse(who);
+	13: ManageGuildRecruits(who);
+	14: ChangeGuildMasterss(who);
+	0: GuildGump(who);
+endcase
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ManageGuildMembers() - Seperate function for dealing with members. A lot is done here
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ManageGuildMembers(who, startat := 1)
+
+var guild := who.guild;
+var perpage := 7;
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+// Buttons
+GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);
+
+GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD MASTER" , 0,0 );
+
+// Title Bar
+GFResizePic(gump, 297, 65, 9200, 10, 15);
+GFResizePic(gump, 225, 45, 9200, 150, 25);
+GFTextLine(gump, 235, 49, 990,"Manage Guild Members" );
+
+// Second title bard
+GFResizePic(gump, 85, 75, 9200, 430, 20);
+GFTextLine(gump, 130, 75, 999,"Member" );
+GFTextLine(gump, 350, 75, 999,"Notifications" );
+//GFTextLine(gump, 90, 75, 999,"Select" );
+
+// bottom bar above options
+GFResizePic(gump, 85, 310, 9200, 430, 20);
+
+// page buttons
+if (startat >= perpage)
+	// up arrow, previous page
+	GFAddButton(gump, 495, 100, 5600, 5604, 1, 10);
+
+endif
+
+if (startat+perpage <= guild.members.size())
+	// down arrow, next page
+	GFAddButton(gump, 495, 290, 5602, 5606, 1,20);
+endif
+
+GFPage(gump, 1);
+
+// names and stuff
+var y := 103;
+var i := 1;
+var page := 1;
+var z := -1;
+repeat
+	// The actual page
+	GFPage(gump, page);
+	// Add each button on the current page
+	foreach member in (guild.members)
+	
+		if (_member_iter >= startat && _member_iter < startat+perpage)
+
+			if ((i+1) == page)
+				GFTextLine(gump, 120, y,59, member.name);
+				GFAddbutton(gump, 90, y, 9021, 9020, 0, i+1);
+			else
+				GFTextLine(gump, 120, y,89, member.name);
+				GFAddButton(gump, 90, y, 9020, 9021, 0, i+1);
+			endif
+			y := y + 30;
+			i := i + 1;
+		endif	
+		
+	endforeach
+	
+	if (page == 1)
+		var text := "<BASEFONT COLOR=DARKBLUE><u>Managing Guild Members:</u><br><br><BASEFONT COLOR=BLACK>This section allows you to control your guild members.  You can set each member a seperate guild title or kick members.";
+		// Do a check for notifications to display
+		GFHTMLArea(gump, 85, 340, 430, 130, text ,1,1 );
+	else
+		GFTextLine(gump, 115, 344, 78, "Set Members Title");
+		GFAddbutton(gump, 85, 344, 9026, 9027, 1, (4000+startat+z));
+
+		GFTextLine(gump, 115, 394, 78, "Kick From Guild");
+		GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+		
+		var member := guild.members[startat+z];
+
+		GFHTMLArea(gump, 250, 340, 265, 130, DisplayGuildMember(member) ,1,1 );
+	endif
+	i := 1;
+	y := 103;
+	z := z + 1;
+	page := page + 1;
+
+until (page == (perpage+2));
+	
+var data := GFSendGump(who, gump);
+
+case (data[0])
+	2: GuildListGump(who);
+	3: GuildMasterGump(who);
+	10: ManageGuildMembers(who, startat-perpage);
+	20: ManageGuildMembers(who, startat+perpage);
+	0: return GuildMasterGump(who);
+endcase
+
+//Grant title
+if (data[0] > 4000)
+
+	// These are the only allowed characters in names
+	var chars := {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+	var member := guild.members[data[0]-4000];
+
+	var gump := GFCreateGump(20, 20, 330, 270);
+	GFResizePic(gump, 20, 20, 9260, 330, 270);
+
+	GFResizePic(gump, 40, 35, 9200, 290, 25);
+	GFTextLine(gump, 45, 37, 53, "Grant a personal guild title to "+member.name+".");
+
+	GFTextLine(gump, 50, 90, 0, "Name:");
+	GFTextEntry(gump, 100, 90, 220, 20, 67, "Enter the desired title here.", TEXT_ENTRY_GUILDNAME);
+
+	GFTextLine(gump, 145, 250, 999, "Are you sure?");
+	GFAddButton(gump, 50, 250, 2128, 2129, 1, 10);
+	GFAddButton(gump, 268, 250, 2119, 2120, 1, 0);
+
+	GFHTMLArea(gump, 50, 170, 271, 70, "Once you click the 'Okay' button, the member will get the option to display their title."   ,1,0 );
+
+	var data := GFSendGump(who, gump);
+
+	if (data[0] == 10)
+		if(Len(GFExtractData(data, TEXT_ENTRY_GUILDNAME)) > 20)
+			SendSysMessage(who, "The title can be max 20 characters long.");
+			return ManageGuildMembers(who);
+		endif
+		
+		// Cycle through each character and compare with allowed characters for guild name, then the guild abv
+		var valid := 1;
+		var i := 1;
+		repeat
+			if (lower(GFExtractData(data, TEXT_ENTRY_GUILDNAME)[i]) in chars)
+				valid := 1;
+			else
+				valid := 0;
+			endif
+			i := i + 1;
+		until (i > len(GFExtractData(data, TEXT_ENTRY_GUILDNAME)) || valid == 0);
+		if (valid == 0)
+			SendSysMessage(who, "The title contains illegal characters, use only letters and numbers.");
+			return ManageGuildMembers(who);
+		endif
+
+		member.setprop("GuildTitle", GFExtractData(data, TEXT_ENTRY_GUILDNAME));
+	else
+		SendSysMessage(who, "Cancelled.");
+	endif
+
+	return ManageGuildMembers(who);
+endif
+
+// kick
+if (data[0] > 3000)
+	var member := guild.members[data[0]-3000];
+	if (member == who)
+		SendSysMessage(member, "You can't kick yourself from your own guild!");
+		return ManageGuildMembers(who, startat);
+	endif	
+	SendSysMessage(member, "You have been kicked from the guild!", 3, 43);
+	RemoveMember(member);
+	return ManageGuildMembers(who);
+endif
+
+endfunction
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ChangeGuildName() - allows the GM to change the guilds name
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+function ChangeGuildName(who)
+
+var settime := who.guild.getprop(GUILD_NAME_TIME_SET);
+
+if (  ((GUILD_NAME_TIME*24)*60)+settime > ReadGameClock() )
+	SendSysMessage(who, "You can only change your guild name every "+GUILD_NAME_TIME+" days.");
+	return GuildMasterGump(who);
+endif
+
+var gump := GFCreateGump(20, 20, 330, 270);
+GFResizePic(gump, 20, 20, 9260, 330, 270);
+
+GFResizePic(gump, 105, 35, 9200, 165, 25);
+GFTextLine(gump, 130, 37, 53, "Change Guild Name");
+
+GFTextLine(gump, 50, 90, 78, "Name:");
+GFResizePic(gump, 95, 90, 9350, 200, 20);
+GFTextEntry(gump, 100, 90, 220, 20, 67, who.guild.getprop(GUILD_NAME), TEXT_ENTRY_GUILDNAME);
+
+GFTextLine(gump, 50, 120, 78, "Abbreviation:");
+GFResizePic(gump, 135, 120, 9350, 50, 20);
+GFTextEntry(gump, 140, 120, 220, 20, 67, who.guild.getprop(GUILD_ABV), TEXT_ENTRY_GUILDABV);
+
+GFTextLine(gump, 145, 250, 999, "Are you sure?");
+GFAddButton(gump, 50, 250, 2128, 2129, 1, 10);
+GFAddButton(gump, 268, 250, 2119, 2120, 1, 0);
+
+GFHTMLArea(gump, 50, 170, 271, 70, "The guild name may be changed once every "+GUILD_NAME_TIME+" days.  Once you click the 'Okay' button, your new guild name will be set."   ,1,0 );
+
+var data := GFSendGump(who, gump);
+
+// set new guild name, update all memebrs titles :/
+if (data[0] == 10)
+	var guildname := GFExtractData(data, TEXT_ENTRY_GUILDNAME);
+	var guildabv := GFExtractData(data, TEXT_ENTRY_GUILDABV);
+
+	if (!CheckGuildName(who, guildname, guildabv))
+		SendSysMessage(who, "Cancelled.");
+		return GuildMasterGump(who);
+	endif
+	
+	var guild := who.guild;
+	
+	var name;
+	var newtitle := "";
+	foreach member in (guild.members)
+		if (member.title_guild == guild.getprop(GUILD_ABV))
+			member.title_guild := guildabv;
+		else
+			newtitle := "";
+			name := SplitWords(member.title_guild);
+			var gtitle := GetObjProperty(member, "GuildTitle");
+			if (!gtitle)
+				gtitle := guildname;
+			endif
+			member.title_guild := gtitle+", ("+guildabv+")";
+		endif
+		if (member != who)
+			SendSysMessage(member, "Your guild has been renamed!", 3,53);
+		endif
+	endforeach
+	
+	guild.setprop(GUILD_NAME, guildname);
+	guild.setprop(GUILD_ABV, guildabv);
+	guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+	SendSysMessage(who, "You have successfully renamed your guild.", 3, 53);
+else
+	SendSysMessage(who, "Cancelled.");
+endif
+
+return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SetGuildColour()- returns a formatted HTML string of guild related matters
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function SetGuildColour(who, startat := 1)
+
+/*
+var gump := GFCreateGump(0, 0, 468, 550);
+GFResizePic(gump, 50, 30, 9250, 468, 550);*/
+
+var gump := GFCreateGump(0, 0, 936, 550);
+GFResizePic(gump, 50, 30, 9250, 936, 550);
+/*
+// title bar
+GFResizePic(gump, 185, 40, 9200, 200, 25);
+GFTextLine(gump, 220, 42, 67, "Guild Colour Selection");*/
+
+// title bar
+GFResizePic(gump, 418, 40, 9200, 200, 25);
+GFTextLine(gump, 453, 42, 67, "Guild Colour Selection");
+/*
+GFResizePic(gump, 65, 315, 9200, 440, 210);
+GFTextLine(gump, 190, 540, 67, "Use the selected guild colour?");*/
+
+GFResizePic(gump, 65, 315, 9200, 906, 210);
+GFTextLine(gump, 430, 540, 67, "Use the selected guild colour?");
+
+var sex;
+if (who.gender == 0)
+	sex := 12;
+else
+	sex := 13;
+endif
+
+// Player background box
+GFResizePic(gump, 195, 105, 2620, 180, 200);
+// Player graphic
+GFGumpPic(gump, 195, 70, sex, 1002);
+
+// Player background box
+GFResizePic(gump, 430, 105, 2620, 180, 200);
+// Player graphic
+GFGumpPic(gump, 430, 70, sex, 1002);
+
+// Player background box
+GFResizePic(gump, 665, 105, 2620, 180, 200);
+// Player graphic
+GFGumpPic(gump, 665, 70, sex, 1002);
+
+var x := 90;
+var y := 320;
+var my := 10;
+var i := 0;
+var numname, numcolour;
+
+foreach colour in COLOURS
+	foreach guild in ListGuilds()
+		if (guild.getprop("GuildColour") == colour)
+			numname := guild.getprop("GuildAbv");
+			if (guild != who.guild)
+				numcolour := 35;
+			else
+				numcolour := 53;
+			endif
+			break;
+		else
+			numname := colour;
+			numcolour := 999;
+		endif
+	endforeach
+	
+	if (i >= my)
+		x := x + 60;
+		i := 0;
+		y := 320;
+	endif
+
+	GFPage(gump, 1);
+	
+	if(startat == _colour_iter)
+		// colour text
+		GFTextLine(gump, 210, 115, numcolour, numname);
+
+		// Mage
+		GFGumpPic(gump, 195, 70, 60479, colour); //Sandals
+		GFGumpPic(gump, 195, 70, 60469, colour); //Robe
+		if(sex == 12)//hair
+			GFGumpPic(gump, 195, 70, 50905, colour); //Beard
+			GFGumpPic(gump, 195, 70, 50701, colour); //Hair
+		else
+			GFGumpPic(gump, 195, 70, 60708, colour); //Hair
+		endif
+		GFGumpPic(gump, 195, 70, 60409, colour); //Hat
+		GFGumpPic(gump, 195, 70, 50648, 6); //Staff
+		GFGumpPic(gump, 195, 70, 60497, 0); //Necklace
+		
+		// Warrior
+		GFGumpPic(gump, 430, 70, 60468, colour); //Cloak
+		GFGumpPic(gump, 430, 70, 50529, 0); //Legs
+		GFGumpPic(gump, 430, 70, 50530, 0); //gloves
+		GFGumpPic(gump, 430, 70, 50563, 0); //helm
+		GFGumpPic(gump, 430, 70, 60469, colour); //Robe
+		GFGumpPic(gump, 430, 70, 50531, 0); //gorget
+		GFGumpPic(gump, 430, 70, 50581, 0); //Shield
+		GFGumpPic(gump, 430, 70, 50940, 621); //Sword
+
+		// Ranger
+		GFGumpPic(gump, 665, 70, 60476, colour); //Leather boots
+		GFGumpPic(gump, 665, 70, 60551, 0); //ringmail gloves
+		GFGumpPic(gump, 665, 70, 60469, colour); //Robe
+		if(sex == 12)//hair
+			GFGumpPic(gump, 665, 70, 50806, colour); //Beard
+			GFGumpPic(gump, 665, 70, 50702, colour); //Hair
+		else
+			GFGumpPic(gump, 665, 70, 60902, colour); //Hair
+		endif
+		GFGumpPic(gump, 665, 70, 60412, colour); //Hat
+		//GFGumpPic(gump, 665, 70, 50561, 0); //coif
+		GFGumpPic(gump, 665, 70, 60466, colour); //Half Apron
+		GFGumpPic(gump, 665, 70, 50649, 1174); //Bow
+		
+		
+		//back button
+		if (_colour_iter != 1)
+			GFAddButton(gump, 120, 190, 4014, 4015, 1, _colour_iter-1);
+		else
+			GFAddButton(gump, 120, 190, 4014, 4015, 1, COLOURS.size());
+		endif
+		//next button
+		if (_colour_iter != COLOURS.size())
+			GFAddButton(gump, 886, 190, 4005, 4006, 1, _colour_iter+1);
+		else
+			GFAddButton(gump, 886, 190, 4005, 4006, 1, 1);
+		endif
+
+		GFTextLine(gump, x, y+2,67, "_");
+		GFTextLine(gump, x+8, y+2,67, "_");
+		GFTextLine(gump, x+16, y+2,67, "_");
+
+		//okay
+		GFAddButton(gump, 70, 540, 2128, 2129, 1, colour);
+		GFAddButton(gump, 900, 540, 2119, 2120, 1, 999);
+	
+	endif
+		//GFPage(gump, 0);
+	GFAddButton(gump, x-15, y+5, 2362, 2361, 1, _colour_iter);
+	GFTextLine(gump, x, y, numcolour, numname);
+
+	y := y + 20;
+	i := i + 1;
+endforeach
+
+var data := GFSEndGump(who, gump);
+
+if (data[0] > 1000)
+	BuyGuildColour(who, data[0]);
+elseif(data[0] < 998 && data[0] > 0)
+	SetGuildColour(who, data[0]);
+else
+	SendSysMessage(who, "Cancelled.");
+	return GuildMasterGump(who);
+endif
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// BuyGuildColour() - Checks if the colour is available, and sends messages/sets colour if succeseful
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function BuyGuildColour(who, colour)
+
+	var setcolourtime := who.guild.getprop("TimeGuildColour");
+	var currentcolour := who.guild.getprop("GuildColour");
+
+	if ( ((GUILD_COLOUR_TIME * 60)+ setcolourtime) > ReadGameClock() )
+		SendSysMessage(who, "You have already set your guild colour within the last "+GUILD_COLOUR_TIME+" hours.");
+		return GuildMasterGump(who);
+	endif
+
+	// picked the same colour
+	if (currentcolour == colour)
+		SendSysMessage(who, "Cancelled.");
+		return GuildMasterGump(who);
+	endif
+
+	foreach guild in ListGuilds()
+		// picked a taken colour
+		if (guild.getprop("GuildColour") == colour)
+			SendSysMessage(who, "That guild colour is already taken by "+guild.getprop("GuildName")+"!", 3, 43);
+			return GuildMasterGump(who);
+		endif
+	endforeach
+
+	if (!YesNoguild(who, "Select <BASEFONT COLOR=DARKBLUE>"+colour+"<BASEFONT COLOR=white> Guild Colour?", "Selecting this colour will make it unique to your guild.  You will have to wait "+GUILD_COLOUR_TIME+" hours before being able to choose a different one.", -10))
+		SendSysMessage(who, "Cancelled.");
+		return GuildMasterGump(who);
+	endif
+
+	// another check for the guild colour being taken. Incase another guild pauses at yes/no so possible to dupe colors.
+	foreach guild in ListGuilds()
+		// picked a taken colour
+		if (guild.getprop("GuildColour") == colour)
+			SendSysMessage(who, "That guild colour is already taken by "+guild.getprop("GuildName")+"!", 3, 43);
+			return GuildMasterGump(who);
+		endif
+	endforeach
+
+	var new := 0;
+	if (!who.guild.getprop("GuildColour"));
+		new := 1;
+	endif
+
+	who.guild.setprop("GuildColour", colour);
+	who.guild.setprop("TimeGuildColour", ReadGameClock());
+	UpdateUniformColour(who.guild);
+
+	// first time guild has got a colour
+	if (new == 1 )
+		foreach member in (who.guild.members)
+			if (member != who)
+				SendSysMessage(member, "Your guild now has a guild colour!", 3, 53);
+			endif
+		endforeach
+		SendSysMessage(who, "Congratulations, you now have a guild colour!", 3, 53);
+	else
+		foreach member in (who.guild.members)
+			SendSysMessage(member, "Your guild colour has been changed.", 3, 53);
+		endforeach
+	endif
+	return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// ViewGuildRleations() - Shows Allies/Enemies and pending requests
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function ViewGuildRelations(who, startat := 1, startat2 := 1, startat3 := 1, startat4 := 1)
+
+var perpage := 8;
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+/*// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+// Buttons
+GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);*/
+
+/*GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD MASTER" , 0,0 );*/
+
+// Title Bar
+GFResizePic(gump, 297, 65, 9200, 10, 15);
+GFResizePic(gump, 225, 45, 9200, 150, 25);
+GFTextLine(gump, 240, 49, 990,"View Guild Relations" );
+
+// Second title bar
+GFResizePic(gump, 85, 75, 9200, 430, 20);
+GFTextLine(gump, 130, 75, 999,"Allied Guilds" );
+GFTextLine(gump, 350, 75, 999,"Enemy Guilds" );
+
+// Third title bar
+GFResizePic(gump, 85, 290, 9200, 430, 20);
+GFTextLine(gump, 130, 290, 999,"Ally Requests" );
+GFTextLine(gump, 350, 290, 999,"War Requests" );
+
+// Page buttons allied guilds
+if (startat >= perpage) 
+	GFAddButton(gump, 293, 100, 5600, 5604, 1, 10);
+endif
+if (startat+perpage <= WarAllyGuilds(who, 1).size())
+	GFAddButton(gump, 293, 270, 5602, 5606, 1,15);
+endif
+
+
+
+// Page buttons for warring guilds
+if (startat2 >= perpage) 
+	GFAddButton(gump, 495, 100, 5600, 5604, 1, 20);
+endif
+if (startat2+perpage <= WarAllyGuilds(who).size())
+	GFAddButton(gump, 495, 270, 5602, 5606, 1,25);
+endif
+
+
+
+// Page buttons ally requests
+if (startat3 >= perpage) 
+	GFAddButton(gump, 293, 315, 5600, 5604, 1, 30);
+endif
+if (startat3+perpage <= RelationStatusGuilds(who.guild, "RequestAlly").size())
+	GFAddButton(gump, 293, 495, 5602, 5606, 1,35);
+endif
+
+
+
+// Page buttons war requests
+if (startat4 >= perpage) 
+	GFAddButton(gump, 495, 315, 5600, 5604, 1, 40);
+endif
+if (startat4+perpage <= RelationStatusGuilds(who.guild, "RequestWar").size())
+	GFAddButton(gump, 495, 495, 5602, 5606, 1, 45);
+endif
+
+GFPage(gump, 1);
+
+// names and stuff
+var y := 103;
+var page := 1;
+repeat
+	// The actual page
+	GFPage(gump, page);
+	// Add each button on the current page
+	foreach member in WarAllyGuilds(who, 1)
+		if (_member_iter >= startat && _member_iter < startat+perpage)
+			GFTextLine(gump, 90, y,89, member.getprop("GuildName"));
+			y := y + 20;
+		endif	
+	endforeach
+	y := 103;
+	foreach member in WarAllyGuilds(who)
+		if (_member_iter >= startat2 && _member_iter < startat2+perpage)
+			GFTextLine(gump, 330, y,89, member.getprop("GuildName"));
+			y := y + 20;
+		endif	
+	endforeach
+	y := 318;
+
+	foreach member in RelationStatusGuilds(who.guild, "RequestAlly")
+		if (_member_iter >= startat3 && _member_iter < startat3+perpage)
+			GFTextLine(gump, 90, y,89, member);
+			y := y + 20;
+		endif	
+	endforeach
+	y := 318;
+	foreach member in RelationStatusGuilds(who.guild, "RequestWar")
+		if (_member_iter >= startat4 && _member_iter < startat4+perpage)
+			GFTextLine(gump, 330, y,89, member);
+			y := y + 20;
+		endif	
+	endforeach
+
+	y := 103;
+	page := page + 1;
+	
+//until (page == (perpage+2));
+until (page == perpage+1);
+	
+var data := GFSendGump(who, gump);
+
+case (data[0])
+	10: ViewGuildRelations(who, startat-perpage);
+	15: ViewGuildRelations(who, startat+perpage);
+	20: ViewGuildRelations(who, startat, startat2-perpage);
+	25: ViewGuildRelations(who, startat, startat2+perpage);
+	30: ViewGuildRelations(who, startat, startat2, startat3-perpage);
+	35: ViewGuildRelations(who, startat, startat2, startat3+perpage);
+	40: ViewGuildRelations(who, startat, startat2, startat3, startat4-perpage);
+	45: ViewGuildRelations(who, startat, startat2, startat3, startat4+perpage);
+	0: return GuildGump(who);
+endcase
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// DisplayGuildMember()- returns a formatted HTML string of the guild memebr.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function DisplayGuildMember(who, recruit := 0)
+var info;
+if(!recruit)
+	var guild := who.guild;
+	var title := GetObjProperty(who, GUILD_MEMBER_TITLE);
+	if (!title)
+		title := guild.getprop(GUILD_NAME);
+	endif
+	var titlereq := who.getprop("GuildTitleRequest");
+	if(!titlereq)
+		titlereq := "Not requested.";
+	endif
+
+	info := "<CENTER><u>Member: "+who.name+"</u></CENTER>
+	Guild Title: "+title+"<br><br>";
+	info := info+"Requested Title: "+titlereq+"<br><br>";
+else
+	info := "<CENTER><u>Recruit: "+who.name+"</u></CENTER><br>";
+endif
+/*	var classname := "Unclassed";
+
+	if (IsBard( who ))
+		classname := "Level "+IsBard( who )+" Bard";
+	elseif (IsWarrior(who))
+		classname := "Level "+IsWarrior( who)+" Warrior";
+	elseif (IsRanger(who))
+		classname := "Level "+IsFromThatClasse( who , GetClasseSkills("IsRanger"), 1 )+" Ranger";
+	elseif (IsThief(who))
+		classname := "Level "+IsThief( who )+" Thief";
+	elseif (IsMage(who))
+		classname := "Level "+IsMage( who )+" Mage";
+	elseif (IsCrafter(who))
+		classname := "Level "+IsCrafter( who )+" Crafter";
+	endif
+
+	info := info+"Class: "+classname+"<br><br>";*/
+
+return info;
+
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// DisplayGuildMembers()- returns a formatted HTML string of guild members.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function DisplayGuildMembers(guild)
+
+var members := "<CENTER>Guild Members: "+guild.members.size()+"</CENTER>";
+var online := "<Basefont COLOR=Darkgreen>Online:<Basefont COLOR=black>";
+var offline := "<BASEFONT COLOR=DARKRED>Offline:<Basefont COLOR=black>";
+//var classname := "";
+
+foreach member in (guild.members)
+/*	classname := "Unclassed";
+	
+	if (IsBard( member ))
+		classname := "Level "+IsBard( member )+" Bard";
+	elseif (IsWarrior(member))
+		classname := "Level "+IsWarrior( member)+" Warrior";
+	elseif (IsRanger(member))
+		classname := "Level "+IsRanger( member )+" Ranger";
+	elseif (IsThief(member))
+		classname := "Level "+IsThief( member )+" Thief";
+	elseif (IsMage(member))
+		classname := "Level "+IsMage( member )+" Mage";
+	elseif (IsCrafter(member))
+		classname := "Level "+IsCrafter( member )+" Crafter";
+	endif*/
+
+	if (member.connected && !member.cmdlevel)
+		online := online+"<br>"+member.name;
+	else
+		offline := offline+"<br>"+member.name;
+	endif
+
+endforeach
+
+var recruits := "<BASEFONT COLOR=DARKBLUE>Recruits/Applicants:<BaseFont COLOR=black>";
+
+foreach recruit in (guild.getprop("Recruits"))
+	recruits := recruits+"<br>"+SystemFindObjectBySerial(recruit[1], SYSFIND_SEARCH_OFFLINE_MOBILES).name;
+	if (recruit[2])
+		recruits := recruits+" - Recruited";
+	else
+		recruits := recruits+" - Applicant";
+	endif
+endforeach
+	
+members := members+online+"<br><br>"+offline+"<br><br>"+recruits;
+return members;
+
+
+endfunction
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ToggleTitle() - turns the title on or off
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function ToggleTitle(who)
+
+var guildabv := who.guild.getprop("GuildAbv");
+
+if (len(who.title_guild) > (len(guildabv)+2))
+	who.title_guild := guildabv;
+	SendSysMessage(who, "Your guild title is now off", 3, 33);
+else
+	var gtitle := GetObjProperty(who, "GuildTitle");
+	if (!gtitle)
+		gtitle := who.guild.getprop("GuildName");
+	endif
+	who.title_guild := gtitle+", ("+guildabv+")";
+	SendSysMessage(who, "Your guild title is now on", 3, 53);
+endif
+
+return GuildGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// RecruitMember() - Allows members to recruit others
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function RecruitMember(who)
+
+var recruits := who.guild.getprop("JoinGuildRequest");
+SendSysMessage(who, "Select the player you want to recruit to the guild.");
+var what := Target(who, TGTOPT_NOCHECK_LOS);
+
+if (!what.acct)
+	SendSysMessage(who, "You must target a player to recruit.");
+	return GuildGump(who);
+	
+elseif (what.guild)
+	SendSysMessage(who, "The player you selected already has a guild!");
+	return GuildGump(who);
+endif
+
+// Player is already a recruit.
+foreach recruit in recruits
+	if (what.serial == recruit[1])
+		if (who.guild.getprop("GuildMaster") == who.serial)
+			SendSysMessage(what, "The guild master of "+who.guild.getprop("GuildName")+" has accepted you into the guild!", 3, 67);
+			var success := AddGuildMember(who.guild, what);
+			if(!success)
+				SendSysMessage(who, "The player you selected already has a guild!");
+			endif
+			return GuildGump(who);
+		else
+			SendSysMessage(who, "That player has already been recruited, awaiting the guild master approval.");
+			return GuildGump(who);
+		endif
+	endif
+endforeach
+
+SendSysMessage(who, "Recruitment offer sent to "+what.name);
+// The guild master asked, make him a member
+if (who.guild.getprop("GuildMaster") == who.serial)
+	if (YesNoguild(what, "Join Recruit List?", who.guild.getprop("GuildName")+" want you to become a member of the guild. Clicking 'Okay' will cause you to become a member!", -10))
+		var successs := AddGuildMember(who.guild, what);
+			if(!successs)
+				SendSysMessage(what, "You already have a guild!");
+			endif
+	else
+		SendSysMessage(who,what.name+" did not accept to become a member of your guild.");
+		SendSysMessage(what, "You turn down the offer of guild membership.");
+	endif
+	
+// A normal guild member recruiting someone
+elseif (YesNoguild(what, "Join Recruit List?", who.guild.getprop("GuildName")+" want to recruit you.  If their GM accepts, you will become a member. You can be a recruit in multiple guilds.", -10))
+	JoinGuildRequest(what, who.guild);
+	SendSysMessage(who, what.name+" is now a recruit in your guild!", 3, 67);
+	SendSysMEssage(what, "You are now a recruit in "+who.guild.getprop("GuildName")+".", 3, 67);
+	SendSysMEssage(what, "The guild master will either accept or reject you for membership.", 3, 67);
+else
+	SendSysMessage(who,what.name+" did not accept to become a recruit of your guild.");
+	SendSysMessage(what, "You turn down the offer of recruitment.");
+endif
+
+return GuildGump(who);
+	
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// AddRecruit() - Simply adds the player into recruit array
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function AddRecruit(guild, who, recruiter := 0);
+
+var recruits := guild.getprop("JoinGuildRequest");
+
+if (!recruits);
+	recruits := {};
+endif
+
+foreach recruit in recruits
+	if (recruit[1] == who.serial)
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	endif
+endforeach
+
+recruits.append({who.serial, recruiter.serial});
+
+guild.setprop("JoinGuildRequest", recruits);
+
+endfunction
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// AddGuildMember()- adds who to the guild.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function AddGuildMember(guild, who)
+	if(!who.guild)
+		// Erasing this here as there are a lot of way a guild can end, player can leave. Only 1 way someone can join :P
+		EraseObjProperty(who, "GuildTitle");
+
+		var guilds := ListGuilds();
+
+		// Remove player from any recruit array in any guild he may be a recruit in
+		var recruits;
+		var recruits2;
+		foreach thing in guilds
+			recruits := thing.getprop("Recruits");
+			recruits2 := recruits;
+			foreach recruit in recruits
+				if (who.serial == recruit[1])
+					recruits2.erase(_recruit_iter);
+					thing.setprop("Recruits", recruits2);
+				endif
+			endforeach
+		endforeach
+
+		// Tell the members of a joining player
+		foreach member in (guild.members)
+			SendSysMessage(member, who.name+" is now a member of your guild!", 3, 67);
+		endforeach
+
+		// Add him to guild and set title
+		guild.addmember(who);
+		ClearJoinGuildRequest(who);
+		who.title_guild := guild.getprop("GuildName")+", ("+guild.getprop("GuildAbv")+")";
+		SetObjProperty(who, "GuildChat", {3, 3});
+		// Send player a message
+		SendSysMessage(who, "You are now a member of "+guild.getprop("GuildName")+"!", 3, 67);
+		return 1;
+	else
+		ClearJoinGuildRequest(who);
+		return 0;
+	endif
+endfunction
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ResignFromGuild() - Handles resigning from guild
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function ResignFromGuild(who)
+
+var guild := who.guild;
+
+// Only person in guild, leaving. Disband guild
+if (guild.members.size() < 2)
+	if (YesNoguild(who, "Leave the Guild?", "Since you are the only member, leaving the guild will disband the guild."))
+		DisbandGuild(who.guild);
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 1;
+	else
+		SendSysMessage(who, "Cancelled.");
+	endif
+// who is GM, give guild to someone else
+elseif (guild.getprop("GuildMaster") == who.serial)
+		SendSysMessage(who, "Select who will replace you as leader of the guild after you leave.", 3, 53);
+		if (ChangeGuildMaster(who))
+			RemoveMember(who);
+			SendSysMessage(who, "You are no longer a member of "+guild.getprop("GuildName"), 3, 43);
+			EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+			return 1;
+		else
+			SendSysMessage(who, "Cancelled.");
+		endif
+
+// Not the GM, piss off buddy!
+else
+	if (YesNoguild(who, "Leave the Guild?", "This will remove your title, and guild specific abilities such as guild chat, and wearing uniforms"))
+		RemoveMember(who);
+		SendSysMessage(who, "You are no longer a member of "+guild.getprop("GuildName"), 3, 43);
+		foreach person in (guild.members)
+			SendSysMessage(person, who.name+" has resigned from the guild.", 3, 43);
+		endforeach
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 1;
+	else
+		SendSysMessage(who, "Cancelled.");
+	endif
+endif
+
+return GuildGump(who);
+
+endfunction
+
+
+function YesNoguild(who, title, txt, ymod := 0)
+
+var gump := GFCreateGump(20, 20, 330, 170);
+GFResizePic(gump, 20, 20, 9260, 330, 170);
+
+GFResizePic(gump, 30,30, 9350, 310, 150);
+GFResizePic(gump, 110, 35, 9200, 165, 25);
+GFHTMLArea(gump, 110, 38, 165, 25, "<CENTER><BASEFONT COLOR=WHITE>"+title ,0,0 );
+
+
+GFHTMLArea(gump, 50, 80+ymod, 270, 70, "<CENTER>"+txt ,0,0 );
+
+GFTextLine(gump, 145, 150, 999, "Are you sure?");
+GFAddButton(gump, 50, 150, 2128, 2129, 1, 10);
+GFAddButton(gump, 270, 150, 2119, 2120, 1, 0);
+var data := GFSendGump(who, gump);
+
+if (data[0] == 10)
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 1;
+else
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+endfunction
+
+function FormGuild(who, data);
+
+var house := FindSelectedHouse(who, data);
+
+if (house == 2)
+	SendSysMessage(who, "Error: You are not standing in a house you own.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+elseif (house == 0)
+	SendSysMessage(who, "There was a problem setting the guild house, contact staff.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+var guildname := GFExtractData(data, TEXT_ENTRY_GUILDNAME);
+var guildabv := GFExtractData(data, TEXT_ENTRY_GUILDABV);
+
+if (!CheckGuildName(who, guildname, guildabv))
+	SendSysMessage(who, "Cancelled.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+if (!ConfirmGuildFormation(who, guildname, guildabv, house))
+	SendSysMessage(who, "Cancelled.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+// Second check, can only really dupe a name if you TRY. just in caes :P
+if (!CheckGuildName(who, guildname, guildabv))
+	SendSysMessage(who, "Cancelled.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+// Take players gold and double check the house is still valid
+if (!who.spendgold(GUILD_PRICE))
+	SendSysMessage(who, "You don't have enough gold!");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+elseif (GetObjProperty(house, "ownerserial") != who.serial)
+	SendSysMessage(who, "Troubles at home?");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+var guild := CreateGuild();
+
+// Add the guild to the house
+SetObjProperty(house, "GuildHouse", guild.guildid);
+
+// Assign the guild its name, abv and house serial
+guild.setprop("GuildHouse", house.serial);
+guild.setprop("GuildName", guildname);
+guild.setprop("GuildAbv", guildabv);
+guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+// Add who to guild and set him as the master
+guild.addmember(who);
+guild.setprop("GuildMaster", who.serial);
+
+// Add the guild abv
+who.title_guild := guildname+", ("+guildabv+")";
+// Set player to hear all and talk to all guilds
+SetObjProperty(who, "GuildChat", {3, 3});
+
+SendSysMessage(who, "You have successfully formed the guild!", 3, 67);
+ClearJoinGuildRequest(who);
+PlaySoundEffect(who, 0x2E9);
+
+foreach person in EnumerateOnlineCharacters()
+	if (person != who)
+		SendSysMessage(person, "A new guild '"+guildname+"' has been formed!", 3, 59);
+		PlaySoundEffect(who, 0x2E9);
+	endif
+endforeach
+
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+// 
+// CheckGuildName() Makes sure another guild doesn't have that name or abv
+// Also check the valadility of the names
+//
+/////////////////////////////////////////////////////////////////////////////////
+function CheckGuildName(who, guildname, guildabv)
+
+// These are the only allowed characters in names
+var chars := {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+// Let players have any kind of funny character
+if (len(guildname) > 45)
+	SendSysMessage(who, "The guild name is too long.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+elseif (len(guildname) < 3)
+	SendSysMessage(who, "The guild name is too short.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+elseif	(len(guildabv) > 6)
+	SendSysMessage(who, "The guild abbreviation is too long.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+elseif	(len(guildabv) < 1)
+	SendSysMessage(who, "The guild abbreviation is too short.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+// Cycle through each character and compare with allowed characters for guild name, then the guild abv
+var valid := 1;
+var i := 1;
+repeat
+	if (lower(guildname[i]) in chars)
+		valid := 1;
+	else
+		valid := 0;
+	endif
+	i := i + 1;
+until (i > len(guildname) || valid == 0);
+if (valid == 0)
+	SendSysMessage(who, "The guild name contains illegal characters, use only letters and numbers.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+var chars2 := {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", 
+"#", "¤", "?", "_", "<", ">", "@", "£", "$", "€", "!", "*", "-", "+"};
+i := 1;
+repeat
+	if (lower(guildabv[i]) in chars2)
+		valid := 1;
+	else
+		valid := 0;
+	endif
+	i := i + 1;
+until (i > len(guildabv) || valid == 0);
+if (valid == 0)
+	SendSysMessage(who, "The guild abbreviation contains illegal characters, use only letters and numbers.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+// -- End name checks
+foreach guild in ListGuilds()
+	if (lower(guild.getprop("GuildName")) == lower(guildname))
+		SendSysMessage(who, "The guild name you chose is already in use.");
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	elseif (lower(guild.getprop("GuildAbv")) == lower(guildabv))
+		SendSysMessage(who, "The guild abbreviation you chose is already in use.");
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	endif
+endforeach 
+
+EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+return 1;
+
+endfunction
+////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+// 
+// ConfirmGuildFormation() Sends the yes/no to form the guild gump
+//
+/////////////////////////////////////////////////////////////////////////////////
+
+function ConfirmGuildFormation(who, guildname, guildabv, house)
+
+var housename := GetObjProperty(house, "MultiName");
+
+if (!housename)
+	housename := GetObjProperty(house, "MultiType");
+endif
+
+var gump := GFCreateGump(20, 20, 330, 170);
+GFResizePic(gump, 20, 20, 9260, 330, 170);
+
+GFResizePic(gump, 110, 35, 9200, 165, 25);
+GFTextLine(gump, 120, 37, 53, "Confirm Guild Formation");
+
+GFTextLine(gump, 50, 70, 0, "Name:");
+GFTextLine(gump, 100, 70, 76, guildname);
+
+GFTextLine(gump, 50, 95, 0, "Abbreviation:");
+GFTextLine(gump, 140, 95, 76, guildabv);
+
+GFTextLine(gump, 50, 120, 0, "Guild House:");
+GFTextLine(gump, 140, 120, 76, housename);
+
+GFTextLine(gump, 145, 150, 999, "Are you sure?");
+GFAddButton(gump, 50, 150, 2128, 2129, 1, 10);
+GFAddButton(gump, 270, 150, 2119, 2120, 1, 0);
+var data := GFSendGump(who, gump);
+
+if (data[0] == 10)
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 1;
+else
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// ManageGuildRelations() - War / ally functions
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ManageGuildRelations(who, startat := 1)
+//print("startat "+startat);
+var count := 0;
+foreach gcnt in ListGuilds()
+		count := count + 1;
+endforeach
+
+var perpage := 7;
+//print("startat/ppage "+CInt(startat/perpage));
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+// Buttons
+GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);
+
+GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD MASTER" , 0,0 );
+
+// Title Bar
+GFResizePic(gump, 297, 65, 9200, 10, 15);
+GFResizePic(gump, 225, 45, 9200, 150, 25);
+GFTextLine(gump, 235, 49, 990,"Manage Guild Relations" );
+
+// Second title bard
+GFResizePic(gump, 85, 75, 9200, 430, 20);
+GFTextLine(gump, 130, 75, 999,"Guilds" );
+GFTextLine(gump, 350, 75, 999,"Notifications" );
+//GFTextLine(gump, 90, 75, 999,"Select" );
+
+// bottom bar above options
+GFResizePic(gump, 85, 310, 9200, 430, 20);
+
+// page buttons
+if (startat >= perpage)
+	// up arrow, previous page
+	GFAddButton(gump, 495, 100, 5600, 5604, 1, 10);
+endif
+	
+if (startat+perpage <= count)
+	// down arrow, next page
+	GFAddButton(gump, 495, 290, 5602, 5606, 1,20);
+endif
+
+GFPage(gump, 1);
+
+// names and stuff
+var y := 103;
+var i := 1;
+var page := 1;
+var z := -1;
+var Cnting := startat;
+repeat
+	// The actual page
+	GFPage(gump, page);
+	// Add each button on the current page
+	foreach member in ListGuilds()
+			if (_member_iter >= startat && _member_iter < startat+perpage)
+				if ((i+1) == page)
+					GFTextLine(gump, 120, y,59, member.getprop("GuildName"));
+					GFAddbutton(gump, 90, y, 9021, 9020, 0, i+1);
+				else
+					GFTextLine(gump, 120, y,89, member.getprop("GuildName"));
+					GFAddButton(gump, 90, y, 9020, 9021, 0, i+1);
+				endif
+				y := y + 30;
+				i := i + 1;
+			endif
+	endforeach
+	
+	if (page == 1)
+		var text := "<BASEFONT COLOR=DARKBLUE><u>Managing Guild Relations:</u><br><br><BASEFONT COLOR=BLACK>This section allows you to manage your guild relations.  <br>Here you can declare war or request to ally with another guild.";
+		// Do a check for notifications to display
+		GFHTMLArea(gump, 85, 340, 430, 130, text ,1,1 );
+	else
+			i := 1;
+			var member := ListGuilds()[Cnting];
+			//print("Cnting "+Cnting);
+			//print("member "+member);
+			//print("membergn "+member.GuildName);
+			//foreach member in ListGuilds()
+				if (member != who.guild)
+					if (Cnting >= startat && Cnting < startat+perpage)
+						//if ((i+1) == page)
+							// MENU \\
+							if(!member.IsEnemyGuild(who.guild))
+								if(member.IsAllyGuild(who.guild))
+									GFTextLine(gump, 115, 344, 78, "Allied Guild");
+								elseif(CheckStatus(member, who.guild, "RequestAlly"))
+									GFTextLine(gump, 115, 344, 78, "Accept Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (4000+startat+z));
+								elseif(!CheckStatus(who.guild, member, "RequestAlly") && !CheckStatus(who.guild, member, "RequestWar"))
+									GFTextLine(gump, 115, 344, 78, "Request Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (6000+startat+z));
+								elseif(CheckStatus(who.guild, member, "RequestAlly"))
+									GFTextLine(gump, 115, 344, 78, "Cancel Request Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (7000+startat+z));
+								endif							
+							endif
+
+							if(!member.IsAllyGuild(who.guild))
+								if(member.IsEnemyGuild(who.guild))
+									GFTextLine(gump, 115, 344, 78, "War In Progress");
+								elseif(CheckStatus(member, who.guild, "RequestWar"))
+									GFTextLine(gump, 115, 394, 78, "Accept War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (5000+startat+z));
+								elseif(!CheckStatus(who.guild, member, "RequestWar") && !CheckStatus(who.guild, member, "RequestAlly"))
+									GFTextLine(gump, 115, 394, 78, "Request War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (8000+startat+z));
+								elseif(CheckStatus(who.guild, member, "RequestWar"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (9000+startat+z));
+								endif		
+							endif	
+						
+							if(member.IsAllyGuild(who.guild))
+								if(CheckStatus(who.guild, member, "RequestBreakup"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (12000+startat+z));
+								elseif(!CheckStatus(member, who.guild, "RequestBreakup"))
+									GFTextLine(gump, 115, 394, 78, "Request Breakup");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (10000+startat+z));
+								else
+									GFTextLine(gump, 115, 394, 78, "Dissolve Alliance");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+								endif
+							endif
+						
+							if(member.IsEnemyGuild(who.guild))
+								if(CheckStatus(who.guild, member, "RequestPeace"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (12000+startat+z));
+								elseif(!CheckStatus(member, who.guild, "RequestPeace"))
+									GFTextLine(gump, 115, 394, 78, "Request Peace");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (11000+startat+z));
+								else
+									GFTextLine(gump, 115, 394, 78, "Make Peace");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+								endif
+							endif
+						/*elseif(_member_iter > perpage)
+							// MENU \\
+							if(!member.IsEnemyGuild(who.guild))
+								if(member.IsAllyGuild(who.guild))
+									GFTextLine(gump, 115, 344, 78, "Allied Guild");
+								elseif(CheckStatus(member, who.guild, "RequestAlly"))
+									GFTextLine(gump, 115, 344, 78, "Accept Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (4000+startat+z));
+								elseif(!CheckStatus(who.guild, member, "RequestAlly") && !CheckStatus(who.guild, member, "RequestWar"))
+									GFTextLine(gump, 115, 344, 78, "Request Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (6000+startat+z));
+								elseif(CheckStatus(who.guild, member, "RequestAlly"))
+									GFTextLine(gump, 115, 344, 78, "Cancel Request Ally");
+									GFAddbutton(gump, 85, 344, 9026, 9027, 1, (7000+startat+z));
+								endif							
+							endif
+
+							if(!member.IsAllyGuild(who.guild))
+								if(member.IsEnemyGuild(who.guild))
+									GFTextLine(gump, 115, 344, 78, "War In Progress");
+								elseif(CheckStatus(member, who.guild, "RequestWar"))
+									GFTextLine(gump, 115, 394, 78, "Accept War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (5000+startat+z));
+								elseif(!CheckStatus(who.guild, member, "RequestWar") && !CheckStatus(who.guild, member, "RequestAlly"))
+									GFTextLine(gump, 115, 394, 78, "Request War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (8000+startat+z));
+								elseif(CheckStatus(who.guild, member, "RequestWar"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request War");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (9000+startat+z));
+								endif		
+							endif	
+						
+							if(member.IsAllyGuild(who.guild))
+								if(CheckStatus(who.guild, member, "RequestBreakup"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (12000+startat+z));
+								elseif(!CheckStatus(member, who.guild, "RequestBreakup"))
+									GFTextLine(gump, 115, 394, 78, "Request Breakup");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (10000+startat+z));
+								else
+									GFTextLine(gump, 115, 394, 78, "Dissolve Alliance");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+								endif
+							endif
+						
+							if(member.IsEnemyGuild(who.guild))
+								if(CheckStatus(who.guild, member, "RequestPeace"))
+									GFTextLine(gump, 115, 394, 78, "Cancel Request");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (12000+startat+z));
+								elseif(!CheckStatus(member, who.guild, "RequestPeace"))
+									GFTextLine(gump, 115, 394, 78, "Request Peace");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (11000+startat+z));
+								else
+									GFTextLine(gump, 115, 394, 78, "Make Peace");
+									GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+								endif
+							endif*/
+						//endif
+					endif
+				endif	
+				i := i + 1;
+			//endforeach
+	Cnting := Cnting+1;
+			
+	i := 1;
+	foreach member in ListGuilds()
+		if (_member_iter >= startat && _member_iter < startat+perpage)
+			if ((i+1) == page)
+				GFHTMLArea(gump, 250, 340, 265, 130, DisplayGuildMembers(member) ,1,1 );
+			endif
+			i := i + 1;
+		endif	
+	endforeach
+
+	endif
+	i := 1;
+	y := 103;
+	z := z + 1;
+	page := page + 1;
+	
+
+until (page == (perpage+2));
+	
+var data := GFSendGump(who, gump);
+
+case (data[0])
+	2: GuildListGump(who);
+	3: GuildMasterGump(who);
+	0: return GuildMasterGump(who);
+	10: ManageGuildRelations(who, startat-perpage);
+	20: ManageGuildRelations(who, startat+perpage);
+endcase
+
+// Cancel Request War/Peace \\
+if (data[0] > 12000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-12000];
+	CancelRequest(who.guild, thatguild, "RequestPeace");
+	CancelRequest(who.guild, thatguild, "RequestBreakup");
+return ManageGuildRelations(who, startat);
+endif
+
+// Request To Remove War \\
+if (data[0] > 11000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-11000];
+	RequestStatus(who, thatguild, "RequestPeace");
+return ManageGuildRelations(who, startat);
+endif
+
+// Request To Remove Alliance \\
+if (data[0] > 10000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-10000];
+	RequestStatus(who, thatguild, "RequestBreakup");
+return ManageGuildRelations(who, startat);
+endif
+
+// Cancel Request War \\
+if (data[0] > 9000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-9000];
+	CancelRequest(who.guild, thatguild, "RequestWar");
+return ManageGuildRelations(who, startat);
+endif
+
+// Request War \\
+if (data[0] > 8000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-8000];
+	RequestStatus(who, thatguild, "RequestWar");
+return ManageGuildRelations(who, startat);
+endif
+
+// Cancel Request Ally \\
+if (data[0] > 7000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-7000];
+	CancelRequest(who.guild, thatguild, "RequestAlly");
+return ManageGuildRelations(who, startat);
+endif
+
+// Request Ally \\
+if (data[0] > 6000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-6000];
+	RequestStatus(who, thatguild, "RequestAlly");
+return ManageGuildRelations(who, startat);
+endif
+
+// Accept War \\
+if (data[0] > 5000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-5000];
+	if(CheckStatus(thatguild, who.guild, "RequestWar"))
+		who.guild.AddEnemyGuild(thatguild);
+		ClearAllRequests(who, thatguild);
+	else
+		SendSysMessage(who, "That guild have revoked their request.");
+	endif
+return ManageGuildRelations(who, startat);
+endif
+
+// Accept Ally \\
+if (data[0] > 4000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-4000];
+	if(CheckStatus(thatguild, who.guild, "RequestAlly"))
+		who.guild.AddAllyGuild(thatguild);
+		ClearAllRequests(who, thatguild);
+	else
+		SendSysMessage(who, "That guild have revoked their request.");
+	endif
+return ManageGuildRelations(who, startat);
+endif
+
+// Remove Relations \\
+if (data[0] > 3000)
+	var guild := ListGuilds();
+	var thatguild := guild[data[0]-3000];
+	if(CheckStatus(thatguild, who.guild, "RequestPeace") || CheckStatus(thatguild, who.guild, "RequestBreakup"))
+		ClearAllRequests(who, thatguild);
+
+		if(who.guild.IsEnemyGuild( thatguild ) )
+			who.guild.RemoveEnemyGuild( thatguild);
+		endif
+		if(who.guild.IsAllyGuild( thatguild ) )
+			who.guild.RemoveAllyGuild( thatguild);
+		endif
+	else
+		SendSysMessage(who, "That guild have revoked their request.");
+	endif
+return ManageGuildRelations(who, startat);
+endif
+
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// RemoveGuild() - Disbands the guild.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function RemoveGuild(who)
+	if(YesNoguild(who, "Disband the guild?.", "Disbanding the guild will remove all members and completely remove the guild from britannia!"))
+		
+		DisbandGuild(who.guild);
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 1;
+	else
+		SendSysMessage(who, "Cancelled.");
+		GuildMasterGump(who);
+	endif
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// RequestTitle() - Request a personal title from the guild master.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function RequestTitle(who)
+
+/*var settime := who.getprop("GuildTitleDelay");
+if((24*60)+settime > ReadGameClock())
+	SendSysMessage(who, "You can only request a personal guild title once every 24 hours.");
+	return GuildGump(who);
+endif*/
+
+if(who.serial == who.guild.getprop("GuildMaster"))
+	SendSysMessage(who, "You are the guild master and do not need to use this service.");
+	return GuildGump(who);
+endif
+
+// These are the only allowed characters in names
+var chars := {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+var gump := GFCreateGump(20, 20, 330, 270);
+GFResizePic(gump, 20, 20, 9260, 330, 270);
+
+GFResizePic(gump, 105, 35, 9200, 165, 25);
+GFTextLine(gump, 115, 37, 53, "Request a personal title");
+
+GFTextLine(gump, 50, 90, 0, "Name:");
+GFTextEntry(gump, 100, 90, 220, 20, 67, "Enter your desired title here.", TEXT_ENTRY_GUILDNAME);
+
+GFTextLine(gump, 145, 250, 999, "Are you sure?");
+GFAddButton(gump, 50, 250, 2128, 2129, 1, 10);
+GFAddButton(gump, 268, 250, 2119, 2120, 1, 0);
+
+GFHTMLArea(gump, 50, 170, 271, 70, "The personal guild title may be requested once every 24 hours.  Once you click the 'Okay' button, your personal guild title will be requested to the guild leader."   ,1,0 );
+
+var data := GFSendGump(who, gump);
+
+if (data[0] == 10)
+	if(Len(GFExtractData(data, TEXT_ENTRY_GUILDNAME)) > 20)
+		SendSysMessage(who, "Your title can be max 20 characters long.");
+		return GuildGump(who);
+	endif
+	
+	// Cycle through each character and compare with allowed characters for guild name, then the guild abv
+	var valid := 1;
+	var i := 1;
+	repeat
+		if (lower(GFExtractData(data, TEXT_ENTRY_GUILDNAME)[i]) in chars)
+			valid := 1;
+		else
+			valid := 0;
+		endif
+		i := i + 1;
+	until (i > len(GFExtractData(data, TEXT_ENTRY_GUILDNAME)) || valid == 0);
+	if (valid == 0)
+		SendSysMessage(who, "The title contains illegal characters, use only letters and numbers.");
+		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+		return 0;
+	endif
+
+	var titlelist := who.guild.getprop("TitleRequests");
+	if(!titlelist)
+		titlelist := {};
+		titlelist.append(who.name);
+		who.guild.setprop("TitleRequests", titlelist);
+	else
+		var newlist := {};
+		foreach member in titlelist
+			if(member != who.name)
+				newlist.append(member.name);
+			endif
+		endforeach
+		newlist.append(who.name);
+		who.guild.setprop("TitleRequests", newlist);
+	endif
+
+	who.setprop("GuildTitleRequest", GFExtractData(data, TEXT_ENTRY_GUILDNAME)); 
+	SendSysMessage(who, "Your title request needs to be handled by your guild master before taking effect.");
+	//who.setprop("GuildTitleDelay", ReadGameClock());
+else
+	SendSysMessage(who, "Cancelled.");
+endif
+	return GuildGump(who);
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// ChangeGuildHouse() - Change the guilds house.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ChangeGuildHouse(who)
+
+// Main Window
+var gump := GFCreateGump(0, 0, 540, 540);
+GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+// Side Dragon Deco
+
+GFGumpPic(gump, 0, 60, 10440);
+GFGumpPic(gump, 518, 60, 10441);
+
+// 1st page
+GFPage(gump, 1);
+
+// Buttons
+GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+GFResizePic(gump, 65, 480, 9200, 235, 35);
+GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+GFResizePic(gump, 300, 480, 9200, 235, 35);
+GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center><u>GUILD" , 0,0 );
+
+// Title Bar GFResizePic(gump, 240, 45, 9200, 115, 30);
+GFResizePic(gump, 235, 45, 9200, 135, 25);
+GFTextLine(gump, 243, 48, 990, "Change Guild House.");
+
+	GFPage(gump, 1);
+		
+	var houses := GetObjProperty(who, "Houses");
+	
+	// Player has no houses, or not enough money
+	if (houses.size() >= 2)		
+		// Select House
+		GFTextLine(gump, 90, 80, 78, "Select the Guild House:");
+		GFTextLine(gump, 300, 80, 65, "I am standing in the desired house.");
+		GFRadioButton(gump, 260, 80, 9020, 9021, 1, 50);
+		// Display player house info
+		var hname, htype;
+		var y := 105;
+		foreach house in GetObjProperty(who, "Houses")
+			house := SystemFindObjectBySerial(house);
+			if(!GetObjProperty(house, "GuildHouse"))
+				if (_house_iter > 15)
+					break;
+				endif
+			
+				hname := GetObjProperty(house, "MultiName");
+				htype := GetObjProperty(house, "MultiType");
+			
+				// Player hasn't named this house
+				if (!hname)
+					GFTextLine(gump, 130, y, 65, htype+" ("+house.x+","+house.y+")");
+				else
+				// Player HAS named the house
+					GFTextLine(gump, 125, y,65, hname+" ("+house.x+","+house.y+")");
+				endif
+			
+				GFRadioButton(gump, 90, y, 9020, 9021, 0, _house_iter+50);
+					
+				y := y + 25;
+			endif
+		endforeach
+		
+		GFTilePic(gump, 450, 275, 8960);
+		GFGumpPic(gump, 215, 353, 10420);
+		GFGumpPic(gump, 320, 353, 10430);
+		GFAddButton(gump, 270, 360, 2128, 2129,1, 100);
+		
+		GFHTMLArea(gump, 80, 390, 440, 80, "" , 1,1 );
+	else
+		SendSysMessage(who, "You don't have another house available to choose from.");
+		return GuildMasterGump(who);
+	endif
+	// Buttons - guild list
+	GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+	GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);	
+	
+	// Buttons - guild
+	GFAddBUtton(gump, 300, 480, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 300, 490, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 369, 480, 2440, 2440, 0, 1);
+	GFAddBUtton(gump, 369, 490, 2440, 2440, 0, 1);
+
+	GFResizePic(gump, 65, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+	GFResizePic(gump, 300, 480, 9200, 235, 35);
+	GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD" , 0,0 );
+
+
+var data := GFSendGump(who, gump);
+case (data[0])
+	2: return GuildListGump(who, 0);
+	10: return GuildGump(who);	
+	0: return GuildMasterGump(who);		
+endcase
+
+	var house := FindSelectedHouse(who, data);
+	if(GetObjProperty(house, "GuildHouse"))
+		SendSysMessage(who, "This house already belongs to a guild.");
+		return GuildMasterGump(who);
+	endif
+	if(!who.multi && house == 2)
+		SendSysMessage(who, "You are not standing in a house.");
+		return GuildMasterGump(who);
+	endif
+	if(house == 2)
+		SendSysMessage(who, "This house doesn't belong to you.");
+		return GuildMasterGump(who);
+	endif
+
+	foreach house in GetObjProperty(who, "Houses")
+		house := SystemFindObjectBySerial(house);
+		if(GetObjProperty(house, "GuildHouse"))
+			EraseObjProperty(house, "GuildHouse");
+		endif
+	endforeach
+
+	house := FindSelectedHouse(who, data);
+	if(house)
+		SetObjProperty(house, "GuildHouse", who.guild.guildid);
+		who.guild.setprop("GuildHouse", house.serial);
+		SendSysMessage(who, "You have successfully changed the guild house.");
+	else
+		
+	endif
+	return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// JoinGuildRequest() - Request to join a guild.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function JoinGuildRequest(who, guild)
+	if(who.getprop("JoinGuildRequest"))
+		if(YesNoguild(who, "Already Requesting.", "Do you wish to remove your previous request to join a guild?"))
+			ClearJoinGuildRequest(who);
+			SendSysMessage(who, "Erased your previous request to join a guild.");
+		else
+			SendSysMessage(who, "Cancelled.");
+		endif
+	else
+		var banlist := guild.getprop("BanReq");
+		if(banlist)
+			foreach player in banlist
+				if(player == who.serial)
+					SendSysMessage(who, "The guild has banned you from requesting to them again.");
+					return GuildListGump(who);	
+				endif
+			endforeach
+		endif
+				
+		if(YesNoguild(who, "Request to join?", "!WARNING! This will allow ("+guild.getprop("GuildName")+") to accept you at any time and do whatever they want with you. !WARNING!"))
+			SendSysMessage(who, "You sent a request to join ("+guild.getprop("GuildName")+").");
+			RequestJoinGuild(who, guild);
+		else
+			SendSysMessage(who, "Cancelled.");
+		endif
+	endif
+	return GuildListGump(who);
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Dreams
+//
+// ManageGuildRecruits() - Manages guild recruits
+//	
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ManageGuildRecruits(who, startat := 0)
+	if(!who.guild.getprop("JoinGuildRequest"))
+		SendSysMessage(who, "You don't have any requests yet.");
+		return GuildMasterGump(who);
+	else
+		var list := who.guild.getprop("JoinGuildRequest");
+		var perpage := 7;
+		// Main Window
+		var gump := GFCreateGump(0, 0, 540, 540);
+		GFResizePic(gump, 50, 30, 9260, 500, 500);
+
+		// Side Dragon Deco
+
+		GFGumpPic(gump, 0, 60, 10440);
+		GFGumpPic(gump, 518, 60, 10441);
+
+		// Buttons
+		GFAddBUtton(gump, 65, 480, 2440, 2440, 1, 2);
+		GFAddBUtton(gump, 65, 490, 2440, 2440, 1, 2);
+		GFAddBUtton(gump, 134, 480, 2440, 2440, 1, 2);
+		GFAddBUtton(gump, 134, 490, 2440, 2440, 1, 2);
+
+		// Buttons
+		GFAddBUtton(gump, 300, 480, 2440, 2440, 1, 3);
+		GFAddBUtton(gump, 300, 490, 2440, 2440, 1, 3);
+		GFAddBUtton(gump, 369, 480, 2440, 2440, 1, 3);
+		GFAddBUtton(gump, 369, 490, 2440, 2440, 1, 3);
+
+		GFResizePic(gump, 65, 480, 9200, 235, 35);
+		GFHTMLArea(gump, 65, 489, 235, 30, "<BIG><center>GUILD LIST" , 0,0 );
+
+		GFResizePic(gump, 300, 480, 9200, 235, 35);
+		GFHTMLArea(gump, 300, 489, 235, 30, "<BIG><center>GUILD MASTER" , 0,0 );
+
+		// Title Bar
+		GFResizePic(gump, 297, 65, 9200, 10, 15);
+		GFResizePic(gump, 225, 45, 9200, 150, 25);
+		GFTextLine(gump, 230, 49, 990,"Manage Guild Applicants" );
+
+		// Second title bard
+		GFResizePic(gump, 85, 75, 9200, 430, 20);
+		GFTextLine(gump, 130, 75, 999,"Name" );
+		GFTextLine(gump, 350, 75, 999,"Notifications" );
+		//GFTextLine(gump, 90, 75, 999,"Select" );
+
+		// bottom bar above options
+		GFResizePic(gump, 85, 310, 9200, 430, 20);
+
+		// page buttons
+		if (startat >= perpage)
+			// up arrow, previous page
+			GFAddButton(gump, 495, 100, 5600, 5604, 1, 10);
+
+		endif
+
+		if (startat+perpage <= list.size())
+			// down arrow, next page
+			GFAddButton(gump, 495, 290, 5602, 5606, 1,20);
+		endif
+
+		GFPage(gump, 1);
+
+		// names and stuff
+		var y := 103;
+		var i := 1;
+		var page := 1;
+		var z := 0;
+		repeat
+			// The actual page
+			GFPage(gump, page);
+			// Add each button on the current page
+			foreach member in list
+	
+				if (_member_iter >= startat && _member_iter < startat+perpage)
+				
+					var chr:=SystemFindObjectBySerial(member);
+					if(!chr)
+					  chr:=SystemFindObjectBySerial(member,SYSFIND_SEARCH_OFFLINE_MOBILES);
+					endif
+					if ((i+1) == page)
+						GFTextLine(gump, 120, y,59, chr.name);
+						GFAddbutton(gump, 90, y, 9021, 9020, 0, i+1);
+					else
+						GFTextLine(gump, 120, y,89, chr.name);
+						GFAddButton(gump, 90, y, 9020, 9021, 0, i+1);
+					endif
+					y := y + 30;
+					i := i + 1;
+				endif	
+		
+			endforeach
+	
+			if (page == 1)
+				var text := "<BASEFONT COLOR=DARKBLUE><u>Managing Guild Applicants:</u><br><br><BASEFONT COLOR=BLACK>This section allows you to review/accept applicants into your guild. Accepting them into your guild will allow them to attack/loot your guild members without becoming a criminal.";
+				// Do a check for notifications to display
+				GFHTMLArea(gump, 85, 340, 430, 130, text ,1,1 );
+			else
+				GFTextLine(gump, 115, 344, 78, "Accept applicant");
+				GFAddbutton(gump, 85, 344, 9026, 9027, 1, (4000+startat+z));
+
+				GFTextLine(gump, 115, 394, 78, "Remove applicant");
+				GFAddbutton(gump, 85, 394, 9026, 9027, 1, (3000+startat+z));
+
+				GFTextLine(gump, 115, 444, 78, "Ban applicant");
+				GFAddbutton(gump, 85, 444, 9026, 9027, 1, (2000+startat+z));
+		
+				var member:=SystemFindObjectBySerial(list[startat+z]);
+				if(!member)
+				  member:=SystemFindObjectBySerial(list[startat+z],SYSFIND_SEARCH_OFFLINE_MOBILES);
+				endif
+
+				GFHTMLArea(gump, 250, 340, 265, 130, DisplayGuildMember(member, 1) ,1,1 );
+			endif
+			i := 1;
+			y := 103;
+			z := z + 1;
+			page := page + 1;
+
+		until (page == (perpage+2));
+	
+		var data := GFSendGump(who, gump);
+
+		case (data[0])
+			2: GuildListGump(who);
+			3: GuildMasterGump(who);
+			10: ManageGuildRecruits(who, startat-perpage);
+			20: ManageGuildRecruits(who, startat+perpage);
+			0: return GuildMasterGump(who);
+		endcase
+
+		//Accept Recruit
+		if (data[0] >= 4000)
+			var recruit:=SystemFindObjectBySerial(list[data[0]-4000]);
+			if(!recruit)
+			  recruit:=SystemFindObjectBySerial(list[data[0]-4000],SYSFIND_SEARCH_OFFLINE_MOBILES);
+			endif
+			AddGuildMember(who.guild, recruit);
+			ClearJoinGuildRequest(recruit);
+		elseif(data[0] >= 3000)
+			var recruit:=SystemFindObjectBySerial(list[data[0]-3000]);
+			if(!recruit)
+			  recruit:=SystemFindObjectBySerial(list[data[0]-3000],SYSFIND_SEARCH_OFFLINE_MOBILES);
+			endif
+			ClearJoinGuildRequest(recruit);	
+		elseif(data[0] >= 2000)
+			var recruit:=SystemFindObjectBySerial(list[data[0]-2000]);
+			if(!recruit)
+			  recruit:=SystemFindObjectBySerial(list[data[0]-2000],SYSFIND_SEARCH_OFFLINE_MOBILES);
+			endif
+			ClearJoinGuildRequest(recruit);	
+			BanReq(recruit, who.guild);
+		endif
+		return GuildMasterGump(who);
+	endif
+endfunction 
+
+
+function ChangeGuildMasterss( who )
+
+	var guild := who.guild;
+	if (guild.getprop("GuildMaster") == who.serial)
+		SendSysMessage(who, "Select who will replace you as the leader of the guild.", 3, 53);
+		if (ChangeGuildMaster(who))
+			SendSysMessage(who, "You are no longer the guild master of the guild.", 3, 53);
+			EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+			return 1;
+		else
+			SendSysMessage(who, "Cancelled.");
+			return GuildMasterGump(who);
+		endif
+	endif
+
+endfunction

@@ -1,0 +1,127 @@
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+
+include "include/anchors";
+include "ai/main/killpcsloop";
+include "ai/combat/fight";
+
+include "ai/main/defaultnoncombatevent";
+include "ai/combat/explosioncombatevent";
+include "ai/setup/archersetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+include "include/client";
+include "include/npcbackpacks";
+include "ai/setup/modsetup";
+
+const HALT_THRESHOLD := 10; // how close before he attacks?
+
+var runaway := 0;
+var najs := 0;
+var najs2 := 0;
+var najs3 := 0;
+var najs4 := 0;
+var thecritter;
+
+program KillPlayers()
+
+	SetWarMode( 0 );
+    	main_AI_loop();
+        
+endprogram
+
+function CloseDistance( opponent )
+
+    	if (distance(me, opponent) <= 1)
+		RunAwayFrom(opponent);
+	If(Gethp(me) <= CInt(Getmaxhp(me)/10)*8)
+		if(najs == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*6)
+		if(najs2 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs2 := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*4)
+		if(najs3 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs3 := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*2)
+		if(najs4 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs4 := 1;
+		endif
+	endif
+		return 0;
+    	    else
+	If(Gethp(me) <= CInt(Getmaxhp(me)/10*8))
+		if(najs == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*6)
+		if(najs2 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs2 := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*4)
+		if(najs3 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs3 := 1;
+		endif
+	endif
+
+	If(Gethp(me) <= Getmaxhp(me)/10*2)
+		if(najs4 == 0)
+		thecritter := CreateNPCfromTemplate( "klock" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock2" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock3" ,me.x ,me.y ,me.z ,1 , me.realm );
+		thecritter := CreateNPCfromTemplate( "klock4" ,me.x ,me.y ,me.z ,1 , me.realm );
+		najs4 := 1;
+		endif
+	endif
+		return 1;
+    	endif
+
+endfunction

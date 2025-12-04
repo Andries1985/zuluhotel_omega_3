@@ -1,0 +1,26 @@
+/*
+        Maintened by *Edwards
+        
+        2009-10-21
+*/
+use uo;
+use os;
+use polsys;
+
+include ":gumps:requestgump";
+
+program command_RemoveDoors( who )
+
+	foreach thing in ( ListObjectsInBox( 3516, 2443, -20, 3765, 2744, 50, "britannia" ))
+
+		if( GetObjProperty(thing, "ChristmasDeco") )
+			DestroyItem( thing );
+		endif
+		
+		SleepMS(5);
+	endforeach
+	
+	SendSysMessage( who, "Removed all christmas deco." );
+	
+	return 1;
+endprogram

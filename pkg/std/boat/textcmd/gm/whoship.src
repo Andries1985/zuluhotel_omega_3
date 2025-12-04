@@ -1,0 +1,28 @@
+use boat;
+use uo;
+include ":staff:include/staff";
+
+program textcmd_whoship( who )
+
+    SendSysMessage( who, "Target a boat" );
+
+    var tgt := Target( who );
+
+    if (tgt.isa(POLCLASS_BOAT))
+
+   	var owner := SystemFindObjectBySerial( GetObjProperty( tgt.hold, "owner"), SYSFIND_SEARCH_OFFLINE_MOBILES );
+	
+	if (owner)
+		SendSysMessage(who, "The owner of the boat is: "+owner.name);    
+	else
+		SendSysMessage(who, "This boat has no owner!?");
+	endif
+
+    else
+
+		SendSysMessage(who, "You must target a boat");
+		return 0;  
+
+    endif
+
+endprogram

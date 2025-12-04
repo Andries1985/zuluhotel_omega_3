@@ -1,0 +1,49 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+
+program cast_flame_spirit( parms )
+
+	var circle := GetCircle( SPELLID_FLAME_SPIRIT );
+	var caster;
+	var cast_loc;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_loc := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		var wheretocast := Random(4);
+		case (wheretocast)
+				0: 	SummonCreature( caster , "fireelementallord" , cast_loc );
+				1: 	SummonCreature( caster , "fireelementallord" , caster );
+				2: 	SummonCreature( caster , "fireelementallord" , cast_loc );
+				3: 	SummonCreature( caster , "fireelementallord" , caster );
+		endcase
+		EraseObjProperty( caster , "#Casting" );
+	else
+		caster := parms;
+        if(IsInSafeArea(caster))
+            SendSysMessage(caster, "This spell can not be cast here.");
+            EraseObjProperty( caster, "#Casting" );
+            return;
+        endif
+		if( TryToCast( caster, SPELLID_FLAME_SPIRIT ) != SUCCESS )
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+		
+		cast_loc := CanTargetArea( caster , circle );
+		if (!cast_loc)
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+
+		EraseObjProperty( caster , "#Casting" );
+    	SummonCreature( caster , "fireelementalsummons" , cast_loc );
+	endif
+
+endprogram

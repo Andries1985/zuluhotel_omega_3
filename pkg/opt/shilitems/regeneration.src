@@ -1,0 +1,43 @@
+use uo;
+use os;
+use vitals;
+
+include "include/attributes";
+
+const DELAY_BETWEEN_USE	:= 20;
+
+program item_regeneration( who , item )
+
+	if( !ReserveItem( item ) )
+		return;
+	endif
+
+	var last_use := Cint(GetObjProperty( item , "#last_use" ));
+	if( last_use and last_use > Cint(ReadGameClock() - DELAY_BETWEEN_USE) )
+		SendSysMessage( who , "You must wait before using it again." );
+		return;
+	endif
+		
+	SetObjProperty( item  , "#last_use" , Cint(ReadGameClock()) );
+	
+	if( !GetObjProperty( item , "RequireNoCharges" ) )
+		var charges := Cint(GetObjProperty( item , "charges" ));
+		if( !charges )
+			PrintTextAbovePrivate( item , "That is out of charges", who );
+			return;
+		else
+			charges := charges - 1;
+			SetObjProperty( item , "charges" , charges );
+		endif
+	endif
+	
+	Detach();
+	while( (GetHP(who) <GetMaxHP(who)) and (!who.dead) )
+		HealDamage( who , 5 );
+		Sleep( 1 );
+	endwhile
+	
+	Sleep( DELAY_BETWEEN_USE );
+	EraseObjProperty( item , "#last_use" );	
+	
+endprogram

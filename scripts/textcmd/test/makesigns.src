@@ -1,0 +1,19 @@
+use uo;
+use os;
+use cfgfile;
+
+program signsss(who)
+	var i, sign;
+	var cfg := readconfigfile("signs");
+	var maxint := getconfigmaxintkey(cfg);
+
+	SendSysMessage( who , "Creating signs..." );
+
+	for (i := 1; i <= maxint; i := i + 1)
+		sign := CreateItemAtLocation(cint(cfg[i].X), cint(cfg[i].Y), cint(cfg[i].Z), cint(cfg[i].ObjType), 1, cfg[i].Realm);		
+		sign.movable := 0;
+		sign.name := cfg[i].Name;
+	endfor
+	
+	SendSysMessage( who , "Done!" );
+endprogram

@@ -1,0 +1,136 @@
+//Edited Sept 6, 2024
+
+//put in a skill check to see if you can crack the egg
+//and from there it can be 60-40 50-50 some descent chance
+//that it will be tame
+
+use uo;
+include "include/random";
+include "include/areas";
+include "include/attributes";
+
+program dragoneggs(who, item)
+
+	var secclock:=ReadGameClock();
+	var lasthatch :=CInt(GetObjProperty(who, "#LastHatch"));
+
+	if(!ReserveItem(item)) 
+		return 0; 
+	endif
+
+		if ( secclock< lasthatch)
+			SendSysMessage( who, "You have to wait " + (lasthatch-secclock) + " seconds to hatch another egg.");
+			return 0;
+		endif
+
+		if (IsInSafeArea(who))
+			SendSysMessage( who, "You can't hatch eggs in this area.");
+			return 0;
+		endif
+
+		if (IsInGuardedArea(who))
+			SendSysMessage( who, "You can't hatch eggs in this area.");
+			return 0;
+		endif
+
+		if( IsInNOPKArea(who) )
+			SendSysMessage( who, "You can't hatch eggs in this area.");
+			return 0;
+		endif
+
+	SendSysMessage( who, "The egg begins to move and" );
+
+	var dragon, typeofdragon :=Random(33), masteralone := Random(100);
+
+	case (typeofdragon)
+		0: dragon := "waterdrake";
+		1: dragon := "undeaddrake";
+		2: dragon := "tidaldrake";
+		3: dragon := "stormdrake";
+		4: dragon := "spectraldrake";
+		5: dragon := "skeletaldrake";
+		6: dragon := "sanddrake";
+		7: dragon := "rockdrake";
+		8: dragon := "poisondrake";
+		9: dragon := "infernodrake";
+		10: dragon := "frostdrake";
+		11: dragon := "firedrake";
+		12: dragon := "earthdrake";
+		13: dragon := "cavedrake";
+		14: dragon := "airdrake";
+		15: 
+		16: if( Random(5) < 1)
+				dragon := "silverdrake";
+			else
+				dragon := "drake1";
+			endif
+		17: if( Random(5) < 1)
+				dragon := "heavenlydrake";
+			else
+				dragon := "drake2";
+			endif
+		18: if( Random(5) < 1)
+				dragon := "goldendrake";
+			else
+				dragon := "drake3";
+			endif
+		19: dragon := "tidaldragon";
+		20: dragon := "stormdragon";
+		21: dragon := "shadowdragon";
+		22: dragon := "sanddragon";
+		23: dragon := "rockdragon";
+		24: dragon := "poisondragon";
+		25: dragon := "infernodragon";
+		26: dragon := "frostdragon";
+		27: dragon := "cavedragon";
+		28: dragon := "dragon2";
+		29:if( Random(10) < 1)
+				dragon := "goldendragon";
+			else
+				dragon := "dragon1";
+			endif
+		30:if( Random(10) < 1)
+				dragon := "silverdragon";
+			else
+				dragon := "dragon2";
+			endif
+		31:if( Random(10) < 1)
+				dragon := "greatwyrm";
+			else
+				dragon := "dragon1";
+			endif
+		32:if( Random(10) < 1)
+				dragon := "greatearthwyrm";
+			else
+				dragon := "dragon2";
+			endif
+	endcase
+
+	subtractamount(item, 1);
+	
+	var newpet := CreateNpcFromTemplate( dragon, who.x, who.y, who.z, 0, who.realm );
+
+	if( !newpet )
+		SendSysMessage( who, "The poor creature died just after hatching." );
+		return;
+	endif
+
+	if ( GetEffectiveSkill( who, 35 ) > 90 )
+		if ( masteralone < 70 )
+			SendSysMessage( who, "A baby dragon appears and accepts you as his master!");
+			SetObjProperty (newpet, "master", who.serial);
+			SetObjProperty (newpet, "prevtamed", 1);
+			newpet.script := "tamed";
+			RestartScript (newpet);
+		else
+			SendSysMessage( who, "A baby dragon appears!" );
+		endif
+	else
+		SendSysMessage( who, "A baby dragon appears!" );
+	endif
+
+	// Toadstool - Set hatched info on mob as a string: "players serials, x y z coords of release"
+	SetObjProperty(newpet, "HatchedBy", "Player: "+who.serial+" XYZ: "+newpet.x+" "+newpet.y+" "+newpet.z+" "+newpet.realm);
+	SetObjProperty(who, "#LastHatch", ReadGameClock()+30);
+
+endprogram

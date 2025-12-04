@@ -1,0 +1,235 @@
+use uo;
+use polsys;
+
+include "include/client";
+include "include/itemutil";
+include "include/difficulty";
+include "include/classes";
+include "include/autoloop";
+include ":gumps:yesno";
+include "include/math";
+include "../pkg/opt/karmafame/karmafame";
+
+const TEXT_COLOR		:= 319;
+const MAT_DIVIDER		:= 3;
+const POINTS_MULTIPLIER	:= 8;
+const BASE_EXCEP_CHANCE	:= 10;
+const BASE_EXCEP_DIFF	:= 40;
+const FAME_BONUS		:= 10;
+
+var product_cfg   := ReadConfigFile(":crafterboost:itemdesc");
+var item_cfg := ReadConfigFile(":crafterboost:crafterboost" );
+
+program make_crafter_boosts(character, smithyretort)
+
+    SendSysmessage( character, "What would you like to use that on?" );
+	var use_on := Target( character , TGTOPT_CHECK_LOS );
+
+	if( !use_on )
+		SendSysmessage( character, "Canceled" );
+		return 0;
+	elseif( !Accessible( character , use_on ) )
+		SendSysMessage( character , "You can't reach that." );
+		return 0;
+	elseif( !IsInContainer( character.backpack , use_on ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return 0;
+	endif
+	
+	if (IsIngot(use_on) || IsLog(use_on) || IsHide(use_on.objtype) || (use_on.objtype == 0x0F7F))
+		MakeUpgrade(character, use_on, smithyretort);
+	else
+		SendSysMessage( character , "You can't make anything with that." );
+    endif
+
+endprogram
+
+function MakeUpgrade(character, start_material, smithyretort)	
+	var material_cfg;
+	var skilltype;
+	var mat1_type;
+	var mat1_name;
+	var product_type;
+	var material2 := start_material;
+	if (start_material.objtype == 0x0F7F)
+		SendSysmessage( character, "What would you like to combine that with?" );
+		material2 := Target( character , TGTOPT_CHECK_LOS );
+		if( !material2 )
+			SendSysmessage( character, "Canceled" );
+			return 0;
+		elseif( !Accessible( character , material2 ) )
+			SendSysMessage( character , "You can't reach that." );
+			return 0;
+		elseif( !IsInContainer( character.backpack , material2 ) )
+			SendSysmessage( character, "That item has to be in your backpack." );
+			return 0;
+		endif
+		if (IsIngot(material2))
+			material_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
+			skilltype := SKILLID_BLACKSMITHY;
+		elseif(IsLog(material2))
+			material_cfg := ReadConfigFile( ":carpentry:carpentry" );
+			skilltype := SKILLID_TAILORING;
+		elseif(IsHide(material2.objtype))
+			material_cfg := ReadConfigFile( ":tailoring:tailoring" );
+			skilltype := SKILLID_CARPENTRY;
+		else	
+			SendSysMessage( character , "You can't make anything with that." );
+			return 0;
+		endif
+		mat1_type := 0x0F7F;
+		mat1_name := "Brimstone";
+		product_type := 0x8B01; //Oil
+	elseif (IsIngot(start_material))
+		material_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
+		skilltype := SKILLID_BLACKSMITHY;
+		mat1_type := 0x0F7C;
+		mat1_name := "Bloodspawn";
+		product_type := 0x8B02; // Alloy
+	elseif(IsLog(start_material))
+		material_cfg := ReadConfigFile( ":carpentry:carpentry" );
+		skilltype := SKILLID_CARPENTRY;
+		mat1_type := 0x0F80;
+		mat1_name := "Daemon Bone";
+		product_type := 0x8B03; // Varnish
+	else
+		material_cfg := ReadConfigFile( ":tailoring:tailoring" );
+		skilltype := SKILLID_TAILORING;
+		mat1_type := 0x0F78;
+		mat1_name := "Bat Wing";
+		product_type := 0x8B04; // Compound
+	endif
+	var mat2_type := material2.objtype;
+	var material_diff := material_cfg[mat2_type].Difficulty;
+	var mat2_name := material_cfg[mat2_type].Name;
+
+	if( GetEffectiveSkill( character , skilltype ) < material_diff )
+		sendDiff( character , material_diff );
+		SendSysmessage( character, "You aren't skilled enough to craft anything from " + mat2_name + " yet." );
+		return 0;
+	endif
+
+
+	var item_elem := FindConfigElem(item_cfg, product_type);
+	var mat1_qty := item_elem.Material1; // Pagan
+	var mat2_qty := item_elem.Material2; // Ingot/Hide/Log
+
+	//Require half resources during Crafting PH
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		mat1_qty := Cint(Ceil(mat1_qty/2));
+		mat2_qty := Cint(Ceil(mat2_qty/2));
+	endif
+
+	var item_diff := item_elem.Skill;
+	var final_diff := CInt(item_diff + material_diff/MAT_DIVIDER);
+	var points := CInt((final_diff + mat2_qty)*POINTS_MULTIPLIER);
+	var material_quality := material_cfg[mat2_type].Quality;
+	var char_bkpk := character.backpack;
+	var mat2_color := material2.color;
+	AutoLoop_init(character);
+	while(AutoLoop_more() && FindSubstance(char_bkpk, mat2_type, mat2_qty) && FindSubstance(char_bkpk, mat1_type, mat1_qty) && !character.dead)
+		sendDiff( character , final_diff );
+
+		PlaySoundEffect(character, SFX_1C9);
+		PlayStationaryEffectEX(smithyretort.x, smithyretort.y, smithyretort.z-1, smithyretort.realm, 0x33F6, 2, 10, mat2_color, 3);
+		Sleep(2);
+		PlaySoundEffect(character, SFX_1C9);
+		PlayStationaryEffectEX(smithyretort.x, smithyretort.y, smithyretort.z-1, smithyretort.realm, 0x33F6, 2, 10, mat2_color, 3);
+		Sleep(2);
+		if( !GetObjProperty( character, CLASSEID_CRAFTER ))
+			PlaySoundEffect(character, SFX_1C9);
+			PlayStationaryEffectEX(smithyretort.x, smithyretort.y, smithyretort.z, smithyretort.realm, 0x33F6, 2, 10, mat2_color, 3);
+			Sleep(2);
+		endif
+
+		if(CheckSkill(character, skilltype, final_diff, points))
+			if (!ConsumeSubstance( char_bkpk, mat1_type, mat1_qty ))
+				SendSysMessage( character , "Something went wrong when consuming the"+mat1_name+".");
+				return 0;
+			endif
+			if (!ConsumeSubstance( char_bkpk, mat2_type, mat2_qty ))
+				SendSysMessage( character , "Something went wrong when consuming the"+mat2_name+".");
+				return 0;
+			endif
+			var newitem := CreateItemInBackpack(character, product_type);
+			if (!newitem)
+				SendSysMessage( character , "Couldn't place the product in your backpack." );
+				return 0;
+			endif
+			
+			newitem.Quality := material_quality;
+			newitem.Name := mat2_name +" "+ newitem.Name;
+			newitem.Color := mat2_color;
+
+			var excep_chance;
+			var excep_diff;
+			if(GetObjProperty( character , CLASSEID_CRAFTER ))
+				excep_chance := CInt(BASE_EXCEP_CHANCE *ClasseBonus( character , CLASSEID_CRAFTER ));
+				excep_diff := final_diff + BASE_EXCEP_DIFF/2;
+			else
+				excep_chance := BASE_EXCEP_CHANCE;
+				excep_diff := final_diff + BASE_EXCEP_DIFF;
+			endif
+
+			excep_diff := Max(excep_diff, 90);
+			//Check for Exceptional
+			if ((RandomInt(100) < excep_chance) && (CheckSkill(character, skilltype, excep_diff,0) ))
+				var multiplier := 5 + Cint( GetEffectiveSkill( character , SKILLID_ARMSLORE ) / 10 );
+
+				if( GetObjProperty( character , CLASSEID_CRAFTER ) )
+					multiplier := Cint( multiplier * ClasseBonus( character , CLASSEID_CRAFTER ) );
+				endif
+								
+				multiplier := (100.0 + multiplier);
+				newitem.Quality := Trunc((newitem.Quality * multiplier) / 100.0, 2);
+
+				newitem.Name := "Exceptional " + newitem.Name;
+
+				if(GetObjProperty(character, "ToggleBuildMark"))
+					if( YesNo( character , "Add Builder Mark?" ))
+						SetObjProperty( newitem , "CraftedBy" , character.name );
+					endif
+				else
+					SetObjProperty( newitem , "CraftedBy" , character.name );
+				endif
+
+				SendSysmessage( character , "You make an exceptional item and put it in your pack." );
+				SetObjProperty( newitem , "IsExceptional" , 1 );
+
+				if( excep_diff >= 130 )
+					SendSysmessage( character , "This masterpiece will make you famous around the world." );
+					AwardFame( character , FAME_BONUS );
+				elseif( GetObjProperty( character , CLASSEID_CRAFTER ) and excep_diff >= 110 )
+					SendSysmessage( character , "This masterpiece will make you famous around the world." );
+					AwardFame( character , FAME_BONUS );
+				endif
+			endif
+			SendSysmessage( character , "You create the item and place it in your pack." );
+			IncRevision(newitem);
+
+		else // Craft Failure!
+			var destroy := 75 - GetEffectiveSkill( character , skilltype )/2;
+			destroy /= ClasseBonus( character , CLASSEID_CRAFTER );
+			
+			destroy := Min( destroy, 50);
+			var destroy1 := CInt( mat1_qty * destroy/100 );
+			var destroy2 := CInt( mat2_qty * destroy/100 );
+
+			ConsumeSubstance( char_bkpk, mat1_type, destroy1 );
+			ConsumeSubstance( char_bkpk, mat2_type, destroy2 );
+			SendSysmessage( character , "You destroyed " + destroy1 + " " + mat1_name + "." );
+			SendSysmessage( character , "You destroyed " + destroy2 + " " + mat2_name + "." );
+		endif
+	endwhile
+	AutoLoop_finish();
+	if (!FindSubstance(char_bkpk, mat1_type, mat1_qty) || !FindSubstance(char_bkpk, mat2_type, mat2_qty))
+		if (!FindSubstance(char_bkpk, mat2_type, mat2_qty))
+			SendSysMessage( character , "You need at least "+mat2_qty+" "+mat2_name+"." );
+		endif
+		if (!FindSubstance(char_bkpk, mat1_type, mat1_qty))
+			SendSysMessage( character , "You need at least "+mat1_qty+" "+mat1_name+"." );
+		endif
+	endif
+endfunction
+
+

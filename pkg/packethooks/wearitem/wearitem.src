@@ -1,0 +1,22 @@
+use uo;
+
+include ":staff:include/staff";
+
+program WearItem()
+	Print("Hooking Wear Item Packet 0x13");
+	return 1;
+endprogram
+
+exported function WearItemPacket(who, byref packet)
+
+var item := SystemFindObjectBySerial(packet.GetInt32(1));
+var wfh := SystemFindObjectBySerial(packet.GetInt32(6));
+
+// Warrior for hire, dressing him via paperdoll
+var masterserial := GetObjProperty(wfh,"master");
+if (who.serial == masterserial)
+	Start_Script(":wearitem:equipitem_delay", {wfh, item});
+	return 0;
+endif
+	
+endfunction

@@ -1,0 +1,27 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/constants/locations";
+
+program RandorinGate( mobile )
+
+    var IsRPer := GetObjProperty( mobile, "IsRPer" );
+
+	if( mobile.npctemplate and mobile.script != "tamed" )
+		return;
+	endif
+
+    if(mobile.cmdlevel < 1)
+        if(!IsRPer)
+            SendSysMessage( mobile, "You need to be an [RPer] to enter Randorin.", FONT_NORMAL, 2595 );
+            //MoveObjectToLocation( mobile, 5227, 461, 16, "britannia", MOVEOBJECT_FORCELOCATION );
+            return;
+        endif
+    endif
+    //Needs to ber fixed for new maps
+	//var move := MoveObjectToLocation( mobile, 5227, 461, 16, "britannia", MOVEOBJECT_FORCELOCATION );
+	//if(!move)
+	//	Print("Move error msg: "+move);		
+	//endif
+endprogram

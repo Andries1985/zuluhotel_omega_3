@@ -1,0 +1,27 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetProp() - Gets properties on objects
+//
+//////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+program ListContents(who, text)
+
+SendSysMessage(who,"Select a container/player to list the contents of the container", 3, 73);
+var what := Target(who);
+
+if (!what.isa(POLCLASS_CONTAINER) && !what.connected)
+	SendSysMessage(who,"Cancelled, target a player or container.");
+endif
+
+if (what.connected)
+	what := what.backpack;
+endif
+
+foreach item in EnumerateItemsInContainer(what)
+	SendSysMessage(who, item.desc+" / "+item.name, 3, 53);
+endforeach
+
+endprogram

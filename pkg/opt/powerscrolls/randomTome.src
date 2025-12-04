@@ -1,0 +1,16 @@
+use uo;
+
+include "include/itemutil";
+
+program randomTome(who, scroll)
+	if(!IsInContainer(who.backpack, scroll))
+		SendSysMessage(who, "That item need to be in your main backpack!");
+		return;
+	endif
+	var des := DestroyItem(scroll);
+	sleepMS(100);
+	if(!des)
+		return;
+	endif
+	CreateItemInBackpack( who, 0x9A89 );
+endprogram

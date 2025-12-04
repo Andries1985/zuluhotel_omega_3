@@ -1,0 +1,206 @@
+// Harvest:
+// it starts when you use botanic scissors, and uses regeneration scripts (as used to do farming)
+//
+// I think there is some problem in fruits regen...
+// I did it based on farming, better check it out, and fix grapes structure, that are 3
+// and has to be deleted them all. Also fix difficulty, now its random
+// yo!
+
+
+use uo;
+use cfgfile;
+use os;
+use math;
+use attributes;
+
+include "include/client";
+include "include/objtype";
+include "include/utility";
+include "botanik";
+include "include/random";
+include ":gumps:yesno";
+include "include/autoloop";
+
+const UACTION_CHOP:=0x0D;
+const Finish_SfX:=0x5a;
+var Grab_SfX:={0x249,0x50};
+
+program grab_fruit(user,item)
+
+	var PlacedBy := user.name;
+	var cfg;
+	if( !ReserveItem( item ) )
+		return;
+	endif
+
+	if(user.multi)
+		SendSysmessage( user , "Can't use that here." );
+		return;
+	endif
+
+	SendSysmessage( user , "Select a tree to harvest." );
+
+	var use_on := Target( user, TGTOPT_NOCHECK_LOS );
+	if(!use_on)
+		SendSysmessage( user , "Canceled." );
+		return;
+	endif
+
+	var distt := coordist( user.x , user.y , use_on.x , use_on.y );
+	if( distt > 2 )
+		SendSysmessage( user , "That is too far away." );
+		return;
+	endif
+
+	var farmPlant := readconfigfile(":farming:plants");
+	var farmPlantAmount := farmPlant[use_on.objtype].maxamount;
+	if(farmPlantAmount)
+		DestroyTree(user, use_on);
+		return;
+	endif
+		
+	var treetypes := readconfigfile("tree");
+	if(!treetypes[use_on.objtype] || use_on.objtype == 0xd1d || use_on.objtype == 0xd1b)
+		SendSysmessage( user , "You can't harvest that." );
+		return;
+	endif
+	
+    var resource_type := treetypes[use_on.objtype].product;
+	if (!resource_type) 
+		sendsysmessage(user,"It's too young to produce anything."); 
+		return; 
+	endif
+
+	var currentAmount := GetObjProperty(use_on, "amt");
+
+	var maxAmount:=treetypes[use_on.objtype].maxamount;
+	if(!currentAmount)	
+		if(!GetObjProperty(use_on, "FirstSetup"))
+			SetObjProperty(use_on, "amt", maxAmount);
+			SetObjProperty(use_on, "FirstSetup", 1);
+		else
+			DestroyTree(user, use_on);
+			return;
+		endif
+	endif
+	currentAmount := GetObjProperty(use_on, "amt");
+
+	//Precaution
+	if(currentAmount > maxAmount)
+		currentAmount := maxAmount;
+	endif
+
+	Autoloop_init ( user );
+	while (Autoloop_more() && !user.dead)
+		playsoundeffect(user,Grab_SfX[Random(2)+1]);
+		performaction(user,ANIM_SALUTE);
+		currentAmount := GetObjProperty(use_on, "amt");
+		var harvestAmount := Random(4)+1;
+        var fruit:=treetypes[use_on.objtype].productname;
+
+		//Can't get more fruit then the tree got left
+		if(harvestAmount > currentAmount)
+			harvestAmount := currentAmount;
+		endif
+		
+		var difficulty:=Random(100)+1;
+
+		if (checkskill(user,SKILLID_LUMBERJACKING,difficulty,0))
+			createiteminbackpack(user, cint(treetypes[use_on.objtype].product), harvestAmount);
+			sendsysmessage(user,"You put "+harvestAmount+" "+fruit+"(s) in your pack.");
+			setobjproperty(use_on,"amt",currentAmount-harvestAmount);
+		endif
+
+		//No more fruit left
+		if(harvestAmount == currentAmount)
+			sendsysmessage(user,"You harvested all you can.");
+			Autoloop_finish ();
+		endif
+	endwhile
+	Sleep( 3 );
+	Autoloop_finish();
+    sendsysmessage(user,"You stop harvesting...");
+
+	
+/*
+    var curamount:=getobjproperty(item,"amt"),cfg:=readconfigfile("tree");
+    if (!cfg) return; endif
+	/*
+    // if tree has not been set for regrow, set it up & tell user.
+    if (curamount.errortext)
+//      fixtree(item,cfg[item.objtype].regrown,cfg[item.objtype].maxamount);
+      sendsysmessage(user,"It's too young to produce anything.");
+      return;
+    endif
+	
+    sendsysmessage(user,"Select tree to harvest.");
+    var tree,loc:=targetcoordinates(user);
+    if (!loc) return; endif
+
+    foreach that in listitemsnearlocation(cint(loc.x),cint(loc.y),cint(loc.z),0, loc.realm)
+		if (cfg[that.objtype]) 
+			tree:=that; 
+		endif 
+	endforeach
+
+    if (distance(user,tree)>2) sendsysmessage(user,"That is too far away!"); 
+		return; 
+	endif
+
+    resource_type := cfg[tree.objtype].product;
+    if (!resource_type) sendsysmessage(user,"It's too young to produce anything."); return; endif
+
+    var curamount:=getobjproperty(tree,"amt");
+    maxamount := cfg[tree.objtype].maxamount;
+
+    if (curamount>=maxamount)
+		maxamount:=getobjproperty(tree,"#regrow");
+		if (maxamount.errortext) 
+			fixtree(tree, cfg[tree.objtype].regrown, cfg[tree.objtype].maxamount, PlacedBy); 
+		endif
+		sendsysmessage(user, cfg[tree.objtype].productname+"s is still growing.");
+		DestroyTree(user, tree);
+		return;
+    endif
+
+    var i,num_chops,SFX_Rand,num,fruit,theamount,x:=cint(user.x),y:=cint(user.y);
+
+    sendsysmessage(user,"You start to harvest...");
+
+    repeat
+		Print("Harvest script after Autoloop in repeat");
+		SFX_Rand:=Random(2)+1; 
+		playsoundeffect(user,Grab_SfX[SFX_Rand]);
+		performaction(user,ANIM_SALUTE);
+		sleep(2);
+
+		var difficulty:=Random(100)+1;
+
+		curamount:=getobjproperty(tree,"amt");
+		setobjproperty(tree,"amt",curamount);
+
+		if (checkskill(user,SKILLID_LUMBERJACKING,difficulty,0))
+			num:=Random(4)+1;
+			createiteminbackpack(user,cint(cfg[tree.objtype].product),num);
+			fruit:=cfg[tree.objtype].productname;
+			setobjproperty(tree,"amt",curamount);
+		sendsysmessage(user,"You put "+num+" "+fruit+"(s) in your pack.");
+			// printtextabove(tree,"*"+num+" "+fruit+"(s)*");
+
+		if (curamount<=maxamount)
+		//	  fixtree(tree,cfg[tree.objtype].regrown,cfg[tree.objtype].maxamount);
+			sleep(1);
+		else
+			playsoundeffect(user,Finish_SfX);
+		sendsysmessage(user,"You harvested all you can.");
+		fixtree(tree,cfg[tree.objtype].regrown,cfg[tree.objtype].maxamount, PlacedBy);
+		return 0;
+		endif
+
+		endif
+
+    until ((cint(user.x)!=x) or (cint(user.y)!=y));
+
+    sendsysmessage(user,"You stop harvesting...");
+*/
+endprogram

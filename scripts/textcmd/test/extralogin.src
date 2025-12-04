@@ -1,0 +1,21 @@
+use uo;
+
+program extralogin( who )
+
+	SendSysMessage( who , "Who do you want to give an extra login?" );
+	var targ := Target( who );
+	if( !targ )
+		return;
+	endif
+
+	var acc := FindAccount(targ.acctname);
+	var setacc := acc.setprop("ExtraClient", 1);
+	if(!setacc)
+		SendSysMessage( who , "Error something went wrong..." );
+		return;
+	endif
+	
+	SendSysMessage( who , "You granted "+targ.name+" account an extra login per ip." );
+	SendSysMessage( targ , "You are granted an extra login to your ip" );
+
+endprogram

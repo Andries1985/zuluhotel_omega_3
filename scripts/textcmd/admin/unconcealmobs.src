@@ -1,0 +1,30 @@
+use uo;
+
+Program unconcealmobs( who, range )
+
+	range := CInt(range);
+	if(!range)
+		SendSysMessage(who, "The command works like .command 'range', if no range is set it will not work!");
+		return;
+	endif
+
+	if(range > 50)
+		SendSysMessage(who, "Range is too big, consider other dungeons etc close by! Max range is 50.");
+		return;
+	endif
+
+	var count := 0;
+	foreach mob in ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, range, LISTEX_FLAG_CONCEALED, who.realm )
+		if(mob.isa(POLCLASS_NPC))
+			if(mob.concealed)
+				mob.concealed := 0;
+				count := count+1;
+			endif
+		endif
+	endforeach
+
+	SendSysMessage(who, "You unconcealed "+count+" mobs!");
+
+	return;
+
+endprogram

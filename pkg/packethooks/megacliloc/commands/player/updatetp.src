@@ -1,0 +1,15 @@
+use uo;
+use polsys;
+
+
+program textcmd_updatetp(who)
+
+    SendSysmessage( who , "Select an Item." );
+	var what :=  TargetCoordinates( who );
+	if( !what )
+		return;
+	endif
+
+    IncRevision(what);
+    
+endprogram

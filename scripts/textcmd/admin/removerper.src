@@ -1,0 +1,24 @@
+use uo;
+use os;
+
+include ":staff:include/staff";
+include "include/client";
+
+program textcmd_removerper(who)
+
+    SendSysMessage( who, "Who do you wish to remove from the [RPer] faction?", FONT_NORMAL, 2595);
+
+	var player := Target(who);
+	var rper := GetObjProperty(player, "IsRPer");
+	if( rper )
+		var getOrgName := GetObjProperty(player, "OrgName");
+		EraseObjProperty(player, "IsRPer");
+		player.name := getOrgName;
+		EraseObjProperty(player, "OrgName");
+		SendSysMessage( player, "You have been kicked from the [RPer] faction!", FONT_NORMAL, 2595 );
+		SendSysMessage( who, "Kicking "+ player.name +" from the [RPer] faction!", FONT_NORMAL, 2595 );
+	else
+		SendSysMessage( who, player.name +" isn't an RPer!", FONT_NORMAL, 2595 );
+	endif
+
+endprogram

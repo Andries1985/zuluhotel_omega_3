@@ -1,0 +1,33 @@
+use uo;
+
+include ":staff:include/staff";
+include "include/client";
+
+program changename( who  )
+	SendSysMessage( who , "Who do you want to give a name change?", FONT_NORMAL, 2601 );
+		
+	var targ := Target( who );
+	if( !targ )
+		SendSysMessage( who , "Canceled.", FONT_NORMAL, 2595 );
+		return;
+	endif
+
+	if(!targ.IsA(POLCLASS_MOBILE))
+		SendSysMessage (who, "You must select a mobile.", FONT_NORMAL, 2595);
+		return;
+	endif
+
+	var oldname := targ.name;
+	var newname := RequestInput( who, who.backpack, "What do you want the name to be?" );
+
+	if(newname)
+		SetObjProperty(targ, "OldName", oldname);
+		targ.name := Cstr(newname);
+		PrintTextAbove(targ, "I was known as "+oldname+" and now I'm now known as "+newname);
+	else
+		SendSysMessage( who , "Canceled.", FONT_NORMAL, 2595 );
+		return;
+	endif
+	LogCommand(who, GetProcess(GetPid()).name, "Name changed from: "+oldname+" to "+targ.name+"/"+targ.serial);
+
+endprogram

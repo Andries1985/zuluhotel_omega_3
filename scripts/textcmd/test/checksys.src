@@ -1,0 +1,67 @@
+use uo;
+
+include ":gumps:old-gumps";
+
+
+program view_script_profiles(who)
+	
+	GFInitGump();
+	GFResizepic( 0, 40, 0x53, 800, 580 );
+	GFCheckerTrans( 0, 40, 800, 580 );
+	GFTextLine( 320,  70, 4, "- Script Profile -" );
+	GFTextLine(  50, 100, 63, "Script Name" );
+	GFTextLine( 350, 100, 63, "Instructions");
+	GFTextLine( 450, 100, 63, "Instruction%" );
+	GFTextLine( 550, 100, 63, "Invocations" );
+	GFTextLine( 650, 100, 63, "Instruc/Invoc" );
+
+	var cury := 120;
+
+	foreach script in scripts_sorted()
+		GFTextLine(  50, cury, 53, script.name );
+		GFTextLine( 350, cury, 53, script.instr );
+		GFTextLine( 450, cury, 53, script.instr_percent );
+		GFTextLine( 550, cury, 53, script.invocations  );
+		GFTextLine( 650, cury, 53, script.instr_per_invoc );
+		cury := cury + 20;
+	endforeach
+
+	var reset := GFButtonID( 30, 60, 2117, 2118, 1 );
+	GFTextLine( 50, 62, 32, "Reset" );
+
+	var res := GFSendGump(who);
+	if(res[0]==reset.keyid)
+		polcore().clear_script_profile_counters();
+	endif
+
+	return;
+
+endprogram
+
+
+function scripts_sorted()
+
+	var scriptarray := polcore().script_profiles;
+	var the_scripts := {};
+
+	foreach script in scriptarray
+		if (script.instr_percent > 2)
+			the_scripts.append(script);
+		endif
+	endforeach
+
+	var a,b,temp;
+	// never thought i'd be bubble sorting again ;P
+	for(a:=1;a<the_scripts.size();a:=a+1)
+		for(b:=a+1;b<=the_scripts.size();b:=b+1)
+			if(the_scripts[a].instr_percent < the_scripts[b].instr_percent)
+				temp := the_scripts[a];
+				the_scripts[a] := the_scripts[b];
+				the_scripts[b] := temp;
+			endif
+		endfor
+	endfor
+
+	return the_scripts;
+
+endfunction

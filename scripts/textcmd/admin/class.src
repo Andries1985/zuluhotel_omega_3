@@ -1,0 +1,49 @@
+use uo;
+use os;
+
+include ":gumps:include/gumps";
+include "include/classes";
+include "include/attributes";
+
+program textcmd_class(who, amount)
+
+	if(!amount)
+		amount := 150;
+	else
+		amount := Cint( amount );
+	endif
+	
+	var gump := GFCreateGump(15, 15, 200, 300);
+	GFResizePic(gump, 15, 15, 9250, 200, 300);
+	GFTextLine(gump, 60, 30, 53, "--Choose a Class--");
+
+	var y := 60;
+	foreach thing in GetClasseIds()
+		GFTextLine(gump, 55, y, 67, GetClasseName( thing ));
+		GFAddButton(gump, 35, y+5, 2362, 2361, 1, _thing_iter);
+		y := y + 20;
+	endforeach
+
+	var result := GFSendGump(who, gump);
+
+	if (result[0] < 1)
+		SendSysMessage(who, "Cancelled.");
+		return 0;
+	endif
+
+	var classid := GetClasseIds()[result[0]];
+
+	var i;
+	for (i := 0; i < 49; i := i + 1)
+		SetBaseSkill(who, i, 0);
+	endfor
+
+	foreach skill in GetClasseSkills( classid )
+		SetBaseSkill(who, skill, amount);
+	endforeach
+
+	AssignClasse( who );
+
+	SendSysMessage(who, "You now got "+(amount)+" in all "+GetClasseName( classid )+" skills.", 3, 53);
+
+endprogram

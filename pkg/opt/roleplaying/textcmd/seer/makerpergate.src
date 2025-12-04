@@ -1,0 +1,65 @@
+use uo;
+use os;
+
+include "include/client";
+include ":staff:include/staff";
+include ":gumps:yesno";
+
+program textcmd_makerpergate( who )
+
+	var gate1, gate2;
+	
+	SendSysMessage(who, "Target the first location for the gate.", FONT_NORMAL, 2589 );
+	var where := TargetCoordinates(who);
+    
+	if (!where)
+		SendSysMessage(who, "Canceled.", FONT_NORMAL, 2595 );
+		return 0;
+	endif
+	
+	gate1 := CreateItemAtLocation(where.x, where.y, where.z, 0x8A04, 1, where.realm);
+	
+	SendSysMessage(who, "Target the second location for the gate.", FONT_NORMAL, 2589 );
+	var where2 := TargetCoordinates(who);
+    
+	if (!where2)
+		DestroyItem(gate1);
+		SendSysMessage(who, "Canceled.", FONT_NORMAL, 2595 );
+		return 0;
+	endif
+	
+	if (where.x == where2.x && where.y == where2.y)
+		DestroyItem(gate1);
+		SendSysMessage(who, "Location 1 and 2 are the same coordinates!", FONT_NORMAL, 2595 );
+		return 0;
+	endif
+	
+	gate2 := CreateItemAtLocation(where2.x, where2.y, where2.z, 0x8A04, 1, where.realm);
+	
+	SetObjProperty(gate1, "GateDestX", gate2.x);
+	SetObjProperty(gate1, "GateDestY", gate2.y);
+	SetObjProperty(gate1, "GateDestZ", gate2.z);
+	SetObjProperty(gate1, "GateDestRealm", gate2.realm);
+	SetObjProperty(gate1, "IsRPer", 1);
+	Setobjproperty(gate1, "IgnoreCheck", 1); // bypass banned areas, ie into dungeons
+	
+	SetObjProperty(gate2, "GateDestX", gate1.x);
+	SetObjProperty(gate2, "GateDestY", gate1.y);
+	SetObjProperty(gate2, "GateDestZ", gate1.z);
+	SetObjProperty(gate2, "GateDestRealm", gate1.realm);
+	SetObjProperty(gate2, "IsRPer", 1);
+	Setobjproperty(gate2, "IgnoreCheck", 1);
+	
+	if (YesNo(who, "Save gates?"))
+		SendSysMessage(who, "Gates have now been saved!", FONT_NORMAL, 2567 );
+	else
+		DestroyItem(gate1);
+		DestroyItem(gate2);
+		SendSysMessage(who, "Canceled.", FONT_NORMAL, 2595 );
+		return 0;
+	endif
+	
+    LogCommand(who, GetProcess(GetPid()).name, "Gate1: ("+gate1.x+","+gate1.y+") Gate2: ("+gate2.x+","+gate2.y+")");
+	
+endprogram
+

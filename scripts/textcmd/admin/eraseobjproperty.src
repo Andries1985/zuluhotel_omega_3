@@ -1,0 +1,28 @@
+use uo;
+use polsys;
+include ":staff:include/staff";
+program txtcmd_eraseobjproperty( who , propname )
+
+	SendSysMessage( who , "Erase " + propname + " cprop from what?" );
+	var xObject := Target( who );
+	if( !xObject )
+		return;
+	endif
+	
+	var result;
+
+	LogCommand(who, GetProcess(GetPid()).name, xObject.name+"/"+xObject.serial, propname);
+
+	if (lower(propname) == "lfucker" && who.cmdlevel < 4)
+		result := 1;
+	else 
+		result := EraseObjProperty( xObject , propname );
+	endif
+
+	if( result )
+		SendSysMessage( who , "Property " + propname + " was successfully erased." );
+	else
+		SendSysMessage( who , "Error erasing property: " + result.errortext );
+	endif
+	IncRevision(xObject);
+endprogram

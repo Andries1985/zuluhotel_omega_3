@@ -1,0 +1,127 @@
+use uo;
+use cfgfile;
+use os;
+
+include "include/client";
+include "include/objtype";
+include "include/classes";
+include "include/autoloop";
+
+const SCISSORS_SOUND    := 0x0249;
+
+var tailor_cfg := ReadConfigFile( "tailoring" );
+
+function is_hide(item)
+
+  if((item.objtype >= UOBJ_HIDES_START and item.objtype <= UOBJ_HIDES_END) or
+      (item.objtype == 0xdc0a) or (item.objtype == 0xdc13) or
+      (item.objtype == 0xff17) or (item.objtype == 0xff18) or
+	  (item.objtype == 0x1078) or (item.objtype == 0x1079))
+      return 1;
+  else
+      return 0;
+  endif
+
+endfunction
+
+
+program unstitch(character)
+
+	SendSysmessage( character, "What do you wish to unstitch into hides?", FONT_NORMAL, 2601 );
+	var use_on := Target( character , TGTOPT_CHECK_LOS );
+
+	if(is_hide(use_on))
+		SendSysMessage( character, "That cannot be unstitched!", FONT_NORMAL, 2595 );
+		return;
+	endif
+
+	if(!ReserveItem(use_on)) 
+		return; 
+	endif
+
+	if( !use_on )
+		SendSysmessage( character, "Canceled", FONT_NORMAL, 2595 );
+		return;
+	endif
+	
+	if( tailor_cfg[use_on.objtype] && !GetObjProperty( use_on, "ownerserial" ) )
+		UnstitchToHides(character, use_on);
+	else
+        SendSysMessage( character, "That cannot be unstitched into hides!", FONT_NORMAL, 2595 );
+	endif
+	
+endprogram
+
+
+function UnstitchToHides( character, tbunstitched )
+
+	var skill := 60;
+	var	element, material, what, hidetype;
+	var to_unstitch := {};
+	var index := 1;
+	var loop := 0 ;
+
+	foreach item in EnumerateItemsInContainer( character.backpack )
+		if (item.desc == tbunstitched.desc)
+			to_unstitch[index] := item;
+			index := index + 1;
+		endif
+	endforeach
+
+	AutoLoop_init( character );
+	loop := 0;
+	while( AutoLoop_more() && !character.dead)
+		loop := loop +1;
+		what := to_unstitch[loop].objtype;
+		element := FindConfigElem( tailor_cfg , what );
+		
+		if (element)
+			material := element.Material;
+		else
+			SendSysmessage( character , "Unstitching terminated.", FONT_NORMAL, 2595 );
+			return;
+		endif
+		
+		hidetype := GetObjProperty( to_unstitch[loop] , "CraftedWith" );
+		if(!hidetype)
+			SendSysmessage( character , "Found an old leather item. This only works on newly crafted items. Terminating.", FONT_NORMAL, 2595 );
+			return;
+		endif
+		
+		var hidediff := tailor_cfg[hidetype].Difficulty;
+		skill := skill + Cint( hidediff / 3 );
+
+		var giveback := GetEffectiveSkill( character , SKILLID_TAILORING ) - hidediff;
+		if( GetObjProperty( character , CLASSEID_CRAFTER ) )
+			skill	:= Cint( skill / ClasseBonus( character , CLASSEID_CRAFTER ) );
+			giveback := Cint( giveback * ClasseBonus( character , CLASSEID_CRAFTER ) );
+		endif
+
+		PlaySoundEffect( character, SCISSORS_SOUND );
+		Sleep( 1 );
+		PlaySoundEffect( character, SCISSORS_SOUND );
+		Sleep( 1 );
+		
+		if (CheckSkill( character , SKILLID_TAILORING , skill , 0 ))
+		
+			if( giveback > 95 )
+				giveback := 95;
+			endif
+			
+			giveback := Cint(giveback * material / 100);
+			if( giveback < 1 )
+				giveback := 1;
+			endif
+			
+			var item := CreateItemInBackpack( character , hidetype , giveback );
+			if( item )
+				SendSysmessage( character , "You turned your " + to_unstitch[loop].desc + " back into " + giveback + " " + tailor_cfg[hidetype].Name + " hides.", FONT_NORMAL, 2601 );
+				DestroyItem( to_unstitch[loop] );
+			endif
+		else
+			SendSysmessage( character , "You fail to unstitch down the item and destroy it in your attempt!", FONT_NORMAL, 2595 );
+			DestroyItem( to_unstitch[loop] );
+		endif
+	endwhile
+
+endfunction

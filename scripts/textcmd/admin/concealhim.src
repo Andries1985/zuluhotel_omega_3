@@ -1,0 +1,62 @@
+////////////////////////////////////////////////////////////////////////
+// ClasH
+//
+// Concealme() - Conceale someone else command
+//
+////////////////////////////////////////////////////////////////////////
+use uo;
+use polsys;
+include ":staff:include/staff";
+include "include/client";
+include "include/attributes";
+
+Program concealme( who, lvl )
+
+LogCommand(who, GetProcess(GetPid()).name, "Conceal Level: "+lvl);
+
+	var targ := Target( who );
+	if( !targ )
+		return;
+	endif
+
+lvl := CInt(lvl);
+
+if (lvl < 0)
+	lvl := 0;
+endif
+
+
+// Set the staff to concealed.
+targ.concealed := lvl;
+
+// Get a corresponding text col
+//var colour := TextColour(lvl);
+
+
+// Let the staff know what level they are concealed at
+
+
+SendSysMessage(targ, "Concealed for 20 minutes at "+GetCmdLevelName(lvl)+" level.", 3);
+SendSysMessage(who, "Concealed your target for 20 minutes at "+GetCmdLevelName(lvl)+" level.", 3);
+
+Sleep(600);
+
+SendSysMessage(targ, "Concealed for 10 more minutes at "+GetCmdLevelName(lvl)+" level.", 3);
+SendSysMessage(who, "Your target is concealed for 10 more minutes at "+GetCmdLevelName(lvl)+" level.", 3);
+
+Sleep(540);
+
+SendSysMessage(targ, "Concealed for 1 more minute at "+GetCmdLevelName(lvl)+" level.", 3);
+SendSysMessage(who, "Your target is concealed for 1 more minute at "+GetCmdLevelName(lvl)+" level.", 3);
+
+Sleep(60);
+
+targ.concealed := 0;
+
+SendSysMessage(targ, "you have been unconcealed", 3);
+SendSysMessage(who, "your concealhim target has been unconcealed", 3);
+
+
+
+
+endprogram

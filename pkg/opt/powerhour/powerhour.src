@@ -1,0 +1,54 @@
+use uo;
+
+include "include/random";
+include "include/client";
+
+var second := 1;
+var minute := 60;
+var hour := 3600;
+var week := 604800;
+var starttime := 1543172400; //2018/11/25 19:00 gmt (sunday)
+
+program powerhour()
+	var started := 0, secChance := 0;
+	while (1)
+		var time := POLCORE().systime; 
+		if((((time - starttime) % week) > (week - (minute * 2)) && !started) || (!started && secChance)) 
+			Broadcast( "A random powerhour will start in 2 minutes!", FONT_BOLD, 1176 );
+			sleep(minute * 2);
+
+			started := ReadGameClock();
+			var randomPH := Random(3)+1;
+			case(randomPH)
+				1:	SetGlobalProperty("PHH", 1);
+					Broadcast( "Hunting powerhour has started!", FONT_BOLD, 1176 );
+				2:	SetGlobalProperty("PHC", 1);
+					Broadcast( "Half-resources powerhour has started!", FONT_BOLD, 1176 );
+				3:	SetGlobalProperty("PHS", 1);
+					Broadcast( "Double skillgain powerhour has started!", FONT_BOLD, 1176 );
+			endcase
+		endif
+		if(started && (started + hour) < ReadGameClock()) 
+			if(GetGlobalProperty("PHH"))
+				Broadcast( "Hunting powerhour has ended!", FONT_BOLD, 1176 );
+			elseif(GetGlobalProperty("PHC"))
+				Broadcast( "Half-resources powerhour has ended!", FONT_BOLD, 1176 );
+			elseif(GetGlobalProperty("PHS"))
+				Broadcast( "Double skillgain powerhour has ended!", FONT_BOLD, 1176 );
+			endif
+			started := 0;
+			EraseGlobalProperty("PHH");
+			EraseGlobalProperty("PHC");
+			EraseGlobalProperty("PHS");
+			var secondPHChance := Random(10000);
+			if(1000 > secondPHChance && !secChance)
+				Broadcast( "The Omega gods have granted a second random powerhour, that will begin shortly!", FONT_BOLD, 1176 );
+				secChance := 1;
+			elseif(secChance)
+				secChance := 0;
+			endif				
+		endif
+		Sleep(minute);
+	endwhile
+
+endprogram

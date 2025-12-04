@@ -1,0 +1,12 @@
+use os;
+use uo;
+
+include "include/attributes";
+
+program wipemods( who )
+	
+	SetStrengthMod(who, 0 );
+	SetDexterityMod(who, 0);
+	SetIntelligenceMod(who, 0);
+		
+endprogram

@@ -1,0 +1,45 @@
+////////////////////////////////////////////////////////////////////////////////////
+//										   			    //
+//      Piercing hitscript make a weapon to go through any armor deal a raw  	    //
+//      amount of damage, defined in the piercingDam porperty of the weapon.	    //
+//								  		   			    //
+////////////////////////////////////////////////////////////////////////////////////
+
+
+use uo;
+use os;
+
+include ":combat:hitscriptinc";
+include "include/damages";
+
+
+program crithit(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+	if (lower(TypeOf(attacker)) == "array")
+		defender 	:= attacker[2];
+		weapon 	:= attacker[3];
+		armor 	:= attacker[4];
+		basedamage := attacker[5];
+		rawdamage	:= attacker[6];
+		attacker 	:= attacker[1];
+	endif
+	
+	var warrior := GetObjProperty(attacker, "IsWarrior");
+	var crithit := 0;
+	if(warrior)
+		var critchance := 5 * warrior;
+		if((Random(100) + 1) <= critchance)
+			crithit := 1;
+		endif
+	endif
+
+	rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
+	
+	if(crithit)
+		rawdamage := CInt(rawdamage * 2);
+		PrintTextAbovePrivate( attacker, "Critical hit!", attacker, _DEFAULT_TEXT_FONT, 1172 );
+	endif
+
+	DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
+
+endprogram

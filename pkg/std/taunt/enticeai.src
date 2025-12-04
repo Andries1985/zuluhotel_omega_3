@@ -1,0 +1,85 @@
+////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool - 18/04/2012
+//
+// Enticed_AI() - AI script for monsters that are enticed. 
+//		  Monsters blindly follow the music to the players location.
+//		  Attacking the npc breaks the effect.
+//
+////////////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+use npc;
+use cfgfile;
+
+include "include/attributes";
+include "include/eventid";
+
+var me := self();
+
+program Enticed_AI()
+
+PeaceMade(); // Sets the npc to peacemade, function below
+
+// Setting up the vars
+var who := GetObjProperty(me, "#EnticedBy");
+if(who)
+	who := SystemFindObjectBySerial(who, SYSFIND_SEARCH_OFFLINE_MOBILES);
+else
+	return;
+endif
+var mainaiscript := GetObjProperty(me, "AiScript");
+var endtime := CInt(GetObjProperty(me, "#Duration"));
+var x := who.x;
+var y := who.y;
+var myhp := GetHP(me);
+
+// Important check.
+if (!mainaiscript)
+	var configfile := ReadConfigFile("::npcdesc");
+	var elem := FindConfigElem( configfile, me.npctemplate );
+	mainaiscript := elem.script;
+endif
+
+
+/* Check if player isn't dead
+   time hasn't been reached
+   player hasn't moved
+   player isn't hidden or concealed
+*/
+while ( (ReadGameClock() < endtime) && (!who.dead) && (who.x == x && who.y == y) && (!who.hidden && !who.concealed) )
+
+
+	if (GetHp(me) < myhp)
+		break;
+	endif
+
+	// Only walk tendif owards player if needed, otherwise stand still
+	if (Distance(me, who) > 1)
+		WalkToward(who);
+	endif
+	sleepms(250);
+endwhile
+
+PrintTextAbove(me, "*"+me.name +" has snapped out of the daze!*");
+me.script := mainaiscript;
+EraseObjProperty(me, "AiScript");
+EraseObjProperty(me, "#EnticedBy");
+EraseObjProperty(me, "#Duration");
+
+RestartScript(me);
+
+endprogram
+
+function DisableCombatEvents()
+
+    DisableEvents( SYSEVENT_ENGAGED + SYSEVENT_DAMAGED + EVID_PEACEMADE );
+
+endfunction
+
+function PeaceMade()
+
+	SetWarMode( 0 );
+	SetOpponent( 0 );
+	DisableCombatEvents();
+
+endfunction

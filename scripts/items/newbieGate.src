@@ -1,0 +1,31 @@
+use os;
+use uo;
+
+include "include/recalling";
+include "include/random";
+include "include/classes";
+
+program newbieGate( mobile , gate )
+
+	if( mobile.npctemplate and mobile.script != "tamed" )
+		return;
+	endif
+
+	if(GetObjProperty(mobile, "onlinetimer") > 604800 || GetClasseLevel(mobile))
+		SendSysMessage(mobile, "You don't meet the requirements to enter the newbie dungeon.");
+		//Need to fix for new maps
+		//var move := MoveObjectToLocation( mobile , 1413 , 1716 , 20 , "britannia" , MOVEOBJECT_FORCELOCATION );
+		return;
+	endif
+
+	var dest := GetObjProperty( gate, "Destination" );
+
+	if( !dest.x or !dest.y )
+		return;
+	endif
+
+	var move := MoveObjectToLocation( mobile , CInt(dest.x) , CInt(dest.y) , CInt(dest.z) , dest.realm , MOVEOBJECT_FORCELOCATION );
+	if(!move)
+		Print("Move error msg: "+move);		
+	endif
+endprogram

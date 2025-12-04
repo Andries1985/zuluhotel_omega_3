@@ -1,0 +1,10 @@
+use uo;
+use guilds;
+
+include ":guilds:include/guildchat";
+
+program send_allied_message (who, text)
+
+chatally(who, text);
+
+endprogram

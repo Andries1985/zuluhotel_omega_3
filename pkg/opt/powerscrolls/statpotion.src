@@ -1,0 +1,82 @@
+use uo;
+
+include "include/random";
+include "include/attributes";
+include "include/itemutil";
+include ":gumps:yesno";
+
+var newStatCap := 1500;  //This equals 150 statcap
+
+program usestatpotion(who, potion)
+
+    if(!ReserveItem(potion))
+      return;
+    endif
+
+    if(!Accessible(who , potion))
+      SendSysMessage( who , "You can't reach that." );
+      return;
+    endif
+
+    if(!IsInContainer(who.backpack, potion))
+      SendSysmessage( who, "That item has to be in your backpack." );
+      return;
+    endif
+
+    var stat := GetObjProperty(potion, "sStat");
+    var increase := GetObjProperty(potion, "iIncrease");
+
+    if(GetAttributeBaseValue(who, stat) >= newStatCap && !who.cmdlevel)
+      SendSysmessage( who, "You are already at your physical peak." );
+      return;
+    endif
+
+    if( YesNo( who , "Are you sure?" ))
+    else
+    SendSysMessage( who , "Canceled." );
+    return;
+    endif 
+
+    var des := DestroyItem(potion);
+    sleepMS(200);
+    if(!des)
+      return;
+    endif
+          
+    PlaySoundEffect(who, 0x5C1);
+
+    var statMatrix := GetObjProperty(who, "statMatrix");
+    if(!statMatrix)
+      statMatrix := {0, 0, 0};
+    endif
+    if(stat == ATTRIBUTEID_STRENGTH)
+      if(statMatrix[1] >= 20)
+        statMatrix[1] := 20;
+      else
+        statMatrix[1] := statMatrix[1]+increase;
+      endif
+      SetBaseStrength(who, (GetBaseStrength(who)+increase));
+    elseif(stat == ATTRIBUTEID_DEXTERITY)
+      if(statMatrix[2] >= 20)
+        statMatrix[2] := 20;
+      else
+        statMatrix[2] := statMatrix[2]+increase;
+      endif
+      SetBaseDexterity(who, (GetBaseDexterity(who)+increase));
+    elseif(stat == ATTRIBUTEID_INTELLIGENCE)
+      if(statMatrix[3] >= 20)
+        statMatrix[3] := 20;
+      else
+        statMatrix[3] := statMatrix[3]+increase;
+      endif
+      SetBaseIntelligence(who, (GetBaseIntelligence(who)+increase));
+    endif
+
+    SetObjProperty(who, "statMatrix", statMatrix);
+
+    PlayObjectCenteredEffect(who, 0x33EA, 0x1, 10);
+    PlayObjectCenteredEffect(who, 0x373A, 0x1, 10);
+    PlaySoundEffect(who, 0x5C1);
+    return;
+    
+endprogram

@@ -1,0 +1,18 @@
+use uo;
+
+include ":ArtifactSystem:artifact";
+
+program textcmd_destroyunique( who )
+  SendSysMessage( who, "Please target an Artifact to destroy", FONT_NORMAL,	ARTIFACT_FONT_COLOR );
+  
+  var item := Target( who );
+
+  if (!item)
+    SendSysMessage( who, "Canceled", FONT_NORMAL,	2595 );
+  elseif(!item.isa(POLCLASS_ITEM))
+    SendSysMessage( who, "You can only destroy items", FONT_NORMAL,	2595 );
+  else
+    EraseObjProperty( item, "Artifact" );
+    DestroyItem( item);
+  endif
+endprogram

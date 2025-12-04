@@ -1,0 +1,34 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/dotempmods";
+
+const USE_TIME := 10; // in minutes
+
+program LanceOfJouster(who,lance)
+
+if (!lance.layer)
+	SendSysMessage(who, "You must be holding that to use it.");
+	return 0;
+endif
+var last_use := GetObjProperty(lance, "LastUsed");
+
+if ((last_use + (USE_TIME*60)) > ReadGameClock())
+	SendSysMessage(who, "You can only harness the lances energy once every "+USE_TIME+" minutes.");
+	return 0;
+endif
+
+SetObjProperty(lance, "LastUsed", ReadGameClock());
+PrintTextAbovePrivate(who, "*The lance brims with energy!*", who);
+SetObjProperty(lance, "#Activated", 1);
+lance.color := 1482;
+
+PlaySoundEffect(who, 0x100);
+sleep(5);
+
+EraseObjProperty(lance, "#Activated");
+lance.color := GetObjProperty(lance, "EnchantColor");
+
+endprogram

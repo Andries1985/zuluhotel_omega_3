@@ -1,0 +1,82 @@
+// This will work on anything! 
+
+use os;
+use uo;
+use polsys;
+
+include "include/client";
+include ":gumps:yesno";
+
+program CustomItemName (who, soulpen)
+
+	ReserveItem(soulpen);
+
+	var charges := GetObjProperty(soulpen, "charges");
+	
+	if(charges < 1)
+		SendSysMessage(who, "The Soul Pen disintegrates in your hands!", color:= 814);
+		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, soulpen.color, 3);
+		DestroyItem(soulpen);
+	endif
+
+	SendSysMessage(who, "Select the item you'd like to rename.", color:= 814);
+	var item := Target( who, TGTOPT_NOCHECK_LOS );
+	ReserveItem(item);
+	var playerhasnamed := GetObjProperty(item, "playerhasnamed");
+	
+	if(!item)
+		SendSysMessage(who, "Canceled");
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+
+	if (!item.isa(POLCLASS_ITEM))
+		SendSysmessage( who, "You can only rename items!" );
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+	
+	if (!Accessible(who, item))
+		SendSysmessage( who, "You cannot reach that!" );
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+
+	if(playerhasnamed)
+		SendSysmessage( who, "That has already been named!" );
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+
+	var old_item_name := item.name;
+	item.name := who.name +"'s "+old_item_name;
+
+	charges -= 1;
+	SetObjProperty(soulpen, "charges", charges);
+
+	if (YesNo(who, "Are you sure about the name change?"))
+		if (charges)			
+			SendSysMessage(who, "You use some of the Soul Pen's power, there's still "+charges+" charges left.", color:= 814);
+		else
+			SendSysMessage(who, "You use the last of the Soul Pen's power and it disintegrates in your hands!", color:= 814);
+			DestroyItem(soulpen);
+		endif
+		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, soulpen.color, 3);
+		playerhasnamed := 1;
+		SetObjProperty(item, "playerhasnamed", playerhasnamed);
+	else
+		charges += 1;
+		SetObjProperty(soulpen, "charges", charges);
+		SendSysMessage(who, "Canceled");
+		item.name := old_item_name;
+	endif
+	IncRevision(soulpen);
+	IncRevision(item);
+	Releaseitem(soulpen);
+	Releaseitem(item);
+
+endprogram

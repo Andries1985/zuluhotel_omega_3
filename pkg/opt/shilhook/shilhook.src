@@ -1,0 +1,175 @@
+use uo;
+use os;
+use cfgfile;
+use attributes;
+
+include "include/random";
+include "include/classes";
+include "include/skillpoints";
+include "include/attributes";
+
+program shilhook()
+
+	Print( "Using ShilCheckSkill..." );
+	return 1;
+
+endprogram
+
+
+exported function ShilCheckSkill( who, skillid, difficulty, points )
+
+    var skills_state_array   := GetObjProperty( who, "SkillsState" );
+	var skill_state := skills_state_array[skillid+1];
+	if( skill_state == "d" )
+		return AwardSkillPoints(who, skillid, 0); // fixed here, should drop on skill fail
+    endif
+
+	if( who.IsA(POLCLASS_NPC) && skillid != SKILLID_DETECTINGHIDDEN )
+		return 1;
+	elseif( who.cmdlevel )
+		return 1;
+	elseif( difficulty == 0 )
+		AwardSkillPoints(who, skillid, 0); // In case they have the skill arrow down. no work 
+		return 1;
+	elseif( difficulty < 0 )
+		return SkillAsPercentSkillCheck( who, skillid, difficulty, points );
+	else
+		return DifficultySkillCheck( who, skillid, difficulty, points );
+	endif
+
+endfunction
+
+
+function DifficultySkillCheck( who, skillid, difficulty, points )
+
+	var skill	:= GetEffectiveSkill( who, skillid );
+	if( skill == 0 )
+		if( who.IsA(POLCLASS_NPC) )
+			return 0;
+		endif
+	endif
+	
+	var chance	:= Cint( skill - difficulty + 20 );
+	
+	if( chance < 0 )
+		return 0;
+	elseif( chance == 0 )
+		chance := 2;
+	else
+		chance := Cint( chance * 2.5 );
+		if( chance > 98 )
+			chance := 98;
+		endif
+	endif
+
+	var check := RandomInt(100);
+	if( check >= chance )
+		if( IsSpecialisedIn( who, skillid ) )
+			check := RandomInt(100);
+			if( check >= chance )
+				return 0;
+			else
+				points := 0;
+			endif
+		else
+			return 0;
+		endif
+	endif
+
+	if( !who.npctemplate )
+		points := Cint( points * Cdbl(1.0 - (Cdbl(chance) / 100.0)) );
+		if( points > 0 )
+			AwardSkillPoints( who, skillid, points );
+		endif
+	endif
+
+	return 1;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// This function doesn't check their skill to see if they pass, that's
+// done by checkskill. This makes it HARDER for players to gain points
+// as they get higher in the skill. The whole reason skill gain takes higher
+// for anatomy,eval etc, is that with each point in the skill, that's 1% chance
+// they won't gain next use.
+//
+// Note: After 98 in the skill, the gain will be eaxctly the same.
+// 	 Also look how classed people will always get a stat raise chance if they fail
+//       the 2nd chance test. Gives them 0 skill, but raises stats. This is the classed
+//	 stat raise increase :P
+//
+///////////////////////////////////////////////////////////////////////////////
+
+function SkillAsPercentSkillCheck( who, skillid, difficulty, points )
+
+	var skill	:= GetEffectiveSkill( who, skillid );
+	if( skill == 0 )
+		if( who.IsA(POLCLASS_NPC) )
+			return 0;
+		endif
+	endif
+	
+	// This only kicks off if diff is -1, so at 130 skill chance == 130
+	// any skill above 98 ends up being 98 chance...
+	// 0 skill ends up being 2
+	var chance	:= skill + Cint((difficulty+1) * 15);
+
+	if( chance < 2 )
+		chance := 2;
+	elseif( chance > 98 )
+		chance := 98;
+	endif
+	
+	// So using the 98 example, a 2% chance of getting in to this part
+	// At 50 skills, a 50% chance of getting here
+	// So the higher the skill, the lower the chance...
+	var check := RandomInt(100);
+	if( check >= chance )
+
+		// The are classed in this skill, give them another chance to get some skill
+		// this is the increased skill gain :P
+		if( IsSpecialisedIn( who, skillid ) )
+
+			check := RandomInt(100);
+			if( check >= chance )
+				// less than 10 skill points, give them half?
+				if( chance < 10 )
+					AwardSkillPoints( who, skillid, Cint(points/2) );
+				endif
+				return 0;
+			else
+				points := 0;
+			endif
+		else
+			if( chance < 10 )
+				AwardSkillPoints( who, skillid, Cint(points/2) );
+			endif
+			return 0;
+		endif
+	endif
+
+	if( !who.npctemplate )
+		if( points > 0 )
+			AwardSkillPoints( who, skillid, points );
+		endif
+	endif
+
+	return 1;
+
+endfunction
+
+
+function GetSuccessLevel( who, skillid, success_level )
+
+	success_level := Cint( success_level + IsSpecialisedIn( who, skillid ) );
+
+	if( success_level <= 0 )
+		success_level := 1; // it must be a success (just in case)
+	endif
+
+	return success_level;
+
+endfunction

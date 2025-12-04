@@ -1,0 +1,116 @@
+//Edited September 20, 2024
+
+use uo;
+
+include ":Gumps:gumps";
+include ":Gumps:gumps_ex";
+include ":Gumps:requestgump";
+include ":champspawns:settings";
+include ":champspawns:altar";
+
+CONST GCGUMP_X := 75;
+CONST GCGUMP_Y := 150;
+CONST TXT_CLR_FG := 0;
+CONST TXT_CLR_BG := 2100;
+
+program createChampionSpawn(who)
+  MainMenu(who);
+endprogram
+
+function MainMenu(who)
+  var count := 0;
+  var countTotal := 0;
+  var X := 25;
+  var Y := 70;
+  var page := 1;
+  var background := GFGetCfgConst("Defaults", "BackGround");
+  var foreground := GFGetCfgConst("BackGrounds", "WHITE_PAPER");
+  var gump := GFCreateGump(GCGUMP_X, GCGUMP_Y);
+
+  GFResizePic(gump, 0, 0, background, 500, 300);
+  GFResizePic(gump, 25, 20, foreground, 450, 25);
+  GFTextLine(gump, 50, 22, TXT_CLR_FG, "Champion Spawn Controller");
+  GFPage(gump, page);
+
+  var spawnselem := CS_GetSettingsCfgElem("Spawns");
+  var spawns := GetConfigStringArray(spawnselem, "Spawn");
+
+  foreach spawn in spawns
+    var spawnelem := CS_GetSettingsCfgElem(spawn);
+
+    GFTextLine(gump, (X+20), Y, TXT_CLR_BG+1, spawnelem.Name);
+    GFAddButton(gump, X, (Y+3), 2117, 2118, GF_CLOSE_BTN, spawn);
+    count += 1;
+    Y += 20;
+
+    if ( count > 8 )
+      count := 0;
+      X := X + 150;
+      Y := 70;
+      countTotal += 1;
+    endif
+
+    if(countTotal > 2)
+      GFAddButton(gump, 460, 228, 2706, 2707, GF_PAGE_BTN, page+1);
+      page += 1;
+      GFPage(gump, page);
+      GFAddButton(gump, 460, 53, 2704, 2705, GF_PAGE_BTN, page-1);
+      count := 0;
+      countTotal := 0;
+      Y := 70;
+      X:= 25;
+
+    endif
+    SleepMS( 2 );
+  endforeach
+
+  var result := GFSendGump(who, gump);
+
+  if ( !result[0])
+    return 0;
+  elseif ( result[0])
+    if(ShowDetails(who,result[0] ))
+      return 1;
+    endif
+  else
+    return 1;
+  endif
+
+  MainMenu(who);
+endfunction
+
+function ShowDetails(who, spawn)
+  var spawnelem := CS_GetSettingsCfgElem(spawn);
+
+  var background := GFGetCfgConst("Defaults", "BackGround");
+  var foreground := GFGetCfgConst("BackGrounds", "WHITE_PAPER");
+
+  var gump := GFCreateGump(GCGUMP_X, GCGUMP_Y);
+
+  GFResizePic(gump, 0, 0, background, 500, 300);
+  GFResizePic(gump, 25, 20, foreground, 450, 25);
+
+  GFTextLine(gump, 50, 22, TXT_CLR_FG,  spawnelem.Name);
+
+  GFTextLine(gump, 25, 70, TXT_CLR_BG+1,  "Name: " + spawnelem.Name);
+  GFTextLine(gump, 25, 90, TXT_CLR_BG+1,  "Concurrency: " + spawnelem.Concurrency);
+  GFTextLine(gump, 25,110, TXT_CLR_BG+1,  "Champion: " + spawnelem.Champion);
+
+  GFAddButton(gump, 25, 255, 2322, 2323, GF_CLOSE_BTN, 555);
+
+  GFAddButton(gump, 170-10, 255, 2440, 2440, GF_CLOSE_BTN, 666);
+  GFTextLine(gump, 195, 255, TXT_CLR_BG+1, "Create Spawn");
+
+  var result := GFSendGump(who, gump);
+
+  if ( !result[0])
+    return 0;
+  elseif ( result[0] == 555)
+    return 0;
+  else
+    SendSysMessage(who, "Target Location to create spawn");
+    var loc := TargetCoordinates(who);
+    createAltar(loc, spawn);
+    return 1;
+  endif
+endfunction

@@ -1,0 +1,54 @@
+/////////////////////////////////////////////////////////////////////////
+//
+// Function for playing verse scrolls.
+// This also adds the verse into the book on a play
+//
+/////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+include "include/classes";
+include ":versebook:include/versefunctions";
+
+program VerseScroll(who, scroll)
+
+	if (!ReserveItem(scroll))
+		return 0;
+	endif
+
+	// The current verses ID
+	var verse_id := GetObjProperty(scroll, "verse");
+
+	// Same requirments as actually using the song later
+	if (!CanPlay(who, verse_id))
+		return 0;
+	endif
+
+	//-------------------- Stuff to add song into book if needed
+	// array of all song books in pack
+	var books := {};
+
+	// array of verses in whos song books
+	var verses;
+
+	foreach item in EnumerateItemsInContainer(who.backpack)
+		if (item.objtype == 0xff96)
+			verses := GetObjProperty(item, "Verses");
+			if (verses[verse_id] != 1)
+				books.append(item);
+			endif
+		endif
+	endforeach
+
+	var add_to_book := 0;
+
+	if (books.size())
+		SetObjProperty(who, "#TryAddVerse", {books[1].serial, verse_id});
+	endif
+	// -------------------- End stuff to add to book
+
+	PerformSong(who, verse_id);
+
+	SubtractAmount(scroll, 1);
+
+endprogram

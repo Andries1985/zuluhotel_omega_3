@@ -1,0 +1,68 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/attributes";
+
+program dispel_field( parms, spell_id )
+
+	var circle := 5;
+	var caster;
+	var cast_area;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_area := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		cast_area := CanTargetArea(caster, circle);
+		if (!cast_area)
+			return;
+		endif
+	endif
+
+	var magery := GetEffectiveSkill(caster, SKILLID_MAGERY);
+	var therange := Cint(magery / 15 );
+	
+	if( GetObjProperty( caster , CLASSEID_MAGE ) )
+		therange := Cint( therange * CLASSE_BONUS );
+
+	elseif( GetObjProperty( caster , CLASSEID_PALADIN ) )
+		therange := Cint( therange * CLASSE_BONUS );
+
+	endif
+
+	var items := ListItemsNearLocation (cast_area.x, cast_area.y, cast_area.z, therange);
+	PlaySoundEffect( caster, SFX_SPELL_DISPEL_FIELD );
+    var count := 0;
+	foreach item in items
+		count := count+1;
+		if( GetObjProperty(item, "f") )
+			PlayStationaryEffect( item.x , item.y , item.z , FX_SPELL_DISPEL_FIELD , SPEED_SPELL_DISPEL_FIELD , LOOP_SPELL_DISPEL_FIELD, 0, item.realm );
+                	DestroyItem(item);
+		endif
+		if(count>100)
+			return;
+		endif
+	endforeach
+   
+endprogram

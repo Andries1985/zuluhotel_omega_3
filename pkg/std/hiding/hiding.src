@@ -1,0 +1,84 @@
+////////////////////////////////////////////////////////////
+// hiding.src																						 //
+//																												//
+// Hides the player if:																	 //
+//																												//
+// * He is not in war mode																//
+// * There are no mobiles targetting him in range and LOS //
+// * He passes a skill check															//
+//																												//
+// Author: Racalac, modified 4/16/99											//
+//																												//
+////////////////////////////////////////////////////////////
+
+use uo;
+
+include "include/client";
+include "include/skillpoints";
+include "include/classes";
+include "include/attributes";
+
+const POINTS := 100;
+
+program skill_hide ( hider )
+
+	if( hider.warmode )
+		PrintTextAbovePrivate( hider, "You cannot hide while in War Mode.", hider );
+		return 0;
+	endif
+
+	if (hider.cmdlevel == 1)
+		return 0;
+	endif
+	
+	var range := getHideRange( GetEffectiveSkill( hider , SKILLID_HIDING ) );
+	var thief := GetObjProperty( hider , CLASSEID_THIEF );
+	if( thief )
+		range := Cint( range / ClasseBonus( hider , CLASSEID_THIEF ) );
+	endif
+	
+	var bystanders := ListHostiles( hider, range, LH_FLAG_LOS );
+
+	if( len(bystanders) > 0 )
+		PrintTextAbovePrivate( hider, "You cannot hide as there are hostiles in view!" , hider );
+		return 0;
+	endif
+
+	if( CheckSkill( hider , SKILLID_HIDING , -1 , POINTS ) )
+		if(!hider.hidden)
+			hider.hidden := 1;
+		endif
+		PrintTextAbovePrivate( hider, "You have hidden yourself well" , hider );
+	else
+		if(hider.hidden)
+			hider.hidden := 0;
+		endif
+		PrintTextAbovePrivate( hider, "You can't seem to hide here" , hider );
+	endif
+
+endprogram
+
+
+function getHideRange( skill )
+
+	if( skill > 130 )
+		return 1;
+	elseif( skill > 110 )
+		return 2;
+	elseif( skill > 90 )
+		return 3;
+	elseif( skill > 75 )
+		return 4;
+	elseif( skill > 60 )
+		return 5;
+	elseif( skill > 45 )
+		return 6;
+	elseif( skill > 30 )
+		return 8;
+	elseif( skill > 15 )
+		return 9;
+	else
+		return 10;
+	endif
+	
+endfunction

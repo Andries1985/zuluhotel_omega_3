@@ -1,0 +1,24 @@
+use uo;
+
+include "include/client";
+include "include/attributes";
+
+program changegraphic( who , obj )
+	if(!obj)
+		SendSysMessage( who , "Works like this .changegraphic xxx" );
+		return;
+	endif
+	SendSysMessage( who , "Who do you want to give a graphic change?" );
+		
+	var targ := Target( who );
+	if( !targ )
+		SendSysMessage( who , "Canceled." );
+		return;
+	endif
+	
+	obj := Cint(obj);
+	targ.trueobjtype := obj;
+	targ.graphic := obj;
+	SendSysMessage( who , "Done!." );
+
+endprogram

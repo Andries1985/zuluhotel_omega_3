@@ -1,0 +1,29 @@
+use uo;
+
+include ":staff:include/staff";
+include "util/key";
+
+program makekey ( who )
+
+    SendSysmessage( who , "Target a Door or Container now." );
+    var LockedItem := Target( who );
+
+    if(!lockeditem)
+       SendSysmessage( who , "Canceled." );
+       return;
+    endif
+
+    var lockid := GetObjProperty(LockedItem, "lockid");
+
+    if(!lockid)
+        lockid := AllocLockId();
+        SetObjProperty( LockedItem , "lockid" , lockid );
+	    SendSysmessage( who , "There's no lock on that. Making a new one!" );
+    endif
+
+    var key := CreateItemInBackpack( who , 0x100F , 1 );
+    SetObjProperty( key , "lockid" , lockid );
+    SendSysmessage( who , "Created a key to match that lock." );
+    LogCommand(who, GetProcess(GetPid()).name, LockedItem.desc+"/"+LockedItem.serial, "New Key: "+key.desc+"/"+key.desc);
+
+endprogram

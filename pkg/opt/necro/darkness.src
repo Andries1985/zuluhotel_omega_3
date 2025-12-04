@@ -1,0 +1,80 @@
+use uo;
+
+include "include/spelldata";
+include "include/dotempmods";
+include "include/client";
+include "include/attributes";
+
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_DARKNESS;
+const SPELL_EFFECT_ID		:= FX_SPELL_DARKNESS;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_DARKNESS;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_DARKNESS;
+
+program cast_darkness( parms )
+
+	var circle := GetCircle( SPELLID_DARKNESS );
+	var element := NECRO;
+	var element2 := EARTH;
+	var caster;
+	var cast_on;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+		Send_Attack( cast_on , caster , SPELLID_DARKNESS );
+	else
+		caster := parms;
+		if( TryToCast( caster, SPELLID_DARKNESS ) != SUCCESS )
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+		cast_on := CanTargetSpell( caster , circle , TGTOPT_HARMFUL + TGTOPT_CHECK_LOS );
+		
+		if( !cast_on )
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+	endif
+	
+	if( !fromhit )
+		EraseObjProperty( caster , "#Casting" );
+		cast_on := Reflected( caster , cast_on , circle );
+	endif
+	PlaySoundEffect( cast_on , SFX_SPELL_DARKNESS );
+			
+	var immunity := IsProtected( caster , cast_on , circle );
+	if( immunity == IMMUNED )
+		EraseObjProperty( caster , "#Casting" );
+		return;
+	endif
+	
+	if( immunity == CURSED )
+		circle := circle * 2;
+	endif
+		
+		PlayStationaryEffect( cast_on.x, cast_on.y, cast_on.z, 0x1216, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x-1, cast_on.y, cast_on.z, 0x1215, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x+1, cast_on.y, cast_on.z, 0x1211, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x, cast_on.y+1, cast_on.z, 0x1213, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x, cast_on.y-1, cast_on.z, 0x120F, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x-1, cast_on.y+1, cast_on.z, 0x1214, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x-1, cast_on.y-1, cast_on.z, 0x120E, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x+1, cast_on.y-1, cast_on.z, 0x1210, 250, 0, 0, cast_on.realm );
+		PlayStationaryEffect( cast_on.x+1, cast_on.y+1, cast_on.z, 0x1212, 250, 0, 0, cast_on.realm );
+	
+	
+	var dmg := CalcSpellDamage( caster ,cast_on , circle );		
+		ApplyElementalDamage( caster , cast_on , circle , (dmg/1.5) / 2 , element );
+		ApplyElementalDamage( caster , cast_on , circle , (dmg/1.5) / 2 , element2 );
+	EraseObjProperty( caster , "#Casting" );
+
+
+endprogram

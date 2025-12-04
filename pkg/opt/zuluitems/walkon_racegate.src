@@ -1,0 +1,122 @@
+use os;
+use uo;
+
+include ":gumps:include/gumps";
+
+
+Program walkon_racegate(who, gate)
+
+if (!GetObjProperty(gate, "Race"))
+	SendSysMessage(who, "This gate has not yet been set up.");
+	return 0;
+endif
+
+if (who.title_race)
+	SendSysMessage(who, "You already have a race!");
+	return 0;
+endif
+
+who.paralyzed := 1;
+var sex := who.gender;
+var race := GetObjProperty(gate, "Race");
+var gump := GFCreateGump(20, 20, 400, 300);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9270, 400, 300);
+
+GFResizePic(gump, 125, 20, 9270, 190, 37);
+GFHTMLArea(gump, 125, 29, 190, 37, "<BASEFONT SIZE=10 COLOR=WHITE><center>The "+race+" Race", 0, 0);
+//GFTextLine(gump, 165, 29, 53, "The "+race+" Race");
+
+// player
+GFGumpPic(gump, 20, 38, 12+sex, GetObjProperty(gate, "GumpColour"));
+
+//robe
+GFGumpPic(gump, 20, 38, 60469, 0);
+
+case (race)
+"Human": GFGumpPic(gump, 20, 38, 50636, 0); // pitchfork
+"Dwarf": GFGumpPic(gump, 20, 38, 50635, 0); // pick
+"Goblin": GFGumpPic(gump, 20, 38, 50930, 0); // scythe
+"Elf": GFGumpPic(gump, 20, 38, 50935, 0); // bladed staff
+"Dark Elf": GFGumpPic(gump, 20, 38, 50937, 0); // pitchfork
+"Barbarian": GFGumpPic(gump, 20, 38, 50612, 0); // daxe
+"Omega": GFGumpPic(gump, 20, 38, 50626, 0); // spear
+endcase
+//GFGumpPic(gump, 20, 38, 12, 1036);
+
+GFHTMLArea(gump, 190, 90, 210, 170, raceinfo(), 1, 1);
+
+GFTextLine(gump, 177, 280, 63, "Enter Sosaria?");
+
+GFAddBUtton(gump, 60, 280, 2128, 2129, 1, 10);
+GFAddBUtton(gump, 325, 280, 2119, 2120, 1, 0);
+
+var result := GFSendGump(who, gump);
+
+if (result[0] == 10)
+	if(race == "Omega" && !who.acct.GetProp("FirstGen"))
+		SendSysMessage(who, "This race is only for first generation players!", 3, 67);
+	else
+		SetRace(who, race);
+		SetColour(who, gate);
+		//Need to fix for new map
+		//MoveObjectToLocation(who, 3648, 2672, -2, "britannia", 1);
+		PlayObjectCenteredEffect( who, 0x373a, 10,10);
+		playsoundeffect(who, 0x244);
+		SendSysMessage(who, "You are now a "+race+"!", 3, 67);
+		EraseObjProperty(who, "Converted");
+		who.setfacing(4,1);
+	endif
+endif
+
+who.paralyzed := 0;
+
+endprogram
+
+function SetRace(who, race)
+
+var age := GetGlobalProperty("Age");
+var agename := "";
+
+if(who.acct.GetProp("FirstGen"))
+	age := 1;
+endif
+
+case (CInt(age))
+	1: agename := " - 1st Age";
+	2: agename := " - 2nd Age";
+	3: agename := " - 3rd Age";
+	4: agename := " - 4th Age";
+	5: agename := " - 5th Age";
+default: agename := "";
+endcase
+
+who.title_race := race+agename;
+
+
+endfunction
+
+function SetColour(who, gate)
+
+var colour := GetObjProperty(gate, "RaceColour");
+
+// Human
+if (GetObjProperty(gate, "Race") == "Human" )
+	// Player is NOT white
+	if (who.color != 0)
+		// Set his current colour
+		colour := who.color;
+	endif
+endif
+	
+who.color := colour;
+who.truecolor := colour;
+
+endfunction
+
+function RaceInfo()
+
+return "All races in Britannia are of an equal standing.  The only discernible difference being the colour of the skin.<br><br>However, it is rumoured that each race are keeping secrets. Whispers of unique racial abilities are surfacing. Only time will tell the true story.";
+
+endfunction

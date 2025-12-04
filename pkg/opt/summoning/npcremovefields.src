@@ -1,0 +1,15 @@
+use uo;
+use os;
+
+program removefields(parms)
+
+	var fields := parms[1];
+	var duration := parms[2];
+
+	sleep(duration);
+
+	foreach field in fields
+        	DestroyItem(field);
+	endforeach
+
+endprogram

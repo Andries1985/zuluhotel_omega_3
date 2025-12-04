@@ -1,0 +1,50 @@
+use uo;
+
+include "include/dotempmods";
+include "include/spelldata";
+
+program fanofknives(who)
+
+    var thief := GetObjProperty(who, "IsThief");
+    if(!thief)
+        SendSysMessage(who, "Only Thieves can use this item.");
+        return;
+    endif
+
+    var time_now := ReadGameClock();
+    var last_use := GetObjProperty(who, "LastShuriken");
+    var remaining := last_use - time_now;
+
+    if(time_now < last_use)
+        SendSysMessage(who, "You can only use shurikens every 45 seconds.");
+	    SendSysMessage(who, "Time remaining: "+remaining+" seconds.");
+        return;
+    endif
+
+    var range := thief*3;
+    var victims := ListMobilesNearLocationEx( who.x, who.y, who.z, range, 0x01, who.realm );
+    if(Len(victims) < 2)
+        return;
+    else
+        SetObjProperty(who, "LastShuriken", ReadGameClock()+45);
+    endif
+
+    var los;
+
+    var safevictims := SmartAoE(who, victims);
+    foreach targ in safevictims
+        if(targ != who)
+            los := CheckLosBetween( who.x, who.y, who.z, targ.x, targ.y, targ.z, who.realm );
+            if(los)
+                var checkNoPK := GetObjProperty(targ, "NOPKAREA");
+                PlayMovingEffectEx( who, targ, 0x2C8F, 5, 0, 0x3f, render := 0 );
+                if(!targ.isA(POLCLASS_NPC) && checkNoPK || targ.cmdlevel > 1)
+                    SendSysMessage(targ, who.name+" tried to poison you with a shuriken.");
+                else
+                    SetPoison( targ, 9, "You have been poisoned by " + who.name + ".", who, 1 );
+                endif
+            endif
+        endif
+    endforeach
+
+endprogram

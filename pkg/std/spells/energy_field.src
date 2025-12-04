@@ -1,0 +1,101 @@
+use os;
+use uo;
+
+include "include/fields";
+include "include/spelldata";
+include "include/client";
+include "include/objtype";
+include "include/random";
+include "include/attributes";
+
+program efield( parms, spell_id )
+
+	var circle := 7;
+	var caster;
+	var thetarget;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+
+		thetarget := parms[3];
+
+		if (parms[4])
+			circle := parms[4];
+		endif
+
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+
+        caster := parms;
+		if (IsPaladin(caster))
+			SendSysMessage(caster, "Paladins may not cast this spell!");
+			return 0;
+		endif
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+        thetarget := CanTargetArea(caster, circle);
+        if (!thetarget)
+            return;
+		endif
+	endif
+
+	var fields := {};
+
+	var listeners := {};
+	var sufferers := {};
+
+	var x := thetarget.x;
+	var y := thetarget.y;
+	var z := thetarget.z;
+
+	var dungteles := ListItemsNearLocation(x, y, z, 5, thetarget.realm);
+	foreach thing in dungteles
+		if (thing.objtype == 0x6200)
+			SendSysMessage(caster, "Can't wall this close to dungeon teleporters.");
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+	endforeach
+	
+	var houseteles := ListItemsNearLocation(x, y, z, 15, thetarget.realm);
+	foreach thing in houseteles
+		if (thing.objtype == 0xa3c8)
+			SendSysMessage(caster, "Can't wall here.");
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+	endforeach
+
+	case (get_direction (caster, x, y, z))
+		"north" : fields:= CreateNorthSouthField(caster, UOBJ_EFIELD_NS, x, y, z, 5);
+		"south" : fields:= CreateNorthSouthField(caster, UOBJ_EFIELD_NS, x, y, z, 5);
+		"east"  : fields:= CreateEastWestField(caster, UOBJ_EFIELD_EW, x, y, z, 5);
+		"west"  : fields:= CreateEastWestField(caster, UOBJ_EFIELD_EW, x, y, z, 5);
+		default:  
+			case (Random(2))
+				0: fields:= CreateNorthSouthField(caster, UOBJ_EFIELD_NS, x, y, z, 5);
+        	  	1: fields:= CreateEastWestField(caster, UOBJ_EFIELD_EW, x, y, z, 5);
+			endcase
+	endcase
+	
+	detach();
+	var duration := (ModifyWithMagicEfficiency( caster , 20 + ( Cint(GetEffectiveSkill( caster, SKILLID_MAGERY ) ) / 5 ) )) / 2;
+
+	Sleep(duration);
+
+	foreach fieldpart in fields
+        	DestroyItem(fieldpart);
+	endforeach
+
+endprogram

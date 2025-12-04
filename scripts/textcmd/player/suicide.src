@@ -1,0 +1,29 @@
+use os;
+use uo;
+use vitals;
+
+include "include/attributes";
+
+program suicide( who )
+	var last := GetObjProperty(who,"suicide") + 43200;
+	var tme := ReadGameClock() ;
+	var dif := last - tme;
+	var hours;
+	var mins;
+	if ( tme < last )
+		hours := dif / 3600 ;
+		dif := dif - ( hours * 3600 );
+		mins := dif / 60 ;
+		SendSysmessage (who, "You cannot use this command again for another : "+hours+" hrs "+mins+" mins." );
+		return;
+	endif
+		SetObjProperty(who,"suicide",tme);
+	if( !who.dead )
+		RevokePrivilege( who, "invul" );
+		setobjproperty( who, "guardkill", 1);
+		ApplyRawDamage( who, GetMaxHP(who)+3 );
+	else
+		SendSysMessage( who, "That Tickles!" );
+	endif
+	   
+endprogram

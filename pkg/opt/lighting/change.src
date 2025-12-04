@@ -1,0 +1,26 @@
+//
+// created by Zulu  zuluhotel@home.com
+// made Jan 15, 2000 - updated Jan 17, 2000
+//
+//   elem.change     #	(decimal)
+//   elem.changesnd  #	(decimal)
+//   elem.originsnd  #	(decimal)
+//   elem.staff	     #	(1-4)
+//	 elem.Duration	 #	(# of minutes that this item lasts).
+//
+
+use uo;
+use os;
+use cfgfile;
+
+include "include/change";
+
+program LightChange(who, item)
+
+	if (GetEquipmentByLayer( who,  0x01 ) == item || GetEquipmentByLayer( who,  0x02 ) == item)
+		return 0;
+	endif
+	
+	Change(who, item);
+	
+endprogram

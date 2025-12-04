@@ -1,0 +1,34 @@
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The control script for forensic view items. Makes sure they arn't out of their
+// container.
+//
+///////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+program forensicitem( item )
+
+var container := GetObjProperty(item, "Container");
+container := SystemFindObjectBySerial( container, SYSFIND_SEARCH_OFFLINE_MOBILES );
+
+var i := 1;
+
+repeat
+	sleepms(200);
+
+	if (!container)
+		DestroyItem(item);
+	endif
+
+	if (item.container.serial != container.serial)
+		MoveItemToContainer( item, container);
+	endif
+	i := i + 1;
+until(i > 300); // 5 minute fail safe
+
+DestroyItem(item);
+
+
+endprogram
+

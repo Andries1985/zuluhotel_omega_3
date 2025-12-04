@@ -1,0 +1,30 @@
+use uo;
+
+include "include/client";
+include "include/attributes";
+
+program changesex( who  )
+	SendSysMessage( who , "Who do you want to give a sex change?" );
+	SendSysMessage( who , "Dispel the person before doing this!" );
+		
+	var targ := Target( who );
+	if( !targ )
+		SendSysMessage( who , "Canceled." );
+		return;
+	endif
+	
+	if(targ.trueobjtype == 401)
+		targ.trueobjtype := 400;
+		targ.gender := 0;
+		targ.graphic := 400;
+	else
+		targ.trueobjtype := 401;
+		targ.gender := 1;
+		targ.graphic := 401;
+	endif
+	
+	sleepMS(200);
+	PrintTextAbove(targ, "I'm a pretty ladyboy!");
+	PrintTextAbove(targ, "*wink wink*");
+
+endprogram

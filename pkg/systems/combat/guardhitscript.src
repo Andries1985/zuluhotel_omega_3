@@ -1,0 +1,24 @@
+use uo;
+use os;
+use vitals;
+
+include "include/attributes";
+
+
+program guardhitscript(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+	
+		if (lower(TypeOf(attacker)) == "array")
+			defender 	:= attacker[2];
+			weapon 	:= attacker[3];
+			armor 	:= attacker[4];
+			basedamage := attacker[5];
+			rawdamage	:= attacker[6];
+			attacker 	:= attacker[1];
+		endif
+		
+	ApplyRawDamage( defender , Cint(GetHP(defender) + 3) );
+	SetObjProperty( defender , "guardkill" , 1 );
+
+endprogram
+

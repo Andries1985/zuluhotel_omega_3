@@ -1,0 +1,127 @@
+use uo;
+use os;
+use guilds;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include ":guilds:include/guildconstants";
+include ":guilds:include/guildchat";
+
+program use_guild_chat(who,text)
+
+if (!who.guild)
+	SendSysMessage(who, "You need to be part of a guild before sending messages.");
+	return 0;
+endif
+
+var msgoptions := GetObjProperty(who, "GuildChat");
+
+if (!text || text == "")
+  OptionsMenu(who, msgoptions);
+  return 0;
+endif
+
+case (msgoptions[2])
+  TALK_NONE: return 0;
+  TALK_ALLY: chatally(who, text);
+  TALK_OWN: chatown(who, text);
+  TALK_ALL: chatall(who, text);
+endcase
+    
+endprogram
+
+function OptionsMenu(who, msgopts)
+
+
+var gump := GFCreateGump(25, 25, 440, 350);
+GFResizePic(gump, 0, 0, 9270,440, 350);
+GFResizePic(gump, 10, 10, 9350,420, 330);
+
+GFHTMLArea(gump, 0, 20, 440, 40, "<BASEFONT COLOR=black SIZE=18><u><p align=center>Guild Chat Options:", 0, 0);
+
+var i, y := 80;
+var status;
+GFSetRadioGroup(gump, 1);
+for(i := 3; i >= 0; i := i - 1)
+  if (msgopts[1] == i)
+    status := 1;
+  else
+    status := 0;
+  endif
+  GFRadioButton(gump, 25, y, 210, 211, status, i+10);
+  y := y + 25;
+endfor
+
+y := 230;
+GFSetRadioGroup(gump, 2);
+for(i := 3; i >= 0; i := i - 1)
+  if (msgopts[2] == i)
+    status := 1;
+  else
+    status := 0;
+  endif
+  GFRadioButton(gump, 25, y, 210, 211, status, i+20);
+  y := y + 25;
+endfor
+
+GFTextLine(gump, 20, 50, 53, "Hear Chat:");
+GFTextLine(gump, 60, 85, 44, "Hear all guildchat.");
+GFTextLine(gump, 60, 110, 68, "Hear own guildchat.");
+GFTextLine(gump, 60, 135, 56, "Hear allied guildchat.");
+GFTextLine(gump, 60, 160, 33, "Hear NO guilchat.");
+
+GFTextLine(gump, 20, 200, 53, "Set .c default to:");
+GFTextLine(gump, 60, 230, 44, "Talk to all guilds.");
+GFTextLine(gump, 60, 255, 68, "Talk to own guild.");
+GFTextLine(gump, 60, 280, 56, "Talk to allied guilds.");
+GFTextLine(gump, 60, 305, 33, "Talk to NO guilds.");
+
+GFHTMLArea(gump, 200, 80, 220, 210, "<BASEFONT COLOR=darkgreen>'.ca message' <BASEFONT COLOR=black>: used to quickly send messages to allied guilds.<br><BASEFONT COLOR=darkgreen>'.co message'<BASEFONT COLOR=black> : used to quickly send messages to your own guild.<br><br><BASEFONT COLOR=darkblue><i>Hear all guildchat:</i><BASEFONT COLOR=black> You will hear chat from all guilds.<br><br><BASEFONT COLOR=darkblue><i>Hear own guildchat:</i><BASEFONT COLOR=black> You will only hear chat from your guild members.<br><br><BASEFONT COLOR=darkblue><i>Hear allied guildchat:</i><BASEFONT COLOR=black> You will only hear chat from allied guilds AND your guild.<br><br><BASEFONT COLOR=darkblue><i>Hear NO guildchat:</i><BASEFONT COLOR=black> You won't hear ANY chat at all.<br><br><BASEFONT COLOR=darkblue><i>Talk to all guilds:</i><BASEFONT COLOR=black> .c will send messages to all guilds.<br><br><BASEFONT COLOR=darkblue><i>Talk to own guild:</i><BASEFONT COLOR=black> .c will only send messages to your guild.<br><br><BASEFONT COLOR=darkblue><i>Talk to allied guilds:</i><BASEFONT COLOR=black> .c will only send messages to allied guilds AND your guild.<br><br><BASEFONT COLOR=darkblue><i>Talk to NO guilds:</i><BASEFONT COLOR=black> .c won't send any messages at all.", 1, 1);
+
+GFAddButton(gump, 210, 305, 2119, 2120, GF_CLOSE_BTN, 100);   // CANCEL
+GFAddButton(gump, 350, 305 , 2128, 2129, GF_CLOSE_BTN, 200); // OK
+
+var data := GFSendGump(who, gump);
+
+if (data[0] != 200)
+  SendSysMessage(who, "Cancelled.");
+  return 0;
+endif
+
+var newchat := {0,0};
+foreach key in (data.keys)
+  if (key >= 10 && key <= 13) // hear chat
+    newchat[1] := key-10;
+  elseif (key >= 20 && key <= 23) // talk chat
+    newchat[2] := key-20;
+  endif
+endforeach
+
+if (newchat[1] == msgopts[1])
+  SendSysMessage(who, "Hear chat option unchanged.", 3, 68);
+else
+  case(newchat[1])
+  0: SendSysMessage(who, "Hear chat option changed to: Hear NO guildchat.", 3, 33);
+  1: SendSysMessage(who, "Hear chat option changed to: Hear allied guildchat.", 3, 56);
+  2: SendSysMessage(who, "Hear chat option changed to: Hear own guildchat.", 3, 68);
+  3: SendSysMessage(who, "Hear chat option changed to: Hear all guildchat.", 3, 43);
+  endcase
+endif
+
+if (newchat[2] == msgopts[2])
+  SendSysMessage(who, "Send chat option unchanged.", 3, 68);
+else
+  case(newchat[2])
+  0: SendSysMessage(who, "Send chat option changed to: Talk to NO guilds.", 3, 33);
+  1: SendSysMessage(who, "Send chat option changed to: Talk to allied guilds.", 3, 56);
+  2: SendSysMessage(who, "Send chat option changed to: Talk to own guild.", 3, 68);
+  3: SendSysMessage(who, "Send chat option changed to: Talk to all guilds.", 3, 43);
+  endcase
+endif
+
+SetObjProperty(who, "GuildChat", newchat);
+
+endfunction
+
+
+

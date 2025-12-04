@@ -1,0 +1,42 @@
+use uo;
+
+include ":staff:include/staff";
+
+program lockdown( who, text )
+
+text :=	CInt(text);
+
+if (text < 1)
+	SendSysMessage(who, "Select an item to lock down.");
+	var tgt := Target( who );
+    	if (tgt.isa(POLCLASS_ITEM))
+		PrintTextAbovePrivate( tgt, "*Locked down*", who);
+    		LogCommand(who, GetProcess(GetPid()).name, tgt.desc+"/"+tgt.serial, "AT LOC - "+tgt.x+","+tgt.y+","+tgt.z);
+	    // Added so staff can delete items on multis, had to put in to fix core bug
+        if(who.cmdlevel < 3)
+                if(GetObjProperty(tgt, "LFucker") != who.serial+"/"+who.name)
+                        SendSysMessage(who, "You can only lockdown items you have created");
+                        return;
+                else
+                        tgt.movable := 0;
+                endif
+        else
+           tgt.movable := 0;
+		endif
+   	 else
+            SendSysMessage( who, "You can only lock down items" );
+   	 endif
+
+else
+
+	foreach thing in ListItemsNearLocation( who.x, who.y, who.z, text, who.realm )
+		PrintTextAbovePrivate( thing, "*Locked down*", who);
+		thing.movable := 0;
+	endforeach
+
+	LogCommand(who, GetProcess(GetPid()).name, "Radius - "+text, "AT LOC - "+who.x+","+who.y+","+who.z);
+	SendSysMessage( who, "Locked down all items within "+text+" tiles." );
+
+endif
+
+endprogram

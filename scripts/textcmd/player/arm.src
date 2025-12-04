@@ -1,0 +1,281 @@
+use uo;
+use os;
+
+include "include/client";
+include ":gumps:old-gumps";
+include "include/myutil";
+
+program textcmd_arm(me, text)
+
+var settings := GetObjProperty(me, "ArmSettings");
+
+if (!text || !settings)
+	return ArmMenu(me);
+endif
+
+ArmMe(me, CInt(text));
+
+endprogram
+
+
+function ArmMe(who, text)
+
+if (text < 1 || text > 10)
+	SendSysMessage(who, "Usage is '.arm 1' through to 'arm 10'");
+	SendSysMessage(who, "Say '.arm' to access the arm menu.", 3, 53);
+	return 0;
+endif
+
+var settings := GetObjProperty(who, "ArmSettings");
+
+var wep := settings[text][1];
+var shield := settings[text][2];
+var sequip, wequip;
+
+if(GetObjProperty(who, "AutoDisarm"))
+	var test := Start_Script("textcmd/player/disarm", who);
+	sleepMS(100);
+endif
+
+if (!wep && !shield)
+	SendSysMessage(who, "No arm has been set for slot "+text);
+	SendSysMessage(who, "Say '.arm' to acces the arm menu", 3, 53);
+	return 0;
+endif
+if(wep)
+	wep := SystemFindObjectBySerial(wep);	
+	wequip := FindInInventory(wep, who);
+endif
+if(shield)
+	shield := SystemFindObjectBySerial(shield);
+	sequip := FindInInventory(shield, who);
+endif
+
+
+if (wequip)
+	if (GetEquipmentByLayer( who, LAYER_HAND1 ) != wep)
+		SendSysMessage(who, "You equip your "+wep.desc);
+		EquipItem( who, wep );
+		PlaySoundEffect(who,0x0057);
+	endif
+endif
+if (sequip)
+	if (GetEquipmentByLayer( who, LAYER_HAND2 ) != shield)
+		SendSysMessage(who, "You equip your "+shield.desc);
+		EquipItem( who, shield );
+		PlaySoundEffect(who,0x0057);
+	endif
+endif
+
+endfunction
+
+
+function ArmMenu(who)
+
+var settings := GetObjProperty(who, "ArmSettings");
+
+if (!settings)
+	settings := {{0},{0},{0},{0},{0},{0},{0},{0},{0},{0}};
+endif
+
+GFInitGump();
+
+GFResizePic( 10, 10, 3500, 330, 510);
+
+//GFResizePic( 30, 300, 3000, 290, 140);
+
+GFTextLine( 135, 25, 43, "Arm Setup" );
+
+GFResizePic( 60, 60, 9350, 260, 18);
+GFResizePic( 60, 80, 9350, 260, 18);
+GFResizePic( 60, 110, 9350, 260, 18);
+GFResizePic( 60, 130, 9350, 260, 18);
+GFResizePic( 60, 160, 9350, 260, 18);
+GFResizePic( 60, 180, 9350, 260, 18);
+GFResizePic( 60, 210, 9350, 260, 18);
+GFResizePic( 60, 230, 9350, 260, 18);
+GFResizePic( 60, 260, 9350, 260, 18);
+GFResizePic( 60, 280, 9350, 260, 18);
+
+GFTextLine(125, 320, 0, "Set selected arm setting");
+GFTextLine(125, 350, 0, "Remove selected arm setting");
+GFTextLine(125, 380, 0, "Select disarm bag");
+if(GetObjProperty(who, "AutoDisarm"))
+	GFTextLine(125, 410, 68, "Disarm before arm auto");
+else
+	GFTextLine(125, 410, 34, "Disarm before arm auto");
+endif
+GFTextLine(125, 450, 34, "Wipe all arm settings");
+
+GFButtonID(50, 320, 2450, 2451, 1, 100);
+GFButtonID(50, 350, 2450, 2451, 1, 200);
+GFButtonID(50, 380, 2450, 2451, 1, 400);
+GFButtonID(50, 410, 2111, 2112, 1, 500);
+GFButtonID(50, 450, 2450, 2451, 1, 300);
+GFPage(1);
+
+GFTextLine(220, 487, 0, "Next Page");
+GFButtonPage(305, 490, 9762, 9763, 2);
+
+var i := 1;
+var y := 60;
+var page := 1;
+var wep;
+var shield;
+foreach set in settings
+
+	if (i == 6)
+		page := page + 1;
+		y := 60;
+		GFPage(page);
+		GFButtonPage(30, 490, 9766, 9767, 1);
+		GFTextLine(50, 487, 0, "Previous Page");
+	endif
+
+	GFRadioButton(37, y+3, 9792, 9793, 0, i);
+	GFTextLine(23, y+5, 0,i);
+
+	if(set[1])
+		wep := SystemFindObjectBySerial(set[1]);
+	else
+		wep := 0;
+	endif
+	if(set[2])
+		shield := SystemFindObjectBySerial(set[2]);
+	else
+		shield := 0;
+	endif
+
+	if (wep)
+		GFTextCrop( 63, y, 257, 18, 0, wep.desc );
+	endif
+
+	if (shield)
+		GFTextCrop( 63, y+20, 257, 18, 0, shield.desc );
+	endif	
+
+	y := y + 50;
+	i := i + 1;
+endforeach
+
+
+var data := GFSendGump(who);
+
+case(data[0])
+	100: AddArm(who, settings, data.keys[2]); 	return ArmMenu(who);
+	200: RemoveArm(who, settings, data.keys[2]);	return ArmMenu(who);
+	300: if (YesNo(who))WipeArm(who);endif		return ArmMenu(who);
+	400: SetDisarmBag(who);						return ArmMenu(who);
+	500: ToggleAutoDisarm(who);						return ArmMenu(who);
+endcase
+
+endfunction
+
+function WipeArm(who)
+	
+	var settings := {{0},{0},{0},{0},{0},{0},{0},{0},{0},{0}};
+	
+	SendSysMessage(who, "Weapon configuration has been wiped", 3, 33);
+
+	return SetObjProperty(who, "ArmSettings", settings);
+
+endfunction
+
+function YesNo(who)
+
+GFInitGump();
+GFResizePic( 10, 10, 3500, 180, 90);
+GFTextLine( 67, 20, 43, "Wipe All?" );
+GFTextLine( 42, 40, 34, "Can't be undone" );
+
+
+GFButtonID( 25, 65, 0x850, 0x851, 1 );
+GFButtonID( 120, 65, 0x847, 0x849, 1 );
+
+var data := GFSendGump( who );
+
+if (data[0] == 1025)
+	return 1;
+else
+	return 0;
+endif
+
+endfunction
+
+function AddArm(who, settings, num)
+
+	if (num >= 100)
+		SendSysMessage(who, "You must select an arm slot.");
+		return 0;
+	endif
+
+	var wep := GetEquipmentByLayer( who, LAYER_HAND1 );
+	var shield := GetEquipmentByLayer( who, LAYER_HAND2 );
+
+	if (!wep && !shield)
+		SendSysMessage(who, "Cancelled, you arn't holding anything.");
+		return 0;
+	endif
+
+	settings[num] := {wep.serial, shield.serial};
+	
+	SendSysMessage(who, "Weapon configuration saved to .arm "+num, 3, 53);
+
+	return SetObjProperty(who, "ArmSettings", settings);
+
+endfunction
+
+
+function RemoveArm(who, settings, num)
+	
+	if (num >= 100)
+		SendSysMessage(who, "You must select an arm slot.");
+		return 0;
+	endif
+
+	settings[num] := {0, 0};
+	
+	SendSysMessage(who, "Any weapon configuration removed from .arm "+num, 3, 43);
+
+	return SetObjProperty(who, "ArmSettings", settings);
+
+endfunction
+
+
+function FindInInventory(thing, me)
+
+	foreach item in enumerateitemsincontainer(me.backpack)
+		if ( item.serial == thing.serial )
+			return 1;
+		endif
+	endforeach
+	return 0;
+
+endfunction
+
+function SetDisarmBag(me)
+
+	SendSysMessage(me,"Select a container");
+	var bag := Target(me);
+
+	if (!InInventory(me.backpack, bag))
+		SendSysMessage(me,"That is not in your inventory.");
+		return;
+	endif
+
+	if(!bag.isa(POLCLASS_CONTAINER) || bag.isa(POLCLASS_SPELLBOOK))
+		SendSysMessage(me,"That is not a container.");
+		return;
+	endif
+
+	SetObjProperty(me,"disarmbag",bag.serial);
+
+endfunction
+
+function ToggleAutoDisarm(who)
+	if(!GetObjProperty(who, "AutoDisarm"))
+		SetObjProperty(who, "AutoDisarm", 1);
+	else
+		EraseObjProperty(who, "AutoDisarm");
+	endif
+endfunction

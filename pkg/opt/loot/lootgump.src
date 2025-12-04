@@ -1,0 +1,115 @@
+use uo;
+use os;
+
+include ":gumps:include/gumps";
+include "include/constants/propids";
+
+program loogump(corpse)
+
+var mobs;
+var whoserial := GetObjProperty( corpse, PROPID_CORPSE_CORPSE_OF);
+repeat
+
+mobs := ListMobilesNearLocationEx( corpse.x, corpse.y, corpse.z, 2, 0x02+0x01, corpse.realm );
+
+foreach mobile in mobs
+	if (mobile.serial == CInt(whoserial))
+		if (CheckLineOfSight( mobile,  corpse ))
+			CheckLootGump(mobile, corpse);
+		endif
+	endif		
+endforeach
+
+sleepms(500);
+
+until (GetObjProperty(corpse, "LootGumpIgnore") || !corpse);
+
+endprogram
+
+function CheckLootGump(who, corpse)
+
+var items := EnumerateItemsInContainer(corpse);
+var yes := 0;
+
+foreach item in items
+	// items container is the corpse, not an item in a bag
+	if (item.container == corpse)
+		// item is NOT a robe
+		if (item.objtype != 7939)
+			yes := 1;
+			break;
+		endif
+	endif
+endforeach
+
+// Nothing found on corpse, set corpse to never check again
+if (!yes)
+	return SetObjProperty(corpse, "LootGumpIgnore", 1);
+endif
+
+SendLootGump(who, corpse);
+
+endfunction
+
+
+function SendLootGump(who, corpse)
+
+Start_Script(":loot:lootgumpdistance", {who, corpse, Getpid()});
+var gump := GFCreateGump(20, 20, 160, 85);
+GFMovable(gump,0);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9270, 160, 85);
+GFAddAlphaRegion(gump, 30, 30, 140, 65);
+
+GFTextLine(gump, 47, 32, 67, "Loot your corpse?");
+
+GFAddButton(gump, 75, 65, 2311, 2312, 1, 5); 
+
+var result := GFSendGump(who, gump);
+
+if (result[0] == 5)
+	LootCorpse(who, corpse);
+elseif (result[0] == 0)
+	SetObjProperty(corpse, "LootGumpIgnore", 1);
+endif
+
+endfunction
+
+function LootCorpse(who, corpse)
+
+var items := EnumerateItemsInContainer(corpse);
+var xy;
+
+if (who.dead || (Distance(who, corpse) > 2) || !CheckLineOfSight( who, corpse ))
+	SendSysMessage(who, "Cancelled", 3, 43);
+	return 0;
+endif
+
+SendSysMessage(who, "Now moving items into your backpack...", 3, 53);
+
+foreach item in items
+	if (who.dead || (Distance(who, corpse) > 2) || !CheckLineOfSight( who,  corpse ))
+		SendSysMessage(who, "Cancelled", 3, 43);
+		return 0;
+	endif
+
+	// only move top level items
+	if (item.container == corpse)
+		xy := GetObjProperty(item, "BackPackXYZ");
+		// items dragged onto the player give a HUGE x
+		if (xy[1] < 1000 && xy[1] > 0)
+			MoveItemToContainer( item, who.backpack, xy[1], xy[2] );
+			sleepms(500);
+		else
+			MoveItemToContainer( item, who.backpack, 142, 131 );
+			sleepms(500);
+		endif
+	endif
+endforeach
+
+SendSysMessage(who, "All items moved into your pack!", 3, 53);
+SetObjProperty(corpse, "LootGumpIgnore", 1);
+
+endfunction
+

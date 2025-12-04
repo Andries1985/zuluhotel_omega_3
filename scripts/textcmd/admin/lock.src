@@ -1,0 +1,12 @@
+use os;
+use uo;
+include ":staff:include/staff";
+program textcmd_lock( speaker )
+    SendSysMessage( speaker, "What do you wish to lock?" );
+
+    var what := Target( speaker,TGTOPT_NOCHECK_LOS );
+    if (what)
+        what.locked := 1;
+	LogCommand(speaker, GetProcess(GetPid()).name, what.desc+"/"+what.serial);
+    endif
+endprogram

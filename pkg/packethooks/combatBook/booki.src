@@ -1,0 +1,13 @@
+use uo;
+use os;
+use cfgfile;
+use polsys;
+use datafile;
+
+program combatBookHook()
+	return 1;
+endprogram
+
+exported function bookiPacket( character, byref packet )
+	return 1;
+endfunction

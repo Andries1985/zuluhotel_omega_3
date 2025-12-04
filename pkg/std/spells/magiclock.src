@@ -1,0 +1,126 @@
+// Magic lock and Magic unlock  version .4
+// by Zulu (zulu@zuluhotel.com)   July 5, 2000
+
+use os;
+use uo;
+
+include "include/spelldata";
+include "include/classes";
+include "include/client";
+include "util/key";
+include "include/checkcity";
+include "include/attributes";
+
+program magiclock( parms, spell_id )
+
+	var circle := 3;
+	var caster;
+	var cast_on;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+
+		cast_on := CanTargetThing(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
+			
+		if (!cast_on)
+			return;
+		endif
+	endif
+	
+	if( PROPID_CHEST_SPAWNPOINT_CHEST )
+		SendSysMessage(caster,"You cannot lock that!");
+		return;
+	endif
+
+	if( !cast_on.isa( POLCLASS_LOCKABLE ) )
+		SendSysMessage( caster , "That can't be locked." );
+			EraseObjProperty(caster, "#Casting");
+		return;
+	endif
+	
+	if (cast_on.objtype == 0x7100 or cast_on.objtype == 0xefa)
+		SendSysMessage(caster, "That can't be locked.");
+			EraseObjProperty(caster, "#Casting");
+		return;
+	endif 
+
+	if ((cast_on.multi) or (GetObjProperty(cast_on,"houseserial")) or (GetObjProperty(cast_on,"house_serial")))
+		SendSysmessage(caster, "That cant be magic locked!");
+		playlightningbolteffect(caster);
+		EraseObjProperty(caster, "#Casting");
+		return;
+	endif
+
+	if (cast_on.locked)
+		var mL := GetObjProperty(cast_on, "magicLocked");
+		if(mL && mL < ReadGameClock())
+		else
+			SendSysMessage(caster,"That is already locked!");
+			EraseObjProperty(caster, "#Casting");
+			return;
+		endif
+	endif
+	
+	var magery	:= GetEffectiveSkill( caster , SKILLID_MAGERY );
+	if ((checkfordoors(cast_on)))
+		if(IsInSafeArea(cast_on) || IsInGuardedArea(cast_on))
+			SendSysMessage(caster, "Can't lock doors in safe or guarded areas.");
+			return;
+		endif
+		var duration := magery;
+		if( GetObjProperty( caster , CLASSEID_MAGE ) )
+			duration := cint( duration * CLASSE_BONUS );
+		endif
+		SetObjProperty(cast_on, "magicLocked", ReadGameClock()+duration);
+		SendSysMessage(caster, "You lock the door for "+duration+" seconds.");
+	endif
+
+	var lockdiff := magery;
+	if( GetObjProperty( caster , CLASSEID_MAGE ) )
+		lockdiff := cint( lockdiff * CLASSE_BONUS );
+	endif
+	
+	if(lockdiff > 150)
+		lockdiff := 150;
+	endif
+
+	PlaySoundEffect( cast_on , SFX_SPELL_MAGIC_LOCK1 );
+	Setobjproperty( cast_on , "LockDifficulty", lockdiff );
+	SetObjProperty( cast_on , "lockid" , AllocLockId() );
+	EraseObjProperty( cast_on , "spawnchest");
+	PrintTextAbovePrivate( cast_on , "*Locked*" , caster );
+	cast_on.locked := 1;
+	EraseObjProperty(caster, "#Casting");
+endprogram
+
+
+function checkfordoors(cast_on)
+
+	if( (cast_on.graphic<=0x1ffc) and (cast_on.graphic>=0x1fed) or 
+    	    (cast_on.graphic<=0x06f4) and (cast_on.graphic>=0x0675) )
+		return 1;
+	endif
+
+	return 0;
+
+endfunction

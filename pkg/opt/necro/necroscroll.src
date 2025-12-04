@@ -1,0 +1,45 @@
+use uo;
+use os;
+
+include "include/spelldata";
+
+program use_scroll(who, scroll)
+
+	if (GetObjProperty(who, CLASSEID_MAGE))
+	elseif (GetObjProperty(who, CLASSEID_POWERPLAYER))
+	else
+		SendSysMessage(who,"Only Mages and Powerplayers can use this!");
+		return;
+	endif
+	
+	if (!ReserveItem(scroll))
+		return 0;
+	endif
+	set_critical(1);
+	if (scroll.amount)
+		var SpellID := GetObjProperty(scroll, "SpellID");
+		SpellID := Cint(SpellID);
+		SubtractAmount(scroll, 1);
+		
+		// Do a skill check to not even try to cast if we can't
+		SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_SCROLL_SKILL_GAIN, CASTINGOPT_USE_SCROLL});
+		
+		var spell := GetScript( SpellID );
+
+		if(!GetObjProperty(who, "#Casting"))
+			SetObjProperty( who , "#Casting" , 1 );
+		else
+			SendSysMessage(who,"You are already casting something!");
+			return;
+		endif
+		
+		SetObjProperty(who,"CastingNecro",1);
+	
+		Start_Script( spell , who );
+		
+		while( GetObjProperty( who , "#Casting" ) )
+			Sleepms( 250 );
+		endwhile
+	endif
+	
+endprogram

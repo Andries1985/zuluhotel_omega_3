@@ -1,0 +1,48 @@
+use uo;
+
+include ":staff:include/staff";
+program textcmd_createnpc( who, template )
+
+	var gCmd := GetObjProperty(who, ".createnpc");
+	if(!gCmd)
+		SendSysMessage( who , "You havn't been granted this command." );
+		LogCommand(who, GetProcess(GetPid()).name, who.name+" is trying to use .createnpc without permission!");
+		return;
+	endif
+	if(who.cmdlevel < 4 && ReadGameClock() > gCmd)
+		SendSysMessage( who , "You can't use this command anymore." );
+		EraseObjProperty(who, ".createnpc");
+		return;
+	endif
+
+	if( !template )
+		SendSysMessage( who, "Usage is .createnpc <template>" );
+		return;
+	endif
+
+	var forbidden := GetGlobalProperty( "ForbiddenTemplates" );
+	if( !forbidden )
+		forbidden := array;
+	endif
+
+	foreach monstername in forbidden
+	if(Lower(monstername)== Lower(template))
+		SendSysMessage( who, "This npc type is forbidden, you aren't allowed to create it." );
+		return;
+	endif
+	endforeach
+
+	var props := struct;
+	props.+facing := who.facing;
+	var loc := TargetCoordinates(who);
+
+	var result := CreateNpcFromTemplate( template, loc.x, loc.y, loc.z, props, loc.realm );
+	if (!result)
+		SendSysMessage( who, "NPC Creation Failed: " + result.errortext );
+	else
+        if(who.cmdlevel < 5)
+		    SetObjProperty(result, "LFucker", who.serial+"/"+who.name);
+        endif
+		LogCommand(who, GetProcess(GetPid()).name, result.x+","+result.y+","+result.z+","+result.realm, template+"/"+result.serial);
+	endif
+endprogram

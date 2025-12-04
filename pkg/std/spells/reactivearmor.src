@@ -1,0 +1,53 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/attributes";
+
+program reactivearmor( caster, spell_id )
+
+	var circle := 1;
+
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(caster) == "Array")
+					spell_id := caster[2];
+			caster := caster[1];
+
+		endif
+	if (!Can_Cast(caster,circle))
+		return;
+	endif
+
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+   	var cast_on := Target( caster );
+
+    	if (!cast_on)
+      		SendSysMessage( caster, "Canceled.");
+		return;
+    	endif
+
+	PlaySoundEffect(cast_on, SFX_SPELL_REACTIVE_ARMOR);
+	PlayObjectCenteredEffect( cast_on, FX_SPELL_REACTIVE_ARMOR , SPEED_SPELL_REACTIVE_ARMOR , LOOP_SPELL_REACTIVE_ARMOR );
+	var magery 	:= GetEffectiveSkill(caster, SKILLID_MAGERY);
+	var power 	:= ModifyWithMagicEfficiency( caster , Cint( magery / 15 ) );
+	var duration  := ModifyWithMagicEfficiency( caster , Cint( magery / 5 ) );
+	
+	if( GetObjProperty( caster , CLASSEID_MAGE ) )
+		power := Cint( power * CLASSE_BONUS );
+		duration := Cint( duration * CLASSE_BONUS );
+	elseif( GetObjProperty( caster , CLASSEID_PALADIN ) )
+		power := Cint( (power * CLASSE_BONUS) * 2 );
+		duration := Cint( (duration * CLASSE_BONUS) * 2 );
+	endif
+
+	SetObjProperty( cast_on , "ReactiveArmor" , power );
+	SendBoostMessage( caster, cast_on, "reactive armor", power, duration, 0 );
+	Detach();
+	Sleep( duration );
+	EraseObjProperty( cast_on , "ReactiveArmor" );
+
+endprogram

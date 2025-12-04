@@ -1,0 +1,65 @@
+// Regrow...
+// the one that has to be fixed and upgraded the most.
+// it makes fruits regrow, and check if too many trees are around, and in this case
+// executes treedeath ;)
+// Maybe you can put this check at the creation, so that it blocks grow too ;)
+// yo!
+
+use os;
+use uo;
+use cfgfile;
+
+include "botanik";
+
+program regrow(parms)
+
+  var cfg:=readconfigfile("tree");
+
+  var leaves := parms[1];
+  var wait := cint(parms[2]);
+  var amount := cint(parms[3]);
+  var i;
+  var restype;
+  var death;
+
+  if (!leaves) 
+    return; 
+  endif
+
+  var amt:=GetObjProperty(leaves, "amt");
+
+  setobjproperty(leaves,"#regrow",1);
+  SetObjProperty(leaves,"PlacedBy", parms[4]);
+
+  for(i:=amt;i>0;i:=i-1)
+    if (counttree(leaves)>3)
+      restype:=0;
+      death:=0;
+      foreach item in listitemsnearlocation(cint(leaves.x),cint(leaves.y),cint(leaves.z),1,leaves.realm)
+
+        if (item.serial!=leaves.serial)
+          restype:=cfg[item.objtype].product;
+          death:=getobjproperty(leaves,"death");
+        endif
+              
+        if ((restype) and (!death))
+            setobjproperty(leaves,"death",1);
+            start_script("treedeath",{leaves,cfg[leaves.objtype].treetype});
+            eraseobjproperty(leaves,"#regrow");
+            return;
+        endif
+
+      endforeach
+
+    endif
+
+    sleep(wait);
+    amt:=amt-1;
+    setobjproperty(leaves,"amt",amt);
+    printtextabove(leaves,"*grows*");
+
+  endfor
+
+  eraseobjproperty(leaves,"#regrow");
+
+endprogram

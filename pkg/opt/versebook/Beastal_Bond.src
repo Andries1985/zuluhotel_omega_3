@@ -1,0 +1,252 @@
+use uo;
+use os;
+
+include "include/attributes";
+include "include/classes";
+include ":versebook:include/versefunctions";
+include ":versebook:include/verseconstants";
+
+var stamina, diff, skills, element, instrument, musicianship, name, time;
+
+// How many seconds between draingin
+var DRAIN_LOOP := 3;
+
+const GFX_EFFECT := 14138;
+const GFX_COLOUR := 67;
+const SOUND_EFFECT := 0x1F3;
+const BASE_TIME := 15; // 15 mins
+var COUNTER := 0;
+var origx, origy, origz, origrealm;
+var breakplease := 0; // to end the script
+
+program Beastal_Bond(parms)
+
+	// Sent with the song_id (a number like spellid)
+	var who := parms[1];
+	var song_id := parms[2];
+
+	Attach(who);
+
+	// Checks rules for playing the particular song, class, stamina skills, instrunment
+	// Returns cfg info for song to save processing power
+	var can_play := CanPlay(who, song_id);
+	if (!can_play)
+		return 0;
+	else
+		stamina := can_play[1];
+		diff := can_play[2];
+		skills := can_play[3];		 // array of skill_ids to base verse on
+		element := can_play[4];		 // array of elements to base damage on
+		instrument := can_play[5];	 // Item ref to music instrument found
+		musicianship := can_play[6]; // The players music SKILL level
+		name := can_play[7];		 // The name of the song
+	endif
+
+	// Atm we don't allow bards to move, if they lose hp, stop
+	var x := who.x;
+	var y := who.y;
+	var hp := GetHP(who);
+
+	var last_played := ReadGameClock(); // Used JUST for the playing sound, does a check against music skill too
+
+	// All skill checks are done in here
+	if (!SucceedPlayingVerse(who, skills, diff, instrument, name))
+		return 0;
+	endif
+
+	// Calculate the range, damage, and specify the loop var, as well as hit var
+	var range := GetVerseRange(who, musicianship);
+	time := CalculateBardicDamage(who, skills, diff, BASE_TIME);
+	var i := DRAIN_LOOP;
+	var hit;
+	var animals := {};
+
+	var has_bond := SystemFindObjectBySerial(GetObjProperty(who, "BeastalBond"));
+	if (!has_bond)
+		EraseObjProperty(who, "BeastalBond");
+		has_bond := 0;
+	endif
+
+	origx := who.x;
+	origy := who.y;
+	origz := who.z;
+	origrealm := who.realm;
+
+	// ------------- The looping main effect of the song ------------ \\
+	repeat
+
+		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
+		if (ReadGameClock() >= last_played)
+			if (!PlayBardicMusic(who, diff, instrument))
+				return 0;
+			endif
+			last_played := ReadGameClock()+7;
+		endif
+
+		// set hit to 0 again
+		hit := 0;
+		if ( i == DRAIN_LOOP)
+		
+
+			// no animal bound
+			if (!has_bond && !who.concealed)
+				foreach animal in ListMobilesNearLocation( who.x, who.y, who.z, range, who.realm )
+					if (BondToAnimal(who, animal, range))
+						SendSysMessage(who, "You have established a magical bond between a creature.", 3, 67);
+						Start_Script(":versebook:Beastal_Bond_Reporting", {who, animal});
+						breakplease := 1; // stop playing
+						break;
+					// failed, use half stamina
+					else
+						if (!ConsumeBardStamina(who, stamina, 0))
+							breakplease := 1; // stop playing
+							break;
+						endif
+					endif
+					hit := 1;
+				endforeach
+				
+			// has an animal, take a look
+			else
+				// this allows u to transport and not stop playing
+				x := 0;
+				y := 0;
+
+				// means animal is dead, if it got here, it wasn't dead earlier.  Has died since viewing it.
+				// second part means the timer has run out...
+				
+				if (!SystemFindObjectBySerial(GetObjProperty(who, "BeastalBond")) || !GetObjProperty(who, "BeastalBond"))
+					EraseObjProperty(who, "BeastalBond");
+					breakplease := 1; // stop playing
+					break;
+				endif
+				
+				// cancel button pressed
+				if (GetObjProperty(who, "#StopPlaying"))
+					EraseObjProperty(who, "#StopPlaying");
+					breakplease := 1; // stop playing
+					break;
+				endif
+				
+				ViewBondedBeast(who);
+				// he's viewing the beast
+				if (GetObjProperty(who, "#ViewingBeast"))
+					if (!ConsumeBardStamina(who, stamina, 1))
+						breakplease := 1; // stop playing
+						break;
+					endif
+				else
+				// not viewing the beast
+					if (!ConsumeBardStamina(who, stamina, 0))
+						breakplease := 1; // stop playing
+						break;
+					endif
+				endif
+				hit := 1;
+			endif
+			
+			i := 0;
+			
+			// No-one was hit, use half stamina
+			if (hit == 0)
+				if (!ConsumeBardStamina(who, stamina, 0))
+					break;
+				endif
+			endif
+			
+		endif
+
+		i := i + 1;
+		sleep(1);
+
+	until ( InterruptedPlaying(who, x, y, stamina, hp) || breakplease);
+
+	// send bard back to position, shouldn't be noticable?
+	BringBackToPosition(who);
+
+endprogram
+
+function ViewBondedBeast(who)
+
+	if (GetObjProperty(who, "#ViewingBeast"))
+		return 0;
+	endif
+
+	if (COUNTER >= 3)
+		var beast := SystemFindObjectBySerial(GetObjProperty(who, "BeastalBond"));
+		Start_Script(":versebook:Beast_Bond_View", {who, beast});
+	else
+		SendSysMessage(who, "Establishing a pathway into the creatures mind... "+(3-COUNTER));
+		COUNTER := COUNTER + 1;
+	endif
+
+endfunction
+
+function BondToAnimal(who, animal, range)
+	
+	if (GetObjProperty(who, "BeastalBond"))
+		return 0;
+	endif
+	
+	var conf := ReadConfigFile( ":*:npcdesc" );
+	var elem;
+	elem := FindConfigElem( conf , animal.npctemplate );
+	if( !elem )
+		return 0;
+	endif
+
+	var difficulty;
+	if( !GetObjProperty( animal , "untamable" ) )
+		difficulty := GetObjProperty( animal , "tamableAt" );
+		if( !difficulty )
+			difficulty := GetConfigInt( elem , "tameskill" );
+		endif
+	endif
+	
+	if( !difficulty )
+		return 0;
+	endif
+	
+	if (RandomInt(4) != 3)
+		PrintTextAbovePrivate(animal, "*"+animal.name+" resists the bond*", who);
+		PlayObjectCenteredEffectEx(animal, 14154, 8, 15, 43);
+		return 0;
+	endif
+	
+	PrintTextAbovePrivate(animal, "*"+animal.name+" accepts your bond!*", who, 3, 67);
+	PlayObjectCenteredEffectEx(animal, GFX_EFFECT, 8, 15, GFX_COLOUR);
+	
+	PlaySoundEffect(who, 0x0f8);
+	var setbb := SetObjProperty(who, "BeastalBond", animal.serial);
+	
+	SetObjProperty(who, "BeastalBondTimer", (ReadGameClock() + time*60));
+
+	// create the npc
+	var override := struct;
+	override.+color := 67;
+	override.+name := "Beastal Bond";
+	override.+concealed := 1;
+	override.+frozen := 1;
+	override.+script := ":versebook:ai_beastal_bond";
+	//Old Britannia Map
+	//var wisp := CreateNpcFromTemplate("wisp", 5276, 1186, 0, override, "britannia");
+	var wisp	:= CreateNpcFromTemplate( "wisp", 6338, 1581, 0, override, "britannia_alt" );
+	SetObjProperty(wisp, "Animal", animal.serial);
+	SetObjProperty(wisp, "Master", who.serial);
+	return 1;
+	
+endfunction
+
+function BringBackToPosition(who)
+
+	who.frozen := 0;
+	who.concealed := 0;
+
+	EraseObjProperty(who, "#ViewingBeast");
+
+	// only move if not already there
+	if (who.x != origx && who.y != origy && who.realm != origrealm)
+		MoveObjectToLocation(who, origx, origy, origz, origrealm, MOVEOBJECT_FORCELOCATION);
+	endif
+
+endfunction

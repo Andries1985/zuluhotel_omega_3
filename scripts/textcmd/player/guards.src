@@ -1,0 +1,31 @@
+
+use uo;
+use os;
+use cfgfile;
+
+program textcmd_guards( who, text )
+
+	
+	if( who.hidden )
+		SendSysMessage( who, "You can't call the guards while hidden." );
+	elseif( who.dead )
+		SendSysMessage( who, "You can't call the guards while dead." );
+	elseif( who.concealed )
+		SendSysMessage( who, "You can't call the guards while concealed." );
+	else
+		var nextg :=CInt(GetObjProperty(who, "nextguard"));
+		var realclock:=ReadGameClock();
+		if ( ( realclock < nextg ) && !who.cmdlevel)
+			SendSysMessage( who, "You have to wait " + (nextg-realclock) + " seconds to use .guards again.");
+			return;
+		endif
+		PrintTextAbove( who, "Guards!!!" );
+		if( text )
+			PrintTextAbove( who, text );
+		endif
+	
+		SetObjProperty(who, "nextguard", ReadGameClock() + 5);
+		Start_Script( ":areas:callguards", who );
+	endif
+
+endprogram

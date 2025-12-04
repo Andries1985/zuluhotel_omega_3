@@ -1,0 +1,32 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetProp() - Gets properties on objects
+//
+//////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+program GetProp(who, text)
+
+if (!text)
+	SendSysMessage(who, "Enter a member name to find.");
+	return 0;
+endif
+
+var targ := Target(who, TGTOPT_NOCHECK_LOS);
+
+if (!targ)
+	return 0;
+endif
+
+if (targ.get_member(text).errortext)
+	SendSysMessage(who, targ.get_member(text).errortext, 3, 39);
+	return 0;
+endif
+
+
+// Second half of the message
+SendSysMessage(who, text+": "+targ.get_member(text), 3, 73);
+
+endprogram

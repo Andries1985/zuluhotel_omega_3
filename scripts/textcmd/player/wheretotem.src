@@ -1,0 +1,19 @@
+use os;
+use uo;
+
+program ft( who )
+	var totem;
+	var totemserial;
+	totemserial := GetObjProperty( who , "humuc" );
+	if (!totemserial)
+		SendSysmessage( who , "You have no totem." );
+		return;
+	endif
+	totem := SystemFindObjectBySerial( totemserial );
+	if (!totem or !totem.x)
+		SendSysmessage( who , "You have no totem." );		
+		return;
+	endif
+	SendSysmessage( who , "Totem is at : "+totem.x+", "+totem.y+", "+totem.z );	
+endprogram
+

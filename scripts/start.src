@@ -1,0 +1,33 @@
+///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////
+//  START.SRC - script that is run during startup of server.
+//
+//  Author: ???? ????/??/??
+//
+//  Recent Modifications
+//      1999/06/28 Ignatius added creation of system teleporters.
+//
+////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////
+
+use uo;
+use os;
+
+include "include/utility";
+include "include/teleporters";
+
+include "util/bank";
+
+start_script("blockLogin");
+
+SetGlobalProperty("signs",{"NONE"});
+
+OpenWorldBank();
+
+SetGlobalProperty( "#NoNpcLooting" , 1 );
+
+find_or_create_storage("Merchant Storage");
+
+start_script("EquipTemplateValidation");
+
+start_script("CustomHpFix");

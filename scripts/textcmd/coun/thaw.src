@@ -1,0 +1,28 @@
+use uo;
+use polsys;
+
+include ":staff:include/staff";
+program thaw( gm )
+
+    SendSysMessage( gm, "Who do you wish to thaw?" );
+
+    var res := Target( gm );
+
+    if (!res.isa(POLCLASS_MOBILE))
+	SendSysMessage(gm, "You can only thaw mobiles.");
+	return 0;
+
+    else
+        if (res.frozen != 1 && res.paralyzed != 1)
+		SendSysMessage( gm, "That mobile isn't frozen, cancelled." );
+		return 0;
+	else
+        	PrintTextAbovePrivate( res, res.name + " has been thawed", gm );
+	LogCommand(gm, GetProcess(GetPid()).name, res.name+"/"+res.serial);
+		res.frozen := 0;
+		res.paralyzed := 0;
+        endif
+
+    endif
+	IncRevision(res);
+endprogram

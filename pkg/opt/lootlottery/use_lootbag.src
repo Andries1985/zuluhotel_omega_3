@@ -1,0 +1,20 @@
+use uo;
+
+program use_lootbag(who, lootbag)
+    
+    if(!reserveitem(lootbag))
+        return 0;
+    endif
+
+    if (!lootbag.container)
+        SendSysMessage(who, "You should put that in some container before dumping it's contents!");
+        return 0;
+    endif
+
+    foreach item in EnumerateItemsInContainer(lootbag)
+        MoveItemToContainer(item, lootbag.container, add_to_existing_stack := 2);
+    endforeach
+
+    destroyitem(lootbag);
+
+endprogram

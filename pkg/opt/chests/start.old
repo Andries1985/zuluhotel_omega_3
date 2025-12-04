@@ -1,0 +1,6 @@
+// Locking Spawning Chest system  version .1
+// by Zulu (zulu@zuluhotel.com)   July 5, 2000
+
+use os;
+
+start_script( "relocker" );

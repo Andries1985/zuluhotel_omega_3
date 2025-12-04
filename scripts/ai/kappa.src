@@ -1,0 +1,88 @@
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+
+include "include/anchors";
+include "ai/main/killpcsloop";
+include "ai/combat/fight";
+
+include "ai/main/defaultnoncombatevent";
+include "ai/combat/explosioncombatevent";
+include "ai/setup/archersetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+include "include/client";
+include "include/npcbackpacks";
+include "ai/setup/modsetup";
+
+const HALT_THRESHOLD := 14; // how close before he attacks?
+
+var runaway := 0;
+
+program KillPlayers()
+
+	SetWarMode( 0 );
+    	main_AI_loop();
+        
+endprogram
+
+function CloseDistance( opponent )
+
+		var anchor := GetObjProperty( me, PROPID_MOBILE_ANCHOR );
+		var test := me.z;
+    if ( (runaway < 100) )
+    	if (distance(me, opponent) <= 25)
+		RunAwayFrom(opponent);
+		runaway := 1;
+		if (runaway > 50)
+			runaway := 1;
+			var weaponone := GetEquipmentByLayer( me,  LAYER_HAND1 );
+			var weapontwo := GetEquipmentByLayer( me,  LAYER_HAND2 );
+
+			var mypack := 0;
+			if (!getobjproperty(me,"serial"))
+				setobjproperty(me, "serial", me.serial);
+			endif
+			mypack := FindMyPack(me.serial);
+			if (weaponone)
+				moveitemtocontainer(weaponone,mypack);
+			endif
+			if (weapontwo)
+				moveitemtocontainer(weapontwo,mypack);
+			endif
+			weaponone := CreateItemInInventory(me.backpack,0x143e,1);
+			EquipItem(me,weaponone);
+			SetObjProperty(weaponone, "noloot", 1);
+            		RunAwayFrom( opponent );
+		endif
+		var test2 := me.z-test;
+		if(test2 < -20 or test2 > 20)
+		MoveObjectToLocation( me, anchor[1], anchor[2], anchor[5], anchor[6], MOVEOBJECT_FORCELOCATION );
+		endif
+		return 0;
+    	else
+		runaway := 0;
+		return 1;
+    	endif
+    else
+	case (Distance( me, opponent ))
+        	1:
+        	0:
+            		return 1;
+        	default:
+            		RunAwayFrom( opponent );
+		var test2 := me.z-test;
+		if(test2 < -20 or test2 > 20)
+		MoveObjectToLocation( me, anchor[1], anchor[2], anchor[5], anchor[6], MOVEOBJECT_FORCELOCATION );
+		endif
+            		return 0;
+    	endcase
+    endif
+
+endfunction

@@ -1,0 +1,36 @@
+use uo;
+use os;
+use storage;
+
+program keydestroy( item )
+
+	var ownerserial := GetObjProperty( item , "ownerserial" );
+	var destroyit	  := GetObjProperty( item , "destroyit" );
+	if( ownerserial and !destroyit )
+		Start_Script( ":shilitems:itemreturner" , item );
+		item.decayat := 0;
+		item.buyprice := -1;
+		return 0;
+	elseif( GetObjProperty( item , "undestructible" ) and !destroyit )
+		return 0;
+	else
+		destroykey( item.serial );
+		return 1;
+	endif
+
+endprogram
+
+
+function destroykey(myserial)
+
+    var mybank := FindStorageArea( "Tamed Storage" );
+
+    var bank_obj_name := "Bankbox  " + hex(myserial);
+
+    var bankbox := FindRootItemInStorageArea( mybank, bank_obj_name );
+
+    if( DestroyRootItemInStorageArea( mybank, "Bankbox  " + hex(myserial)) )
+       //print("keystorage successful removed");
+    endif
+
+endfunction

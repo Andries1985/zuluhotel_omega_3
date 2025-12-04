@@ -1,0 +1,26 @@
+//
+// Destroy an item
+//
+
+use uo;
+include ":staff:include/staff";
+program textcmd_destroy( who )
+    SendSysMessage( who, "Please target something to destroy" );
+
+    var tgt := Targetcoordinates( who ).item;
+    if (tgt.isa(POLCLASS_ITEM))
+    	LogCommand(who, GetProcess(GetPid()).name, tgt.desc+"/"+tgt.serial, "AT LOC - "+tgt.x+","+tgt.y+","+tgt.z);
+        if(who.cmdlevel < 3)
+                if(GetObjProperty(tgt, "LFucker") != who.serial+"/"+who.name)
+                        SendSysMessage(who, "You can only destroy items you have created");
+                        return;
+                else
+                        DestroyItem( tgt );
+                endif
+        else
+            DestroyItem( tgt );
+	endif
+    else
+            SendSysMessage( who, "You can only destroy items" );
+    endif
+endprogram

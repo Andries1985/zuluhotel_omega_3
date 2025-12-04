@@ -1,0 +1,223 @@
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Privs() - New commands to enable, disable, grant, revoke privs
+//
+// Todo: Add staff logging, don't log using .privs. Just log admins+test
+// granting privs
+//
+//////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+include ":staff:include/staff";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/privs";
+
+program gcmds(who)
+
+PrivsGump(who);
+return;
+endprogram
+
+function PrivsGump(who)
+
+SendSysMessage(who, "Make sure you keep an eye on the staffer you granted the commands during the duration you granted the commands!");
+
+var en := 0;
+var di := 0;
+var longestlist;
+
+if (en > di)
+	longestlist := en;
+else
+	longestlist := di;
+endif
+
+var gumpy := 255;
+
+if (longestlist > 6)
+	gumpy := gumpy + ( (longestlist-6) *25);
+endif
+
+//admin + Have enuf room for admin panel
+if (who.cmdlevel >= 4 && gumpy < 380)
+	gumpy := 380;
+endif
+
+var gump := GFCreateGump( 15, 15, 650, gumpy);
+GFResizePic(gump, 15, 15, 9250, 425, gumpy);
+
+// Priv Info Box
+GFHTMLArea(gump, 440, gumpy+15-255+14, 200, 40, "<u><BASEFONT SIZE=20><CENTER>Privilege Info" , 0,0 );
+GFResizePic(gump, 440, gumpy+15-255, 9250, 200, 255);
+GFResizePic(gump, 481, gumpy+15-255+15, 9200, 115, 17);
+GFHTMLArea(gump, 455, gumpy+15-255+35, 170, 205, "Priv information is yet to be written." , 1,1 );
+
+GFResizePic(gump, 50, 80, 9350, 150, gumpy-80);
+GFResizePic(gump, 260, 80, 9350, 150, gumpy-80);
+
+GFResizePic(gump, 131, 29, 9200, 190, 17);
+GFHTMLArea(gump, 15, 28, 425, 40, "<u><BASEFONT SIZE=20><CENTER>Grant Commands Menu" , 0,0 );
+
+var y := 95;
+var y2 := 95;
+GFTextLine(gump, 50, 60, 69, "What commands to grant:");
+foreach command in GetCommands()
+		GFCheckBox(gump, 60, y, 9026, 9027, 0, _command_iter+100);
+		GFTextLine(gump, 95, y, 0, command);
+		y := y + 25;
+endforeach
+
+// ADmins and Devs can grant privs	
+if (who.cmdlevel >= 4)
+	// Priv Info Box
+	GFHTMLArea(gump, 440, 29, 200, 40, "<u><BASEFONT SIZE=20><CENTER>Admin Menu" , 0,0 );
+	GFResizePic(gump, 440, 15, 9250, 200, 125);
+	GFResizePic(gump, 481, 30, 9200, 115, 17);
+	GFAddButton(gump, 460, 60, 4023, 4024, 1, 10);
+	GFTextLine(gump, 495, 60, 89, "Grant staff commands");
+	GFAddButton(gump, 460, 90, 4023, 4024, 1, 20);
+	GFTextLine(gump, 495, 90, 89, "Erase staff commands");
+endif
+
+var data := GFSendGump(who, gump);
+
+if (data[0] == 1)
+	//EnableDisablePriv(who, data, privlist);
+	// Display the updated gump
+	PrivsGump(who);	
+
+// Alter Privs
+elseif (data[0] == 10)
+	AlterPrivs(who, data, GetCommands());
+elseif (data[0] == 20)
+	eraseCommands(who);
+endif
+
+endfunction
+
+function AlterPrivs(who, data, commandList)
+
+	var what := Target(who);
+	if(!what)
+		SendSysMessage(who, "Canceled");
+		return 0;
+	elseif(!what.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "You can only give privileges to players.");
+		return 0;
+	elseif(!what.ip)
+		SendSysMessage(who, "NPCs can't have privileges.");
+		return 0;
+	elseif(!what.cmdlevel)
+		SendSysMessage(who, "You can't grant players privileges!");
+		return 0;
+	elseif(what.cmdlevel >= who.cmdlevel && who.serial != what.serial)
+		SendSysMessage(who, "You can't alter privileges on your equals or superiors.");
+		return 0;
+	endif
+
+	
+	var number := CInt( SendTextEntryGump(who, "How long do you wish to grant these commands to your target? 1-120 Minutes.", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 4));
+
+	if(!number)
+		SendSysMessage(who, "Canceled.");
+		return;
+	elseif( number > 120 )
+		number := 120;
+	elseif( number < 0 )
+		SendSysMessage(who, "Canceled.");
+		return;
+	endif
+	
+	grantCommands(what, data, commandList, who, number);
+return 0;
+endfunction
+
+function GetCommands()
+	
+	var counsCommands := {};
+	counsCommands.append(".kill");
+	counsCommands.append(".go");
+	counsCommands.append(".sayabove");
+	counsCommands.append(".createnpc");
+	counsCommands.append(".goxyz");
+	counsCommands.append(".goto");
+	counsCommands.append(".openpack");
+	counsCommands.append(".makegate");
+	counsCommands.append(".mazegate");
+	counsCommands.append("bomberman");
+	counsCommands.append("colorwars");
+	return counsCommands;
+
+endfunction
+
+function grantCommands(who, data, commandList, me, time := 30)
+
+	time := time * 60;
+	foreach key in (data.keys)
+		if(key >= 100)
+			var wCommand := commandList[key-100];
+			case(wCommand)
+				".kill": 
+					sendMSG(who, me, wCommand, time);
+					break;
+				".go":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".sayabove":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".createnpc":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".goxyz":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".goto":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".openpack":
+					sendMSG(who, me, wCommand, time);
+					break;
+				".makegate":
+					sendMSG(who, me, wCommand, time);
+					break;
+				"bomberman":
+					sendMSG(who, me, wCommand, time);
+					break;
+				"colorwars":
+					sendMSG(who, me, wCommand, time);
+					break;
+				Default:
+					SendSysMessage(who, "Something went wrong, call Dreams now at +4676 062 95 30!");
+					break;
+			endcase
+		endif
+	endforeach
+	
+	SendSysMessage(me, "The above commands will be active for "+time/60+" minutes.");
+	SendSysMessage(me, "Make sure you keep an eye on the staffer you granted the commands during the duration you granted the commands!");
+	SendSysMessage(who, "The above commands will be active for "+time/60+" minutes.");
+
+endfunction
+
+function sendMSG(who, me, wCommand, time)
+	SendSysMessage(me, wCommand+" granted to "+who.name);
+	SendSysMessage(who, "You have been granted "+wCommand+" command.");
+	SetObjProperty(who, wCommand, ReadGameClock()+time);
+endfunction
+
+function eraseCommands(who)	
+	var what := Target(who);
+	if(!what)
+		SendSysMessage(who, "Canceled");
+		return 0;
+	endif
+	
+	foreach command in GetCommands()
+		EraseObjProperty(what, command);
+	endforeach
+	SendSysMessage(who, "All granted commands have been erased from "+what.name+".");
+endfunction

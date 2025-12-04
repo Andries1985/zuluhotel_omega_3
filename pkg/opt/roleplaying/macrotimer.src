@@ -1,0 +1,61 @@
+use os;
+use uo;
+
+include "include/client";
+include "include/constants/locations";
+include "include/time";
+
+program macrotimer(player)
+
+	var days;
+	var acc	:= player.acct;
+	var offence := GetObjProperty(player,"macrojailcount");
+
+    SendSysMessage(player,"You received a macro check and have 15 minutes to respond!", FONT_NORMAL, 2595 );
+
+    sleep(15*60);
+
+    if (GetObjProperty(player,"starttime"))
+        Eraseobjproperty(player,"starttime");
+        SendSysMessage(player,"You took too long to answer!", FONT_NORMAL, 2595 );
+        if (!offence)
+            offence := 0;
+        endif
+        offence := offence + 1;
+        SetObjProperty(player, "macrojailcount", offence);
+        if (offence > 4)
+            offence := 4;
+        endif
+        case (offence)
+            1:	days := 1;
+            2:	days := 3;
+            3:	days := 7;
+            4: 	days := 14;
+            5: 	days := 28;
+        endcase
+        var jaildays := (days * 86400);
+        var secs := polcore().systime;
+        var year;
+        var month;
+        var day;
+        var hour;
+        var minutes;
+        CalculateDate( secs, year, month, day );
+        CalculateTime( secs, hour, minutes );
+        
+        acc.setprop("Release", (ReadGameClock() + jaildays));
+
+        MoveObjectToLocation( player , DEFAULT_LOCATION_JAIL_X, DEFAULT_LOCATION_JAIL_Y, DEFAULT_LOCATION_JAIL_Z, DEFAULT_LOCATION_JAIL_R, MOVEOBJECT_FORCELOCATION);
+        SendSysMessage( player , "You have been jailed for " + days + " day(s). Reason: Breaking the no-macro rule.", FONT_NORMAL, 2595 );
+
+        // Broadcast to staff
+        var jailedmsg := "The macro-test jailed " + player.name + " for " + days + " day(s)";
+        foreach staff in EnumerateOnlineCharacters()
+            if( staff.cmdlevel >= 1 )
+                SendSysMessage( staff, jailedmsg, 3, 2581 );
+            endif
+        endforeach
+        DisconnectClient(player);
+    endif
+
+endprogram

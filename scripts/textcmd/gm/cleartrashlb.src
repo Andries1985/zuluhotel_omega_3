@@ -1,0 +1,24 @@
+use os;
+use uo;
+
+program clearlb(who)
+ 	foreach acct_name in ( ListAccounts() )
+		var account := FindAccount( acct_name );
+		var i := 1;
+        while( i <= 5 )
+ 	 	 	var character := account.GetCharacter(i);
+ 	 	 	if( character )
+                var trash := GetObjProperty(character, "TrashedAmt");
+ 	 	 	 	if(trash)
+                    EraseObjProperty(character, "TrashedAmt");
+ 	 	 	 	endif
+ 	 	 	endif
+ 	 	 	i += 1;
+ 	 	 	SleepMS(5);
+        endwhile
+		SleepMS(5);
+	endforeach
+
+    SendSysMessage(who, "Done");
+	return;
+endprogram

@@ -1,0 +1,70 @@
+use os;
+use uo;
+
+include "include/utility";
+include "include/client";
+include "include/itemutil";
+
+const MAX_DISTANCE := 8;
+
+program cleanbandages( who, item )
+
+	if( (item.container).IsA(POLCLASS_CORPSE) )
+		SendSysMessage( who, "You can't use this while it is on the corpse." );
+		return 0;
+	endif
+
+	if( !ReserveItem(item) )
+		return;
+	endif
+
+	SendSysMessage( who, "Select a water source to clean them." );
+	var use_on := TargetCoordinates( who );
+	
+	if(!use_on)
+		return 0;
+	elseif( coordist( who.x, who.y, use_on.x, use_on.y ) > MAX_DISTANCE )
+		SendSysMessage( who, "That is too far away." );
+		return 0;
+	elseif( !check_for_water(who, use_on) )
+        	SendSysMessage( who, "You must clean the bandages in clean water." );
+        	return 0;
+	endif
+
+	var amount := Cint(item.amount/2);
+	Destroyitem(item);
+	PlaySoundEffect( who, SFX_12 );
+	PerformAction( who, ANIM_FIDGET_2 );
+	CreateItemInBackpack( who, UOBJ_BANDAGE, amount );
+
+endprogram
+
+
+function check_for_water (character, theobj)
+	//static water tiles
+	if( (theobj.objtype >=0x346E) and (theobj.objtype <= 0x3485) )
+		return 1;
+	elseif( (theobj.objtype >= 0x3494) and (theobj.objtype <= 0x34AB) )
+		return 1;
+	elseif( (theobj.objtype >= 0x34B8) and (theobj.objtype <= 0x34BB) )
+		return 1;
+	elseif( (theobj.objtype >= 0x34BD) and (theobj.objtype <= 0x34C0) )
+		return 1;
+	elseif( (theobj.objtype >= 0x34C2) and (theobj.objtype <= 0x34C5) )
+		return 1;
+	elseif( (theobj.objtype >= 0x34C7) and (theobj.objtype <= 0x34CA) )
+		return 1;
+	elseif( (theobj.objtype >= 0x1796) and (theobj.objtype <= 0x17B2) )
+		return 1;
+	//water troughs
+	elseif ((theobj.item.objtype >= 0xb41) and (theobj.item.objtype <= 0xb44))
+		return 1;
+	//water barrel and tub
+	elseif (theobj.item.objtype == 0x0e7b or theobj.item.objtype == 0x154d)
+		return 1;
+	elseif(IsWater(theobj))
+		return 1;
+	else
+		return 0;
+	endif
+endfunction

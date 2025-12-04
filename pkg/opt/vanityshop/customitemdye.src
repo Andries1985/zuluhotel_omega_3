@@ -1,0 +1,84 @@
+// This will work on anything! 
+// It'll even change a Dye Tub or Runic Dye Tub to any special color, 
+// which can then be reused, based on their limitations.
+
+use os;
+use uo;
+use polsys;
+
+include "include/client";
+include ":gumps:yesno";
+
+program CustomItemDye (who, omegadye)
+
+	ReserveItem(omegadye);
+
+	var charges := GetObjProperty(omegadye, "charges");
+	if(charges < 1)
+		SendSysMessage(who, "The Omega Dye disintegrates in your hands!", color:= 814);
+		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, omegadye.color, 3);
+		DestroyItem(omegadye);
+	endif
+
+	SendSysMessage(who, "Select the color you'd like to use.", color:= 319);
+	var color_source := Target( who, TGTOPT_NOCHECK_LOS );
+
+	if(!color_source)
+		SendSysMessage(who, "Canceled");
+		Releaseitem(omegadye);
+		return;
+	endif
+
+	var new_color := color_source.color;
+
+	SendSysMessage(who, "Select the item you'd like to color.", color:= 319);
+	var item := Target( who, TGTOPT_NOCHECK_LOS );
+	
+	if(!item)
+		SendSysMessage(who, "Canceled");
+		Releaseitem(omegadye);
+		Releaseitem(item);
+		return;
+	endif
+	
+	if (!item.isa(POLCLASS_ITEM))
+		SendSysmessage( who, "You can only dye items!" );
+		Releaseitem(omegadye);
+		Releaseitem(item);
+		return;
+	endif
+ 
+	if (!Accessible(who, item))
+		SendSysmessage( who, "You cannot reach that!" );
+		Releaseitem(omegadye);
+		Releaseitem(item);
+		return;
+	endif
+
+	var old_color := item.color;
+	//item.color := new_color;
+	//charges -= 1;
+	//SetObjProperty(omegadye, "charges", charges);
+
+	if (YesNo(who, "Are you sure about the color change?"))
+		if (charges)
+			SendSysMessage(who, "You use some of the Omega Dye's power, there's still "+charges+" charges left.", color:= 814);
+			item.color := new_color;
+			charges -= 1;
+			SetObjProperty(omegadye, "charges", charges);
+		else
+			SendSysMessage(who, "You use the last of the Omega Dye's power and it disintegrates in your hands!", color:= 814);
+			DestroyItem(omegadye);
+		endif
+		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, omegadye.color, 3);
+	else
+		//charges += 1;
+		//SetObjProperty(omegadye, "charges", charges);
+		//item.color := old_color;
+		SendSysMessage(who, "You do not use the Omega Dye's power, there's still "+charges+" charges left.", color:= 814);
+	endif
+	IncRevision(omegadye);
+	Releaseitem(omegadye);
+	Releaseitem(item);
+
+endprogram

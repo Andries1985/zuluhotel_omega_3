@@ -1,0 +1,39 @@
+
+use os;
+use uo;
+
+program moonphase()
+
+   SetGlobalProperty("SosariaPhase", 0);
+   SetGlobalProperty("FeluccaPhase", 0);
+   var TPhase := 0;
+   var FPhase := 0;
+   while(1)
+	
+	sleep(30);
+	FPhase := FPhase +1;
+	if (FPhase == 8)
+		FPhase := 0;
+	endif
+	SetGlobalProperty("FeluccaPhase", FPhase);
+
+	sleep(30);
+	FPhase := FPhase +1;
+	if (FPhase == 8)
+		FPhase := 0;
+	endif
+	SetGlobalProperty("FeluccaPhase", FPhase);
+
+	sleep(30);
+	FPhase := FPhase +1;
+	TPhase := TPhase +1;
+	if (FPhase == 8)
+		FPhase := 0;
+	endif
+	if (TPhase == 8)
+		TPhase := 0;
+	endif
+	SetGlobalProperty("FeluccaPhase", FPhase);
+	SetGlobalProperty("SosariaPhase", TPhase);
+   endwhile
+endprogram

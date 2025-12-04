@@ -1,0 +1,410 @@
+/////////////////////////////////////////////////////////////////////////////
+//
+// updated: Zulu April 19, 2000
+//
+/////////////////////////////////////////////////////////////////////////////
+use uo;
+use polsys;
+
+include "include/classes";
+
+program show_classe( who )
+
+	var level;
+		/*
+		if(who.cmdlevel > 0)
+		SendSysMessage( who, "No you don't!");
+		return;
+		endif
+		*/	
+	foreach classe in GetClasseIds()
+		EraseObjProperty( who , classe );
+		if(classe == "IsRanger")
+			level := IsFromThatClasse( who , GetClasseSkills(classe), 1 );
+		else
+			level := IsFromThatClasse( who , GetClasseSkills(classe) );
+		endif
+
+		if( level )
+			AssignClasse( who );
+			SendSysMessage( who, "You're a qualified level " + level + " " + GetClasseName(classe));
+			IncRevision(who);
+			if(who.cmdlevel == 0)
+				if (!GetGlobalProperty("1m"))
+					if(level == 1 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 1 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1m", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2m"))
+					if(level == 2 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 2 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2m", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3m"))
+					if(level == 3 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 3 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3m", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4m"))
+					if(level == 4 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 4 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4m", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5m"))
+					if(level == 5 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 5 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5m", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6m"))
+					if(level == 6 and classe == CLASSEID_MAGE)
+					Broadcast( who.name + " is the first to reach level 6 Mage!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6m", who.name);
+					endif
+				endif
+					
+				if (!GetGlobalProperty("1r"))
+					if(level == 1 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 1 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1r", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("2r"))
+					if(level == 2 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 2 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2r", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("3r"))
+					if(level == 3 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 3 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3r", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("4r"))
+					if(level == 4 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 4 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4r", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("5r"))
+					if(level == 5 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 5 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5r", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("6r"))
+					if(level == 6 and classe == CLASSEID_RANGER)
+					Broadcast( who.name + " is the first to reach level 6 Ranger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6r", who.name);
+					endif
+				endif	
+					
+				if (!GetGlobalProperty("1w"))
+					if(level == 1 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 1 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1w", who.name);
+					endif
+				endif		
+				if (!GetGlobalProperty("2w"))
+					if(level == 2 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 2 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2w", who.name);
+					endif
+				endif		
+				if (!GetGlobalProperty("3w"))
+					if(level == 3 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 3 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3w", who.name);
+					endif
+				endif		
+				if (!GetGlobalProperty("4w"))
+					if(level == 4 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 4 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4w", who.name);
+					endif
+				endif		
+				if (!GetGlobalProperty("5w"))
+					if(level == 5 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 5 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5w", who.name);
+					endif
+				endif		
+				if (!GetGlobalProperty("6w"))
+					if(level == 6 and classe == CLASSEID_WARRIOR)
+					Broadcast( who.name + " is the first to reach level 6 Warrior!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6w", who.name);
+					endif
+				endif	
+
+				if (!GetGlobalProperty("1t"))
+					if(level == 1 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 1 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1t", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("2t"))
+					if(level == 2 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 2 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2t", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("3t"))
+					if(level == 3 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 3 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3t", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("4t"))
+					if(level == 4 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 4 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4t", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("5t"))
+					if(level == 5 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 5 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5t", who.name);
+					endif
+				endif	
+				if (!GetGlobalProperty("6t"))
+					if(level == 6 and classe == CLASSEID_THIEF)
+					Broadcast( who.name + " is the first to reach level 6 Thief!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6t", who.name);
+					endif
+				endif	
+
+				if (!GetGlobalProperty("1c"))
+					if(level == 1 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 1 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1c", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2c"))
+					if(level == 2 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 2 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2c", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3c"))
+					if(level == 3 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 3 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3c", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4c"))
+					if(level == 4 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 4 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4c", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5c"))
+					if(level == 5 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 5 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5c", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6c"))
+					if(level == 6 and classe == CLASSEID_CRAFTER)
+					Broadcast( who.name + " is the first to reach level 6 Crafter!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6c", who.name);
+					endif
+				endif
+
+				if (!GetGlobalProperty("1b"))
+					if(level == 1 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 1 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1b", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2b"))
+					if(level == 2 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 2 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2b", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3b"))
+					if(level == 3 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 3 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3b", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4b"))
+					if(level == 4 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 4 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4b", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5b"))
+					if(level == 5 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 5 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5b", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6b"))
+					if(level == 6 and classe == CLASSEID_BARD)
+					Broadcast( who.name + " is the first to reach level 6 Bard!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6b", who.name);
+					endif
+				endif
+
+				if (!GetGlobalProperty("1p"))
+					if(level == 1 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 1 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1p", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2p"))
+					if(level == 2 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 2 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2p", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3p"))
+					if(level == 3 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 3 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3p", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4p"))
+					if(level == 4 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 4 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4p", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5p"))
+					if(level == 5 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 5 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5p", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6p"))
+					if(level == 6 and classe == CLASSEID_POWERPLAYER)
+					Broadcast( who.name + " is the first to reach level 6 Powerplayer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6p", who.name);
+					endif
+				endif
+
+				if (!GetGlobalProperty("1pa"))
+					if(level == 1 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 1 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2pa"))
+					if(level == 2 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 2 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3pa"))
+					if(level == 3 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 3 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4pa"))
+					if(level == 4 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 4 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5pa"))
+					if(level == 5 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 5 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6pa"))
+					if(level == 6 and classe == CLASSEID_PALADIN)
+					Broadcast( who.name + " is the first to reach level 6 Paladin!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6pa", who.name);
+					endif
+				endif
+
+				if (!GetGlobalProperty("1bs"))
+					if(level == 1 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 1 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1bs", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2bs"))
+					if(level == 2 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 2 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2bs", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3bs"))
+					if(level == 3 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 3 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3bs", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4bs"))
+					if(level == 4 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 4 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4pa", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5bs"))
+					if(level == 5 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 5 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5bs", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6bs"))
+					if(level == 6 and classe == CLASSEID_BLADESINGER)
+					Broadcast( who.name + " is the first to reach level 6 Bladesinger!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6bs", who.name);
+					endif
+				endif
+
+				if (!GetGlobalProperty("1ma"))
+					if(level == 1 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 1 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("1ma", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("2ma"))
+					if(level == 2 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 2 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("2ma", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("3ma"))
+					if(level == 3 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 3 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("3ma", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("4ma"))
+					if(level == 4 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 4 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("4ma", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("5ma"))
+					if(level == 5 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 5 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("5ma", who.name);
+					endif
+				endif
+				if (!GetGlobalProperty("6ma"))
+					if(level == 6 and classe == CLASSEID_MYSTIC_ARCHER)
+					Broadcast( who.name + " is the first to reach level 6 Mystic Archer!" , FONT_BOLD, 1176);
+					SetGlobalProperty("6ma", who.name);
+					endif
+				endif
+			endif
+
+			return;
+		endif
+	endforeach
+	IncRevision(who);
+	SendSysMessage( who, "You aren't in any specific classe" );
+
+endprogram

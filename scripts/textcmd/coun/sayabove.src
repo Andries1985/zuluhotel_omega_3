@@ -1,0 +1,23 @@
+use os;
+use uo;
+include ":staff:include/staff";
+program textcmd_sayabove( who, text )
+	var gCmd := GetObjProperty(who, ".sayabove");
+	if(!gCmd)
+		SendSysMessage( who , "You havn't been granted this command." );
+		LogCommand(who, GetProcess(GetPid()).name, who.name+" is trying to use .sayabove without permission!");
+		return;
+	endif
+	if(who.cmdlevel < 4 && ReadGameClock() > gCmd)
+		SendSysMessage( who , "You can't use this command anymore." );
+		EraseObjProperty(who, ".sayabove");
+		return;
+	endif
+    SendSysMessage( who, "Say above what or whom?" );
+
+    var what := Target( who );
+    LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "Text: "+text);
+    if (what)
+        PrintTextAbove( what, text );
+    endif
+endprogram

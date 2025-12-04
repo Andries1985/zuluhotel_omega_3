@@ -1,0 +1,82 @@
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+
+include "include/anchors";
+include "ai/main/killpcsloop";
+include "ai/combat/fight";
+
+include "ai/main/defaultnoncombatevent";
+include "ai/combat/explosioncombatevent";
+include "ai/setup/archersetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+include "include/client";
+include "include/npcbackpacks";
+include "ai/setup/modsetup";
+
+const HALT_THRESHOLD := 10; // how close before he attacks?
+
+var runaway := 0;
+var neger := 0;
+var bajs := 0;
+var weapontwo;
+
+program KillPlayers()
+
+	SetWarMode( 0 );
+    	main_AI_loop();
+        
+endprogram
+
+function CloseDistance( opponent )
+
+	var mypack := 0;
+	if (!getobjproperty(me,"serial"))
+		setobjproperty(me, "serial", me.serial);
+	endif
+
+	var weaponone := GetEquipmentByLayer( me,  LAYER_HAND1 );
+
+			if (bajs == 0)
+				weaponone := CreateItemInInventory(me.backpack,0x7cd4,1);
+				bajs := 1;
+			endif
+
+			if (neger == 0)
+				weapontwo := CreateItemInInventory(me.backpack,0x7cd3,1);
+				neger := 1;
+			endif
+
+
+
+    	if (distance(me, opponent) <= 7)
+		if (weapontwo)		
+			moveitemtocontainer(weapontwo,me.backpack);
+			DestroyItem(weapontwo);
+			weaponone := CreateItemInInventory(me.backpack,0x7cd4,1);
+			EquipItem(me,weaponone);
+		endif
+		RunToward(opponent);
+		return 0;
+	endif
+
+    	if (distance(me, opponent) > 7)
+		if (weaponone)
+		moveitemtocontainer(weaponone,mypack);
+		DestroyItem(weaponone);
+		weapontwo := CreateItemInInventory(me.backpack,0x7cd3,1);
+		EquipItem(me,weapontwo);
+		endif
+		return 1;
+	endif
+
+return 0;
+
+endfunction

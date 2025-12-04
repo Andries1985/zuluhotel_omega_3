@@ -1,0 +1,30 @@
+use os;
+use os;
+use datafile;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/time";
+include ":msg:include/message";
+
+program reply(who, text)
+
+var messages := GetObjProperty(who, "#Messaging");
+var person;
+if(messages[3])
+	person :=  SystemFindObjectBySerial(messages[3]);
+endif
+
+if (!person.connected)
+  SendSysMessage(who, "The person you are replying to is offline.");
+  SendSysMessage(who, "Canceled.");
+  return 0;
+endif
+
+if (!text)
+  text := 0;
+endif
+
+SendMessage(who, person, text);
+
+endprogram

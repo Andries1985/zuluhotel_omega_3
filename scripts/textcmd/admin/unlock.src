@@ -1,0 +1,13 @@
+use uo;
+include ":staff:include/staff";
+program textcmd_unlock( who )
+
+    SendSysMessage( who, "What do you wish to unlock?" );
+
+    var what := Target( who );
+    if (what)
+        what.locked := 0;
+	LogCommand(who, GetProcess(GetPid()).name, what.desc+"/"+what.serial);
+    endif
+
+endprogram

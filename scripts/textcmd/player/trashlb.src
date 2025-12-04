@@ -1,0 +1,138 @@
+// command .online  started June 19, 2000
+// Zulu (zulu@zuluhotel.com)
+// last updated sept 6, 2000 by Developer Giro (developergiro@galactica.it)
+
+use os;
+use uo;
+
+include "include/areas";
+
+
+var layout := {
+"page 0",
+"nodispose",
+"resizepic  50   0 2600 540 405", // background
+"resizepic 210 360 5100 200  25", // buttons
+
+"text 230 30 0 0", // title
+"text  80 60 0 1", // name
+"text 360 60 0 2"  // trashed amt
+};
+
+var data := {
+"",
+"Name",
+"Trashed Items",
+"" // 5
+};
+
+program textcmd_trash( who )
+
+    if(GetObjProperty(who, "trashlbdelay") > ReadGameClock())
+        SendSysMessage(who, "You need to wait 10 seconds to use that command again.");
+        return;
+    endif
+        
+    SetObjProperty(who, "trashlbdelay", ReadGameClock()+10);
+
+FillInArrays();
+
+SendDialogGump( who, layout, data );
+
+endprogram
+
+function FillInArrays()
+    // Variables designed to Store The full array of players, the number of players, and the current player
+    var players := GCharList( 1 );
+    var trash := GCharList( 0 );
+    var numplayer := len(players);
+    var player;
+
+    // Counter.
+    var i := 0, j := 0, online := 0, locationscount := 5 ,rowcount :=80, pagecount :=2, playercount :=0, temp;
+
+    for (i := 1; i <= numplayer; i := i + 1)
+        for (j := 1; j <= numplayer; j := j + 1)
+            if(trash[j] < trash[i])
+                temp := trash[i];
+                trash[i] := trash[j];
+                trash[j] := temp;
+                temp := players[i];
+                players[i] := players[j];
+                players[j] := temp;
+            endif
+        endfor 
+    endfor
+
+    layout.append("page 1");
+
+    // Cycle through all the players in the game and add them to the goto list.
+    for (i := 1; i <= numplayer; i := i + 1)
+        player := players[i];
+        
+        if(player.cmdlevel < 1)
+            online := online +1;
+            playercount := playercount +1;
+        
+            if (playercount>13)
+                playercount :=1;
+                rowcount :=80;
+                // add forward button
+                layout.append("button 350 361 5540 5541 0 " + pagecount);
+                // add backward button
+            if (pagecount>2)
+                layout.append("button 260 361 5537 5538 0 " + (pagecount-2));
+            endif
+
+            layout.append("page " + pagecount);
+            pagecount := pagecount +1;
+        endif
+
+        layout.append("text 80 " + rowcount + " 0 " + locationscount);
+        data.append(data[5]);
+        locationscount := locationscount + 1;
+        layout.append("text 360 " + rowcount + " 0 " + locationscount);
+        data.append(player);
+        locationscount := locationscount + 1;
+        data.append(trash[i]);
+        locationscount := locationscount + 1;
+        rowcount := rowcount +20;
+        endif
+        
+        Sleepms(5);
+    endfor
+
+    data[1] := "Leaderboard Trashed Items";
+
+    if (pagecount>2)
+        layout.append("button 260 361 5537 5538 0 " + (pagecount-2));
+    endif
+
+endfunction
+
+function GCharList( what )
+
+	var the_list := {}; // Used to store names in ABC order
+ 	foreach acct_name in ( ListAccounts() )
+		var account := FindAccount( acct_name );
+		var i := 1;
+        while( i <= 5 )
+ 	 	 	var character := account.GetCharacter(i);
+ 	 	 	if( character )
+                var trash := GetObjProperty(character, "TrashedAmt");
+ 	 	 	 	if( character.cmdlevel < 1 && trash)
+                    if(what == 1)
+ 	 	 	 	 	    the_list.append( character.name );
+                    else
+ 	 	 	 	 	    the_list.append( trash );
+                    endif
+ 	 	 	 	endif
+ 	 	 	endif
+ 	 	 	i += 1;
+ 	 	 	SleepMS(5);
+        endwhile
+		SleepMS(5);
+	endforeach
+
+	return the_list;
+endfunction

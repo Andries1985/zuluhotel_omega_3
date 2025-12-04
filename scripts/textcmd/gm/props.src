@@ -1,0 +1,30 @@
+use uo;
+
+include ":staff:include/staff";
+
+program dot_props( who )
+            var what := TargetCoordinates( who );
+			
+			if (!what.item)
+				what := what.mobile;
+			else
+				what := what.item;
+			endif
+			
+            if (what)
+                var names := what.propnames();
+		 LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial);
+                if (names.size() != 0)
+                    foreach propname in names
+			if (lower(propname) != "lfucker" && lower(propname) != "fromloot" && lower(propname) != "customloot" )
+                       	 SendSysMessage( who, propname + ": " + what.getprop( propname ) );
+			elseif (who.cmdlevel == 5)
+				SendSysMessage( who, propname + ": " + what.getprop( propname ) );
+			endif
+                    endforeach
+                else
+                    SendSysMessage( who, "No properties." );
+                endif
+            endif
+
+endprogram

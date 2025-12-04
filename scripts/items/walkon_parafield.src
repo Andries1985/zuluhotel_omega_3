@@ -1,0 +1,93 @@
+////////
+// paralyze.src
+//
+// Paralyzes the target for 15 seconds.
+//
+// Author: Racalac, 4/29/99
+//
+// Note: DW, you should REALLY write your own comment headers :P
+////////
+
+
+use uo;
+use os;
+
+include "include/dotempmods";
+include "include/classes";
+include "include/client";
+
+const DELAY_BETWEEN_CHECKS_MS	:= 750;
+
+program walkon_parafield( who , item )
+
+	var diff     := 50;
+	var points   := 25;
+	var duration := 10;
+	var creator := 0;
+	var serial  := Cint( GetObjProperty( item , "Creator" ) );
+	
+	
+	if( GetObjProperty( item , "ByTrueMage" ) )
+		diff := Cint( diff * CLASSE_BONUS );
+		points := Cint( points / CLASSE_BONUS );
+		duration := Cint( duration * CLASSE_BONUS );
+	endif
+		
+	if( serial )
+		creator := SystemFindObjectBySerial( serial );
+		if( !creator ) 
+			creator := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+		endif
+	
+		if(creator)
+			SetScriptController(creator);
+		endif
+	endif
+
+	PlaySoundEffect( who , SFX_SPELL_PARALYZE_FIELD );
+
+	var creator_RPer := GetObjProperty(creator, "IsRPer");
+	var creator_noPK := GetObjProperty(creator, "NOPKAREA");
+	var creator_CW := GetObjProperty(creator, "cwarring");
+	var creator_CWcolor := GetObjProperty(creator,"cwcolor");
+	var victim_RPer := GetObjProperty(who, "IsRPer" );
+	var victim_noPK := GetObjProperty(who, "NOPKAREA");
+	var victim_CWcolor := GetObjProperty(who,"cwcolor");
+	var same_faction := creator_RPer == victim_RPer;
+	var same_CWcolor := 0;
+	var victim_safe := 0;
+	if (creator_CW)
+		same_CWcolor := victim_CWcolor == creator_CWcolor;
+	endif
+		if (!creator.isa(POLCLASS_NPC) && !creator.cmdlevel)
+		if((creator_noPK) || (victim_noPK) || (!same_faction) || (same_CWcolor))
+			victim_safe := 1;
+		endif
+	endif
+	if (DEBUG_MODE)
+		PrintTextAbove(who,"---", color:= 65);
+		PrintTextAbove(who,"same_faction :"+same_faction, color:= 40);
+		PrintTextAbove(who,"same_CWcolor :"+same_CWcolor, color:= 40);
+		PrintTextAbove(who,"same_faction :"+same_faction, color:= 40);
+		PrintTextAbove(who,"creator_noPK :"+creator_noPK, color:= 40);
+		PrintTextAbove(who,"victim_noPK :"+victim_noPK, color:= 40);
+		PrintTextAbove(who,"victim_safe :"+victim_safe, color:= 40);
+		PrintTextAbove(who,"who.multi :"+who.multi, color:= 40);
+	endif
+
+	if((!who.multi) && (!victim_safe))
+		if (DEBUG_MODE)
+			PrintTextAbove(who,"oh no! "+((!who.multi) && (!victim_safe)), color:= 35);
+		endif
+		if( CanMod( who , "p" ) )
+			if( !GetObjProperty( who , "FreeAction" ) )
+				if( !CheckSkill( who , SKILLID_MAGICRESISTANCE , diff , points ) )
+					PlayObjectCenteredEffect( who , FX_SPELL_PARALYZE , SPEED_SPELL_PARALYZE , LOOP_SPELL_PARALYZE );
+					PlaySoundEffect( who , SFX_SPELL_PARALYZE );
+					DoTempMod( who , "p" , 1 , duration );
+				endif
+			endif
+		endif
+	endif
+
+endprogram

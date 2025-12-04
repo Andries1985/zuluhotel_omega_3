@@ -1,0 +1,29 @@
+use uo;
+use os;
+include "include/client";
+include ":staff:include/staff";
+
+program chatglobaltimeout( who , time )
+
+	if( !time )
+		SendSysMessage( who , "The command works this way .chatglobaltimeout 60 , this will remove the chat function for 60 minutes" );
+		return;
+	endif
+	
+	time:=CInt(time*60);
+
+	SetGlobalProperty( "ChatClosed", 1 );
+    Broadcast( "Chat has been shut down for "+time+" minutes.", FONT_BOLD, 33 );
+    Broadcast( "Breaking the rules in chat can lead to jail time or even banning of your accounts.", FONT_BOLD, 33 );
+    Broadcast( "Behave better next time, punishment can be both personal and global.", FONT_BOLD, 33 );
+	
+	LogCommand(who, GetProcess(GetPid()).name);
+	Sleep(1);
+	Sleep(time*60);
+
+	EraseGlobalProperty( "ChatClosed" );
+
+endprogram
+
+
+	

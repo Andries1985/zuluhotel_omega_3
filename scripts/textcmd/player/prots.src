@@ -1,0 +1,226 @@
+use uo;
+use os;
+
+include "include/client";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/spelldata";
+include ":versebook:include/versefunctions";
+
+var earth, fire, water, air, necro, poison, physical, freeaction, holy;
+var healing, magicefficiency;
+var magicimmunity, magicreflection, tempmagicimmunity, tempmagicreflection, temppoisonimmunity, bardicefficiency;
+
+program Prots(who)
+
+CalculateImmunities(who);
+
+var gump := GFCreateGump(15, 15, 510, 400);
+GFResizePic(gump, 15, 15, 9270, 510, 400);
+GFResizePic(gump, 25, 25, 9350,490, 380);
+GFTextLine(gump, 205, 30, 53, "Protection Information");
+GFResizePic(gump, 35, 65, 9350, 470, 105);
+GFTextLine(gump, 40, 70, 0,  "Earth Protection");
+GFTextLine(gump, 200, 70, GetTextColourPercent(earth), earth+"%");
+GFTextLine(gump, 40, 95, 0,  "Water Protection");
+GFTextLine(gump, 200, 95, GetTextColourPercent(water), water+"%");
+GFTextLine(gump, 40, 120, 0,  "Fire Protection");
+GFTextLine(gump, 200, 120, GetTextColourPercent(fire), fire+"%");
+GFTextLine(gump, 40, 145, 0,  "Air Protection");
+GFTextLine(gump, 200, 145, GetTextColourPercent(air), air+"%");
+
+GFTextLine(gump, 270, 70, 0,  "Necro Protection");
+GFTextLine(gump, 430, 70, GetTextColourPercent(necro), necro+"%");
+GFTextLine(gump, 270, 95, 0,  "Holy Protection");
+GFTextLine(gump, 430, 95, GetTextColourPercent(holy),holy+"%");
+GFTextLine(gump, 270, 120, 0,  "Physical Protection");
+GFTextLine(gump, 430, 120, GetTextColour(physical), physical);
+GFTextLine(gump, 270, 145, 0,  "Poison Protection");
+GFTextLine(gump, 430, 145, GetTextColour(poison), poison);
+
+GFResizePic(gump, 35, 185, 9350, 470, 55);
+GFTextLine(gump, 40, 190, 0,  "Healing Bonus");
+GFTextLine(gump, 200, 190, GetTextColour(healing),healing);
+GFTextLine(gump, 40, 215, 0,  "Magic Efficiency");
+GFTextLine(gump, 200, 215, GetTextColourPercent(magicefficiency),magicefficiency+"%");
+GFTextLine(gump, 270, 190, 0,  "Free Action");
+GFTextLine(gump, 430, 190, GetTextColourOnOff(freeaction),freeaction);
+GFTextLine(gump, 270, 215, 0,  "Bardic Efficiency");
+GFTextLine(gump, 430, 215, GetTextColourPercent(bardicefficiency),bardicefficiency+"%");
+
+GFResizePic(gump, 35, 255, 9350, 470, 130);
+GFTextLine(gump, 40, 260, 0,  "Permanent Magic Immnunity (Blackrock)");
+GFTextLine(gump, 320, 260, GetTextColour(magicimmunity),magicimmunity);
+GFTextLine(gump, 40, 285, 0,  "Permanent Magic Reflection (Moonstone)");
+GFTextLine(gump, 320, 285, GetTextColour(magicreflection),magicreflection);
+GFTextLine(gump, 40, 310, 0,  "Temporary Magic Immnunity (Absorbsion)");
+GFTextLine(gump, 320, 310, GetTextColour(tempmagicimmunity),tempmagicimmunity+" charges");
+GFTextLine(gump, 40, 335, 0,  "Temporary Magic Reflection (Warding)");
+GFTextLine(gump, 320, 335, GetTextColour(tempmagicreflection),tempmagicreflection+" charges");
+
+GFTextLine(gump, 40, 360, 0,  "Temporary Poison Immunity (Antidotes)");
+GFTextLine(gump, 320, 360, GetTextColour(temppoisonimmunity),temppoisonimmunity+" charges");
+
+var data := GFSendGump(who, gump);
+
+endprogram
+
+function CalculateImmunities(who)
+
+	earth := CInt(GetObjProperty(who, "EarthProtection"));
+	fire := CInt(GetObjProperty(who, "FireProtection"));
+	water := CInt(GetObjProperty(who, "WaterProtection"));
+	air := CInt(GetObjProperty(who, "AirProtection"));
+	holy := CInt(GetObjProperty(who, "HolyProtection"));
+
+	necro := CInt(GetObjProperty(who, "NecroProtection"));
+	physical := CInt(GetObjProperty(who, "PhysicalProtection"));
+	poison := CInt(GetObjProperty(who, "PermPoisonImmunity"));
+	freeaction := CInt(GetObjProperty(who, "FreeAction"));
+
+	healing := CInt(GetObjProperty(who, "HealingIncrease"));
+	magicefficiency := GetMagicEfficiencyPenalty( who );
+	bardicefficiency := GetBardicEfficiencyProts( who );
+
+	if (magicefficiency < 0)
+		magicefficiency := abs(magicefficiency);
+	else
+		magicefficiency := magicefficiency - (magicefficiency*2);
+	endif
+
+	if(!GetObjProperty( who , CLASSEID_WARRIOR ))
+		magicimmunity := CInt(GetObjProperty(who, "PermMagicImmunity"));
+		magicreflection := CInt(GetObjProperty(who, "Permmr"));
+		tempmagicimmunity := GetImmunityCharges(who);
+		tempmagicreflection := GetReflectionCharges(who);
+	else
+		//magicimmunity := 0;
+		magicimmunity := CInt(GetObjProperty(who, "PermMagicImmunity"));
+		magicreflection := 0;
+		tempmagicimmunity := GetImmunityCharges(who);
+		tempmagicreflection := 0;
+	endif
+
+	temppoisonimmunity := GetPoisonCharges(who);
+
+endfunction
+
+function GetTextColourOnOff(txt)
+
+if (txt >= 1)
+	return 67;
+else
+	return 999;
+endif	
+
+endfunction
+
+function GetTextColour(txt)
+
+if (txt >= 6)
+	return 67;
+elseif (txt >= 5)
+	return 66;
+elseif (txt >= 4)
+	return 166;	
+elseif (txt >= 3)
+	return 366;
+elseif (txt >= 2)
+	return 663;
+elseif (txt >= 1)
+	return 664;
+else
+	return 999;
+endif	
+
+endfunction
+
+function GetTextColourPercent(txt)
+
+if (txt >= 100)
+	return 67;
+elseif (txt >= 95)
+	return 66;
+elseif (txt >= 90)
+	return 166;	
+elseif (txt >= 85)
+	return 366;
+elseif (txt >= 80)
+	return 663;
+elseif (txt >= 75)
+	return 664;
+elseif (txt >= 70)
+	return 564;
+elseif (txt >= 65)
+	return 365;
+elseif (txt >= 60)
+	return 565;
+elseif (txt >= 55)
+	return 465;
+elseif (txt >= 50)
+	return 50;
+elseif (txt >= 45)
+	return 150;
+elseif (txt >= 40)
+	return 250;
+elseif (txt >= 35)
+	return 350;
+elseif (txt >= 30)
+	return 450;
+elseif (txt >= 25)
+	return 550;
+elseif (txt >= 20)
+	return 650;
+elseif (txt >= 15)
+	return 750;
+elseif (txt >= 10)
+	return 850;
+elseif (txt >= 5)
+	return 990;
+else
+	return 999;
+endif	
+
+endfunction
+
+function GetImmunityCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "MagicImmunity" ) )
+		charges := charges + Cint( GetObjProperty( thing, "MagicImmunity" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction
+
+function GetReflectionCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "SpellReflect" ) )
+		charges := charges + Cint( GetObjProperty( thing, "SpellReflect" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction
+
+function GetPoisonCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "PoisonImmunity" ) )
+		charges := charges + Cint( GetObjProperty( thing, "PoisonImmunity" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction

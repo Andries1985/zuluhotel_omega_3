@@ -1,0 +1,62 @@
+use uo;
+
+include ":gumps:yesno";
+//Include "include/gumputil";
+include ":staff:include/staff";
+include "include/constants/locations";
+
+program jail(character)
+
+var who := Target(character);
+if(!who)
+    return;
+endif
+
+if( who.cmdlevel >= character.cmdlevel and character.cmdlevel < 5 )
+	SendSysMessage( who , character.name + " is trying to jail you.");
+	return;
+endif
+
+if (who.npctemplate) return; endif
+
+var val := cint(SendTextEntryGump( character, "How many days will this account remain jailed? (Max 14)", 40 ));
+var time:=0;
+  case(val)
+     1: time := 86400;
+     2: time := 172800;
+     3: time := 259200;
+     4: time := 345600;
+     5: time := 432000;
+     6: time := 518400;
+     7: time := 604800;
+     8: time := 691200;
+     9: time := 777600;
+    10: time := 864000;
+    11: time := 950400;
+    12: time := 1036800;
+    13: time := 1123200;
+    14: time := 1209600;
+  endcase
+
+  if (time==0)
+  SendSysMessage(character, "Canceled.");
+  return;
+  endif
+  var acc := who.acct;
+
+  acc.setprop("Release", (ReadGameClock() + time));
+  MoveObjectToLocation( who, DEFAULT_LOCATION_JAIL_X, DEFAULT_LOCATION_JAIL_Y, DEFAULT_LOCATION_JAIL_Z, DEFAULT_LOCATION_JAIL_R, MOVEOBJECT_FORCELOCATION);
+	
+  if(val > 1)
+	  SendSysMessage( who, "You have been jailed for "+val+" days.");
+	  SendSysMessage( character, who.name + " has been jailed for "+val+" days." );
+  else
+	  SendSysMessage( who, "You have been jailed for "+val+" day.");
+	  SendSysMessage( character, who.name + " has been jailed for "+val+" day." );
+  endif
+
+LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Jail");
+
+return;
+
+endprogram

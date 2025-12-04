@@ -1,0 +1,31 @@
+use uo;
+
+include ":staff:include/staff";
+
+program textcmd_createstack( who, text )
+    var params := SplitWords( text );
+    var objtype := params[1];
+    var amount := CInt( params[2] );
+
+    if (CInt(objtype))
+        objtype := CInt(objtype);
+    endif
+
+    if (!amount)
+        amount := 1;
+    endif
+if((objtype==0xe77) or (objtype==0xfae))
+return;
+endif
+
+    var what := CreateItemInBackpack( who, objtype, amount );
+    if (what)
+        if(who.cmdlevel < 5)
+		    SetObjProperty(what, "LFucker", who.serial+"/"+who.name);
+        endif
+        PrintTextAbovePrivate( who, "Created " + what.desc + " in my backpack.", who );
+	    LogCommand(who, GetProcess(GetPid()).name, 0, what.desc+"/"+what.serial);
+    else
+        PrintTextAbovePrivate( who, "Couldn't create that: " + what.errortext, who );
+    endif
+endprogram

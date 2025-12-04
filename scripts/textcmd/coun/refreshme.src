@@ -1,0 +1,16 @@
+/////////////////////////////////////////////////////////////////////////////
+//
+//  ".refreshme" - Restore Hits, Mana, Stamina
+//
+//  Thanks to The Writer, from our Dev Board, for this one.
+//
+/////////////////////////////////////////////////////////////////////////////
+
+include "include/attributes";
+include ":staff:include/staff";
+
+program textcmd_refreshme( who )
+    SetHP(who, GetMaxHP(who));
+    SetMana(who, GetMaxMana(who));
+    SetStamina(who, GetMaxStamina(who));
+endprogram

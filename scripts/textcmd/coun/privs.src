@@ -1,0 +1,251 @@
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Privs() - New commands to enable, disable, grant, revoke privs
+//
+// Todo: Add staff logging, don't log using .privs. Just log admins+test
+// granting privs
+//
+//////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+include ":staff:include/staff";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/privs";
+
+var privlist := {};
+
+program privs(who)
+
+	PrivsGump(who);
+
+endprogram
+
+function PrivsGump(who)
+
+	privlist := who.privileges();
+
+	var en := 0;
+	var di := 0;
+	var longestlist;
+	foreach priv in (privlist.keys())
+		if (who.enabled(priv))
+			en := en + 1;
+		else
+			di := di + 1;
+		endif
+	endforeach
+
+	if (en > di)
+		longestlist := en;
+	else
+		longestlist := di;
+	endif
+
+	var gumpy := 255;
+
+	if (longestlist > 6)
+		gumpy := gumpy + ( (longestlist-6) *25);
+	endif
+
+	//admin + Have enuf room for admin panel
+	if (who.cmdlevel >= 4 && gumpy < 380)
+		gumpy := 380;
+	endif
+
+	var gump := GFCreateGump( 15, 15, 650, gumpy);
+	GFResizePic(gump, 15, 15, 9250, 425, gumpy);
+
+	// Priv Info Box
+	GFHTMLArea(gump, 440, gumpy+15-255+14, 200, 40, "<u><BASEFONT SIZE=20><CENTER>Privilege Info" , 0,0 );
+	GFResizePic(gump, 440, gumpy+15-255, 9250, 200, 255);
+	GFResizePic(gump, 481, gumpy+15-255+15, 9200, 115, 17);
+	GFHTMLArea(gump, 455, gumpy+15-255+35, 170, 205, "Priv information is yet to be written." , 1,1 );
+
+	GFResizePic(gump, 50, 80, 9350, 150, gumpy-80);
+	GFResizePic(gump, 260, 80, 9350, 150, gumpy-80);
+
+	// The Add/Remove Buttons - Return same value as they do the same, just for deco!
+	GFTextLine(gump, 215, gumpy-40, 83, "Move");
+	GFAddButton(gump, 230, gumpy-20, 4005, 4006, 1, 1);
+	GFAddButton(gump, 200, gumpy-20, 4014, 4015, 1, 1);
+
+	GFResizePic(gump, 131, 29, 9200, 190, 17);
+	GFHTMLArea(gump, 15, 28, 425, 40, "<u><BASEFONT SIZE=20><CENTER>Privilege Control Menu" , 0,0 );
+
+	var y := 95;
+	var y2 := 95;
+	GFTextLine(gump, 50, 60, 69, "Enabled Privs:");
+	GFTextLine(gump, 260, 60, 47, "Disabled Privs:");
+	foreach priv in (privlist.keys())
+
+		if (who.enabled(priv))
+			GFCheckBox(gump, 60, y, 9026, 9027, 0, _priv_iter+100);
+			GFTextLine(gump, 95, y, 0, priv);
+			y := y + 25;
+		else
+			GFTextLine(gump, 305, y2, 0, priv);
+			GFCheckBox(gump, 270, y2, 9026, 9027, 0, _priv_iter+200);
+			y2 := y2 + 25;
+		endif	
+
+	endforeach
+
+	// ADmins and Devs can grant privs	
+	if (who.cmdlevel >= 4)
+		// Priv Info Box
+		GFHTMLArea(gump, 440, 29, 200, 40, "<u><BASEFONT SIZE=20><CENTER>Admin Menu" , 0,0 );
+		GFResizePic(gump, 440, 15, 9250, 200, 125);
+		GFResizePic(gump, 481, 30, 9200, 115, 17);
+		GFAddButton(gump, 460, 75, 4023, 4024, 1, 10);
+		GFTextLine(gump, 495, 75, 89, "Alter Character Privs");
+	endif
+
+	var data := GFSendGump(who, gump);
+
+	if (data[0] == 1)
+		EnableDisablePriv(who, data, privlist);
+		// Display the updated gump
+		PrivsGump(who);	
+
+	// Alter Privs
+	elseif (data[0] == 10)
+		AlterPrivs(who);
+	endif
+
+endfunction
+
+
+function AlterPrivs(who, what := 0)
+
+	if (!what)
+		what := Target(who);
+	endif
+
+	if (!what.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "You can only give privileges to players.");
+		return 0;
+	elseif (!what.ip)
+		SendSysMessage(who, "NPCs can't have privileges.");
+		return 0;
+	elseif (what.cmdlevel >= who.cmdlevel && who.serial != what.serial)
+		SendSysMessage(who, "You can't alter privileges on your equals or superiors.");
+		return 0;
+	endif
+
+	privlist := what.privileges();
+
+	// This is who, as it's who that is setting the priv
+	var availprivs := GetDefaultPrivs(who);
+
+	var en := 0;
+	var di := 0;
+	var longestlist;
+	foreach priv in availprivs
+		if (what.enabled(priv))
+			en := en + 1;
+		else
+			di := di + 1;
+		endif
+	endforeach
+
+	if (en > di)
+		longestlist := en;
+	else
+		longestlist := di;
+	endif
+
+	var gumpy := 255;
+
+	if (longestlist > 6)
+		gumpy := gumpy + ( (longestlist-6) *25);
+	endif
+
+	var gump := GFCreateGump( 15, 15, 650, gumpy);
+	GFResizePic(gump, 15, 15, 9250, 425, gumpy);
+
+	GFResizePic(gump, 50, 80, 9350, 150, gumpy-80);
+	GFResizePic(gump, 260, 80, 9350, 150, gumpy-80);
+
+	// The Add/Remove Buttons - Return same value as they do the same, just for deco!
+	GFTextLine(gump, 215, gumpy-40, 83, "Move");
+	GFAddButton(gump, 230, gumpy-20, 4005, 4006, 1, 1);
+	GFAddButton(gump, 200, gumpy-20, 4014, 4015, 1, 1);
+
+	GFTextLine(gump, 50, 30, 89, "Character Name:");
+	GFTextLine(gump, 160, 30, 53, what.name);
+
+	var y := 95;
+	var y2 := 95;
+	var privexists := 0;
+	GFTextLine(gump, 50, 60, 69, "Current Privileges");
+	GFTextLine(gump, 260, 60, 47, "Available Privileges:");
+	foreach priv in availprivs
+
+		foreach ppriv in (what.privileges().keys())
+			if (ppriv == priv)
+				GFCheckBox(gump, 60, y, 9026, 9027, 0, _ppriv_iter+100);
+				GFTextLine(gump, 95, y, 0, priv);
+				y := y + 25;
+				privexists := 1;
+			endif
+		endforeach
+
+		if (privexists == 0)
+			GFTextLine(gump, 305, y2, 0, priv);
+			GFCheckBox(gump, 270, y2, 9026, 9027, 0, _priv_iter+200);
+			y2 := y2 + 25;
+		endif	
+		privexists := 0;
+	endforeach
+
+	var data := GFSendGump(who, gump);
+
+	var whatprivs := what.privileges();
+
+	// just for staff logging
+	var disabled := "";
+	var enabled := "";
+
+	if (data[0] == 1)
+
+		foreach priv in (data.keys)
+			if (priv > 100)
+				// Player already has, remove
+				if (priv < 200)
+					priv := priv - 100;
+					what.disable(whatprivs.keys()[priv]);
+					RevokePrivilege(what, whatprivs.keys()[priv]);
+					disabled := disabled+" "+whatprivs.keys()[priv];
+				// Grant the priv
+				elseif (priv > 200)
+					priv := priv - 200;
+					GrantPrivilege(what, availprivs[priv]);
+					if (what.cmdlevel < 1)
+						what.enable(availprivs[priv]);
+					endif
+					enabled := enabled+" "+availprivs[priv];
+				endif
+			endif
+		endforeach
+		AlterPrivs(who, what);
+		LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "Granted: "+enabled+ "Revoked: "+disabled );
+	endif
+
+endfunction
+
+function EnableDisablePriv(who, data, privlist)
+
+	foreach key in (data.keys)
+
+		if (key < 200 && key > 100)
+			who.disable(privlist.keys()[key-100]);
+		elseif (key > 199)
+			who.enable(privlist.keys()[key-200]);
+		endif
+
+	endforeach
+
+endfunction

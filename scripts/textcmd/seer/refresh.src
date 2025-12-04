@@ -1,0 +1,21 @@
+//////////////////////////////////////////////////////////////////////////
+//									//
+//	".refresh" - Restore Hits, Mana and Stamina of the target.	//
+//									//
+//////////////////////////////////////////////////////////////////////////
+
+
+use uo;
+
+include "include/attributes";
+include ":staff:include/staff";
+
+program textcmd_refresh(who)
+	
+	var mobile := Target(who);
+	SetHP(mobile, GetMaxHP(mobile));
+    	SetMana(mobile, GetMaxMana(mobile));
+		SetObjProperty(mobile, "hunger", 0);
+    	SetStamina(mobile, GetMaxStamina(mobile));
+	LogCommand(who, GetProcess(GetPid()).name, mobile.name+"/"+mobile.serial);
+endprogram

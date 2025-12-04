@@ -1,0 +1,239 @@
+//////////////////////////////////
+//				//
+// Eval Int OSI - Rincewind :)  //
+// Email : rincewind@uo.co.za   //
+//				//
+//////////////////////////////////
+
+use uo;
+use os;
+include "include/attributes";
+include "include/client";
+include "include/skillpoints";
+include "include/classes";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+
+program evalint( character )
+   
+	var thepoints := get_default_points(SKILLID_EVALINT);
+	var skill := GetEffectiveSkill( character, SKILLID_EVALINT );
+
+	SendSysMessage( character, "Select a target." );
+	var subject := Target( character );
+
+	if( !subject )
+		return;
+	endif
+	
+	if( !GetIntelligence(subject) )
+		SendSysMessage( character , "It looks smarter than a rock, but dumber than a piece of wood" );
+		return;
+	endif
+	
+	if( !CheckSkill( character , SKILLID_EVALINT , -1 , thepoints ) )
+		PrintTextAbovePrivate( subject , "You're not sure..." , character );
+		return;
+	endif		
+	
+	var intel := GetIntelligence(subject);
+	if( intel > 150 )
+		PrintTextAbovePrivate(	subject,
+					"Superhumanly intelligent in a manner you cannot comprehend.",
+					character );
+					
+	elseif( intel > 135 )
+		PrintTextAbovePrivate(	subject,
+					"Like a definite genius.",
+					character );
+					
+	elseif( intel > 120 )
+		PrintTextAbovePrivate(	subject,
+					"Like a formidable intellect, well beyond even the extraordinary.",
+					character );
+					
+	elseif( intel > 105 )
+		PrintTextAbovePrivate(	subject,
+					"Extraordinarily intelligent.",
+					character );
+					
+	elseif( intel > 90 )
+		PrintTextAbovePrivate(	subject,
+					"Extremely intelligent.",
+					character );
+	
+	elseif( intel > 75 )
+		PrintTextAbovePrivate(	subject,
+					"Very intelligent.",
+					character );
+
+	elseif( intel > 60 )
+		PrintTextAbovePrivate(	subject,
+					"Moderately intelligent.",
+					character );
+
+	elseif( intel > 45 )
+		PrintTextAbovePrivate(	subject,
+					"About Average.",
+					character );
+
+	elseif( intel > 30 )
+		PrintTextAbovePrivate(	subject,
+					"Not the brightest.",
+					character );
+
+	elseif( intel > 15 )
+		PrintTextAbovePrivate(	subject,
+					"Fairly Stupid.",
+					character );
+
+	else
+		PrintTextAbovePrivate(	subject,
+					"Slightly less intelligent than a rock.",
+					character );
+	endif
+	
+	if( skill > 90 )
+		var percent := Cint( CDbl(GetMana(subject)) * 100.0 / GetMaxMana(subject) );
+		PrintTextAbovePrivate(	subject,
+					"This being is at " + percent + "% mental strength.",
+					character );
+	endif
+
+	var nBoss := GetObjProperty(subject, "Boss");
+	var sBoss := GetObjProperty(subject, "SuperBoss");
+	if(subject.isa(POLCLASS_NPC) && !nBoss && !sBoss)
+		evalGump(character, subject);
+	elseif(subject.isa(POLCLASS_NPC) && nBoss && skill >= 120)
+		evalGump(character, subject);
+	elseif(subject.isa(POLCLASS_NPC) && sBoss && skill >= 130)
+		evalGump(character, subject);
+	endif
+
+endprogram
+
+function evalGump(who, targ)
+
+	var eProt := GetObjProperty(targ, "EarthProtection");
+	if(!eProt)
+		eProt := 0;
+	endif
+	var wProt := GetObjProperty(targ, "WaterProtection");
+	if(!wProt)
+		wProt := 0;
+	endif
+	var fProt := GetObjProperty(targ, "FireProtection");
+	if(!fProt)
+		fProt := 0;
+	endif
+	var aProt := GetObjProperty(targ, "AirProtection");
+	if(!aProt)
+		aProt := 0;
+	endif
+	var nProt := GetObjProperty(targ, "NecroProtection");
+	if(!nProt)
+		nProt := 0;
+	endif
+	var hProt := GetObjProperty(targ, "HolyProtection");
+	if(!hProt)
+		hProt := 0;
+	endif
+	var pmProt := GetObjProperty(targ, "PermMagicImmunity");
+	if(!pmProt)
+		pmProt := 0;
+	endif
+	var rmProt := GetObjProperty(targ, "Permmr");
+	if(!rmProt)
+		rmProt := 0;
+	endif
+
+	var gump := GFCreateGump(15, 15, 365, 180);
+	GFResizePic(gump, 15, 15, 9270, 365, 180);
+	GFResizePic(gump, 25, 25, 9350, 345, 160);
+	GFTextLine(gump, 135, 30, 53, "Protection Information");
+	GFResizePic(gump, 35, 65, 9350, 325, 105);
+	GFTextLine(gump, 40, 70, 0,  "Earth Protection");
+	GFTextLine(gump, 150, 70, GetTextColourPercent(eProt), eProt+"%");
+	GFTextLine(gump, 40, 95, 0,  "Water Protection");
+	GFTextLine(gump, 150, 95, GetTextColourPercent(wProt), wProt+"%");
+	GFTextLine(gump, 40, 120, 0,  "Fire Protection");
+	GFTextLine(gump, 150, 120, GetTextColourPercent(fProt), fProt+"%");
+	GFTextLine(gump, 40, 145, 0,  "Air Protection");
+	GFTextLine(gump, 150, 145, GetTextColourPercent(aProt), aProt+"%");
+
+	GFTextLine(gump, 210, 70, 0,  "Necro Protection");
+	GFTextLine(gump, 320, 70, GetTextColourPercent(nProt), nProt+"%");
+	GFTextLine(gump, 210, 95, 0,  "Holy Protection");
+	GFTextLine(gump, 320, 95, GetTextColourPercent(hProt),hProt+"%");
+	GFTextLine(gump, 210, 120, 0,  "Magic Immnunity");
+	GFTextLine(gump, 320, 120, GetTextColour(pmProt),pmProt);
+	GFTextLine(gump, 210, 145, 0,  "Magic Reflection");
+	GFTextLine(gump, 320, 145, GetTextColour(rmProt),rmProt );
+
+	var data := GFSendGump(who, gump);
+	return;
+endfunction
+
+function GetTextColourPercent(txt)
+	if (txt >= 100)
+		return 67;
+	elseif (txt >= 95)
+		return 66;
+	elseif (txt >= 90)
+		return 166;	
+	elseif (txt >= 85)
+		return 366;
+	elseif (txt >= 80)
+		return 663;
+	elseif (txt >= 75)
+		return 664;
+	elseif (txt >= 70)
+		return 564;
+	elseif (txt >= 65)
+		return 365;
+	elseif (txt >= 60)
+		return 565;
+	elseif (txt >= 55)
+		return 465;
+	elseif (txt >= 50)
+		return 50;
+	elseif (txt >= 45)
+		return 150;
+	elseif (txt >= 40)
+		return 250;
+	elseif (txt >= 35)
+		return 350;
+	elseif (txt >= 30)
+		return 450;
+	elseif (txt >= 25)
+		return 550;
+	elseif (txt >= 20)
+		return 650;
+	elseif (txt >= 15)
+		return 750;
+	elseif (txt >= 10)
+		return 850;
+	elseif (txt >= 5)
+		return 990;
+	else
+		return 999;
+	endif	
+endfunction
+
+function GetTextColour(txt)
+	if (txt >= 6)
+		return 67;
+	elseif (txt >= 5)
+		return 66;
+	elseif (txt >= 4)
+		return 166;	
+	elseif (txt >= 3)
+		return 366;
+	elseif (txt >= 2)
+		return 663;
+	elseif (txt >= 1)
+		return 664;
+	else
+		return 999;
+	endif	
+endfunction

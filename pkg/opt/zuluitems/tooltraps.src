@@ -1,0 +1,67 @@
+use uo;
+use os;
+use vitals;
+
+include "include/client";
+include "include/random";
+const FX_POISON_GAS := 0x113a;
+
+program open_trapped_item(character, item)
+      var traptype := GetObjProperty(item,"trap_type");
+      var trapstrength := GetObjProperty(item,"trap_strength");
+      case (traptype)
+          1 :   PlaySoundEffect(character, SFX_224);
+                var dmg := (Random(20) + cint(trapstrength));
+                SendSysmessage(character, "You set off a needle trap!");
+                ApplyDamage(character, dmg);
+                var scr := getobjproperty(item,"usescript");
+                if (!scr or scr == error)
+                  item.usescript := "";
+                else
+                  item.usescript := scr;
+                endif
+		        EraseObjProperty( item, "trap_type" );
+		        EraseObjProperty( item, "trap_strength" );
+	            EraseObjProperty( item, "usescript" );
+          2 :   PlaySoundEffect(character, SFX_232);
+                PrintTextAbovePrivate (character, "You set off a poison trap!", character);
+                PlayObjectCenteredEffect( character, FX_POISON_GAS, 10,10);    
+                var plevel := cint(GetObjProperty(character, "poison_level"));
+                var poisoned := getobjproperty(character, "#poisonisrunning");
+                if (poisoned)
+                  if ((plevel < trapstrength) or (!plevel))
+                    setobjproperty(character,"poison_level", cint(trapstrength));
+                    return;
+                  endif
+                else
+		          SetObjProperty(character, "#poisonisrunning",1);
+                  SetObjProperty (character, "poison_level",cint(trapstrength));
+		          var passparms := { character, character, "poison trap" };
+		          start_script(":spells:poisondamage", passparms);
+                endif 
+                var scr := getobjproperty(item,"usescript");
+                if (!scr or scr == error)
+                  item.usescript := "";
+                else
+                  item.usescript := scr;
+                endif
+		        EraseObjProperty( item, "trap_type" );
+		        EraseObjProperty( item, "trap_strength" );
+	            EraseObjProperty( item, "usescript" );
+          3 :   PlaySoundEffect(character, SFX_208);
+                SendSysmessage (character, "You set off an explosion trap!");
+                PlayObjectCenteredEffect( character, FX_EXPLODE_3, 10,10);
+                var dmg := (Random(20) + cint(trapstrength)); 
+                ApplyRawDamage(character, dmg);
+                var scr := getobjproperty(item,"usescript");
+                if (!scr or scr == error)
+                  item.usescript := "";
+                else
+                  item.usescript := scr;
+                endif
+		        EraseObjProperty( item, "trap_type" );
+		        EraseObjProperty( item, "trap_strength" );
+	            EraseObjProperty( item, "usescript" );
+        default: SendSysmessage (character, "You narrowly avoid the trap!");
+      endcase
+endprogram

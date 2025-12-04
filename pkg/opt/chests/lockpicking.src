@@ -1,0 +1,143 @@
+// Locking Spawning Chest system  version .1
+// by Zulu (zulu@zuluhotel.com)   July 5, 2000
+
+use uo;
+use os;
+use cfgfile;
+
+include "include/chests";
+include "include/starteqp";
+include "include/skillpoints";
+include "include/difficulty";
+
+program pick( me, lockpick )
+
+	If (!ReserveItem(lockpick)) return; endif
+
+	SendSysMessage(me, "Pick what?", FONT_NORMAL, 43);
+	var chest := Target(me);
+	if (!chest) return; endif
+
+	If (!ReserveItem(chest)) return; endif
+
+	if ( (not Accessible(me,chest)) or (not Accessible(me,lockpick)) )
+		SendSysMessage(me, "Can't reach it!", FONT_NORMAL, 43);
+		return;
+	endif
+
+	if (!chest.locked)
+		SendSysMessage(me,"That doesn't appear to be locked.", FONT_NORMAL, 43);
+		return;
+	endif
+
+	if ( Distance(me, chest) > 2 )
+		SendSysMessage(me, "Can't reach it!", FONT_NORMAL, 43);
+		return;
+	endif
+	if( PROPID_CHEST_SPAWNPOINT_CHEST && !GetObjProperty(me, CLASSEID_THIEF) )
+		SendSysMessage(me, "You are not a thief!", FONT_NORMAL, 43);
+		return;
+	endif
+
+	if (getobjproperty(chest, "#U"))
+        	if (getobjproperty(chest, "#U") > readgameclock())
+                	sendsysmessage(me,"You must wait to pick this lock!", FONT_NORMAL, 43);
+                	return;
+        	endif
+	endif
+
+	if (!canpick(chest))
+        	Sendsysmessage(me,"The Gods frown on picking this door!", FONT_NORMAL, 43);
+        	playlightningbolteffect(me);
+        	return;
+	endif
+
+	var lvl:=finddiff(chest);
+
+ 	if(lvl)
+		var tester:=cint(lvl);
+		if(tester > 150)
+			tester := 150;
+		endif
+		sendDiff( me , tester );
+	endif
+
+	if(!lvl)
+		SendSysMessage(me,"You have no chance of picking that lock!", FONT_NORMAL, 43);
+		return;
+	endif
+
+	if (LockPickTheThing(me,chest,lvl,lockpick))
+
+		// if (TypeOf(GetObjProperty(chest,"spawnchest"))=="Integer")
+		// 	SpawnTheChest(chest);
+		// endif
+		//DestroyChest(chest);
+	endif
+
+endprogram
+
+//function SpawnTheChest(chest)
+
+//	var level:=Cint(GetObjProperty(chest,"spawnchest"));
+
+//	if(level)
+//		MakeLoot(chest,level+108);
+//		addchest(chest);
+//	endif
+
+//endfunction
+
+function LockPickTheThing(me,chest,lvl,lockpick)
+
+	PlaySoundEffect(chest,SFX_242);
+
+	sleep(2);
+	if(lvl > 150)
+		lvl := 150;
+	else
+		lvl:=cint(lvl);
+	endif
+
+	var mobs:=ListHostiles(me,4);
+	if (len(mobs))
+		SendSysMessage(me,mobs[1].name+" breaks your concentration!", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	var skillpoints := get_default_points(SKILLID_LOCKPICKING);
+
+	if ( Checkskill(me,SKILLID_LOCKPICKING,lvl,skillpoints) )
+		PlaySoundEffect(chest,SFX_200);
+		PrintTextAbovePrivate( chest, "*Unlocked!*", me, FONT_NORMAL, 43, 1);
+		setobjproperty(chest, "L", me.name);
+		chest.locked := 0;
+		if( PROPID_CHEST_SPAWNPOINT_CHEST )
+			SubtractAmount(lockpick,1);
+			SendSysMessage(me, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43);
+			Start_Script("::misc/deleter", {chest, 30});
+		endif
+		return 1;
+	else
+		PrintTextAbovePrivate(chest,"You fail to pick the lock.",me, FONT_NORMAL, 43, 1);
+		setobjproperty(me, "#U", readgameclock() + 10);
+		if (!Checkskill(me,SKILLID_LOCKPICKING,lvl,skillpoints) )
+			if(!GetObjProperty(me, CLASSEID_THIEF ) )
+			PlaySoundEffect(me,0xef);
+			SendSysMessage(me,"Your pick breaks!");
+			SubtractAmount(lockpick,1);
+			endif
+		else
+			PlaySoundEffect(chest,SFX_11F);
+		endif
+		return 0;
+	endif
+
+endfunction
+
+function DestroyChest(chest)
+
+	Sleep(30);
+	DestroyItem(chest);
+
+endfunction

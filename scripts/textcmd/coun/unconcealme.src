@@ -1,0 +1,9 @@
+include ":staff:include/staff";
+
+
+program concealme( who )
+
+  LogCommand(who, GetProcess(GetPid()).name);
+    who.concealed := 0;
+
+endprogram

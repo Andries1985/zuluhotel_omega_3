@@ -1,0 +1,33 @@
+use os;
+use uo;
+
+include "include/client";
+
+program rc( who, text )
+
+    if(!GetObjProperty(who, "IsRPer"))
+        SendSysMessage( who, "RPer chat is only allowed by [RPers].", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+	if( !text )
+		SendSysMessage( who, "Usage is : .rc <msg>", FONT_NORMAL, 2595 );
+	else
+
+		var color;
+		var words := SplitWords(text);
+		if( TypeOf(words) == "Array" && words.size() > 1 && Cint(words[1][1]) > 0)
+			text := text - (words[1]+" ");
+		endif
+			
+		text := who.name + ": " + text;
+		color := 75;
+	
+		foreach character in EnumerateOnlineCharacters()
+			if(GetObjProperty(character, "IsRPer"))
+				SendSysMessage( character, text, 3, color );
+			endif
+		endforeach
+	endif
+	
+endprogram

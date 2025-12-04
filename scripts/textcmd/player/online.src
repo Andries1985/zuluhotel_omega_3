@@ -1,0 +1,190 @@
+// Updated Nov 12, 2025
+// Dev Alryc
+
+use uo;
+use os;
+
+include ":gumps:gumps";
+include ":staff:staff";
+
+program onlinechars( who )
+
+	//Check for Chars
+	var found := {};
+	var numplayer := 0;
+	var numstaff := 0;
+	var numcharsonline := 0;
+
+	if (who.cmdlevel)
+		foreach mobile in EnumerateOnlineCharacters();
+			if (!mobile.cmdlevel)
+				found.append(mobile);
+				numplayer++;
+				SleepMs(2);
+			elseif (mobile.cmdlevel)
+				found.append(mobile);
+				numstaff++;
+				SleepMs(2);
+			endif
+		endforeach
+		var chr := MakeAndProcessGumpStaff( who, found, numstaff, numplayer );
+		if( chr )
+			LogCommand(who, GetProcess(GetPid()).name, chr.name+"/"+chr.serial, "XYZ - "+chr.x+","+chr.y+","+chr.z+","+chr.realm);
+			var moved := MoveObjecttoLocation( who , chr.x , chr.y , chr.z , chr.realm, MOVEOBJECT_FORCELOCATION );
+			if (moved.errortext)
+			SendSysMessage(who, "oh no an error... can't go to: " + moved.errortext);
+			endif
+    endif
+	elseif (!who.cmdlevel)
+		foreach mobile in EnumerateOnlineCharacters();
+			if (!mobile.cmdlevel)
+				found.append(mobile);
+				numplayer++;
+				SleepMs(2);
+			endif
+		endforeach
+		MakeAndProcessGumpPlayer( who, found, numplayer );
+	endif
+
+endprogram
+
+function MakeAndProcessGumpPlayer( character, found, numcharsonline )
+
+	var gump := GFCreateGump(20, 20, 500, 720);
+	GFDisposable(gump, 0);
+	var y := 110;
+	var perpage := 20;
+	//var totalpages := ((len(found))/20); 
+	var page := 1;
+	var i := 0;
+	var start := 1;
+
+	// The main gump screen
+	GFResizePic(gump, 20, 20, 9250, 500, 725);
+
+	// The area background gumps
+	GFResizePic(gump, 38, 55, 9200, 464, 40);
+	GFResizePic(gump, 38, 95, 9200, 464, 610);
+
+
+	// Title text
+	GFResizePic(gump, 175, 35, 9200, 155, 20);
+	GFTextLine(gump, 180, 35, 67, "Characters Online: " + numcharsonline );
+
+	// Column Titles
+	GFTextLine(gump, 96, 65, 900, "Character Name");
+	GFTextLine(gump, 300, 65, 900, "Account Age");
+
+
+	GFTextLine(gump, 240, 708, 1000, "Page 1");
+	GFPage(gump, 1);
+	//Fill the gump
+	for( i := start ; i <= found.size() ; i := i + 1 )
+		
+		if (perpage <= 0)
+			GFAddButton(gump, 450, 705, 4005, 4006, 0, page+1); // Next Page button
+			GFPage(gump, page + 1);
+			GFAddButton(gump, 50, 705, 4014, 4015, 0, page); // Prev Page button
+			page := page + 1;
+			GFTextLine(gump, 240, 708, 1000, "Page "+page);
+			y := 110;
+			perpage := 20;
+		endif
+
+		GFTextLine(gump, 96, y, 0, found[i].name);
+
+		var time := GetObjProperty(character, "CreatedAt");
+		var timenow := ReadGameClock();
+		if(!time)
+			time := 0;
+		endif
+		time := timenow-time;
+		time := CInt(time/(24*3600));
+		GFTextLine(gump, 300, y, 0, time);
+
+		perpage := perpage - 1;
+		y := y + 25;
+	endfor
+
+	var result := GFSendGump(character, gump);
+	result := Cint(result[0]);
+
+	return found[result];
+	
+endfunction
+
+function MakeAndProcessGumpStaff( character, found, numstaff, numplayer )
+
+	var gump := GFCreateGump(20, 20, 600, 720);
+	GFDisposable(gump, 0);
+	var y := 110;
+	var perpage := 20;
+	//var totalpages := ((len(found))/20); 
+	var page := 1;
+	var i := 0;
+	var start := 1;
+
+	// The main gump screen
+	GFResizePic(gump, 20, 20, 9250, 600, 725);
+
+	// The area background gumps
+	GFResizePic(gump, 38, 62, 9200, 564, 40);
+	GFResizePic(gump, 38, 102, 9200, 564, 603);
+
+
+	// Title text
+	GFResizePic(gump, 38, 40, 9200, 155, 20);
+	GFTextLine(gump, 48, 40, 67, "Staff Online: " + numstaff );
+	GFResizePic(gump, 447, 40, 9200, 155, 20);
+	GFTextLine(gump, 457, 40, 67, "Characters Online: " + numplayer );
+
+	// Column Titles
+	GFTextLine(gump, 40, 75, 900, "Character");
+	GFTextLine(gump, 180, 75, 900, "Account Age");
+	GFTextLine(gump, 280, 75, 900, "IP");
+	GFTextLine(gump, 380, 75, 900, "Location");
+	GFTextLine(gump, 570, 75, 900, "Goto");
+
+
+	GFTextLine(gump, 290, 708, 1000, "Page 1");
+	GFPage(gump, 1);
+	//Fill the gump
+	for( i := start ; i <= found.size() ; i := i + 1 )
+		if (perpage <= 0)
+			GFAddButton(gump, 450, 705, 4005, 4006, 0, page+1); // Next Page button
+			GFPage(gump, page + 1);
+			GFAddButton(gump, 50, 705, 4014, 4015, 0, page); // Prev Page button
+			page := page + 1;
+			GFTextLine(gump, 290, 708, 1000, "Page "+page);
+			y := 110;
+			perpage := 20;
+		endif
+
+		if(found[i].cmdlevel)
+			GFTextLine(gump, 40, y, 900, found[i].name);
+		else
+			GFTextLine(gump, 40, y, 0, found[i].name);
+		endif
+		var time := GetObjProperty(character, "CreatedAt");
+		var timenow := ReadGameClock();
+		if(!time)
+			time := 0;
+		endif
+		time := timenow-time;
+		time := CInt(time/(24*3600));
+		var region := GetRegionName(found[i]);
+		GFTextLine(gump, 180, y, 0, time);
+		GFTextLine(gump, 280, y, 0, found[i].ip);
+		GFTextLine(gump, 380, y, 0, region);
+		GFAddButton(gump, 570, y-3, 5540, 5541, GF_CLOSE_BTN, i);
+
+		perpage := perpage - 1;
+		y := y + 25;
+	endfor
+
+	var result := GFSendGump(character, gump);
+	result := Cint(result[0]);
+
+	return found[result];
+	
+endfunction

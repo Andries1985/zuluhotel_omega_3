@@ -1,0 +1,87 @@
+//
+// stat/skill cap applier
+//
+// updates by Zulu  zuluhotel@home.com  Dec. 30 1999
+//  update Jan 21, 2000
+// Last update clash  17-12-2015
+
+use os;
+use uo;
+
+include "include/attributes";
+include "include/client";
+
+const STATCAP  := 130;
+const SKILLCAP := 130;
+const MINS_BETWEEN_CHECKS := 60;
+
+program capper()
+
+	while (1)
+	
+		foreach chr in EnumerateOnlineCharacters()
+
+			if( !chr.cmdlevel and !GetObjProperty( chr , "CapOff") )
+				set_critical(1);
+				
+				var statMatrix := GetObjProperty(chr, "statMatrix");
+				if( GetBaseStrength(chr) > STATCAP )
+					if(statMatrix)
+						if(GetBaseStrength(chr) > (STATCAP+statMatrix[1]))
+							SetBaseStrength( chr, (STATCAP+statMatrix[1]) );
+						endif
+					else
+						SetBaseStrength( chr, STATCAP );
+					endif
+				endif
+				
+				if( GetBaseDexterity(chr) > STATCAP )
+					if(statMatrix)
+						if(GetBaseDexterity(chr) > (STATCAP+statMatrix[2]))
+							SetBaseDexterity( chr, (STATCAP+statMatrix[2]) );
+						endif
+					else
+						SetBaseDexterity( chr, STATCAP );
+					endif
+				endif
+				
+				if( GetBaseIntelligence(chr) > STATCAP )
+					if(statMatrix)
+						if(GetBaseIntelligence(chr) > (STATCAP+statMatrix[3]))
+							SetBaseIntelligence( chr, (STATCAP+statMatrix[3]) );
+						endif
+					else
+						SetBaseIntelligence( chr, STATCAP );
+					endif
+				endif
+
+				var skill;
+				var matrix := GetObjProperty(chr, "pScrollMatrix");
+	 			for( skill:= 0 ; skill <= SKILLID__HIGHEST ; skill := skill + 1 )
+					if(matrix)
+						var pscrollSkillCap := SKILLCAP+matrix[skill];
+						if(skill == 0)
+							pscrollSkillCap := SKILLCAP+matrix[49];
+						endif
+						if(pscrollSkillCap > 150);
+							pscrollSkillCap := 150;
+						endif
+						if(GetBaseSkill(chr, skill) > pscrollSkillCap)
+							SetBaseSkill(chr, skill, pscrollSkillCap);
+						endif
+					else
+						if (GetBaseSkill(chr, skill) > SKILLCAP)
+							SetBaseSkill(chr, skill, SKILLCAP);
+						endif
+					endif
+	 			endfor
+	 			
+	 			set_critical(0);
+			endif
+		endforeach
+
+		Sleep( MINS_BETWEEN_CHECKS * 60 );
+
+	endwhile
+
+endprogram

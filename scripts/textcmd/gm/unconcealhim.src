@@ -1,0 +1,22 @@
+use uo;
+
+include ":staff:include/staff";
+
+Program unconcealme( who )
+
+	var targ := Target( who );
+	if( !targ )
+		return;
+	endif
+    LogCommand(who, GetProcess(GetPid()).name, who.name + "Unconcealed "+targ.name);
+
+    if(targ.cmdlvl >= who.cmdlevel)
+        SendSysMessage(who, "You can't unconceal equal or higher staff levels then yourself.");
+        SendSysMessage(targ, who.name+" tried to unconceal you!");
+        return;
+    endif
+    targ.concealed := 0;
+    SendSysMessage(who, "You have unconcealed "+targ.name+".");
+    SendSysMessage(targ, "You have now been unconcealed by "+who.name+".");
+
+endprogram

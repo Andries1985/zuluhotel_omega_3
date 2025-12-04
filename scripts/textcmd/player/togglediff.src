@@ -1,0 +1,13 @@
+use os;
+use uo;
+
+program togglediff( who )
+	var diff := GetObjProperty(who, "toggleDiff");
+	if(!diff)
+		Sendsysmessage(who, "Difficulty messages is toggled off, type this command again to enable them.");
+		SetObjProperty(who, "toggleDiff", 1);
+	else
+		Sendsysmessage(who, "Difficulty messages is toggled on, type this command again to disable them.");
+		EraseObjProperty(who, "toggleDiff");
+	endif
+endprogram

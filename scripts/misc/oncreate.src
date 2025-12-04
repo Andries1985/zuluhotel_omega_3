@@ -1,0 +1,58 @@
+/////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// OnCreate() - Run on player creation. Got the bare minimum here atm.
+//		All we are doing here is the checks that need to be done
+//		on the creation of the player.
+//
+// TODO: * Create a skill level check.
+//	 * Create a name check.
+//	 * Erase every property on the character before applying more. (just incase)
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+
+include "include/attributes";
+include "include/starteqp";
+include "include/NameChecker";
+include "include/client";
+include "include/time";
+
+program oncreate(who,skillids)
+
+    Print( "Character created: "+who.name );
+
+	// Set light level for 5 minutes. Green acres is dark!
+    who.setlightlevel(0, 300);	
+    CreateStartingEquipment(who,skillids);
+
+    //SetObjProperty(who,"newbie",1);
+    SetObjProperty(who, "CreatedAt", ReadGameClock());
+    SetObjProperty(who, "CreatedDateTime", NowString());
+    SetObjProperty(who, "OrgName", who.name);
+    SetObjProperty(who, "DiscordID", who.acct.getprop("DiscordID"));
+    // The starting area
+
+	var move := MoveObjectToLocation( who, 1433, 1861, 36, "britannia_alt", MOVEOBJECT_FORCELOCATION);
+	if(!move)
+		Print("Move errortext " + move);
+	endif
+	
+    SendSysMessage(who, "Welcome to Zuluhotel Omega!", 3, 67);
+	sleep(2);
+    SendSysMessage(who, "Please read the rules and then walk into a racegate in order to start playing.", 3, 67);
+    sleep(2);
+    SendSysMessage(who, "Do not forget to use the boost stone in front of you!", 3, 2595);
+
+    // For the hair system
+    SetObjProperty(who, "HairColour", CInt((GetEquipmentByLayer(who, LAYER_HAIR).color)));	
+    SetObjProperty(who, "BeardColour", CInt((GetEquipmentByLayer(who, LAYER_BEARD).color)));
+	
+    // Name Check
+    var check := CheckName(who.name,who);
+    if (check[1] == 0 || check != 1)
+		who.name := "AlreadyUsed";
+	    start_script("misc/namechanger", {who, check[2]}); 
+    endif
+endprogram

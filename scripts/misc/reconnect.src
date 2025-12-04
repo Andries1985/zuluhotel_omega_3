@@ -1,0 +1,83 @@
+use uo;
+use datafile;
+
+include "include/NameChecker";
+
+// Toadstool ADD
+const BANNED_IPS := ":ipban:bannedips";
+
+program reconnect( who )
+
+	// Name Check
+        var check := CheckName(who.name,who);
+        if (check[1] == 0 || check != 1 || GetObjProperty(who, "Converted"))
+			who.name := "AlreadyUsed";
+			start_script("misc/namechanger", {who, check[2]}); 
+        endif
+
+	CheckIPBan(who);
+
+	var temp := GetObjProperty(who, "#ViewingBeast");
+	if (temp)
+		who.frozen := 0;
+		who.concealed := 0;
+		EraseObjProperty(who, "#ViewingBeast");
+	endif
+
+	if (getobjproperty(who,"starttime"))
+		Eraseobjproperty(who,"starttime");
+	endif
+
+	SendSysMessage( who, "Reconnected." );
+
+endprogram
+
+////////////////////////////////////////////////////////////////////////
+// Check data file for banned ip and kick
+//
+// This can probably be removed one day since converting to 099
+////////////////////////////////////////////////////////////////////////
+function CheckIPBan(who)
+
+// open banned datafile
+var ipdfile := OpenDataFile( BANNED_IPS );
+
+// open element
+var bannedele := ipdfile.FindElement("BannedIPS");
+var strip := CStr(who.ip);
+
+UnloadDataFile( BANNED_IPS );
+
+var iplist := bannedele.PropNames();
+
+var i := 1;
+var stop;
+
+foreach ip in iplist	
+	if (ip[i] == strip[i]) // If first number is the same, check the whole thing
+
+		repeat
+			// even if this is the first one, it means entire world ban
+			if (CInt(ip[i]) == 2 && CInt(ip[(i+1)]) == 5 && CInt(ip[(i+2)]) == 5)
+				stop := 1;
+				foreach person in EnumerateOnlineCharacters()
+					if (person.cmdlevel > 1)
+						SendSysMessage(person, "Account: "+who.acctname, 3, 53);
+						SendSysMessage(person, "Character: "+who.name, 3, 53);
+						SendSysMessage(person, "Tried logging in but is IP banned. Consider account ban?", 3, 43);
+					endif
+				endforeach
+				DisconnectClient( who );
+			elseif (strip[i] == ip[i])
+				i := i + 1;
+			else
+				stop := 1;
+			endif
+		until (stop || i > 100); //failsafe
+		stop := 0;
+		i := 1;	
+	endif
+endforeach
+
+endfunction
+

@@ -1,0 +1,125 @@
+/* $Id: toolTips.src 104 2006-05-25 22:14:15Z montuz $
+ *	Description: AOS Tooltips. Starter script.
+ *	This packet takes awhile to get used to.
+ *	HEAVILY modified by Agata
+ */
+
+use uo;
+use cfgfile;
+use polsys;
+use os;
+
+const OFFSET_OBJECT_SERIAL   := 0x05;
+const OFFSET_CLILOC_ID       := 0x0F;
+const OFFSET_LENGTH_ID       := 0x13;
+const OFFSET_UNICODE_TEXT    := 0x14;
+
+program Install()
+
+	 Print("INSTALLING: Outgoing Tooltip PH...");
+	 return 1;
+
+endprogram
+
+exported function MegaCliloc( who, byref packet )
+	var xObject := SystemFindObjectBySerial(packet.GetInt32(OFFSET_OBJECT_SERIAL));
+
+	if ( xObject.IsA(POLCLASS_ITEM) )
+		packet.SetSize(15);
+		
+		var Object_Name := xObject.desc;
+		var Object_Color := GetObjectColor( xObject );
+		if(Object_Color)
+			Object_Name := CAscZ("<BASEFONT COLOR=" + Object_Color + ">" +Object_Name);
+		else
+			Object_Name := CAscZ("<BASEFONT>"+Object_Name);
+		endif
+		packet.SetInt32(OFFSET_CLILOC_ID, 1042971); // ~1_NOTHING~
+		packet.SetUnicodeString(OFFSET_UNICODE_TEXT, Object_Name, 1);
+		// I've noticed that this packet is only sent if this value has changed
+		// from the last time it was checked. And using html to change the size doesn't work
+		// for some reason. Maybe a core/client issue?
+		packet.SetInt16(OFFSET_LENGTH_ID, Object_Name.Size() * 2);
+		
+		var xDesc := run_script_to_completion( ":megacliloc:itemdata", {who, xObject});
+		if ( xDesc.Size() > 0 )
+			foreach prop in xDesc
+				var str := "";
+				if (prop.values.size() > 0)
+					str := CStr(prop.values[1]);
+					var i;
+					for (i:=2; i<=prop.values.size(); i:=i+1)
+						str += CChr(0x09) + CStr(prop.values[i]);
+					endfor
+				endif
+				str := CAscZ(str);
+				packet.SetInt32(packet.GetSize() - 1, prop.clilocid);
+				var Length_ID := packet.GetSize();
+				packet.SetUnicodeString(packet.GetSize() + 1, str, 1);
+				// SetUnicodeString adds 00 BYTE[1] at the start of the Unicode offset, which messes with the length offset.
+				// Setting the length of the unicode text below will fix that issue. Same deal as above.
+				packet.SetInt16(Length_ID, str.Size() * 2);
+			endforeach
+		endif
+		// End of loop.
+		packet.SetInt32(packet.GetSize(), 0);
+	elseif (xObject.IsA(POLCLASS_MOBILE))
+		packet.SetSize(15);
+		var Object_Name :=  CAscZ("<BASEFONT>"+xObject.Name);
+		packet.SetInt32(OFFSET_CLILOC_ID, 1042971); // ~1_NOTHING~
+		packet.SetUnicodeString(OFFSET_UNICODE_TEXT, Object_Name, 1);
+		packet.SetInt16(OFFSET_LENGTH_ID, Object_Name.Size() * 2);
+		
+		var xDesc := run_script_to_completion( ":megacliloc:mobiledata", {who, xObject});
+		if ( xDesc.Size() > 0 )
+			foreach prop in xDesc
+				var str := "";
+				if (prop.values.size() > 0)
+					str := CStr(prop.values[1]);
+					var i;
+					for (i:=2; i<=prop.values.size(); i:=i+1)
+						str += CChr(0x09) + CStr(prop.values[i]);
+					endfor
+				endif
+				str := CAscZ(str);
+				packet.SetInt32(packet.GetSize() - 1, prop.clilocid);
+				var Length_ID := packet.GetSize();
+				packet.SetUnicodeString(packet.GetSize() + 1, str, 1);
+				packet.SetInt16(Length_ID, str.Size() * 2);
+			endforeach
+		endif
+
+		packet.SetInt32(packet.GetSize(), 0);		
+	endif
+	return 0;
+endfunction
+
+function GetObjectColor( xObject )
+	
+	if( GetObjProperty( xObject, "UnIDedMagicalItem" ))
+		return "#e1ff00";
+	elseif( xObject.IsA( POLCLASS_CORPSE ))
+		var mobile := SystemFindObjectBySerial( xObject.ownerserial );
+		if( mobile.murderer )
+			return "#ff0011";
+		elseif( mobile.criminal )
+			return "#b3b3b3";
+		else
+			return "#0cebeb";
+		endif
+	elseif( xObject.IsA( POLCLASS_EQUIPMENT ))
+		var hp_percent := (Cdbl(xObject.hp)/Cdbl(xObject.maxhp))*100;
+		if(hp_percent <= 25)
+			return "#900000";
+		elseif(hp_percent <= 50)
+			return "#cc6600";
+		elseif(hp_percent <= 75)
+			return "#ebbb0c";
+		elseif(GetObjProperty(xObject, "IsGMItem"))
+			return "#99ff66";
+		else
+			return "#0cebeb";
+		endif
+	endif
+	return 0;
+endfunction

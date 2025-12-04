@@ -1,0 +1,64 @@
+use os;
+use uo;
+use party;
+
+include "include/client";
+
+program txtcmd_clearparty(who, range)
+
+	range := CInt(range);
+	
+	if (!range)
+        SendSysMessage(who, "Select a player to remove from party.", FONT_NORMAL, 43);
+		var player := target(who);
+        if (!player || (player.isa(POLCLASS_NPC)))
+            SendSysMessage(who, "Canceled", FONT_NORMAL, 43);
+            return 0;
+        endif
+		var party := player.party;
+		if (!party)
+            SendSysMessage(who, "Player is not in a party.", FONT_NORMAL, 43);
+			return 0;
+		elseif (!(party.leader == player))
+			party.removemember(player);
+			SendSysMessage(who, "You've removed "+player.name+" from party.", FONT_NORMAL, 43);
+			SendSysMessage(player, "You've been removed from your party by "+who.name, FONT_NORMAL, 43);
+			PlayObjectCenteredEffectEX(player, 0x37C4, 0xa, 0xa, 43, 4);
+			return 0;
+		else
+			var party_members := party.members;
+			foreach member in party_members
+				SendSysMessage(member,"Your party has been disbanded by "+who.name, FONT_NORMAL, 43);
+				PlayObjectCenteredEffectEX(member, 0x37C4, 0xa, 0xa, 43, 4);
+			endforeach
+			SendSysMessage(who, "You've disbanded "+player.name+"'s party.", FONT_NORMAL, 43);
+			PlayObjectCenteredEffectEX(player, 0x37C4, 0xa, 0xa, 43, 4);
+			DisbandParty(party);
+			return 0;
+		endif
+	endif
+
+	foreach player in ListMobilesNearLocation( who.x, who.y, who.z, range, who.realm )
+		if ((player != who) && (!player.isa(POLCLASS_NPC)))
+			var party := player.party;
+			if (!party)
+				continue;
+			elseif (!(party.leader == player))
+				party.removemember(player);
+				SendSysMessage(who, "You've removed "+player.name+" from party.", FONT_NORMAL, 43);
+				SendSysMessage(player, "You've been removed from your party by "+who.name, FONT_NORMAL, 43);
+				PlayObjectCenteredEffectEX(player, 0x37C4, 0xa, 0xa, 43, 4);
+			else
+				var party_members := party.members;
+				foreach member in party_members
+					SendSysMessage(member,"Your party has been disbanded by "+who.name, FONT_NORMAL, 43);
+					PlayObjectCenteredEffectEX(member, 0x37C4, 0xa, 0xa, 43, 4);
+				endforeach
+				SendSysMessage(who, "You've disbanded "+player.name+"'s party.", FONT_NORMAL, 43);
+				PlayObjectCenteredEffectEX(player, 0x37C4, 0xa, 0xa, 43, 4);
+				DisbandParty(party);
+			endif
+		endif
+	endforeach
+endprogram
+

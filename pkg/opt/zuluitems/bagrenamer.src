@@ -1,0 +1,60 @@
+/////////////////////////////////////////////////////
+//////////////Dreams custom bag renamer//////////////
+/////////////////////////////////////////////////////
+use uo;
+use os;
+use math;
+use basicio;
+
+include "util/repair";
+include "include/client";
+include "include/objtype";
+include "include/classes";
+include "include/random";
+include "include/itemutil";
+include "include/autoloop";
+include "include/attributes";
+
+Program bagrename (who)
+
+SendSysMessage(who, "Select the bag you want to rename");
+
+var what:= target(who);
+
+If(what.objtype == 0x0E75 or what.objtype == 0x09b0 or what.objtype == 0x0e7a or what.objtype == 0x0E76 or what.objtype == 0x0E79)
+	
+	if( !IsInContainer( who.backpack , what ) )
+		SendSysmessage( who, "That item has to be in your backpack." );
+		return;
+	endif
+
+	var nesta :=CInt(GetObjProperty(who, "#nesta")), secclock:=ReadGameClock();
+
+	if ( secclock< nesta)
+		SendSysMessage( who, "You have to wait " + (nesta-secclock) + " to do that again.");
+		return;
+	endif
+
+ 	var test := RequestInput(who, who.backpack, "What name would you like to give the bag?" );
+
+
+	if(Len(test) > 20)
+		SendSysMessage(who, "You cannot have such a long name for your bags.");
+		return;
+	endif
+ 
+	if((test=="") || (!test) or test==" " or test=="  " or test=="   " or test=="    " or test=="     " or test=="      " or test=="       " or test=="        " or test=="         " or test=="          " or test=="           " or test=="            " or test=="             " or test=="              " or test=="               " or test=="                " or test=="                 " or test=="                 " or test=="                   " or test=="                    ")
+		SendSysMessage( who, "Canceled." );
+		return;
+	endif
+
+	what.name := test;
+else
+	SendSysMessage(who, "You must select a bag to do that!");
+	return;
+endif
+
+	SetObjProperty(who, "#nesta", ReadGameClock() + 5);
+
+endprogram
+

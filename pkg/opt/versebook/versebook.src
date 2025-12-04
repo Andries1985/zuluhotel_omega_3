@@ -1,0 +1,196 @@
+/////////////////////////////////////////////////////////////////
+// Toadstool - complicated damn book!
+//
+// Note: When doing verses in verses.cfg, never do 1 over page limit
+// ie, if you specify 6, or 11, or 16 songs it will bug out
+// You can do exactly 5, or 7, or 9.  ANYTHING but 1 over the next page...
+//
+//////////////////////////////////////////////////////////////////////////////
+
+
+
+use uo;
+use os;
+use cfgfile;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include ":guilds:include/guilds";
+include ":guilds:include/guildconstants";
+include "include/classes";
+include ":versebook:include/verseinfo";
+include ":versebook:include/versefunctions";
+
+var versecfg := ReadConfigFile(":versebook:verses");
+var PERPAGE := 5;
+
+const FIRST_SONGS := "Prosaic Verses";
+const SECOND_SONGS := "Prevalent Verses";
+const THIRD_SONGS := "Good Verses";
+const FOURTH_SONGS := "Best songs";
+program VerseBook(who, book)
+
+	var verses := GetObjProperty(book, "Verses");
+	if (!verses)
+		verses := {};
+	endif
+			
+	var gump := GFCreateGump(15, 15, 440, 300);
+
+	// The spell book
+	GFGumpPic(gump, 15, 15, 500);
+
+	// Bottom of page 2 line deco
+	GFGumpPic(gump, 235, 210, 57);
+	GFGumpPic(gump, 265, 210, 58);
+	GFGumpPic(gump, 281, 210, 58);
+	GFGumpPic(gump, 297, 210, 58);
+	GFGumpPic(gump, 313, 210, 58);
+	GFGumpPic(gump, 329, 210, 58);
+	GFGumpPic(gump, 345, 210, 58);
+	GFGumpPic(gump, 361, 210, 58);
+	GFGumpPic(gump, 375, 210, 59);
+
+			//	GFAddButton(gump, 371, 15, 502, 502, 0, 1);
+	GFPage(gump, 1);
+	GFTextLine(gump, 90, 25, 39, "Prosaic Verses");
+	gump :=	GetVerseTypeInfo(gump, 1);
+				
+	var page := 1;
+	var i := 0;
+	var i2 := 0;
+	var i3 := 0;
+	var i4 := 0;
+	var x := 70;
+	var y := 60;
+	var y2 := 60;
+	var ele;
+	var subpagecount := 0;
+	var subpage;
+	var pagemod := 0;
+	var pagetitle := FIRST_SONGS;
+	var mainpagemod := 1;
+	var first;
+
+	foreach verse in GetConfigStringKeys( versecfg )
+
+		// Next page
+		if (i >= PERPAGE );
+
+			page := page + 1;
+			first := page;
+			// Next Page
+			var si := page-1;
+			repeat	
+
+				GFPage(gump, si);
+				// next
+				GFAddButton(gump, 371, 15, 502, 502, 0, page);
+
+				if (si > 6 )
+					// back
+					GFAddButton(gump, 15, 15, 501, 501, 0, page-12);
+				endif
+				si := si - 1;
+			until (si < (page-subpagecount-1));
+			
+			GFPage(gump, page);
+			
+			case (page/PERPAGE)
+				0: pagetitle := FIRST_SONGS;mainpagemod := 1;
+				1: pagetitle := SECOND_SONGS;mainpagemod := 2;
+				2: pagetitle := THIRD_SONGS;mainpagemod := 3;
+				3: pagetitle := FOURTH_SONGS;mainpagemod := 4;
+			endcase
+			gump :=	GetVerseTypeInfo(gump, mainpagemod);
+			GFTextLine(gump, 90, 25, 39, pagetitle);
+			// Previous
+			y := 60;
+			x := 70;
+			i := 0;
+		elseif (_verse_iter == GetConfigStringKeys( versecfg ).size() && _verse_iter != PERPAGE)
+
+			var si := page;
+				repeat	
+
+				GFPage(gump, si);
+				if (si > 6 )
+					// back
+					GFAddButton(gump, 15, 15, 501, 501, 0, first-6);
+				endif
+				si := si - 1;
+			until (si < first);
+			GFPage(gump, first);
+		endif
+		
+		// All the info pages for the current page
+		// looks like SPELL PAGE - info1- info2- info3 - info4 - info5 - SPELL PAGE 2
+		if (i == 0)
+		subpagecount := 0;
+			repeat 
+				page := page + 1;
+				subpage := page - i2;
+				GFPage(gump, page);
+
+				if (verses[_verse_iter+i2 ])
+					GFTextLine(gump, 90, 25, 39, pagetitle);
+					repeat
+						if (verses[_verse_iter+i3 ])
+							
+							ele := FindConfigElem( versecfg, _verse_iter+i3 );
+							// use spell button
+							GFAddButton(gump, x-23, y2+3, 2117, 2118, 1, _verse_iter+i3);
+							// Song name
+							if (page-mainpagemod == _verse_iter+i3)
+								GFTextLine(gump, x, y2, 460, GetConfigString(ele,"Name"));
+								gump := GetVerseInfo(gump, _verse_iter+i3);
+							else
+								GFTextLine(gump, x, y2, 0, GetConfigString(ele,"Name"));
+							endif
+							// song info
+
+								if (page-mainpagemod == _verse_iter+i3)
+									GFGumpPic(gump, x+125, y2+3, 5411, 460);
+								else
+									GFAddButton(gump, x+125, y2+3, 5411,5411, 0, _verse_iter+mainpagemod+i3);
+								endif
+							y2 := y2+30;
+						endif
+						i3 := i3 + 1;
+					until (i3 == PERPAGE);
+					i3 := 0;
+					y2 := 60;
+				endif
+				subpagecount := subpagecount + 1;
+				i2 := i2 + 1;
+			until (i2 == PERPAGE);
+			i2 := 0;
+			i3 := 0;
+			y2 := 60;
+			GFPage(gump, (page-subpagecount));	
+		endif
+		
+		// Verse in book, list it - MAIN PAGE MAIN PAGE
+		if (verses[_verse_iter])
+			ele := FindConfigElem( versecfg, _verse_iter );
+			// use spell button
+			GFAddButton(gump, x-23, y+3, 2117, 2118, 1, _verse_iter);
+			// Song name
+			GFTextLine(gump, x, y, 0, GetConfigString(ele,"Name"));
+			// song info
+			GFAddButton(gump, x+125, y+3, 5411,5411, 0, _verse_iter + mainpagemod);
+			y := y + 30;
+		endif
+		
+		i := i + 1;
+
+	endforeach
+
+	var data := GFSendGump(who, gump);
+
+	// 20 spells, cast, nay SING, a song :P
+	if (data[0] > 0 && data[0] < 21)
+		return PerformSong(who, data[0]);
+	endif
+
+endprogram

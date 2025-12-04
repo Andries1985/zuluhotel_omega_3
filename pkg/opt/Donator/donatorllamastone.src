@@ -1,0 +1,193 @@
+Use uo;
+Use os;
+use vitals;
+
+include "include/attributes";
+include ":gumps:yesno";
+include "include/areas";
+include "include/constants/locations";
+
+const MONEY := 0xeed;
+
+Program OnUse_donatorhorsestone( who, item)
+
+	Var mllayout := {
+	"Page 0",
+	"ReSizePic 350 220 3600 150 120",
+	"Text 390 240 2494 0",
+	"Button 370 242 2118 2117 1 0 1",
+	"Text 390 260 2494 1",
+	"Button 370 262 2118 2117 1 0 2",
+	"Text 390 280 2494 2",
+	"Button 370 282 2118 2117 1 0 3",
+	"Text 390 300 2494 3",
+	"Button 370 302 2118 2117 1 0 4"
+	};
+
+	Var mldata := {
+	"Mount",
+	"Color",
+	"Kill it",
+	"Exit"
+	};
+
+	Var Effect := SendDialogGump( who, mllayout, mldata );
+    
+	If( !Effect )
+		SendSysMessage( who, "Cancelled." );
+		Return;
+    	Endif
+
+	Case( Effect[0] )
+
+	1:
+	mountllama( who, item );
+
+    	2:
+	colormount( who, item );
+
+	3:
+	killmounts( who );
+
+   	4:
+    	SendSysmessage( who, "Cancelled.");
+
+    	EndCase
+
+
+	
+Endprogram
+
+function mountllama( who, item)
+
+	if( !IsInACity( who ) AND !IsInPlayerCity( who ) )
+		SendSysMessage( who, "You must be in town to use that!" );
+		return;
+	endif
+
+	var itemserial := GetObjProperty( item, "Owner");
+	var color := GetObjProperty( item, "PetColor");
+	var pettype := "donatorllama";
+	var pet;
+	var mounted := GetEquipmentByLayer( who, 25 );
+
+	if( mounted)
+		SendSysMessage( who, "You cannot do that while mounted!");
+		return 0;
+	endif
+	if( who.serial != itemserial)
+		SendSysMessage( who, "That is not yours!" );
+		return 0;
+	endif
+
+	if( !GetObjProperty( who, "Donator" ) )
+		SendSysMessage( who, "You are not a donator!" );
+		return 0;
+	endif
+
+	if( GetObjProperty( who, "DonatorMounted" ) )
+		SendSysMessage( who, "You have already summoned a mount!" );
+		return 0;
+	endif
+
+	pet := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0x1F021, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+	//pet := CreateItemAtLocation(5288,1176,0,0x1F021,1);
+	pet.color := color;
+	pet.graphic := 0x3ea6;
+	SetObjProperty( who, "DonatorMounted", 1);
+	SetObjProperty( pet, "npctemplate", pettype);
+	EquipItem(who,pet);
+
+endfunction
+
+function IsInPlayerCity( who )
+
+	var items := ListItemsNearLocationOfType( who.x, who.y, 0, 250, 0x7566, who.realm );
+	var stone;
+	var minx;
+	var maxx;
+	var miny;
+	var maxy;
+	if( !items )
+		items := ListItemsNearLocationOfType( who.x, who.y, 1, 250, 0x7566, who.realm );
+		if( !items )
+			items := ListItemsNearLocationOfType( who.x, who.y, 2, 250, 0x7566, who.realm );
+		endif
+	endif
+	foreach item in items
+		stone := item;
+		minx := GetObjProperty( stone, "MinX" );
+		maxx := GetObjProperty( stone, "MaxX" );
+		miny := GetObjProperty( stone, "MinY" );
+		maxy := GetObjProperty( stone, "MaxY" );
+		if( (who.x >= minx) AND (who.x <= maxx) AND (who.y >= miny) AND (who.y <= maxy) )
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+	
+
+endfunction
+
+function colormount( who, item )
+
+	var color;
+	var targett;
+	var money;
+
+	SendSysMessage( who, "Please select something with the color you want!");
+	targett := Target(who);
+	color := targett.color;
+
+	if(!color)
+		SendSysMessage( who, "You have to select an item. Cancelled");
+		return;
+	endif
+
+	if( YesNo( who, "Pay 300.000 gold?") )
+		money := CheckMoney(who);
+		if( money >= 300000 )
+			who.spendgold(300000);
+			SetObjProperty( item, "PetColor", color);
+			item.color := color;
+			SendSysMessage(who, "Please take out a new mount to get the new color.");
+		else
+			SendSysMessage(who, "You do not have enough money!");
+			return;
+		endif
+
+	else
+		SendSysMessage( who, "Cancelled");
+		return;
+	endif
+
+endfunction
+
+function killmounts( who )
+	var mountserial := GetObjProperty( who, "DMountSerial" );
+	var mount := SystemFindObjectBySerial( mountserial );
+	var mounted := GetEquipmentByLayer( who, 25 );
+
+	if( mounted)
+		SendSysMessage( who, "You cannot do that while mounted!");
+		return 0;
+	endif
+	ApplyRawDamage( mount, CInt(GetHP(mount)+3) );
+	EraseObjProperty( who, "DonatorMounted");
+endfunction
+
+
+function CheckMoney (who)
+
+   var totalmoney := 0, backpack := EnumerateItemsInContainer (who.backpack);
+
+   foreach item in backpack
+      if (item.objtype == MONEY)
+        totalmoney := totalmoney + GetAmount(item);
+      endif
+   endforeach
+
+   return totalmoney;
+
+endfunction

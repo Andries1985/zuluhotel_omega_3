@@ -1,0 +1,75 @@
+use npc;
+use os;
+use uo;
+
+include "include/eventid";
+include "include/classes";
+include "include/npcbackpacks";
+include "include/npccast";
+include "include/randname";
+include "include/string";
+
+include "include/rituals";
+include "include/client";
+include "include/spelldata";
+include "ai/setup/modsetup";
+include "include/random";
+include "include/attributes";
+
+const HALT_THRESHOLD := 10;
+Const MOVING_EFFECT_FIREBALL  := 0x36D4;
+
+var me := Self();
+var master := me.master;
+var masterserial := master.serial;
+
+var caster := 0;
+var spells;
+var saywords;
+var firebreather;
+var poisoner;
+var summons := 0;
+var chaseloop := 0;
+
+var guarding :=0;
+var following := 0;
+var staying := 0;
+var nextwatch := ReadGameClock();
+var freetime := cint(ReadGameClock() + 2400);
+var range := GetObjProperty(me, "Range");
+
+
+program Beastal_Bond()
+
+	EnableEvents( SYSEVENT_ENTEREDAREA, 10 );
+	SetObjProperty(me, "serial", me.serial);
+	var animal := SystemFindObjectBySerial(GetObjProperty(me, "Animal"));
+	var who := SystemFindObjectBySerial(GetObjProperty(me, "Master"));
+	var ev;
+	
+	repeat
+		ev := os::wait_for_event( 1 );
+		if (ev)
+			case (ev.type)
+				SYSEVENT_ENTEREDAREA:
+					if (ev.source != animal && ev.source != who)
+						SendSysMessage(who, animal.name+": "+ev.source.name+" is near me!", 3, 67);
+					endif
+			endcase
+		endif
+		
+		if (!GetHP(animal))	
+			SendSysMessage(who, "The bond with the creature is suddenly broken!", 3, 43);
+		elseif (GetObjProperty(who, "BeastalBondTimer") < ReadGameClock())
+			SendSysMessage(who, "The bond with the creature has been lost.", 3, 43);
+		endif
+		
+		MoveObjectToLocation(me, animal.x, animal.y, animal.z, animal.realm, MOVEOBJECT_FORCELOCATION);
+	until (!GetHP(animal) || GetObjProperty(who, "BeastalBondTimer") < ReadGameClock() || GetObjProperty(who, "BeastalBond") != animal.serial);
+	
+	EraseObjProperty(who, "BeastalBondTimer");
+	EraseObjProperty(who, "BeastalBond");
+	
+	SetObjProperty(me, "guardkill", 1);
+	ApplyRawDamage(me, GetHP(me)+10);
+endprogram

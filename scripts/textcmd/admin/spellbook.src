@@ -1,0 +1,43 @@
+use uo;
+
+program textcmd_spellbook( who )
+    
+	// Normal Spellbook
+	var book := CreateItemInBackpack(who,0x0efa, 1);
+	setobjproperty(book,"LFucker",who.serial + " - " + who.name);
+
+	var i;
+	for (i := 0x1f2d; i <= 0x1f6c; i := i + 1)
+		CreateItemInContainer(book,  i, 1);
+	endfor
+	
+	// Codex Damnorum
+	var necro := CreateItemInBackpack(who, 0xA100, 1);
+	SetObjProperty( necro , "LFucker",who.serial + " - " + who.name);
+	SetObjProperty( necro , "Lesser" , 255 );
+	SetObjProperty( necro , "Greater" , 255 );
+
+	// Book of Earth
+	var druid := CreateItemInBackpack(who, 0xB100, 1);
+	SetObjProperty( druid , "LFucker",who.serial + " - " + who.name);
+	SetObjProperty( druid , "Lesser" , 255 );
+	SetObjProperty( druid , "Greater" , 255 );
+
+	// Song Book
+	var songbook := CreateItemInBackpack(who, 0x6177, 1);
+	SetObjProperty( songbook , "LFucker",who.serial + " - " + who.name);
+	SetObjProperty( songbook , "Lesser" , 255 );
+	SetObjProperty( songbook , "Greater" , 255 );
+
+	// Holy Book
+	var holybook := CreateItemInBackpack(who, 0x6166, 1);
+	SetObjProperty( holybook , "LFucker",who.serial + " - " + who.name);
+	SetObjProperty( holybook , "Lesser" , 255 );
+	SetObjProperty( holybook , "Greater" , 255 );
+
+	//Verse Book
+	var versebook := CreateItemInBackpack(who, 0xff96, 1);
+	SetObjProperty( versebook , "LFucker",who.serial + " - " + who.name);
+	var verses := {1,1,1,1,1,1,1,1,1,1};
+	SetObjProperty( versebook , "Verses" , verses );
+endprogram

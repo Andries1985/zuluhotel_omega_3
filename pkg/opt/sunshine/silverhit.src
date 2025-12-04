@@ -1,0 +1,49 @@
+include ":combat:hitscriptinc";
+include "include/attributes";
+
+function CalcSilverDamage( attacker, defender, weapon, armor, byref basedamage, piercing := 0 )
+	var rawdamage;
+	var absorbed;
+	var ar := CInt(armor.ar) + CInt(defender.ar_mod);
+	var anatomy := GetEffectiveSkill( attacker , SKILLID_ANATOMY );
+
+	if( defender.npctemplate )
+		if( !attacker.npctemplate )
+			basedamage := basedamage * 1.5;
+		endif
+	endif
+
+	basedamage := CalcPhysicalDamage( attacker , defender , weapon , basedamage );
+	basedamage := basedamage * ( 1 + anatomy * 0.002 );
+
+	if( !piercing )
+		rawdamage := GetShieldAbsorption( attacker , defender , weapon , basedamage );
+		absorbed  := ar * (Random(51) + 50) * 0.01;
+	else
+		rawdamage := basedamage;
+		absorbed  := 0;
+	endif
+
+	rawdamage := rawdamage - absorbed;
+	rawdamage := rawdamage * 0.5;
+
+	if( rawdamage < 0 )
+		rawdamage := 0;
+	endif
+
+	MaceHit( attacker , defender ,armor);
+
+	return CInt( rawdamage );
+endfunction
+
+program silverarrow_hitscript(attacker, defender, weapon, armor, basedamage, rawdamage)
+	var vulnerable := GetObjProperty(defender, "SilverVulnerability");
+	if (vulnerable != error)
+	   basedamage := basedamage + 30;
+	   rawdamage := rawdamage + 30;
+	   rawdamage := CalcSilverDamage(attacker, defender, weapon, basedamage, rawdamage);
+	else
+	   rawdamage := RecalcDmg(attacker, defender, weapon, basedamage, rawdamage);
+	endif
+	DealDamage(attacker, defender, weapon, armor, basedamage, rawdamage);
+endprogram

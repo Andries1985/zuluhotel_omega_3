@@ -1,0 +1,271 @@
+//////////////////////////////////////////////////////////////////////////////
+//
+// Toadstool - 20/04/2012
+//
+// IP_Ban script. An easy way for admins+ to ban/unban IP adresses on the fly.
+//
+// Scripted in a hurry, so it's messy and not commented.
+//
+//////////////////////////////////////////////////////////////////////////////
+
+use os; 
+use uo; 
+use datafile;
+
+include ":gumps:old-gumps";
+include ":staff:include/staff";
+
+const DFILE := "bannedips";
+
+program IP_Ban(who)
+
+// open banned datafile
+var ipdfile := OpenDataFile( DFILE );
+
+// data file doesn't exist, create
+if (!ipdfile)
+	ipdfile := CreateDataFile( DFILE );
+endif
+
+// open element
+var bannedele := ipdfile.FindElement("BannedIPS");
+
+// no element, create it
+if (!bannedele)
+	bannedele := ipdfile.CreateElement("BannedIPS");
+endif
+
+var iplist := bannedele.PropNames();
+
+
+GFInitGump(0, 0);
+GFResizePic( 10, 10, 9260, 500, 400);
+GFResizePic( 140, 10, 9260, 240, 40);
+//GFResizePic( 410, 370, 9260, 100, 40);
+
+GFResizePic( 30, 80, 2620, 460, 250);
+
+GFTextLine( 200, 20, 40, "Banned IP List" );
+
+GFTextLine( 80, 90, 67, "IP Address" );
+GFTextLine( 310, 90, 67, "Notes" );
+
+GFTextLine( 55, 339, 40, "Ban an IP (Manually)");
+GFButtonID(30, 340, 2714, 2715, 1, 2);
+
+GFTextLine( 55, 369, 40, "Ban an IP (Target Player)");
+GFButtonID(30, 370, 2714, 2715, 1, 3);
+
+GFTextLine( 325, 339, 40, "Ban an IP range");
+GFButtonID(300, 340, 2714, 2715, 1, 4);
+
+GFTextLine( 325, 369, 40, "Remove IP");
+GFButtonID(300, 370, 2714, 2715, 1, 5);
+
+GFButtonID(433, 376, 243, 241, 1, 0);
+GFPage(1);
+
+var ipdesc;
+var y := 120;
+var yd := 0;
+var page := 1;
+var i := 0;
+var btnid := 10;
+
+foreach ip in iplist
+
+	ipdesc := bannedele.GetProp(CStr(ip));
+
+	if (len(ipdesc) > 34)
+		var nl, tl, tl2;
+		tl := CDbl(len(ipdesc))/34.0; 
+		tl2 := CInt(len(ipdesc)/34);
+		if (tl - tl2 > 0)
+			nl := tl2 + 1;
+		else
+			nl := tl2;
+		endif
+		
+		yd := y + (nl*15);
+	endif
+
+	if (yd > 290 || y > 290)
+		page := page + 1;
+		GFButtonPage( 473, 304, 2706, 2707, page ); // Next Page
+		GFPage(page);
+		GFButtonPage( 473, 87, 2704, 2705, page-1); // Prev Page
+		y := 120;
+	endif
+
+	yd := 0;
+	btnid := btnid + 1;
+	i := i + 1;
+
+	GFRadioButton( 40, y, 2644 , 2645, 0, btnid);
+	GFTextLine(80, y+5, 55, ip);
+
+	if (len(ipdesc) > 34)
+		var line := "";
+		var splitted := SplitWords(ipdesc);
+		foreach word in splitted
+			if ( CInt(len(line)+len(word)) < 34)
+				if (len(line) > 1)
+					line := line+" "+word;
+				else
+					line := line+word;
+				endif
+			else
+				GFTextLine(230, y+5, 55, line);
+				line := word;
+				y := y + 15;
+			endif
+		endforeach
+
+		if (len(line) > 0)
+			GFTextLine(230, y+5, 55, line);
+			//y := y + 20;
+		endif
+	else		
+		GFTextLine(230, y+5, 55, ipdesc);
+	endif
+
+	y := y + 40;
+endforeach
+
+//GFRadioButton( 35, 160, 2644 , 2645, 0, 2);
+
+var data := GFSendGump( who );
+
+case (data[0])
+	2: BanIPSelect(who, 1);
+	3: BanIPSelect(who, 0);
+	4: BanIPRange(who);
+	5: RemoveIP(who, data);
+endcase
+
+endprogram
+
+function RemoveIP(who, data)
+
+// open banned datafile
+var ipdfile := OpenDataFile( DFILE );
+
+// open element
+var bannedele := ipdfile.FindElement("BannedIPS");
+
+var ips := bannedele.PropNames();
+
+foreach key in (data.keys)
+	if (key > 0 && key != 5)
+		SendSysMessage(who, "IP address "+ips[key-10]+" removed from ban list.", 3, 57);
+		bannedele.EraseProp(ips[key-10]);
+		break;
+	endif
+endforeach
+
+UnloadDataFile(DFILE);
+
+endfunction
+
+function BanIPRange(who)
+
+var toban;
+
+
+toban := SendTextEntryGump( who, "Enter an IP range to ban", cancel := TE_CANCEL_ENABLE, style := TE_STYLE_NORMAL, maximum := 20, line2 := "ie, 65.5.255.255" );
+
+if (!toban)
+	SendSysMEssage(who, "Cancelled.");
+	return 0;
+endif
+
+if (toban == who.ip)
+	SendSysMessage(who, "Banning your own IP range is a bit silly!");
+	return 0;
+endif
+
+var reason := RequestInput( who, who.backpack, "Enter a description about this IP range, ie who it is." ); // item is a placeholder, just pass any item
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+
+if (!reason)
+	reason := "No notes added.";
+endif
+
+reason := reason+" - "+date;
+
+SendSysMessage(who, toban+" IP range has been banned.", 3, 57);
+
+BanIP(toban, reason);
+
+endfunction
+
+function BanIPSelect(who, manual)
+
+var toban;
+
+if (manual == 1)
+	toban := SendTextEntryGump( who, "Enter an IP to ban", cancel := TE_CANCEL_ENABLE, style := TE_STYLE_NORMAL, maximum := 20, line2 := "ie, 192.168.0.1" );
+else
+	SendSysMessage(who, "Target a character to IP ban.");
+	toban := Target(who).ip;
+endif
+
+if (!toban)
+	SendSysMEssage(who, "Cancelled.");
+	return 0;
+endif
+
+if (toban == who.ip)
+	SendSysMessage(who, "Banning your own IP is a bit silly!");
+	return 0;
+endif
+
+var reason := RequestInput( who, who.backpack, "Enter a description about this IP, ie who it is." ); // item is a placeholder, just pass any item
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+
+if (!reason)
+	reason := "No notes added.";
+endif
+
+reason := reason+" - "+date;
+
+SendSysMessage(who, toban+" IP address has been banned.", 3, 57);
+
+BanIP(toban, reason);
+
+endfunction
+
+function BanIP(ip, reason)
+
+// open banned datafile
+var ipdfile := OpenDataFile( DFILE );
+
+// open element
+var bannedele := ipdfile.FindElement("BannedIPS");
+
+bannedele.SetProp(ip, reason);
+
+UnloadDataFile(DFILE);
+
+var num := {};
+
+foreach person in EnumerateOnlineCharacters()
+	if (person.ip == ip)
+		SendSysMessage(person, "You have been banned from the server", 3, 59);
+		SendSysMessage(person, "Contact the staff team for further information.", 3, 59);
+		num.append(person);
+	endif
+endforeach
+
+Detach();
+sleep(5);
+foreach person in num
+	DisconnectClient( person );
+endforeach
+
+	
+endfunction

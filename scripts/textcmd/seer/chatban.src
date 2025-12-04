@@ -1,0 +1,30 @@
+use uo;
+use os;
+include ":staff:include/staff";
+
+program chatban( who )
+
+
+	SendSysMessage( who , "Who do you wish to give a perma ban from chat?" );
+	var object := Target( who );
+	if( !object )
+		return;
+	endif
+
+	LogCommand(who, GetProcess(GetPid()).name, object.name);
+	
+	
+
+        var ini_ip := object.ip;
+    	foreach player in EnumerateOnlineCharacters()
+                if( player.ip == ini_ip )
+			if( player.cmdlevel == 0 )
+			SetObjProperty(player, "chatbanned", 1);
+			endif
+                endif
+	endforeach
+
+endprogram
+
+
+	

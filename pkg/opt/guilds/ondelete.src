@@ -1,0 +1,51 @@
+use uo;
+use guilds;
+
+include ":guilds:include/guilds";
+
+program ondelete( who )
+
+var guild := who.guild;
+
+// In a guild
+if (guild)
+	
+	// Player isn't the GM, just a member
+	if (guild.getprop("GuildMaster") != who.serial)
+		RemoveMember(who);
+		foreach member in (guild.members)
+			SendSysMessage(member, who.name+" has left the guild, and the world...", 3, 43);
+		endforeach
+	else
+	
+	// Player is the GM
+
+		// Player is only guild member!
+		if ( guild.members.size() < 2)
+			DisbandGuild(guild);
+			
+		// More players in the guild
+		else
+			ChangeGuildMaster(who);
+			RemoveMember(who);
+		endif
+	endif
+// Not in a guild, remove any recruit props from guilds though
+else
+
+	var guilds := ListGuilds();
+	var recruits;
+	var recruits2;
+	foreach thing in guilds
+		recruits := thing.getprop("Recruits");
+		recruits2 := recruits;
+		foreach recruit in recruits
+			if (who.serial == recruit[1])
+				recruits2.erase(_recruit_iter);
+				thing.setprop("Recruits", recruits2);
+			endif
+		endforeach
+	endforeach
+endif
+
+endprogram

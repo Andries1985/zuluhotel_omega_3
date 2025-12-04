@@ -1,0 +1,55 @@
+use os;
+use uo;
+
+include ":staff:include/staff";
+include ":gumps:include/gumps";
+
+Program ip(who)
+
+SendSysMessage(who, "Target a player to reveal all logged in characters.");
+
+var targ := Target(who, TGTOPT_NOCHECK_LOS);
+
+//if (!targ || !targ.acct || targ.cmdlevel)
+//	SendSysMessage(who, "You can only target a player");
+//	return 0;
+//endif
+
+var info := "";
+var chars := {};
+
+foreach person in EnumerateOnlineCharacters()
+	//if (person.ip == targ.ip && !person.cmdlevel)
+	if (person.ip == targ.ip )
+		chars.append(person.name);
+	endif
+endforeach
+
+info := info+"<BASEFONT SIZE=16>Number of clients online:<BASEFONT SIZE=4> <BASEFONT COLOR=darkblue><b>"+chars.size()+"</b><BASEFONT COLOR=black><br><br>";
+info := info+"<BASEFONT SIZE=16>Client List:<BASEFONT SIZE=4><br><i><BASEFONT COLOR=darkblue>";
+
+foreach thing in chars
+	info := info+thing+"<br>";
+endforeach
+
+var gump := GFCreateGump(20, 20, 300, 250);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250, 300, 250);
+
+GFResizePic(gump, 85, 32, 9200, 170, 27);
+
+GFHTMLArea(gump, 35, 75, 270, 180, info, 1, 1);
+
+GFTextLine(gump, 103, 35, 53, "Characters on this IP");
+
+var result := GFSendGump(who, gump);
+
+LogCommand(who, GetProcess(GetPid()).name);
+
+
+
+
+
+endprogram
+

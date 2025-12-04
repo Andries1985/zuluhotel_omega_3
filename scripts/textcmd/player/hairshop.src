@@ -1,0 +1,379 @@
+use uo;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/areas";
+
+program hairdyestart(who)
+	hairdye(who);
+endprogram
+
+function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, backpackColor := 0)
+	
+	var hairChoice := hair, beardChoice := beard, hairColorChoice := hairColor, beardColorChoice := beardColor, backpackColorChoice := backpackColor, sex;
+	var x := 550, y := 350;
+	var gump := GFCreateGump(0, 0, x, y);
+	GFResizePic(gump, 50, 30, 9250, x, y);
+
+	// title bar
+	GFResizePic(gump, (x/2)-35, 35, 9200, 170, 25);
+	GFTextLine(gump, (x/2), 35, 67, "Hair Color Menu");
+	var cost := calcCost(hair, beard, hairColor, beardColor, backpackColor);
+	GFTextLine(gump, (x/2)-38, 320, 53, "Current Cost: "+cost);
+	GFTextLine(gump, (x/2)-38, 340, 67, "Buy the selected hair/color?");
+	
+	if( who.gender == 0)
+		sex := 0;
+	else
+		sex := 1;
+	endif
+	if (sex == 0)
+		// Male background box 
+		GFResizePic(gump, (x/2)+117, 70, 2620, 180, 200);
+		GFGumpPic(gump, (x/2)+117, 35, 12, 1002);
+	else
+		// Female background box
+		GFResizePic(gump, (x/2)+117, 70, 2620, 180, 200);
+		GFGumpPic(gump, (x/2)+117, 35, 13, 1002);
+	endif
+	if(hairColor == 0)
+		var currHairColor := GetEquipmentByLayer(who, 0x0b);
+		hairColor := currHairColor.color;
+	endif
+	if(beardColor == 0)
+		var currBeardColor := GetEquipmentByLayer(who, 0x10);
+		beardColor := currBeardColor.color;
+	endif
+	if(backpackColor == 0)
+		var currBackpackColor := GetEquipmentByLayer(who, 0x15);
+		backpackColor := currBackpackColor.color;
+	endif
+	
+	var hairLayer := GetEquipmentByLayer(who, 0x0b);
+	if(hair == 0)
+		if(sex == 0)
+			hair := hairLayer.objtype+42449;
+		else
+			hair := hairLayer.objtype+52449;
+		endif
+	endif
+	
+	if(beard == 0)
+		beard := GetEquipmentByLayer(who, 0x10);
+		beard := beard.objtype+42547;
+	endif
+
+	GFPage(gump, 1);
+	var hairName;
+
+	if(beard)
+		if(beard == 50803 && beardChoice != 50803)
+			beard := 50800;
+		elseif(beard == 50804 && beardChoice != 50804)
+			beard := 50803;
+		elseif(beard == 50814)
+			beard := 50806;
+		elseif(beard == 50815)
+			beard := 50805;
+		elseif(beard == 50816)
+			beard := 50804;
+		endif
+		GFGumpPic(gump, (x/2)+117, 35, beard, beardColor); 
+	endif
+	GFGumpPic(gump, (x/2)+117, 35, 50422, backpackColor);
+
+	if (sex == 0)
+		// Male
+		if(hair)
+			if(hair == 50709)
+				hair := 50703;
+			elseif(hair == 50713)
+				hair := 50714;
+			elseif(hair == 50714)
+				if(hairLayer.objtype == 0x2049 && hairChoice != 50714)
+					hair := 50706;
+				else
+					hair := 50714;
+				endif
+			endif
+			GFGumpPic(gump, (x/2)+117, 35, hair, hairColor); 
+		endif
+		hair := {0, 999, 50700, 50701, 50702, 50703, 50710, 50715, 50712, 50714, 50706};
+		hairName := {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Topknot", "Curly", "Receding", "2 Tails"};
+	else
+		// Female
+		if(hair)
+			if(hair == 60709 && hairChoice != 60709)
+				hair := 60703;
+			elseif(hair == 60712 && hairChoice != 60712)
+				hair := 60709;
+			elseif(hair == 60714)
+				hair := 60707;
+			elseif(hair == 60711)
+				hair := 60712;
+			endif
+		GFGumpPic(gump, (x/2)+117, 35, hair, hairColor); 
+		endif
+		hair := {0, 999, 60700, 60701, 60702, 60703, 60710, 60715, 60709, 60707, 60712 };
+		hairName := {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Topknot", "Curly", "2 Tails", "Buns"};
+	endif
+
+	beard := {0, 999, 50800, 50801, 50802, 50803, 50806, 50805, 50804};
+	var beardName := {"Current", "Shaved", "Goatee", "Long", "Short", "Moustache", "Short/Moustache", "Long/Moustache", "Vandyke"};
+
+	var hY := 90, hX := 88, choiceColor := 999, headlineColor := 67;
+	GFTextLine(gump, hX-15, hY-20, headlineColor, "Hair Style:");
+	foreach hairtype in hair
+		if(hairtype == hairChoice)
+			GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 1000+_hairtype_iter);
+		else
+			GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 1000+_hairtype_iter);
+		endif
+		GFTextLine(gump, hX, hY, choiceColor, hairName[_hairtype_iter]);
+		hY := hY + 20;
+	endforeach
+	
+	hY := 90; hX := 180;
+	GFTextLine(gump, hX-15, hY-20, headlineColor, "Beard Style:");
+	foreach hairtype in beard
+		if(hairtype == beardChoice)
+			GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 2000+_hairtype_iter);
+		else
+			GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 2000+_hairtype_iter);
+		endif
+		GFTextLine(gump, hX, hY, choiceColor, beardName[_hairtype_iter]);
+		hY := hY + 20;
+	endforeach
+
+	hY := 90; hX := 280;
+	GFTextLine(gump, hX-15, hY-20, headlineColor, "Color options:");
+	if(hairColorChoice)
+		GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 7777);
+	else
+		GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 7777);
+	endif
+	GFTextLine(gump, hX, hY, choiceColor, "Hair");
+	hY := hY + 20;
+	if(beardColorChoice)
+		GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 8888);
+	else
+		GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 8888);
+	endif
+	GFTextLine(gump, hX, hY, choiceColor, "Beard");
+	hY := hY + 20;
+	if(backpackColorChoice)
+		GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 9999);
+	else
+		GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 9999);
+	endif
+	GFTextLine(gump, hX, hY, choiceColor, "Backpack");
+
+	//OKAY
+	GFAddButton(gump, (x/2)-110, 340, 2128, 2129, 1, 1212);
+	//Cancel
+	GFAddButton(gump, (x/2)+140, 340, 2121, 2120, 1, 1313);
+	
+	var data := GFSEndGump(who, gump);
+	var color;
+	if(data[0] == 1212)
+		var payUpBitch := checkout(who, cost);
+		if(payUpBitch)
+			setupOptions(who, hairChoice, beardChoice, hairColorChoice, beardColorChoice, backpackColorChoice);
+			SendSysMessage(who, "Enjoy your new hairstyle!");
+		endif
+		return;
+	elseif(data[0] == 1313)
+		SendSysMessage(who, "Canceled.");
+		return;
+	elseif(data[0] == 7777)
+		color := findcolor(who);
+		hairdye(who, hairChoice, beardChoice, color, beardColorChoice, backpackColorChoice);
+	elseif(data[0] == 8888)
+		color := findcolor(who);
+		hairdye(who, hairChoice, beardChoice, hairColorChoice, color, backpackColorChoice);
+	elseif(data[0] == 9999)
+		color := findcolor(who);
+		hairdye(who, hairChoice, beardChoice, hairColorChoice, beardColorChoice, color);
+	elseif(data[0] > 2000)
+		hairdye(who, hairChoice, beard[data[0]-2000], hairColorChoice, beardColorChoice, backpackColorChoice);
+	elseif(data[0] > 1000)
+		hairdye(who, hair[data[0]-1000], beardChoice, hairColorChoice, beardColorChoice, backpackColorChoice);
+	endif
+
+endfunction
+
+function findcolor(who)
+	SendSysMessage(who, "What color do you want?");
+	var targ := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!targ)
+		return 0;
+	endif
+	if(!IsInBox(targ, 5129, 5210, 1161, 1215))
+		SendSysMessage(who, "You need to be inside the hair shop to do this.");
+		return 0;
+	endif
+	if(targ.objtype != 4643)
+		SendSysMessage(who, "You can only take colors from the colored piedestals.");
+		return 0;
+	endif
+	return targ.color;
+endfunction
+
+function calcCost(hair, beard, hairColor, beardColor, backpackColor)
+	var cost := 0;
+	if(hair)
+		cost := cost+30000;
+	endif
+	if(beard)
+		cost := cost+30000;
+	endif
+	if(hairColor)
+		cost := cost+200000;
+	endif
+	if(beardColor)
+		cost := cost+100000;
+	endif
+	if(backpackColor)
+		cost := cost+300000;
+	endif
+	return cost;
+endfunction
+
+function checkout(who, cost)
+	var amount := 0, remove, currPaid := 0, itmAmount;
+	if(!cost)
+		SendSysMessage(who, "Canceled.");
+		return 0;
+	endif
+	foreach item in EnumerateItemsInContainer( who.backpack )
+		if(item.objtype == 0xeed)
+			amount := amount + item.amount;
+		endif
+	endforeach
+	if(amount < cost)
+		SendSysMessage(who, "Not enough gold!");
+		return 0;
+	else
+		foreach item in EnumerateItemsInContainer( who.backpack )
+			if(item.objtype == 0xeed)
+				if(cost > item.amount)
+					itmAmount := item.amount;
+					cost := cost - itmAmount;
+					remove := SubtractAmount(item, itmAmount);
+					if(!remove)
+						SendSysMessage(who, "Something went wrong, aborting.");
+						cashBack(who, currPaid);
+						return 0;
+					endif
+					currPaid := currPaid + itmAmount;
+				else
+					remove := SubtractAmount(item, cost);
+					if(!remove)
+						SendSysMessage(who, "Something went wrong, aborting.");
+						cashBack(who, currPaid);
+						return 0;
+					endif
+					cost := 0;
+					return 1;
+				endif
+			endif
+		endforeach
+	endif
+return 1;
+endfunction
+
+function cashBack(who, goldAmount)
+	repeat
+		if(goldAmount >= 60000)
+			CreateItemInBackpack( who, 0xeed, 60000 );
+			goldAmount := goldAmount - 60000;
+		else
+			CreateItemInBackpack( who, 0xeed, goldAmount );
+			goldAmount := 0;
+		endif
+	until(goldAmount <= 0);
+	return;
+endfunction
+
+function setupOptions(who, hairChoice, beardChoice, hairColor, beardColor, backpackColor)
+	var item, hair, beard, backpack, oldHairColor, oldBeardColor, oldBackpackColor;
+	if(hairChoice)
+		if(!hairColor)
+			hair := GetEquipmentByLayer(who, 0x0b);
+			oldHairColor := hair.color;
+		endif
+		if(who.gender == 0)
+			if(hairChoice == 50703)
+				hairChoice := 0x2044;
+			elseif(hairChoice == 50714)
+				hairChoice := 0x2048;
+			elseif(hairChoice == 50706)
+				hairChoice := 0x2049;
+			else
+				hairChoice := hairChoice-42449;
+			endif
+		else
+			if(hairChoice == 60703)
+				hairChoice := 0x2044;
+			elseif(hairChoice == 60709)
+				hairChoice := 0x2047;
+			elseif(hairChoice == 60707)
+				hairChoice := 0x2049;
+			elseif(hairChoice == 60712)
+				hairChoice := 0x2046;
+			else
+				hairChoice := hairChoice-52449;
+			endif
+		endif
+		DestroyItem(GetEquipmentByLayer(who, 0x0b));
+		item := CreateItemInBackpack( who, hairChoice, 1 );
+		EquipItem(who, item);
+		if(!hairColor)
+			hair := GetEquipmentByLayer(who, 0x0b);
+			hair.color := oldHairColor;
+			SetObjProperty(who, "HairColour", oldHairColor);
+		endif
+	endif
+	if(beardChoice)
+		if(!beardColor)
+			beard := GetEquipmentByLayer(who, 0x10);
+			oldBeardColor := beard.color;
+		endif
+		if(beardChoice == 50800)
+			beardChoice := 0x2040;
+		elseif(beardChoice == 50803)
+			beardChoice := 0x2041;
+		elseif(beardChoice == 50806)
+			beardChoice := 0x204B;
+		elseif(beardChoice == 50805)
+			beardChoice := 0x204C;
+		elseif(beardChoice == 50804)
+			beardChoice := 0x204D;
+		else
+			beardChoice := beardChoice-42547;
+		endif
+		DestroyItem(GetEquipmentByLayer(who, 0x10));
+		item := CreateItemInBackpack( who, beardChoice, 1 );
+		EquipItem(who, item);
+		if(!beardColor)
+			beard := GetEquipmentByLayer(who, 0x10);
+			beard.color := oldBeardColor;
+			SetObjProperty(who, "BeardColour", oldBeardColor);
+		endif
+	endif
+	if(hairColor)
+		hair := GetEquipmentByLayer(who, 0x0b);
+		hair.color := hairColor;
+		SetObjProperty(who, "HairColour", hairColor);
+	endif
+	if(beardColor)
+		beard := GetEquipmentByLayer(who, 0x10);
+		beard.color := beardColor;
+		SetObjProperty(who, "BeardColour", beardColor);
+	endif
+	if(backpackColor)
+		backpack := GetEquipmentByLayer(who, 0x15);
+		backpack.color := backpackColor;
+		SetObjProperty(who, "BackpackColour", backpackColor);
+	endif
+endfunction

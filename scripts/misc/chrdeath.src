@@ -1,0 +1,321 @@
+use uo;
+use os;
+use math;
+
+include "include/dotempmods";
+include "include/objtype";
+include "include/client";
+include "include/possess";
+include "include/reportmurder";
+include ":gumps:yesno";
+include ":karmafame:karmafame";
+include "include/dismount";
+include "include/myutil";
+include "include/res";
+include "include/camouflage";
+include "include/constants/propids";
+include "include/packets";
+include ":areas:include/areafunctions";
+
+program chrdeath(corpse,ghost) 
+
+	corpse.decayat := ReadGameClock()+2700;
+	// Toad - Applying the latest player corpse serial to the player.  Only used for the pvp.src
+	SetObjProperty(ghost, "#PVPDeath", corpse.serial);
+
+	// Toad - We want to know exactly when a player died, doesn't matter if the corpse gets destroyed
+	// This is for forensics.
+	SetObjProperty(corpse,"DeathTime",ReadGameClock());
+	SetObjProperty(corpse,"cut",1);
+
+	// For insta guard kills, stop him following.
+	EraseObjProperty(ghost, "#KillMe");
+
+	var plyr := 0;
+	var killer:=getobjproperty(ghost,"KilledBy");
+	foreach character in EnumerateOnlineCharacters()
+		if (character.name == killer)
+			plyr := character;
+		endif
+	endforeach
+
+	var acc := plyr.acct;
+	var accname := acc.name;	
+	if(plyr)
+		SetObjProperty( ghost,"KillerSerial",plyr.serial);
+		SetObjProperty( corpse,"KillerSerial",plyr.serial);
+		SetObjProperty( ghost,"KillerAcct",accname);
+		SetObjProperty ( corpse, "KillerAcct", accname );	
+	endif
+	var wasguarded:=getobjproperty(ghost,PROPID_MOBILE_GUARD_KILLED);
+	SetObjProperty( ghost, "Killer", killer);
+	SetObjProperty( corpse,"Killer",killer);
+	if(wasguarded)
+		SetObjProperty( ghost, "WasGuarded", wasguarded);
+	endif
+	var dx := ghost.x;
+	var dy := ghost.y;
+	var dz := ghost.z;
+	SetObjProperty( ghost, "deathx", dx);
+	SetObjProperty( ghost, "deathy", dy);
+	SetObjProperty( ghost, "deathz", dz);
+
+	if( GetObjProperty( ghost, PROPID_MOBILE_GUARD_KILLED ) )
+		SetObjProperty( ghost, "Killer", "Guards");
+	endif
+	EraseObjProperty( ghost, "KilledBy" );
+	EraseObjProperty( ghost, PROPID_MOBILE_KILLED_BY );
+	EraseObjProperty( ghost, PROPID_MOBILE_GUARD_KILLED );
+	EraseObjProperty( ghost, PROPID_MOBILE_MAGIC_REFLECTION );
+	SetObjProperty( corpse, PROPID_CORPSE_CORPSE_OF, ghost.serial );
+	
+	// anti looting stuff
+	if( !ghost.criminal )
+		if( !ghost.murderer )
+			if( !GetObjProperty( corpse, PROPID_MOBILE_GUARD_KILLED ) )
+				SetObjProperty( corpse, PROPID_CORPSE_IS_BLUE, 1 );
+				corpse.color := 90;
+			endif
+		endif
+	endif
+
+	// Set RPer flag on corpse so we can check for this in the antiloot script.
+	if(GetObjProperty( ghost, "IsRPer" ))
+		SetObjProperty( corpse, PROPID_CORPSE_IS_RPER, 1 );
+		corpse.color := 40;
+	endif
+
+	ReequipCursed(ghost,corpse);
+	CurePoison(ghost);
+
+	var oktodestroy := 1;
+	var pvpdeath := GetObjProperty( ghost, "pvping" );
+	if(  pvpdeath  )
+		EraseObjProperty( ghost, "pvping" );
+		sleep (2);
+		ResurrectMobile(ghost);
+		SetHP(ghost, GetMaxHP(ghost));	
+		SetMana(ghost, GetMaxMana(ghost));	
+		SetStamina(ghost, GetMaxStamina(ghost));
+		ghost.warmode:= 0;
+		var mount2;
+		foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
+			mount2:=item;
+		endforeach
+		if(mount2) 
+			EquipItem(ghost,mount2);
+		endif
+		foreach item in EnumerateItemsInContainer( corpse )
+			if (item.container.serial == corpse.serial)
+				if(!MoveItemToContainer( item, ghost.backpack ))
+					ReleaseItem( item );
+					SleepMS(100);
+					MoveItemToContainer( item, ghost.backpack );
+				endif
+			endif
+		endforeach
+		sleepms(100);
+		// 2nd sweep of corpse
+		foreach item in EnumerateItemsInContainer( corpse )
+			sleepms(100);
+			item.movable := 1;
+			if(!MoveItemToContainer( item, ghost.backpack ))
+				ReleaseItem( item );
+				SleepMS(100);
+				MoveItemToContainer( item, ghost.backpack );
+			endif
+		endforeach
+		// Final Check b4 Destroying Corpse
+		foreach item in EnumerateItemsInContainer( corpse )
+			if (item)
+				oktodestroy := 0;
+			endif
+		endforeach
+		if (oktodestroy)
+			DestroyItem(corpse);
+		else
+			SendSysMessage(ghost,"There are still items left on your corpse - please page staff.");
+		endif
+		return;
+	endif
+
+	var bmdeath := GetObjProperty( ghost, "bmPlayer" );
+	if(  bmdeath  ) 
+		if( GetObjProperty(ghost, "bmSpeed") )
+			EraseObjProperty(ghost, "bmSpeed");
+			SendPacket( ghost, "BF0006002600" );
+		endif
+		EraseObjProperty( ghost, "bmPlayer" );
+		EraseObjProperty( ghost, "bmColor");
+		sleep (2);
+		ResurrectMobile(ghost);
+		SetHP(ghost, GetMaxHP(ghost));	
+		SetMana(ghost, GetMaxMana(ghost));	
+		SetStamina(ghost, GetMaxStamina(ghost));
+		ghost.warmode:= 0;
+		var mount2;
+		foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
+			mount2:=item;
+		endforeach
+		if(mount2) 
+			EquipItem(ghost,mount2);
+		endif
+		foreach item in EnumerateItemsInContainer( corpse )
+			if (item.container.serial == corpse.serial)
+				if(GetObjProperty(item, "bmItem"))
+					DestroyItem(item);
+				else
+					sleepms(100);
+					item.movable := 1;
+					if(!MoveItemToContainer( item, ghost.backpack ))
+						ReleaseItem( item );
+						SleepMS(100);
+						MoveItemToContainer( item, ghost.backpack );
+					endif
+				endif
+			endif
+		endforeach
+		sleepms(100);
+		// 2nd sweep of corpse
+		foreach item in EnumerateItemsInContainer( corpse )
+			sleepms(100);
+			item.movable := 1;
+			if(!MoveItemToContainer( item, ghost.backpack ))
+				ReleaseItem( item );
+				SleepMS(100);
+				MoveItemToContainer( item, ghost.backpack );
+			endif
+		endforeach
+		// Final Check b4 Destroying Corpse
+		foreach item in EnumerateItemsInContainer( corpse )
+			if (item)
+				oktodestroy := 0;
+			endif
+		endforeach
+		if (oktodestroy)
+			DestroyItem(corpse);
+		else
+			SendSysMessage(ghost,"There are still items left on your corpse - please page staff.");
+		endif
+		SetSafeAreaProperties(ghost);
+		MoveObjectToLocation( ghost, 5503, 1665, 22, "britannia", MOVEOBJECT_FORCELOCATION );
+		return;
+	endif
+
+	AwardFame( ghost, FAME_LOST_ON_DEATH );
+	if( !GetObjProperty( corpse, PROPID_MOBILE_GUARD_KILLED ) )
+		AdviseAttackers(ghost);
+	endif
+
+	// Ghosts can't hear or see other ghosts???
+/* 	if( !ghost.cmdlevel )
+		RevokePrivilege(ghost,"hearghosts");
+		RevokePrivilege(ghost,"seeghosts");
+	endif */
+
+	// Set real name if incog
+	var temp:=GetObjProperty(ghost,"realname");
+	if (temp)
+		SetName(ghost,temp);
+		EraseObjProperty(ghost,"realname");
+	endif
+
+	if (GetObjProperty(ghost,"origform"))
+		EraseObjProperty(ghost,"origform");
+		ghost.frozen:=0;
+	endif
+
+	// Earth Spell shape shift
+	temp:=getobjproperty(ghost,"tn");
+	if (temp)
+		SetName (ghost,temp);
+		EraseObjProperty(ghost,"tn");
+		EraseObjProperty(ghost,"tc");
+		EraseObjProperty(ghost,"tg");
+	endif
+
+	// Camouflage Check
+	temp := getobjproperty(ghost, "cmfc");
+	if (temp)
+		RemoveCamouflage( ghost );
+	endif
+
+	if( ghost.dead and (ghost.graphic != 0x192) and (ghost.graphic != 0x193) )
+	  	ghost.graphic := 402 + Cint(ghost.gender);
+	endif
+
+
+	// Dismount ghost is mounted, check if this is needed.
+	var mount;
+	foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
+		mount:=item;
+	endforeach
+
+	if(mount) 
+		Dismount(ghost,mount); 
+	endif
+
+	SetPlayerWarMode(ghost, 0);
+	SleepMS(200);
+	SetPlayerWarMode(ghost, 1);
+
+	if(len(ghost.reportables)>0)
+		SendReportGump(ghost);
+	endif
+
+	// Find out what this prop is
+	EraseObjProperty(ghost,"mr");
+	
+	// What's this for? It's the time of death PLUS an hour
+	SetObjProperty(ghost,"death",ReadGameClock()+3600);
+
+	// Play the "death" music midi
+	PlayMidiMusic( ghost, "2A" );
+
+	// Fast loot own corpse
+	Start_Script(":loot:lootgump", corpse);
+
+
+endprogram
+
+
+function FindMyPack(myserial)
+    var mybank:=OpenTamedStorageAreas();
+    var bank_obj_name:="Bankbox  "+hex(myserial);
+    var bankbox:=FindRootItemInStorageArea(mybank,bank_obj_name);
+
+    if (!bankbox) 
+		bankbox:=CreateRootItemInStorageArea(mybank,bank_obj_name,UOBJ_BANKBOX); 
+	endif
+
+    return bankbox;
+
+endfunction
+
+
+function OpenTamedStorageAreas()
+    var bank:=FindStorageArea("Tamed Storage");
+
+    if (!bank) 
+		bank:=CreateStorageArea("Tamed Storage"); 
+	endif
+
+    return bank;
+endfunction
+
+
+function ReequipCursed(ghost,corpse)
+
+	foreach item in EnumerateItemsInContainer(corpse)
+		if(GetObjProperty(item,"StayEquipped"))
+			EquipItem(ghost,item);
+		endif
+	endforeach
+
+	foreach item in EnumerateItemsInContainer(ghost.backpack)
+		if(GetObjProperty(item,"StayEquipped"))
+			EquipItem(ghost,item);
+		endif
+	endforeach
+
+endfunction

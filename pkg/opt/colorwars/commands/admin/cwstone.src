@@ -1,0 +1,22 @@
+use uo;
+use os;
+
+include "include/moongate";
+include ":staff:include/staff";
+
+program txtcmd_cwstone( who )
+	
+	var gCmd := GetObjProperty(who, "colorwars");
+	if(!gCmd)
+		SendSysMessage( who , "You havn't been granted this command." );
+		LogCommand(who, GetProcess(GetPid()).name, who.name+" is trying to use .cwstone without permission!");
+		return;
+	endif
+	if(who.cmdlevel < 4 && ReadGameClock() > gCmd)
+		SendSysMessage( who , "You can't use this command anymore." );
+		EraseObjProperty(who, "colorwars");
+		return;
+	endif
+
+	var item := CreateItemAtLocation( who.x, who.y, who.z, 0xa393, 1, who.realm );
+endprogram

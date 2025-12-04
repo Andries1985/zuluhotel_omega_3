@@ -1,0 +1,167 @@
+use uo;
+use os;
+use basic;
+
+include "include/attributes";
+include "include/npcbackpacks";
+include "include/spelldata";
+include "include/classes";
+include "include/client";
+include "include/constants/locations";
+
+program summon_creature( parms )
+
+	var caster			:= parms[1];
+	var npctemplate		:= parms[2];
+	var cast_loc		:= parms[3];
+	var sfx				:= parms[4];
+	var delay			:= parms[5];
+	var magery			:= GetEffectiveSkill( caster , SKILLID_MAGERY );
+	var magic_pets 		:= 0;
+	var mobs 			:= ListMobilesNearLocation( caster.x, caster.y, caster.z, 15, caster.realm );
+	var masterserial	:= caster.serial;
+
+	foreach mob in mobs
+		if( (mob.script == "tamed") and ( GetObjProperty( mob, "master" ) == masterserial ) )
+			if ( GetObjProperty( mob , "EBSummons" ) )
+				magic_pets := magic_pets + 4;
+			elseif( GetObjProperty( mob , "summoned" ) or GetObjProperty( mob , "animated" ) or GetObjProperty( mob , "charmed" ) && !GetObjProperty( mob , "EBSummons" ) )
+				magic_pets := magic_pets + 1;
+			endif
+		endif
+	endforeach
+
+	//Max 2 pets with new summons
+	if(magic_pets >= 8)
+		SendSysMessage(caster, "Can't summon more creatures.");
+		return;
+	endif	
+
+	var multi := GetStandingHeight( cast_loc.x, cast_loc.y, cast_loc.z, cast_loc.realm ).multi;
+	if( multi )
+		SendSysMessage(caster, "Can't summon creatures inside multis.");
+		return;
+	endif		
+
+	if( GetObjProperty( caster , CLASSEID_MAGE ) )
+		magery := Cint( magery * ClasseBonus( caster , CLASSEID_MAGE ) );
+	elseif( GetObjProperty( caster , CLASSEID_MYSTIC_ARCHER ) )
+		magery := Cint( magery * ClasseBonus( caster , CLASSEID_MYSTIC_ARCHER ) );
+	elseif( GetObjProperty( caster , CLASSEID_WARRIOR ) )
+		magery := Cint( magery / ClasseBonus( caster , CLASSEID_WARRIOR ) );
+	endif
+
+	if( delay )
+		//SleepMs( delay );
+	endif
+
+	//Modify this for Mystic Archer to not require ME
+	//var duration := ModifyWithMagicEfficiency( caster , magery * 2 );
+	var classlevel := GetClasseLevel(caster);
+
+	var duration := 0;
+	//Print("Duration: " + duration);
+	case(classlevel)
+		1: duration := 100;
+		2: duration := 200;
+		3: duration := 300;
+		4: duration := 400;
+		5: duration := 500;
+		6: duration := 600;
+		default : duration := 60;
+	endcase	
+	//Print("Duration after: " + duration);
+
+	PlaySoundEffect( caster , sfx );
+	Detach();
+	
+	
+	//Old Britannia Map
+	//var thecritter := CreateNpcFromTemplate( npctemplate, 5283, 1184, 0, 0, "britannia");
+	var thecritter	:= CreateNpcFromTemplate( npctemplate, 6338, 1581, 0, 0, "britannia_alt" );
+	thecritter.hidden := 1;
+
+	//Modify this for Mystic Archer to not require ME
+	//var power := Cint( ModifyWithMagicEfficiency( caster , Cint(magery / 1.5)) );
+	var power := 0;
+	
+	//Print("Power: " + power);
+	//Print("Class Level: " + classlevel);
+
+	case(classlevel)
+		1: power := 20;
+		2: power := 35;
+		3: power := 50;
+		4: power := 65;
+		5: power := 80;
+		6: power := 100;
+		default : power := 1;
+	endcase	
+	
+	//Print("Power after case: " + power);
+
+	/*
+	if( power > 100 )
+		power := 100;
+	elseif( power < 1 )
+		power := 1;
+	endif
+	*/
+
+	SetObjProperty( thecritter , "master" , caster.serial );
+	SetObjProperty( thecritter , "script" , thecritter.script );
+	SetObjProperty( thecritter , "noloot" , 1 );
+	SetObjProperty( thecritter , "summoned" , 1 );
+	thecritter.setmaster( caster );
+	thecritter.script := "tamed";
+	RestartScript( thecritter );
+	
+	Set_Critical( 1 );
+	
+	var str	:= GetBaseStrength(thecritter)-GetStrengthMod(thecritter);
+	var int	:= GetBaseIntelligence(thecritter)-GetIntelligenceMod(thecritter);
+	var dex	:= GetBaseDexterity(thecritter)-GetDexterityMod(thecritter);
+	
+	SetBaseStrength(thecritter,  Cint(str * power / 100));
+	SetBaseIntelligence(thecritter,  Cint(int * power / 100));
+	SetBaseDexterity(thecritter,  Cint(dex * power / 100));
+	
+	SetStrengthMod(thecritter,Cint(GetObjProperty( thecritter , "BaseStrmod" ) * power / 100 ));
+	SetIntelligenceMod(thecritter,Cint(GetObjProperty( thecritter , "BaseIntmod" ) * power / 100 ));
+	SetDexterityMod(thecritter,Cint(GetObjProperty( thecritter , "BaseDexmod" ) * power / 100 ));
+	
+	SetHP(thecritter, GetMaxHP(thecritter));
+	SetMana(thecritter, GetMaxMana(thecritter));
+	SetStamina(thecritter, GetMaxStamina(thecritter));
+
+	for i := 0 to SKILLID__HIGHEST
+		if( i != SKILLID_MAGICRESISTANCE )
+			var initskill := GetEffectiveSkill( thecritter , i );
+			if( initskill )
+				SetBaseSkill( thecritter , i , CInt((initskill * power)/100) );
+			endif
+		else
+			SetBaseSkill( thecritter , i , magery );
+		endif
+	endfor
+
+	Set_Critical( 0 );
+	
+	MoveObjectToLocation( thecritter, cint(cast_loc.x), cint(cast_loc.y), cint(cast_loc.z) , cast_loc.realm, MOVEOBJECT_FORCELOCATION );
+	RestartScript( thecritter );
+	thecritter.hidden := 0;
+	
+	Sleep( duration );
+	
+	PlaySoundEffect( thecritter , 0x01fa );
+	PlayStationaryEffect( cint(thecritter.x) , cint(thecritter.y) , cint(thecritter.z) , 0x3728 , 0xa , 0xa, 0, thecritter.realm );
+	var backpack := FindExistingPack( thecritter.serial );
+	if( backpack )
+		foreach item in EnumerateItemsInContainer( backpack );
+  			MoveObjectToLocation( item , thecritter.x , thecritter.y , thecritter.z, thecritter.realm, MOVEOBJECT_FORCELOCATION );
+		endforeach
+	endif
+	MoveObjectToLocation( thecritter, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
+	ApplyRawDamage(thecritter, GetMaxHP(thecritter) + 3);
+
+endprogram

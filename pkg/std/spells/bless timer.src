@@ -1,0 +1,70 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/dotempmods";
+include "include/attributes";
+
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_BLESS;
+const SPELL_EFFECT_ID		:= FX_SPELL_BLESS;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_BLESS;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_BLESS;
+
+program cast_bless( parms, spell_id )
+
+	var circle := 3;
+	var caster;
+	var cast_on;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		cast_on := CanTargetSpell(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
+		if (!cast_on)
+			return;
+		endif
+	endif
+
+	if( !fromhit )
+		detach();
+		cast_on := Reflected( caster , cast_on , circle );
+	else
+		PlayObjectCenteredEffect(cast_on, 
+                                         SPELL_EFFECT_ID,
+                                         SPELL_EFFECT_SPEED,
+                                         SPELL_EFFECT_LOOP);
+	endif
+	
+	PlaySoundEffect(cast_on, SFX_SPELL_BLESS);
+	
+	var mod_amount := GetModAmount( caster );
+	var duration := GetModDuration( caster );
+
+	if( CanMod( cast_on , "all" ) && CanMod( cast_on , "ebless" ))
+		DoTempMod( cast_on, "all" , mod_amount , duration );
+		SendBoostMessage( caster, cast_on, "bless", mod_amount, duration, 0 );
+	else
+		SendSysMessage( caster , "Already under the influence!" );
+	endif
+
+endprogram

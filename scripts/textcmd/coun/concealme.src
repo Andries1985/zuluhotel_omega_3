@@ -1,0 +1,54 @@
+////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Concealme() - Changed to allow conealing at different levels.
+//
+////////////////////////////////////////////////////////////////////////
+use uo;
+use polsys;
+include ":staff:include/staff";
+
+Program concealme( who, lvl )
+
+LogCommand(who, GetProcess(GetPid()).name, "Conceal Level: "+lvl);
+
+lvl := CInt(lvl);
+
+// This isn't an unconceal command :P
+if (lvl < 1)
+	lvl := 1;
+endif
+
+// Don;t allow concealing higher than cmd level
+if (lvl > who.cmdlevel)
+	if( GetObjProperty( who, "head" ) )
+		lvl := who.cmdlevel+1;
+	else
+		lvl := who.cmdlevel;
+	endif
+endif
+
+// Set the staff to concealed.
+who.concealed := lvl;
+
+// Get a corresponding text col
+var colour := TextColour(lvl);
+
+// Let the staff know what level they are concealed at
+SendSysMessage(who, "Concealed at "+GetCmdLevelName(lvl)+" level.", 3, colour);
+
+endprogram
+
+function TextColour(lvl)
+
+case (lvl)
+1:	return 99;
+2:	return 67;
+3:	return 33;
+4:	return 0;	
+5:	return 23;
+default: return 0;
+
+endcase
+
+endfunction

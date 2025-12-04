@@ -1,0 +1,42 @@
+use uo;
+use storage;
+include "include/npcbackpacks";
+include ":staff:include/staff";
+program textcmd_pack( who, template )
+
+	var gCmd := GetObjProperty(who, ".openpack");
+	if(!gCmd)
+		SendSysMessage( who , "You havn't been granted this command." );
+		LogCommand(who, GetProcess(GetPid()).name, who.name+" is trying to use .openpack without permission!");
+		return;
+	endif
+	if(who.cmdlevel < 4 && ReadGameClock() > gCmd)
+		SendSysMessage( who , "You can't use this command anymore." );
+		EraseObjProperty(who, ".openpack");
+		return;
+	endif
+
+	var me := Target( who,TGTOPT_NOCHECK_LOS );
+	if (!me)
+		return;
+	endif
+
+	if (!me.backpack)
+		var newbackpack := CreateItemAtLocation(me.x, me.y, me.z, 0xe75, 1, me.realm);
+		if (!EquipItem(me, newbackpack))
+			return;
+		endif
+	endif
+
+	var mypack := FindMyPack(me.serial);
+
+	foreach item in enumerateitemsincontainer(mypack)
+		if (item.container.serial == mypack.serial)
+			moveitemtocontainer(item, me.backpack);
+		endif
+	endforeach
+	LogCommand(who, GetProcess(GetPid()).name, me.name+"/"+me.serial);
+	SendOpenSpecialContainer( who, me.backpack );
+
+
+endprogram

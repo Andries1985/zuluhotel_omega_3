@@ -1,0 +1,161 @@
+////////
+// decodemap.src
+//
+// Checks the character's Cartogrphy skill to see if 
+// the map can be read. If so, it creates a new, readable
+// map and a digging tool. Also picks a random location
+// for the treasure to be.
+//
+// Not in this script: Use the tool created and target the
+// map to use and then the ground to dig for that treasure.
+//
+// Author: Racalac, 4/24/99
+//
+////////
+
+use uo;
+use cfgfile;
+
+include "include/attributes";
+include "include/client";
+include "include/objtype";
+include "include/random";
+include "include/difficulty";
+
+Const UOBJECT_DIGGINGTOOL := 0x6008;
+
+program decode_map( character , map )
+
+	var cfgfile := ReadConfigFile( "itemdesc" );
+	var elem := FindConfigElem( cfgfile , map.objtype );
+	var maplevel := GetConfigInt( elem , "Level" );
+
+	var maxlevel := GetMaxMapLevel( character );
+	var diff;
+	
+	if( maplevel == 1)
+	diff := 40;
+	elseif( maplevel == 2)
+	diff := 60;
+	elseif( maplevel == 3)
+	diff := 80;
+	elseif( maplevel == 4)
+	diff := 100;
+	elseif( maplevel == 5)
+	diff := 120;
+	elseif( maplevel == 6)
+	diff := 135;
+	endif
+
+	sendDiff( character , diff );
+
+	if( maplevel > maxlevel )
+		SendSysmessage( character , "You cannot comprehend the map." );
+	else
+		if( CheckSkill( character, SKILLID_CARTOGRAPHY , -1 , (maplevel*100) ) )
+			CreateTreasureMap( character , map , maplevel );
+		else
+			SendSysmessage( character , "You understand the map, but fail to decode it." );
+		endif
+	endif
+
+
+endprogram
+
+
+
+function GetMaxMapLevel( character );
+
+	var skill := GetEffectiveSkill( character , SKILLID_CARTOGRAPHY );
+
+	if( skill >= 135 )
+	   return 6;
+	elseif( skill >= 120 )
+	   return 5;
+	elseif( skill >= 100 )
+	   return 4;
+	elseif( skill >= 80 )
+	   return 3;
+	elseif( skill >= 60 )
+	   return 2;
+	elseif( skill >= 40 )
+	   return 1;
+	else
+	   return 0;
+	endif
+
+endfunction
+
+
+function CreateTreasureMap( character , oldmap , maplevel);
+
+	var sub := SubtractAmount( oldmap, 1 );
+	if(!sub)
+		SendSysmessage( character , "Canceled" );
+		return 0;
+	endif
+
+	SendSysmessage( character , "You successfully decode the map!" );
+	
+	var map := CreateItemInBackpack( character , UOBJ_MAP2 , 1 );
+
+	SetObjProperty( map , "level" , maplevel );
+	SetObjProperty( map , "decoder" , character.serial );
+
+	SetTreasureCoords( map, maplevel );
+	
+	//var tool := CreateItemInBackpack( character , UOBJECT_DIGGINGTOOL , 1 );
+	//SetName( tool , "a Treasure digging tool" );
+
+endfunction
+
+
+function SetTreasureCoords( map, maplevel );
+
+	var cfgfile := ReadConfigFile( "treasure" );
+	var num := GetConfigMaxIntKey( cfgfile );
+	var pick := (Random( num ) + 1);
+	var elem := FindConfigElem( cfgfile , pick );
+
+	var x := GetConfigInt( elem , "X" );
+	var y := GetConfigInt( elem , "Y" );
+	var z := GetConfigInt( elem , "Z" );
+	var r := GetConfigString ( elem , "R" );
+
+	var FacetNum := 0;
+	case( r )
+		"britannia":		FacetNum := 0;
+		"britannia_alt":	FacetNum := 1;
+		"ilshenar":			FacetNum := 2;
+		"malas":			FacetNum := 3;
+		"tokuno":			FacetNum := 4;
+		"termur":			FacetNum := 5;
+	endcase
+
+	SetObjProperty( map , "chestx" , x );
+	SetObjProperty( map , "chesty" , y );
+	SetObjProperty( map , "chestz" , z );
+	SetObjProperty( map , "chestr" , r );
+
+	SetName( map , "a " + r + " treasure map lvl" + maplevel );
+	map.facetid := FacetNum;
+
+	if( x < 265 )
+	   map.xwest := 0;
+	else
+	   map.xwest := x-265;
+	endif
+	
+	if( y < 260 )
+	   map.ynorth:= 0;
+	else
+	   map.ynorth := y-260;
+	endif
+
+	map.xeast := x+265;
+	map.ysouth := y+260;
+	map.gumpwidth := 200;
+	map.gumpheight := 200;
+	map.AppendPin(x,y);
+
+endfunction

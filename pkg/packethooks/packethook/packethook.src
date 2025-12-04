@@ -1,0 +1,229 @@
+use uo;
+use os;
+use cfgfile;
+use polsys;
+use unicode;
+use util;
+
+include "include/findcity";
+include "include/areas";
+include ":staff:include/staff";
+include "include/client";
+
+Const CORE_IGNORE := 1;
+Const CORE_OK     := 0;
+Const OFFSET_TYPE := 0x1;
+Const OFFSET_SERIAL := 0x7;
+Const OFFSET_CMD := 0xB;
+
+Program PacketHook()
+  syslog("PacketHook ...");
+  return CORE_IGNORE;
+EndProgram
+
+Exported Function CheckDrop(char, ByRef packet)
+	/* if(char.cmdlevel && char.cmdlevel < 3)
+		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
+		var parms := {item, char};
+		LogCommand(char, GetProcess(GetPid()).name, "Tried to drop "+item.name+"/"+item.serial+" at location xyz: "+item.x+" "+item.y+" "+item.z);
+		start_script("ForceMove", parms);
+		SendSysMessage(char, "You can't drop any items.");
+		return CORE_OK;
+	endif */
+
+	if(!char.cmdlevel && IsInBox(char, 5125, 7167, 0, 2303) && packet.GetInt32(10) == -1)
+		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
+		var conf := ReadConfigFile( "::tiles" );
+		var element := FindConfigElem( conf , item.objtype );
+		if( element )
+			var material := element.Blocking;
+			if(!material)
+				return CORE_OK;				
+			endif
+		endif
+		var parms := {item, char};
+		start_script("ForceMove", parms);
+		SendSysMessage(char, "You can't drop items inside of a dungeon.", FONT_NORMAL, 2595 );
+		return CORE_OK;
+	endif
+
+  var serial := packet.getint32(1);
+  var inhand := char.getgottenitem();
+  If (serial and inhand and inhand.serial == serial)
+    return CORE_OK;
+  EndIf
+  
+	// Check if "Character 0x{:X} tried to drop item 0x{:X}, but had not gotten an item.\n"
+	var badpackets := GetObjProperty(char, "badpackets");
+	if (!badpackets)
+		SetObjProperty(char, "badpackets", 1);
+		return CORE_OK;
+	elseif(badpackets > 3)
+		SendSysMessage(char, "You have been disconnected for excessive macro with an item that have not picked up.", FONT_NORMAL, 2595 );
+		SetObjProperty(char, "badpackets", 0);
+		DisconnectClient(char);
+		return CORE_IGNORE;
+	else
+		badpackets += 1;
+		SetObjProperty(char, "badpackets", badpackets);
+		return CORE_OK;
+	endif
+
+//  IncrementScriptErrorCounter(char);
+
+  return CORE_IGNORE;
+EndFunction
+
+Exported Function CheckDrop6017(char, ByRef packet)
+	//Debug stuff
+	/*print("checkdrop6017");
+	print("0x08: "+packet.GetInt8(0));
+	print("item serial: "+packet.GetInt32(1));
+	print("x: "+packet.GetInt16(5));
+	print("y: "+packet.GetInt16(7));
+	print("z: "+packet.GetInt8(9));
+	print("backpack grid: "+packet.GetInt8(10));
+	print("container serial dropped onto: "+packet.GetInt32(11));*/
+/* 	if(char.cmdlevel && char.cmdlevel < 3)
+		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
+		var parms := {item, char};
+		LogCommand(char, GetProcess(GetPid()).name, "Tried to drop "+item.name+"/"+item.serial+" at location xyz: "+item.x+" "+item.y+" "+item.z);
+		start_script("ForceMove", parms);
+		SendSysMessage(char, "You can't drop any items.");
+		return CORE_OK;
+	endif */
+
+	if(!char.cmdlevel && IsInBox(char, 5125, 7167, 0, 2303) && packet.GetInt32(11) == -1)
+		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
+		var conf := ReadConfigFile( "::tiles" );
+		var element := FindConfigElem( conf , item.objtype );
+		if( element )
+			var material := element.Blocking;
+			if(!material)
+				return CORE_OK;				
+			endif
+		endif
+		var parms := {item, char};
+		start_script("ForceMove", parms);
+		SendSysMessage(char, "You can't drop items inside of a dungeon.", FONT_NORMAL, 2595 );
+		return CORE_OK;
+	endif
+
+  var serial := packet.getint32(1);
+  var inhand := char.getgottenitem();
+  If (serial and inhand and inhand.serial == serial)
+    return CORE_OK;
+  EndIf
+  		
+	// Check if "Character 0x{:X} tried to drop item 0x{:X}, but had not gotten an item.\n"
+	var badpackets := GetObjProperty(char, "badpackets");	
+	if(GetObjProperty(char, "bpTime") < ReadGameClock() && badpackets)
+		SetObjProperty(char, "badpackets", 0);
+		EraseObjProperty(char, "bpTime");
+		return CORE_OK;
+	endif
+	if (!badpackets)
+		SetObjProperty(char, "badpackets", 1);
+		SetObjProperty(char, "bpTime", ReadGameClock() + 5);
+		return CORE_OK;
+	elseif(badpackets > 3)
+		SendSysMessage(char, "You have been disconnected for excessive macro with an item that you have not picked up.", FONT_NORMAL, 2595 );
+		SetObjProperty(char, "badpackets", 0);
+		DisconnectClient(char);
+		return CORE_IGNORE;
+	else
+		badpackets += 1;
+		SetObjProperty(char, "badpackets", badpackets);
+		SetObjProperty(char, "bpTime", ReadGameClock() + 5);
+		return CORE_OK;
+	endif
+ // IncrementScriptErrorCounter(char);
+ 
+  return CORE_IGNORE;
+EndFunction
+
+//This is so you can't target players in no-pk zones (lazy way to remove all ways to kill ppl).
+exported Function OnTarget( who, byref Packet )
+	/*//Debug stuff
+	print("0x6c: "+packet.GetInt8(0));
+	print("cursor target: "+packet.GetInt8(1));
+	print("cursor id: "+packet.GetInt32(2));
+	print("cursor type: "+packet.GetInt8(6));
+	print("clicked on id: "+packet.GetInt32(7));
+	print("x: "+packet.GetInt16(11));
+	print("y: "+packet.GetInt16(13));
+	print("unknown: "+packet.GetInt8(15));
+	print("z: "+packet.GetInt8(16));
+	print("graphic: "+packet.GetInt16(17));*/
+
+	var obj := SystemFindObjectBySerial(packet.GetInt32(7));
+	if(!who.cmdlevel && obj.cmdlevel && (obj.concealed || obj.hidden))
+		SendSysMessage(obj, who.name+" is trying to target you while you are concealed/hidden", FONT_NORMAL, 2595 );
+	endif	
+	
+	if(!who.cmdlevel && obj.objtype == 0x6200)
+		foreach player in EnumerateOnlineCharacters()
+			if(player.cmdlevel)
+				SendSysMessage(player, who.name+" is trying to target dungeon teleporters.", FONT_NORMAL, 2595 );
+			endif
+		endforeach
+	endif
+	
+	var ATKisRPer := GetObjProperty(who, "IsRPer");
+	var DEFisRPer := GetObjProperty(obj, "IsRPer");
+	var noPKatk := GetObjProperty(who, "NOPKAREA");
+	var noPKdef := GetObjProperty(obj, "NOPKAREA");
+	var target_type := packet.GetInt8(6) == 2;
+	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC) && obj != who) && (noPKatk || noPKdef) && (!target_type))
+		var newpacket := CreatePacket(0x6C, 0x13);
+		newpacket.SetInt8(1, 0);
+		newpacket.SetInt32(2, 00000000);
+		newpacket.SetInt8(6, 3);
+		newpacket.SendPacket(who);
+		SendSysMessage(who, "You can't target players in a NO-PK zone!", FONT_NORMAL, 2595 );
+		EraseObjProperty( who , "#Casting" );
+		return CORE_IGNORE;
+	endif
+	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC) && obj != who) && (ATKisRPer != DEFisRPer))
+		var newpacket := CreatePacket(0x6C, 0x13);
+		newpacket.SetInt8(1, 0);
+		newpacket.SetInt32(2, 00000000);
+		newpacket.SetInt8(6, 3);
+		newpacket.SendPacket(who);
+		SendSysMessage(who, "Only players with the [RPer] tag can attack each other!", FONT_NORMAL, 2595 );
+		EraseObjProperty( who , "#Casting" );
+		return CORE_IGNORE;
+	endif
+	
+	return CORE_OK;
+Endfunction
+
+//This is so you can't attack players in no-pk zones.
+Exported Function checkAttack(who, ByRef packet)
+	var obj := SystemFindObjectBySerial(packet.GetInt32(1));
+	var ATKisRPer := GetObjProperty(who, "IsRPer");
+	var DEFisRPer := GetObjProperty(obj, "IsRPer");
+	var noPKatk := GetObjProperty(who, "NOPKAREA");
+	var noPKdef := GetObjProperty(obj, "NOPKAREA");
+	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC)) && (noPKatk || noPKdef))
+		SendSysMessage(who, "You can't target players in a NO-PK zone!", FONT_NORMAL, 2595 );
+		return CORE_IGNORE;
+	endif
+	noPKatk := GetObjProperty(who, "InSafeArea");
+	noPKdef := GetObjProperty(obj, "InSafeArea");
+	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC)) && (noPKatk || noPKdef))
+		SendSysMessage(who, "You can't attack players in a safe zone!", FONT_NORMAL, 2595 );
+		return CORE_IGNORE;
+	endif
+	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC) && obj != who) && (ATKisRPer != DEFisRPer))
+		var newpacket := CreatePacket(0x6C, 0x13);
+		newpacket.SetInt8(1, 0);
+		newpacket.SetInt32(2, 00000000);
+		newpacket.SetInt8(6, 3);
+		newpacket.SendPacket(who);
+		SendSysMessage(who, "Only players with the [RPer] tag can attack each other!", FONT_NORMAL, 2595 );
+		return CORE_IGNORE;
+	endif
+
+	return CORE_OK;
+Endfunction

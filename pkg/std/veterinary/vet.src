@@ -1,0 +1,423 @@
+//Edited on September 10, 2024
+
+/////////////////////////////////////////////////////////
+//vet.src
+//
+//Just like healing, but works on tamed NPCs
+//
+// Author: Dream Weaver
+//
+//////////////////////////////////////////////////////////
+
+use uo;
+use cfgfile;
+use os;
+
+include "include/client";
+include "include/dotempmods";
+include "include/classes";
+include "include/random";
+include "include/res";
+include "include/attributes";
+include "include/difficulty";
+include "include/math";
+
+const SOUND_EFFECT_RES 	  := 0x215;
+const BLOODY_BANDAGE 	  := 0x0e20;
+
+//To heal
+const BANDAGES_TO_HEAL	  := 1;
+const DELAY_TO_HEAL	  := 5;
+
+//To cure
+const BANDAGES_TO_CURE	  := 1;
+const DELAY_TO_CURE	  := 5;
+
+//To res
+const BANDAGES_TO_RES	  := 5;
+const DELAY_TO_RES	  := 10;
+var RES_DIFFICULTY;;
+
+var vet, animallore, taming, ranger;
+
+//Multiply diff by this for the point value
+const POINTS_MULTIPLIER	  := 20;
+
+
+program use_bandages ( parms )
+
+
+	var who := parms[1];
+	var patient := parms[2];
+	var bandages := parms[3];
+	Attach(who);
+
+	vet := GetEffectiveSkill( who , SKILLID_VETERINARY );
+	animallore := GetEffectiveSkill( who , SKILLID_ANIMALLORE );
+	taming := GetEffectiveSkill( who , SKILLID_TAMING );
+	ranger := GetObjProperty( who , CLASSEID_RANGER);
+
+	if( patient.poisoned )
+		TryToCure( who , patient , bandages );
+	elseif( GetHP(patient) < GetMaxHP(patient) )
+		TryToHeal( who , patient , bandages );
+	elseif( patient.objtype == UOBJ_CORPSE)
+		ResAnimal(who, patient, bandages);
+	else
+		if (patient == who)
+			SendSysMessage( who , "You can't do that." );
+			EraseObjProperty(who,"DoingVet");
+			return 0;
+		else
+			SendSysMessage( who , "This creature doesn't even have a bruise!" );
+		endif
+	endif
+
+endprogram
+
+
+function TryToCure( who , patient , bandages )
+
+	if( bandages.amount < BANDAGES_TO_CURE )
+		SendSysMessage( who , "You don't have enough bandages." );
+		EraseObjProperty(who,"DoingVet");
+		return;
+	endif
+
+	var delay 	:= DELAY_TO_CURE;
+
+	if( patient.serial == who.serial )
+		SendSysMessage( who , "You can't do that." );
+		EraseObjProperty(who,"DoingVet");
+		return 0;
+	else
+		SendSysMessage( who , "You start to cure " + patient.name );
+	 	SendSysMessage( patient , who.name + " starts to cure you" );
+	endif
+
+	if( GetObjProperty( who , CLASSEID_RANGER ) )
+		delay := Cint( delay / CLASSE_BONUS );
+	endif
+
+	Sleep( delay );
+
+	if( Distance( who , patient ) > 2 )
+		SendSysMessage( who , "The creature is too far." );
+		EraseObjProperty(who,"DoingVet");
+		return;
+	endif
+
+	if( who.dead )
+		EraseObjProperty(who,"DoingVet");
+		return;
+	endif
+
+	if( patient.dead )
+		SendSysMessage( who , "The creature is dead." );
+	endif
+
+	var plvl 	:= PoisonLevel( patient );
+	var diff 	:= cint(plvl * 20 + 15);
+	var points 	:= diff * POINTS_MULTIPLIER;
+
+	sendDiff( who , diff );
+
+	if( CheckSkill( who , SKILLID_VETERINARY , diff , points ) )
+		CurePoison( patient , 0 , who.name + " has cured you!" );
+		SendSysmessage( who , "You cured the creature." );
+	else
+		SendSysmessage( who , "You couldn't cure the creature." );
+	endif
+
+	SubtractAmount( bandages , BANDAGES_TO_CURE );
+	CreateItemInBackpack( who , BLOODY_BANDAGE , BANDAGES_TO_CURE );
+
+endfunction
+
+
+function TryToHeal( who , patient , bandages )
+
+	if( bandages.amount < BANDAGES_TO_HEAL )
+		SendSysMessage( who , "You don't have enough bandages." );
+		return;
+	endif
+
+	// percent to heal is the percent of health that the thing needs healing
+	// so if its on 80/100HP this will be 20% needed to heal
+	var percent_to_heal := CDbl(GetHP(patient))/CDbl(GetMaxHP(patient))*100.00;
+	percent_to_heal := CInt(100.0 - percent_to_heal);
+
+	//% the player is to capping vet (130 not 150)
+	var healskillper := CInt((vet/130.0)*100.0);
+
+	if( patient.serial == who.serial )
+		SendSysMessage( who , "You can't do that." );
+		EraseObjProperty(who,"DoingVet");
+		return 0;
+	else
+		SendSysMessage( who , "You start to heal " + patient.name );
+	 	SendSysMessage( patient , who.name + " starts to heal you" );
+	endif
+
+	var delay 	:= DELAY_TO_HEAL;
+
+	var healed	:= RandomDiceStr( (vet/10) + "d4+" + (vet/10) ) + RandomDiceStr( "1d8+2" ) + (animallore/5);
+
+	if( GetObjProperty( who , CLASSEID_RANGER ) )
+		delay := Cint( delay / CLASSE_BONUS );
+		healed := Cint( healed * CLASSE_BONUS );
+	endif
+
+	// rangers arnt great at healing humans, half amount healed
+	if (who == patient)
+		healed := CInt(healed * 0.5);
+	endif
+
+	var count	:= 10;
+	var shp	:= GetHP(who);
+	while( delay )
+		Sleep( 1 );
+		delay := delay - 1;
+		if( GetHP(who) < shp )
+			SendSysMessage( who , "Your fingers slip..." );
+			count := count - 1;
+			shp   := GetHP(who);
+		endif
+	endwhile
+
+	if( Distance( who , patient ) > 2 )
+		SendSysMessage( who , "The creature is too far." );
+		return;
+	endif
+
+	if( who.dead )
+		return;
+	endif
+
+	if( patient.dead )
+		if (who != patient)
+			SendSysMessage( who , "The creature is dead." );
+		else
+			return 0;
+		endif
+	endif
+
+	var diff 	:= cint(GetMaxHP(patient) - GetHP(patient));
+
+	var points 	:= diff * POINTS_MULTIPLIER;
+
+	var bonus := GetObjProperty( patient , "HealingIncrease" );
+	if( bonus )
+		healed := healed + Cint( healed * bonus * 0.1 );
+	endif
+
+	if( count < 1 )
+		count := 1;
+	endif
+
+	//Added *1.5 extra healing on base... from 145 to 200 avg heals at max
+	
+	if( GetObjProperty( who , CLASSEID_RANGER ) )
+			case(RandomInt(24))
+			0 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			1 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			2 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			3 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			4 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			5 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			6 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			7 : 
+				healed := GetMaxHp(patient);
+			8 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			9 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			10 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			11 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			12 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			13 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			14 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			15 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			16 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			17 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			18 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			19 : 
+				healed := GetMaxHp(patient);
+			20 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			21 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			22 :
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+			23 : 
+				healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+		endcase
+		//healed := Trunc( ( Cint( healed * count / 10 ) * 2 ), 0);
+	else 
+		healed := Trunc( ( Cint( healed * count / 10 ) * 1.5 ), 0);
+	endif
+	
+	// First check against maxhp-hp, not good for over 130HP difference
+	if( CheckSkill( who , SKILLID_VETERINARY , diff , points ) )
+		SetHP( patient, (GetHP(patient) + healed) );
+		//HealDamage( patient , healed );
+		SendSysMessage( who , "You healed " + healed + " damage." );
+		if (who != patient)
+			SendSysmessage( patient , who.name + " healed " + healed + " damage." );
+		endif
+
+	// Second check against % TO heal and vet skill % to max.  So if an npc has 1k max hp and is on 500hp, he has
+	// 50% to heal.  If players skill is 100 he will be able to heal it
+	elseif ((healskillper >= percent_to_heal) && CheckSkill( who , SKILLID_VETERINARY , (vet-10) , CInt((vet/2)*POINTS_MULTIPLIER) ) )
+		// players total heal skill perecnt is greater or equal to damage needed healing, HEAL
+		SetHP( patient, (GetHP(patient) + healed) );
+		//HealDamage( patient , healed );
+		SendSysMessage( who , "You healed " + healed + " damage." );
+		if (who != patient)
+			SendSysmessage( patient , who.name + " healed " + healed + " damage." );
+		endif
+
+	// 3RD and final check.  HP check failed, didn't have enough vet skill to heal based on skill %.  We half the skill and try
+	elseif( CheckSkill( who , SKILLID_VETERINARY , CInt(diff/2.5) , CInt(points/2.5) ) )
+		healed:=Cint(healed/2.5);
+		SetHP( patient, (GetHP(patient) + healed) );
+		//HealDamage( patient , healed );
+		SendSysMessage( who , "The wounds are too advanced and you only heal " + healed + " damage." );
+		if (who != patient)
+			SendSysmessage( patient , who.name + " healed " + healed + " damage." );
+		endif
+	else
+		SendSysmessage( who , "You couldn't heal the creature." );
+	endif
+
+	SubtractAmount( bandages , BANDAGES_TO_HEAL );
+	CreateItemInBackpack( who , BLOODY_BANDAGE , BANDAGES_TO_HEAL );
+
+endfunction
+
+function ResAnimal( who , patient , bandages )
+
+	if (GetObjProperty(patient, "#Ressing"));
+		SendSysMessage(who, "This creature is currently being aided back to life.");
+		return 0;
+	else
+		SetObjProperty(patient, "#Ressing", 1);
+	endif
+
+	if( bandages.amount < BANDAGES_TO_RES )
+		SendSysMessage( who , "You don't have enough bandages." );
+		EraseObjProperty(patient, "#Ressing");
+		return;
+	endif
+
+	var npctemplate := GetObjProperty(patient, "npctemplate");
+
+	var cfgfile := ReadConfigFile("::npcdesc");
+	npctemplate := FindConfigElem( cfgfile, npctemplate );
+	var tameat := GetConfigInt(npctemplate, "tameskill");
+
+	if (!tameat)
+		SendSysMessage( who , "This creature can not be resurrected." );
+		EraseObjProperty(patient, "#Ressing");
+		return 0;
+	endif
+
+	if (animallore < 100)
+		SendSysMessage( who , "Your animal lore is too low to attempt resurrection.");
+		SendSysMessage( who , "Your need atleast 100 animal lore to resurrect an animal.");
+		EraseObjProperty(patient, "#Ressing");
+		return 0;
+	endif
+
+	//need +10 more vet to res than tame
+	if ((tameat) > vet)
+		sendDiff( who , tameat );
+		SendSysMessage( who , "You are not yet skilled enough to resurrect this creature.");
+		EraseObjProperty(patient, "#Ressing");
+		return 0;
+	endif
+
+	SendSysMessage( who , "You start to resurrect the creature..." );
+	var msgss := tameat;
+	sendDiff( who , msgss );
+
+	var delay 	:= DELAY_TO_RES;
+
+	var count	:= 10;
+	var shp	:= GetHP(who);
+	var x := who.x;
+	var y := who.y;
+
+	while( delay )
+		Sleep( 1 );
+		delay := delay - 1;
+		if( GetHP(who) < shp )
+			SendSysMessage( who , "Your fingers slip..." );
+			count := count - 1;
+			shp   := GetHP(who);
+		elseif(who.x != x || who.y != y )
+			SendSysMessage( who , "You moved, resurrection stopped." );
+			EraseObjProperty(patient, "#Ressing");
+			return;
+		endif
+	endwhile
+
+	if( Distance( who , patient ) > 2 )
+		SendSysMessage( who , "The corpse is too far." );
+		EraseObjProperty(patient, "#Ressing");
+		return;
+	endif
+
+	if( who.dead )
+		EraseObjProperty(patient, "#Ressing");
+		return;
+	endif
+
+	var diff := tameat+10;
+	var points 	:= tameat * POINTS_MULTIPLIER;
+
+	if( count < 1 )
+		count := 1;
+	endif
+
+	// First check against maxhp-hp, not good for over 130HP difference
+	if( CheckSkill( who , SKILLID_VETERINARY , diff , points ) )
+		var npc := CreateNPCFromTemplate(GetObjProperty(patient, "npctemplate"), patient.x, patient.y, patient.z, 0, patient.realm);
+		if (npc)
+			var color := getobjproperty(patient,"color");
+			DestroyItem(patient);
+			SetObjProperty(npc, "nocut", 1);
+			SetObjProperty(npc, "noloot", 1);
+			SetObjProperty(npc, "VetResed", 1);
+			if(color != npc.color)
+				npc.color := color;
+				setobjproperty(npc,"color", color);
+			endif
+			SendSysMessage( who , "You resurrected "+npc.name+"!" );
+		endif
+	else
+		SendSysMessage(who, "You fail to resurrect the creature.");
+	endif
+
+	EraseObjProperty(patient, "#Ressing");
+
+	SubtractAmount( bandages , BANDAGES_TO_HEAL );
+	CreateItemInBackpack( who , BLOODY_BANDAGE , BANDAGES_TO_HEAL );
+
+endfunction

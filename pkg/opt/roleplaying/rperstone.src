@@ -1,0 +1,247 @@
+use os;
+use uo;
+
+include "include/client";
+include "include/classes";
+include "rper";
+
+program OnUse_RPerFactionStone(who, newstone)
+
+    var alreadyjoined := GetObjProperty( who, "IsRPer" );
+    var starterclass := GetObjProperty(who, "RPerStartClass");
+    var total_skills := GetClasseSkillTotal(who, GetClass(who));
+    
+    if( alreadyjoined && !starterclass && total_skills < 610)
+		SendSysmessage( who, "WARNING: Using the RPer Faction stone will set your class to level 1 and you will receive the appropriate starting gear!", FONT_NORMAL, 2595 );
+         var gflayout := {
+                "nodispose",                                                // You did not want to hit esc, did you?
+                "page 0",                                                   // We initialize the first page which is the background
+                "GumpPic 860 400 11265",                                    // We want the dark background
+                "text 890 470 2595 0",                                      // The main headline 
+                "page 1",	                                                // Initialize the page
+                "text 900 510 2567 1", 
+                "text 900 525 2567 2",
+                "text 900 540 2567 3",
+                "text 900 555 2567 4",
+                "text 895 610 2595 5",
+
+                "text 940 650 2496 6", 
+                "text 940 675 2496 7",
+                "text 940 700 2496 8",
+                "text 940 725 2496 9",
+                "text 940 750 2496 10",
+                "text 940 775 2496 11",
+
+                "text 887 825 2567 12",
+                "text 880 840 2567 13",
+
+                "radio 920 652 11410 11402 0 100",                             // Ranger
+                "radio 920 677 11410 11402 0 200",                             // Warrior
+                "radio 920 702 11410 11402 0 300",                             // Mage
+                "radio 920 727 11410 11402 0 400",                             // Thief
+                "radio 920 752 11410 11402 0 500",                             // Bard
+                "radio 920 777 11410 11402 0 600",                             // Crafter
+
+                "button 926 880 249 248 1 0 1"                                // Okay button
+            };
+
+        var gfdata := {
+                "<[ STARTER CLASS ]>",
+                "You will be able to",
+                "select your starting",
+                "class and matching",
+                "starting gear here!",
+                "<[ CLASS & GEAR ]>",
+                "Ranger",
+                "Warrior",
+                "Mage",
+                "Thief",
+                "Bard",
+                "Crafter",
+                "Select a starting class",
+                "and hit the OKAY button."
+            };
+
+        var gump := SendDialogGump( who, gflayout, gfdata );
+        if( !gump )
+            SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+            return;
+        endif
+
+        // Okay button wasn't pressed
+        if (gump[0] != 1)
+            SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+            return 0;
+        endif
+        
+        var playerchoice;
+
+        foreach key in ( gump.keys )
+            playerchoice := key;
+        endforeach
+
+        var selectedclass;
+        var classid;
+        
+        case(playerchoice)
+            100:    selectedclass := SetObjProperty(who, "RPerStartClass", "Ranger" );
+                    classid := CLASSEID_RANGER;
+                    createRPerRangerBag(who.backpack);
+            200:	selectedclass := SetObjProperty(who, "RPerStartClass", "Warrior" );
+                    classid := CLASSEID_WARRIOR;
+                    createRPerWarriorBag(who.backpack);
+            300:	selectedclass := SetObjProperty(who, "RPerStartClass", "Mage" );
+                    classid := CLASSEID_MAGE;
+                    createRPerMageBag(who.backpack);
+            400:	selectedclass := SetObjProperty(who, "RPerStartClass", "Thief" );
+                    classid := CLASSEID_THIEF;
+                    createRPerThiefBag(who.backpack);
+            500:	selectedclass := SetObjProperty(who, "RPerStartClass", "Bard" );
+                    classid := CLASSEID_BARD;
+                    createRPerBardBag(who.backpack);
+            600:    selectedclass := SetObjProperty(who, "RPerStartClass", "Crafter" );
+                    classid := CLASSEID_CRAFTER;
+                    createRPerCrafterBag(who.backpack);
+            default: selectedclass := "The player must have canceled the gump without doing anything";
+        endcase
+
+        var i;
+        for(i := 0; i < 49; i := i + 1)
+            SetBaseSkill(who, i, 0);
+        endfor
+
+        var skillamount := 75;
+        foreach skill in GetClasseSkills( classid )
+            SetBaseSkill(who, skill, skillamount);
+        endforeach
+
+        SetBaseStrength(who, 100);
+        SetBaseIntelligence(who, 100);
+	    SetBaseDexterity(who, 100);
+
+        AssignClasse( who );
+
+        selectedclass := GetObjProperty(who, "RPerStartClass");
+        SendSysmessage( who, "You are now a level 1 " + selectedclass + " and received the " + selectedclass + " starting gear! Good luck in your travels!", FONT_NORMAL, 2567 );
+
+		return;
+
+    elseif(alreadyjoined && starterclass)
+        SendSysmessage( who, "You have already received your class and starting gear! Good luck in your travels!", FONT_NORMAL, 2595 );
+        return;
+    elseif(total_skills > 610)
+        SendSysmessage( who, "WARNING: Your starting skills are already higher than the skills you will get from the stone. Please contact staff for starting gear!", FONT_NORMAL, 2595 );
+        return;
+    else
+        var gflayout := {
+                "nodispose",                                                // You did not want to hit esc, did you?
+                "NoClose",
+                "page 0",                                                   // We initialize the first page which is the background
+                "resizepic 260 100 5054 650 640",                           // We want the dark background
+                "text 450 120 32 0",                                        // The main headline 
+                "page 1",	                                                // Initialize the page
+                "text 340 160 50 1", 
+                "text 340 175 50 2",
+                "text 340 190 50 3",
+                "text 340 205 50 4",
+                "text 340 220 50 5",
+                "text 340 235 50 6",
+                "text 520 280 32 7",                                        // How to Roleplay headline
+                "text 280 310 50 8",
+                "text 280 325 50 9",
+                "text 280 340 50 10",
+                "text 280 355 50 11",
+                "text 280 370 50 12",
+                "text 420 395 32 13",
+                "text 420 415 50 14",
+                "text 420 430 50 15",
+                "text 420 445 50 16",
+                "text 420 460 50 17",
+                "text 420 475 50 18",
+                "text 420 490 50 19",
+                "text 420 505 50 20",
+                "text 280 535 50 21",
+                "text 280 550 50 22",
+                "text 280 565 50 23",
+                "text 280 580 50 24",
+                "text 280 595 50 25",
+                "text 280 610 50 26",
+                "text 355 660 32 27",
+                "button 460 700 243 241 1 0 0",                             // Cancel button
+                "button 650 700 249 248 0 2 0",                              // Okay button
+                "page 2",
+                "GumpPic 260 100 11264",
+                "text 470 300 32 28", 
+                "text 460 335 50 29",
+                "text 460 370 50 30",
+                "text 460 385 50 31",
+                "text 460 420 50 32",
+                "text 460 435 50 33",
+                "text 480 485 32 34",
+                "text 480 500 32 35",
+                "button 500 550 243 241 1 0 1",                             // Cancel button
+                "button 645 550 249 248 1 0 2"                              // Okay button 
+            };
+
+        var gfdata := {
+                "<[ Do you wish to join the RPer faction? ]>",
+                "By joining the RPer faction you will receive certain benefits and as such",
+                "Roleplayers are subjected to stricter rules and punishments are more severe.",
+                "Always confirm the rules page regarding RPers on the Zuluhotel Omega website.",
+                "If in doubt, page a staff member or ask your question in the Discord channel.",
+                "Failure to follow the rules might have negative consequences to your account.",
+                "As such it's strongly recommended not to share it with a Non-RPer character.",
+                "<[ How to Role-Play ]>",
+                "This will attempt to explain the basics of role-playing. Role-playing is exactly what it sounds like,",
+                "playing a role. You don't have to talk with 'thee' and 'thou' if your character doesn't do that.",
+                "In all the movies you watch, the actors are role-playing and stay in character at all times.",
+                "They're taking on the characteristics of the character they're playing and they become that character.",
+                "The first thing you need to do is figure out who and what your character is.",
+                "Here are some things that you want to consider:",
+                "Where were you born?",
+                "What did your parents do?",
+                "What do you do for a living?",
+                "How old are you?",
+                "Any fears or aversions you might have and why you have them?",
+                "What kinds of activities do you enjoy?",
+                "What do you wish to achieve in this world?",
+                "If you are a PKer, why did you choose to become one and why do you kill the people that you kill?",
+                "(To get stuff is not a valid reason...)",
+                "If you choose to role-play a murderer, do so. All murderers have reasons for killing.",
+                "Whether they are insane, or perhaps they don't like the color of the person's shirt.",
+                "If you choose to be insane, do so, but then you have to kill everyone, you can't make exceptions.",
+                "If you choose to kill, choose a reason and don't kill people that don't satisfy those reasons.",
+                "TLDR: Pick a role and stick with it. Stay in character and don't AFK macro!",
+                "Roleplayers have their own town [Randorin]",
+                "This town is only accessible to [RPers].",
+                "Remember to always stay in character or use,",
+                "[OoC] Out of character tags when necessary.",
+                "For more info head over to the Discord,",
+                "and join the Roleplaying channel.",
+                "I have read the rules on the website,",
+                "and I'm ready to start my adventure!"
+            };
+
+        var gump := SendDialogGump( who, gflayout, gfdata );
+        if( !gump )
+            SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+            return;
+        endif
+        
+        if( !alreadyjoined )
+            case( gump[0] )
+                1:	SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+                    break;
+                2:	SetObjProperty(who,"IsRPer", 1);
+                    SetObjProperty(who,"OrgName", who.name);
+                    who.name := who.name + " [RPer]";
+                    //Needs to be fixed for new maps
+                    //MoveObjectToLocation( who, 5227, 461, 16, "britannia", MOVEOBJECT_FORCELOCATION );
+                    SendSysMessage( who, "You have joined the [RPer] faction and have been sent to the town of Randorin!", FONT_NORMAL, 2595 );
+                    break;
+            endcase
+        else
+            SendSysmessage( who, "You've already joined the [RPer] faction.", FONT_NORMAL, 2595 );
+        endif
+    endif
+endprogram

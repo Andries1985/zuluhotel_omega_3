@@ -1,0 +1,1123 @@
+use npc;
+use basic;
+use os;
+use uo;
+
+include "include/dotempmods";
+include "include/eventid";
+include "include/npcbackpacks";
+include "include/randname";
+include "include/utility";
+include "include/mrcspawn";
+include "include/speech";
+include "include/myutil";
+include "ai/setup/modsetup"; 
+include "ai/main/sleepmode";
+include "include/random";
+include "include/attributes";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/npcboosts";
+
+Const REACT_THRESHOLD := 3;
+//const RESPAWN_MINUTES := 30;
+const MAXFRIENDS      := 3;
+const MAX_SKILLS      := 48;
+
+const IDENTIFY := 50;
+
+var me := Self();
+var storage, inv_fs, inv_pb, inv_1c;
+var gldamt := 0 ;
+var gldttl := 0 ;
+storage := FindStorageArea( "Merchant Storage" );
+if (!storage)
+	exit;
+endif
+
+inv_fs := find_or_create_item( storage, me.serial + " FS", 0xE7C );
+inv_pb := find_or_create_item( storage, me.serial + " PB", 0xE7C );
+inv_1c := find_or_create_item( storage, me.serial + " 1C", 0xE7C );
+
+if (!inv_fs or !inv_pb or !inv_1c)
+	exit;
+endif
+
+var speech;
+var merchant_type;
+var currentmoney;
+
+SetSpeechAndType();
+
+if( me.name["<random>"] )
+	SetMeUp();
+endif
+
+EnableEvents( REACT_THRESHOLD );
+
+program merchantai()
+
+	foreach item in EnumerateItemsInContainer(inv_pb)
+		DestroyItem(item);
+	endforeach
+			
+/* Toadstool -  commented out this section as it added '<uninitialized object>' as the suffix
+		if one wasn't defined in npcdesc.cfg
+
+	var tmptitle := splitwords(me.title_suffix);
+	me.title_suffix := " " + tmptitle[1] + " " + tmptitle[2];
+*/
+	if ( me.graphic == 401 )
+		me.gender := 1;
+	endif
+	me.graphic := 400 + me.gender;
+	var RESPAWN_MINUTES := 25+Random(20);
+	var next_restock := ReadGameClock() + RESPAWN_MINUTES*60;
+
+	WalkHome();
+
+	EnableMainEvents();
+
+	var ev;
+	var mydestx := 0;
+	var mydesty := 0;
+	var steps   := 0;
+	var wanders := 60;
+	var next_wander := ReadGameClock();
+
+	while (1)
+		if (me.hidden)
+			me.hidden := 0;
+		endif
+
+		if(!GetObjProperty(me, "lbc") || GetObjProperty(me, "lbc") < ReadGameClock())
+			SetObjProperty(me, "lbc", ReadGameClock()+5);
+			checkmymod(me);
+		endif
+
+		if (ReadGameClock() > next_wander)
+			if (mydestx != 0)
+				WalkTowardLocation(mydestx, mydesty);
+				if ( (me.x == mydestx and me.y == mydesty) or ( steps > 10 ) )
+					mydestx := 0;
+					SetAnchor( me.x, me.y, 3, 80 );
+				endif
+			else
+				Wander();
+				wanders := wanders + 1;
+			endif
+			next_wander := ReadGameClock() + 2;
+			if (wanders > 10)
+				wanders := 0;
+				WalkHome();
+				ev := sleepmode();
+			endif
+		else
+			ev := os::wait_for_event( 2 );
+		endif
+
+		if (ev)
+			if (ProcessEvent(ev, mydestx, mydesty, steps))
+				next_wander := ReadGameClock() + 30;
+			endif
+		elseif (ReadGameClock() > next_restock)
+			if ( GetObjProperty(me, "restock") )
+				RestockInventory( merchant_type, inv_fs );
+				EraseObjProperty(me, "restock");
+			endif
+			RESPAWN_MINUTES := 25+Random(20);
+			next_restock := ReadGameClock() + RESPAWN_MINUTES*60;
+		endif
+	endwhile
+endprogram
+
+//############################################ NPC set-up ###################################################\\
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+// 
+// SetmeUp() - Dresses/names/genders/stocks the vendor
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+function setmeup()
+
+	setobjproperty(me, "serial", me.serial);
+	SetObjProperty(me, "noloot", 1);
+
+	me.gender := Random(2);
+	me.graphic := 400+me.gender;
+
+	me.name := RandomName( me );
+
+	var style := "poor";
+	if ((lower(merchant_type) == "mage") or (lower(merchant_type) == "healer"))
+		style:="mage";
+	elseif ((lower(merchant_type) == "alchemist") or (lower(merchant_type) == "scribe"))
+		style:="mage";
+	elseif ((lower(merchant_type) == "weaponsmith") or (lower(merchant_type) == "armorer"))
+		style:="warrior";
+	elseif ((lower(merchant_type) == "tinker") or (lower(merchant_type) == "leatherworker"))
+		style:="weakwarrior";
+	elseif ((lower(merchant_type) == "bowyer") or (lower(merchant_type) == "thief"))
+		style:="weakwarrior";
+	elseif ((lower(merchant_type) == "bard") or (lower(merchant_type) == "jeweler"))
+		style:="rich";
+	elseif ((lower(merchant_type) == "thunter") or (lower(merchant_type) == "Carpenter"))
+		style:="rich";
+	elseif ((lower(merchant_type) == "tailor") or (lower(merchant_type) == "architect"))
+		style:="rich";
+	else
+		style:="rich";
+	endif
+
+	var parms := {};
+	parms[1]:= me;
+	parms[2]:= style;
+	set_priority( 1 );
+	start_script("::/misc/dressme", parms);
+
+/* Toadstool -  Commented out section to move 'the something' to title_suffix
+	 	To re-enable suffix, just add this code back in
+
+	if (!me.title_suffix)
+		var names := splitwords(me.name);
+		if ( names[2] = "the" )
+			me.title_suffix := " the " + names[3];
+			me.name := names[1];
+		endif
+	endif
+*/
+	RestockInventory( merchant_type, inv_fs );
+
+endfunction
+
+function walkhome()
+
+	var myhome := {};
+	if (!getobjproperty(me, "myhome"))
+		myhome[1] := me.x;
+		myhome[2] := me.y;
+		setobjproperty(me, "myhome", myhome);
+	else
+		myhome := getobjproperty(me, "myhome");
+	endif
+
+	if ( me.x == myhome[1] and me.y == myhome[2] )
+		SetAnchor( me.x, me.y, 3, 80 );
+		return;
+	endif
+
+	var i;
+	for (i := 1; i < 11; i := i + 1)
+		WalkTowardLocation(myhome[1], myhome[2]);
+		if (me.x == myhome[1] and me.y == myhome[2] )
+			break;
+		endif
+	endfor
+
+	var Anchor := GetObjProperty(me, "Anchor");
+
+	if (me.x != myhome[1] and me.y != myhome[2] )
+		MoveObjectToLocation(me, Anchor[1], Anchor[2], Anchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
+	endif
+
+	SetAnchor( myhome[1], myhome[2], 3, 80 );
+
+endfunction
+
+function SetSpeechAndType()
+
+	var npccfg := readconfigfile("npcdesc");
+	var elem := npccfg[me.npctemplate];
+	speech := getconfigint(elem, "speech");
+
+	merchant_type := GetObjProperty( Self(), "MerchantType" );
+
+	if( !merchant_type )
+		SetObjProperty( Self(), "MerchantType", "Mage" );
+		merchant_type := "Mage";
+	endif
+
+endfunction
+
+function EnableMainEvents()
+
+	EnableEvents( SYSEVENT_ITEM_GIVEN );
+	EnableEvents( SYSEVENT_ENGAGED);
+	EnableEvents( SYSEVENT_DAMAGED );
+	EnableEvents( SYSEVENT_ENTEREDAREA, 6 );
+	EnableEvents( SYSEVENT_LEFTAREA, 40);
+	EnableEvents( SYSEVENT_SPEECH, 1 );
+
+endfunction
+
+function DisableMainEvents()
+
+	DisableEvents( SYSEVENT_ITEM_GIVEN );
+	DisableEvents( SYSEVENT_SPEECH );
+
+endfunction
+
+//####################################### END NPC SET UP ##############################################\\
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Todastool
+//
+// ProcessEvent() - basically the contents page of what to do on player interaction
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
+
+	if (ev.source.npctemplate)
+		return 0;
+	endif
+
+	case (ev.type)
+		SYSEVENT_ENGAGED:
+			Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
+
+		SYSEVENT_DAMAGED:
+			SetHP(me, GetMaxHP(me));
+			if( me.poisoned ) CurePoison( me ); endif
+			Say("Help guards!!! I'm being attacked!!");
+			SetObjProperty(me, "guardkill", 1);
+			Start_Script( ":areas:callguards", me );
+			sleep(5);
+			say("You scoundrel!!!");
+
+			me.hidden := 1;
+			sleep(30);
+			me.hidden := 0;
+
+		SYSEVENT_ENTEREDAREA:
+			YellToFriend(ev.source);
+
+		SYSEVENT_LEFTAREA:
+		SYSEVENT_SPEECH:
+			TurnToward(ev.source);
+
+		// Sell Bag
+			if (ev.text["sell bag"])
+				SellBag(ev.source);
+		// Sell All
+			elseif (ev.text["sell all"])
+				SellAll(ev.source);
+		// Buy
+			elseif (ev.text["buy"])
+				var res;
+				res := SendBuyWindow( ev.source, inv_fs, me, inv_pb, flags := 1 );
+				if (!res)
+					print( "SendBuyWindow failed: " + res.errortext );
+				endif
+		// Sell
+			elseif (ev.text["sell"])
+				set_priority( 1 );
+
+				foreach item in EnumerateItemsInContainer(ev.source.backpack)
+					if (GetObjProperty(item, "LFucker"))
+						item.buyprice := 0;
+					endif
+				endforeach
+				
+				var res := SendSellWindow( ev.source, me, inv_fs, inv_pb, inv_1c, VENDOR_SEND_AOS_TOOLTIP );
+				if (res)
+					PrintTextAbovePrivate( me, "Can I help thee?", ev.source );
+				else
+					print( "SendSellWindow failed: " + res.errortext );
+				endif
+				set_priority( 50 );
+
+		// Vendor Train
+			elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
+				TurnToward( ev.source );
+				MerchantTrain( me, ev.source, ev.text );
+
+		// Toadstool -  Added identifying items for mage/scribe npcs
+		//		Have it start a script so a player can't 'hold' up the merchant
+			elseif ( ev.text["identify"] && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
+				// Check if player already has id window open
+				if (GetObjProperty(ev.source, "#MerchantID") != 1)
+					TurnToward( ev.source );
+					PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
+					Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
+				endif
+			else
+				check_speech(ev.text, ev.source);
+			endif
+
+		SYSEVENT_MERCHANT_BOUGHT:
+			TurnToward( ev.source );
+			PrintTextAbovePrivate( me, "The total of your sale is " + ev.amount, ev.source );
+			set_priority( 50 );
+			SetObjProperty(me, "restock", 1);
+
+			foreach item in EnumerateItemsInContainer(inv_pb)
+				DestroyItem(item);
+			endforeach
+
+		SYSEVENT_MERCHANT_SOLD:
+			TurnToward( ev.source );
+			PrintTextAbovePrivate( me, "The total of your purchase is " + ev.amount, ev.source );
+			SetObjProperty(me, "restock", 1);
+			
+			// Barber NPCs - equipping any hair
+			if (GetObjProperty(me, "MerchantType") == "Barber")
+				EquipAnyHair(ev.source);
+			endif
+
+		SYSEVENT_ITEM_GIVEN:
+			if( ev.item.objtype == 0xEED )
+				TrainSkill( me, ev.source, ev.item );
+			else
+				TakeItem(ev.source, ev.item);
+			endif
+
+		EVID_ALL_FOLLOW_CMD:
+			mydestx := ev.x;
+			mydesty := ev.y;
+			steps := 0;
+			SetAnchor( mydestx, mydesty, 3, 80 );
+			WalkTowardLocation(mydestx, mydesty);
+	endcase
+
+	return 1;
+endfunction
+
+function EquipAnyHair(who)
+
+	foreach item in EnumerateItemsInContainer(who.backpack)
+		// Destroy current hair, equip new
+		if (item.tile_layer == 0x0b)
+
+			DestroyItem(GetEquipmentByLayer(who, 0x0b));
+
+			item.color := GetObjProperty(who, "HairColour");
+			EquipItem(who, item);
+
+		// Destroy current facial hair, equip new
+		elseif (item.tile_layer == 0x10)
+			DestroyItem(GetEquipmentByLayer(who, 0x10));
+			// only males can have beards
+			if (who.gender == 0)
+				EquipItem(who, item);
+				item.color := GetObjProperty(who, "BeardColour");
+			endif
+		endif
+
+		// For no hair/no beard. They don't have layers
+		if (item.objtype == 0x2004)
+			DestroyItem(GetEquipmentByLayer(who, 0x0b));
+			DestroyItem(item);
+		elseif (item.objtype == 0x2005)
+			DestroyItem(GetEquipmentByLayer(who, 0x10));
+			DestroyItem(item);
+		endif
+
+	endforeach
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SellAll() - Sells ALL of the targetted object type in the players pack
+//
+// Simplified function now, non abusable.
+// We don't bother reserving the item, as we delete it before giving old
+//
+////////////////////////////////////////////////////////////////////////////////////////////
+function SellAll(who)
+
+	// read the itemdesc file
+	var itemdesc := ReadConfigFile("::itemdesc");
+
+	Say("What would you like me to buy all of?");
+
+	var item := Target(who);
+
+	// Check if the player targetted the item and it's not reserved
+	if (!item)
+		Say("Never mind then");
+		return 0;
+
+	elseif (!item.isa(POLCLASS_ITEM))
+		Say("I only buy items");
+		return 0;
+
+	elseif (!Accessible( who, item ))
+		Say("It doesn't seem as if you're ready to sell that");
+		return 0;
+
+	elseif (item.newbie)
+		Say("I don't buy newbied items");
+		return 0;
+	elseif ( (GetObjProperty(item, "LFucker")))
+		Say("That item is tainted with corruption!");
+		return 0;
+	endif
+
+	if (!ItemIsInBackpack(who, item))
+		Say("I won't buy anything you're not carrying");
+		return 0;
+	endif
+	
+	// No buy price set in config file
+	if (!item.buyprice) 
+		Say("I'm not interested in that");
+		return; 
+	endif
+
+	// Add all sold items into this array
+	var sellarray := {};
+	var containermessage := 0;
+	var sellfilledcontainers;
+
+	foreach thing in EnumerateItemsInContainer( who.backpack )
+		if (item.objtype == thing.objtype) // HAS to be the same object type
+			if (Accessible( who, thing )) // Make sure the palyer can get to it
+				if (thing.color == item.color) // different colours generally mean different items
+					if (!thing.newbie) // We don't want newbied items grouped in
+						if(thing.buyprice)
+							if (thing.isa(POLCLASS_CONTAINER) && thing.item_count > 1) // If one of the items has items in it, send a confirm message
+								Say("I won't buy containers with items in them!");
+								return;
+								containermessage := 1;	
+							endif
+							sellarray.append(thing);
+						endif
+					endif
+				endif
+			endif
+		endif
+	endforeach
+
+	if (containermessage)
+		sellfilledcontainers := SellContainersWithItemsPrompt(who);
+	endif
+
+	var totalsellprice := CalculateAndGiveGold(who, sellarray, itemdesc, sellfilledcontainers);
+
+	if (totalsellprice > 0)
+		Say("The total of your sale is " + totalsellprice+" gold pieces");
+	else
+		Say("I won't buy any of those items");
+		return 0;
+	endif
+
+endfunction
+	
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SellBag() - Sells ALL of the sellable items in a bag
+//
+// Simplified function now, non abusable.
+// We don't bother reserving the item, as we delete it before giving old
+//
+////////////////////////////////////////////////////////////////////////////////////////////
+function SellBag(who)
+
+	// read the itemdesc file
+	var itemdesc := ReadConfigFile("::itemdesc");
+
+	Say("From what bag do you want me to buy the items?");
+
+	var item := Target(who);
+
+	// Check if the player targetted the item and it's not reserved
+	if (!item)
+		Say("Never mind then");
+		return 0;
+
+	elseif (!item.isa(POLCLASS_ITEM))
+		Say("I only buy items");
+		return 0;
+
+	elseif (!Accessible( who, item ))
+		Say("It doesn't seem as if you're ready to sell that");
+		return 0;
+
+	elseif (item.newbie)
+		Say(" I don't buy newbied items");
+		return 0;
+
+	elseif (!item.isa(POLCLASS_CONTAINER) || item.isa(POLCLASS_SPELLBOOK) )
+		Say("That's not a container at all!");
+		return 0;
+	elseif (item.item_count < 1)
+		Say("There is nothing in that bag to sell");
+		return 0;
+	elseif ( (GetObjProperty(item, "LFucker")))
+		Say("That item is tainted with corruption!");
+		return 0;
+	endif
+
+	if (!ItemIsInBackpack(who, item))
+		Say("I won't buy anything you're not carrying");
+		return 0;
+	endif
+
+	//var itemprice;
+	var containermessage := 0;
+	var sellfilledcontainers;
+	// Add all sold items into this array
+	var sellarray := {};
+ 
+	// Only check root as this function wants to sell everything in the bag
+	// The function CalculateandGiveGold will go through each item in this list
+	// and its sub containers.
+	foreach thing in EnumerateItemsInContainer( item, ENUMERATE_ROOT_ONLY )
+		if (thing.buyprice) // item has a vendorbuysfor price, or it's own .buyprice
+			if (Accessible( who, thing )) // Make sure the palyer can get to it
+				if (!thing.newbie) // We don't want newbied items grouped in
+					if(thing.buyprice)
+						if (thing.isa(POLCLASS_CONTAINER) && thing.item_count > 1) // If theres a container to sell in this container, AND it has items, ask player if he wants to sell those items
+							// item_count is > 1 because an empty bag says 1..
+								Say("I won't buy second containers with items in them!");
+								return;
+							containermessage := 1;	
+						endif
+						sellarray.append(thing);
+					endif
+				endif
+			endif
+		endif
+	
+	endforeach
+
+	if (containermessage)
+		sellfilledcontainers := SellContainersWithItemsPrompt(who);
+	endif
+
+	var totalsellprice := CalculateAndGiveGold(who, sellarray, itemdesc, sellfilledcontainers);
+
+	if (totalsellprice > 0)
+		Say("The total of your sale is " + totalsellprice+" gold pieces");
+	else
+		Say("There was nothing in the bag I wanted to buy");
+	endif
+
+endfunction
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// SellContainersWithItemsPromp() -  Just an added feature
+//
+// If sell all is used and the the type is a bag this will ask the 
+// player if they want to sell bags that contain item (this sells items in the bags)
+//
+// If sell bag is used it does exactly the same thing.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+function SellContainersWithItemsPrompt(who)
+
+	Say("Hmm, a few containers with items in there...");
+
+	var gump := GFCreateGump( 15, 15, 250, 150);
+	GFResizePic(gump, 15, 15, 3500, 250, 150);
+	GFHTMLArea(gump, 35, 32, 220, 100, "<BASEFONT COLOR=DARKGREEN>OKAY: <BASEFONT COLOR=BLACK>Sells any container PLUS the items within it.<br><br><BASEFONT COLOR=DARKRED>CANCEL:<BASEFONT COLOR=BLACK> Doesn't sell the container, or anything within it.", 0,0 );
+	GFAddButton(gump,40, 130, 2128, 2129, 1, 1); //Okay
+	GFAddButton(gump,185, 130, 2119, 2120, 1, 0);
+
+	var data := GFSendGump(who, gump);
+
+	case (data[0])
+		1: return 1;
+		0: return 0;
+	endcase
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// CalculateAndGiveGold() -  Calculates and gives the gold from a players sell
+//
+// items is an array of item refs to be sold
+// itemprice is the base itemdesc.cfg price of the item
+// sellfilledcontainer, do we sell items in containers?
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+function CalculateAndGiveGold(who, items, unused itemdesc, sellfilledcontainers := 0)
+
+
+// Find the element of the type sold
+//var elem;
+var individualsellprice := 0;
+var totalsellprice := 0;
+var items2 := {};
+
+foreach thing in items
+	if (thing in items2) // I don't know what the 'if thing NOT in thing2' is haha -_-
+	else
+	// Check if the item is a container with items in it
+	if (thing.isa(POLCLASS_CONTAINER) && thing.item_count > 1)
+		// Sell filled containers is OKAY
+		if (sellfilledcontainers == 1)
+			foreach thing2 in EnumerateItemsInContainer(thing)
+			if  (!GetObjProperty(thing2, "LFucker"))
+				if (thing2 in items2)
+				else
+					if (thing2.buyprice > 0) // Greater than 0 means a seperate buyprice has been set for THIS item
+						if(!GetObjProperty(thing2, "stolen"))
+							individualsellprice := thing2.buyprice * thing2.amount;
+						else
+							individualsellprice := cint((thing2.buyprice * thing2.amount)/2);
+						endif								
+					endif
+			
+					if (MoveObjectToLocation(thing2, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION ))
+						totalsellprice := totalsellprice + individualsellprice;
+						items2.append(thing2);
+					endif
+				endif
+			endif
+			endforeach
+
+			if (thing.item_count < 2) // Bag is empty, sell it
+				if (thing in items2)
+				else
+				if  (!GetObjProperty(thing, "LFucker"))
+					if (thing.buyprice > 0) // Greater than 0 means a seperate buyprice has been set for THIS item
+						if(!GetObjProperty(thing, "stolen"))
+							individualsellprice := thing.buyprice * thing.amount;
+						else
+							individualsellprice := cint((thing.buyprice * thing.amount)/2);
+						endif			
+					endif
+			
+					if (MoveObjectToLocation(thing, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION ))
+						totalsellprice := totalsellprice + individualsellprice;
+						items2.append(thing);
+					endif
+				endif
+				endif
+			endif
+		endif
+		// Sell filled containers was CANCEL, don't sell/destroy this item!
+	// Item is NOT a container, OR it's an empty container
+	else
+		if (thing.buyprice > 0) // Greater than 0 means a seperate buyprice has been set for THIS item
+			if(!GetObjProperty(thing, "stolen"))
+				individualsellprice := thing.buyprice * thing.amount;
+			else
+				individualsellprice := cint((thing.buyprice * thing.amount)/2);
+			endif			
+		endif 
+		
+		if (MoveObjectToLocation(thing, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION ))
+			totalsellprice := totalsellprice + individualsellprice;
+			items2.append(thing);
+		endif
+	endif
+	endif
+endforeach
+
+foreach thing in items2
+	DestroyItem(thing);
+endforeach
+var returnInfo := totalsellprice;
+if (totalsellprice <= 60000)
+	CreateItemInBackpack(who, "goldcoin", totalsellprice);
+else
+	repeat
+		if (totalsellprice > 60000)
+			CreateItemInBackpack(who, "goldcoin", 60000);
+		else 
+			CreateItemInBackpack(who, "goldcoin", totalsellprice);
+		endif
+		totalsellprice := totalsellprice - 60000;
+	until (totalsellprice <= 0);
+endif
+
+return returnInfo;
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ItemIsInBackpack() - Simply checks that an item is in the palyers backpoack
+//
+////////////////////////////////////////////////////////////////////////////////////////////
+function ItemIsInBackpack(who, item)
+
+
+if (item.serial == who.backpack.serial) // item IS the backpack, used for sellbag etc
+	return 1;
+
+elseif (item.container != who.backpack) // Item is in a container that is NOT the backpack
+	foreach thing in EnumerateItemsInContainer( who.backpack)
+		if (item.serial == thing.serial)
+			return 1;
+
+		endif
+	endforeach
+else	// Item IS in the main layer backpack
+	return 1;
+endif
+
+return 0;
+
+endfunction
+
+
+// Used to inform a player if and how much a NPC can train a player
+function MerchantTrain( me, who, text )
+
+	var skillcfg := ReadConfigFile( ":shilhook:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
+
+	// Get what the player says and divide it into words
+	var words := SplitWords( text );
+
+	// The third word is the skill we are looking for
+	var skill := words[3];
+
+	var elem, i;
+	var skillstotrain := {};
+	// Player said 'Vendor Train', list what we can train
+	if( !skill )
+		var trainable := "";
+		// For each of the available skills
+		for( i := 0 ; i <= MAX_SKILLS ; i := i+1 )
+			// acquire the skills attributes.
+			elem := FindConfigElem( skillcfg, i );
+			// if the NPC has the skill
+			if( GetBaseSkillBaseValue(me, i) )
+				// if the NPC's skill is greater then the PC's
+				if ((GetBaseSkillBaseValue(me, i)/3) > GetBaseSkillBaseValue(who, i))
+					// Add the skill to the string, and increment total train.
+					trainable  := trainable + GetAttributeIdBySkillId( i ) + ", ";
+					skillstotrain.append( i );
+				endif
+			endif
+		endfor
+
+		// If there where skills that the PC can be trained in, list them, else say so.
+		if (len(trainable) > 1)
+			say( "I can train thee in the following skills:" );
+			say(trainable);
+
+			TrainGump(who, skillstotrain);
+		else
+			say("I can not train thee.");
+		endif
+
+	// Player said 'Vendor Train skillname' - The old way, where the npc will then tell you the price
+	else
+		// The player wishes to train in a skill
+		skill := lower(skill);
+		// for each of the available skills
+		for( i := 0 ; i <= MAX_SKILLS ; i := i+1 )
+			// Acquire skill attributes
+			elem := FindConfigElem( skillcfg, i );
+			// Test to see if this skill is the one the player is referring to.
+			if( lower(GetAttributeIdBySkillId( i )) == skill )
+				// Acquire the NPC's value at this skill.
+				var NPC_level := (GetBaseSkillBaseValue(me, i) / 3);
+				// Test to see if there is a skill value <Redundant check>
+				if( NPC_level != 0 )
+					// Get PC's skill
+					var PC_level := GetBaseSkillBaseValue( who, i );
+					// if the pc's skill is greater then the NPC's we can do nothing
+					if( PC_level > NPC_level )
+						say("I cannot teach you anymore.");
+						return;
+					else
+						// Determine the cost for training the PC, and inform the PC of the cost
+						var skillid := i;
+						var trainmaxcost := GoldForSkillGain(NPC_level, PC_level, skillid);
+						say( "I will train thee " + lower(GetAttributeIdBySkillId( i )) + " for " + trainmaxcost + " gold.");
+						// Mark the PC with the skill and The cost to train in the skill
+						SetObjProperty( who, "TrainMaxCost", trainmaxcost );
+						SetObjProperty( who, "TrainSkillID", skillid );
+						return;
+					endif
+				endif
+			endif
+		endfor
+
+		// All else, The player named an unknown skill.
+		say("I know not of that skill.");
+	endif
+endfunction
+
+// This old style left the same, more or less
+
+function TrainSkill( me, who, item )
+
+	//var skillcfg := ReadConfigFile( "::skills" ); // Link to master skills config file
+	var variance := 0;       // The variance between the players skill and the npc's skill
+	var NPC_level := 0;      // The NPC's level at the skill
+	var PC_level := 0;       // The PC's level at the skill
+	var GoldReceived := 0;   // The amount of gold the PC did give us.
+	var New_Level := 0;      // The PC's new skill level
+	var CurrentNPCCost := 0; // The current NPC's cost for training the Player
+
+	// if the item handed to the NPC was gold and not zero <Integrity check>
+	if( (item.objtype == UOBJ_GOLD_COIN) and (item.amount != 0)  )
+		// Acquire information on what skill the PC whishes to train in.
+		var TrainMaxCost := GetObjProperty( who, "TrainMaxCost" );
+		var TrainSkillID := GetObjProperty( who, "TrainSkillID" );
+
+		// If the pc is not expecting training
+		if( (!TrainMaxCost or !TrainSkillID) and TrainSkillID != 0)
+			say( "Maybe you should be more careful with your gold" );
+			return 0;
+		endif
+
+		// If the NPC does have the skill
+		if( GetBaseSkillBaseValue(me, TrainSkillID) )
+			NPC_level    := GetBaseSkillBaseValue(me,  TrainSkillID) / 3; // Acquire NPC's training level
+			PC_level     := GetBaseSkillBaseValue(who, TrainSkillID);     // Acquire PC's  level
+			GoldReceived := item.amount;                     // How much gold was received
+			variance     := NPC_level - PC_level;            // How many skill points are there between the npc and player.
+			CurrentNPCCost := GoldForSkillGain(NPC_level, PC_level, TrainSkillID);
+
+			// Double check to make sure that the pc's skill is lower then the NPC's
+			if (PC_level < NPC_level)
+
+				// If what the NPC can train the player is different from what the player is expecting, adjust accordingly.
+				if (CurrentNPCCost != TrainMaxCost)
+
+					if (CurrentNPCCost > TrainMaxCost)
+						// The current NPC is better then the one we received an offer from.
+						NPC_Level := SkillGainForGold(NPC_level, PC_level, TrainSkillID, TrainMaxCost);  // Adjust the NPC's level variable to the lower skill level
+						variance  := NPC_level - PC_level;
+					else
+						// The current NPC is worse then the one we received an offer from.
+						// Determine what the cost would be for this NPC
+						if (GoldReceived > CurrentNPCCost)
+							// The NPC can't help the player
+							say("I can not train thee to that level.");
+							MoveItemToContainer( item, who.backpack );
+							return;
+						else
+							// The NPC can help, but we need to adjust
+							TrainMaxCost := CurrentNPCCost;
+						endif
+					endif
+				endif
+
+				// Determine what level the player will be trained to
+				// if the PC gives the NPC the max cost or more. Train them to the fullest
+				if( TrainMaxCost <= GoldReceived )
+					New_Level := NPC_level;
+					EraseObjProperty( who, "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
+					EraseObjProperty( who, "TrainSkillID" );  // Clear the skill flag
+					// TODO: If the player gives a lot more then the training cost, grant a Reputation Bonus and/or a mini-quest clue.
+				else
+					// Train the PC to whatever percentage they can afford.
+					New_Level := ((PC_level + CInt((CDbl(variance) * (CDbl(GoldReceived) / CDbl(TrainMaxCost))))) );
+					EraseObjProperty( who, "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
+					EraseObjProperty( who, "TrainSkillID" );  // Clear the skill flag
+				endif
+
+				say("Let me show you how it's done.");  // NPC informs player training was successful
+
+				// Set the PC's skill
+				SetBaseSkillBaseValue( who, TrainSkillID, New_Level);
+
+				DestroyItem( item );  // Destroy gold
+
+				SendSysmessage( who, "Your skill increases." ); // Note increase
+
+			else
+				// PC just paid NPC to be trained but NPC doesn't have the skill.
+				say("I'm not as good as thee.  Please find another to train thee.");
+				MoveItemToContainer( item, who.backpack );
+			endif
+		else
+			// NPC does not have that skill to train the PC.  Return gold
+			Say("I don't know that skill. Why don't you ask me what i can train you in?");
+			MoveItemToContainer( item, who.backpack );
+		endif
+	else
+		// PC gave NPC something else other then gold.  Return it.
+		say("Bah, I have no use for this. Be off with ye.");
+		MoveItemToContainer( item, who.backpack );
+		// TODO: OSI has a "Desires" property with all npc's.  I think it's used to determine if an NPC
+		//  gives out clues to a minor quest or reputation bonus, depending on the item donated <Type and value>
+	endif
+
+endfunction
+
+
+function GoldForSkillGain( NPC_Skill, PC_Skill, skillid )
+	skillid := skillid;
+	var maxskill := NPC_Skill - PC_Skill;
+	return maxskill; // Cost equals ten times the difference.
+endfunction
+
+function SkillGainForGold(NPC_level, PC_level, TrainSkillID, GoldReceived)
+	NPC_level := NPC_level;
+	TrainSkillID := TrainSkillID;
+	return (GoldReceived) + PC_Level;
+endfunction
+
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// TrainGump() - Let's make it more user friendly
+//
+////////////////////////////////////////////////////////////////////////////////////////
+function TrainGump(who, skills)
+
+	SetObjProperty(who, "#TrainGump", {GetPid(), ReadGameClock()} );
+
+	var ysize := 120 + (skills.size()*40);
+
+	if (ysize <= 160) // 1
+		ysize := ysize + 45;
+	elseif (ysize <= 200) // 2
+		ysize := ysize + 30;
+	elseif (ysize <= 240) // 3
+		ysize := ysize + 25;
+	endif
+
+	var gump := GFCreateGump( 15, 15, 350, ysize);
+	GFResizePic(gump, 15, 15, 3500, 350, ysize);
+	GFHTMLArea(gump, 50, 25, 280, 40, "<BASEFONT SIZE=20><CENTER><u>"+me.name+"</u> can train you in the following skills..." , 0,0 );
+
+	GFTextLine(gump, 30, 70, 55, "Skill Name:");
+	GFTextLine(gump, 190, 70, 55, "Train Points:");
+	GFTextLine(gump, 285, 70, 55, "Train Max:");
+	var y := 95;
+	var skillamt := 0;
+	var skillamtdec := 0;
+
+	foreach skill in skills
+		GFTextLine(gump, 30, y, 69, GetAttributeIdBySkillId(skill));
+		GFCheckBox(gump, 305, y, 2714, 2715, 0, skill+1000);
+		GFTextEntry(gump, 185, y, 25, 20, 0, "0.0", skill+2000);
+		skillamt := CDbl(CDbl((GetBaseSKillBaseValue(me, skill)/3.0)/10.0) - CDbl(GetBaseSKillBaseValue(who, skill) / 10.0));
+		skillamtdec := CStr(skillamt - CInt(skillamt));
+		if (CDbl(skillamtdec) > 0)
+			skillamtdec := skillamtdec[2]+""+skillamtdec[3];
+		else
+			skillamtdec := ".0";
+		endif
+		GFTextLine(gump, 220, y, 0, "/ "+CInt(skillamt)+""+skillamtdec);
+		y := y + 25;
+	endforeach
+
+	GFAddbutton(gump, 270, ysize-75, 2128, 2129, 1, 10);
+	GFAddbutton(gump, 54, ysize-75, 2119, 2120, 1, 0);
+
+	GFHTMLArea(gump, 46, ysize-50, 290, 60, "<BASEFONT COLOR=DARKGRAY><CENTER>The cost per .1 skill point is 1 gold piece. You can either enter a skill level to train to, or check the box to train as high as you can." , 0,0 );
+	var data := GFSendGump(who, gump);
+
+	// Check if 30 secs has passed
+	if ( GetObjProperty(who, "#TrainGump")[2]+30 < ReadGameClock() )
+		return 0;
+	elseif (Distance(me, who) > 10)
+		SendSysMessage(who, "You have moved too far away from "+me.name);
+		return 0;
+	endif
+
+	// Cancel/or gump closed
+	if (data[0] != 10)
+		return 0;
+	endif
+
+	var msgsent := 0;
+	var trained := 0;
+	var skillgained := 0;
+
+	foreach key in (data.keys)
+
+	// It's train as much as we can. NOTE: This is only here if box is ticked
+	if (key > 999 && key < 1999)
+		
+		skillgained := TrainMax(who, key-1000, trained);
+
+		if (skillgained < 1)
+			return 0; // This means player ran out of gold, stop it
+		endif
+
+	// It's text entry train. NOTE: This is ALWAYS here, 0.0 is shown if not used
+	elseif (key > 1999)
+		
+		skillgained := TrainEntry(who, key-2000, data, trained);
+		
+	endif
+
+	if (msgsent == 0 && skillgained)
+		say("Let me show you how it's done.");  
+		SendSysmessage( who, "Your skill increases." ); // Note increase
+		msgsent := 1;
+	endif
+
+	skillgained := 0;
+	trained := trained + 1;
+
+	endforeach
+
+endfunction
+
+function TrainMax(who, skill, trained)
+
+	var skillamt := GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill);
+
+	if (who.spendgold(skillamt))
+		SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+skillamt);
+	else
+		var goldamt := 0;
+		// Not enough gold for full skill, try less
+		foreach item in EnumerateItemsInContainer(who.backpack)
+			if (item.objtype == 0xeed)
+				goldamt := goldamt + item.amount;
+			endif
+		endforeach
+
+		if (goldamt > 1 && goldamt <= skillamt)
+			if (who.spendgold(goldamt))
+				SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+goldamt);
+			else
+				return 0; // SHOULD never hit here
+			endif
+		elseif (!goldamt && trained > 0)
+			Say("You don't have enough gold to train anymore");
+			return 0;
+		elseif (!goldamt)
+			Say("You don't have enough gold!");
+			return 0;
+		else
+			return 0;
+			//broadcast("woah copernicus! Check the vendors skill training!", 3, 53);
+		endif
+	endif
+
+	return 1;
+
+endfunction
+
+function TrainEntry(who, skill, data, trained)
+
+	trained := trained;
+	// lols, add 2000 again
+	var skillamt := CDbl(GFExtractData(data, skill+2000));
+
+	var maxskillamt := CDbl(GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill))/10;
+	if (skillamt > maxskillamt)
+		skillamt := maxskillamt;
+	endif
+
+	// players didn't enter skill
+	if (skillamt < 1)
+		return 0;
+	endif
+
+	if (who.spendgold(CInt(skillamt*10)))
+		SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+skillamt*10);
+		return 1;
+	else
+		Say("You don't have enough gold to train.");
+	endif
+
+	return 0;
+
+endfunction

@@ -1,0 +1,85 @@
+use uo;
+use os;
+
+include ":gumps:include/gumps";
+include ":roleplaying:rper";
+include "include/client";
+include "include/classes";
+
+program textcmd_fixstartgear(who)
+
+    SendSysMessage(who, "Who do you want to give specific class starting gear to?", FONT_NORMAL, 2567 );
+
+	var targ := Target( who );
+    var selectedclass := GetObjProperty(targ, "RPerStartClass");
+    var IsRPer := GetObjProperty(targ, "IsRPer");
+
+    if(!IsRPer)
+        SendSysMessage(who, "Canceled! Target isn't part of the [RPer] faction.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    if(selectedclass)
+        SendSysMessage(who, "Canceled! Target already has a starting class and gear.", FONT_NORMAL, 2567 );
+        return;
+    endif
+
+	if( !targ )
+		return;
+	endif
+
+	var gump := GFCreateGump(15, 15, 200, 200);
+
+	GFResizePic(gump, 15, 15, 9250, 200, 200);
+	GFTextLine(gump, 60, 30, 53, "--Choose a Class--");
+
+	var y := 60;
+	foreach thing in GetClasseIds()
+    SendSysMessage(who, thing, FONT_NORMAL, 2567 );
+        if(thing == CLASSEID_POWERPLAYER)
+        else
+            GFTextLine(gump, 75, y, 67, GetClasseName( thing ));
+            GFAddButton(gump, 55, y+5, 2362, 2361, 1, _thing_iter);
+            y := y + 20;
+        endif
+	endforeach
+
+	var result := GFSendGump(who, gump);
+
+	if (result[0] < 1)
+		SendSysMessage(who, "Canceled.");
+		return 0;
+	endif
+
+	var classid := GetClasseIds()[result[0]];
+
+    case(classid)
+        CLASSEID_RANGER:    
+                        SetObjProperty(targ, "RPerStartClass", "Ranger" );
+                        createRPerRangerBag(targ.backpack);
+        CLASSEID_WARRIOR:
+                        SetObjProperty(targ, "RPerStartClass", "Warrior" );
+                        createRPerWarriorBag(targ.backpack);
+        CLASSEID_MAGE:
+                        SetObjProperty(targ, "RPerStartClass", "Mage" );
+                        createRPerMageBag(targ.backpack);
+        CLASSEID_THIEF:
+                        SetObjProperty(targ, "RPerStartClass", "Thief" );
+                        createRPerThiefBag(targ.backpack);
+        CLASSEID_BARD:	
+                        SetObjProperty(targ, "RPerStartClass", "Bard" );
+                        createRPerBardBag(targ.backpack);
+        CLASSEID_CRAFTER:    
+                        SetObjProperty(targ, "RPerStartClass", "Crafter" );
+                        createRPerCrafterBag(targ.backpack);
+        default: selectedclass := "The staff must have canceled the gump without doing anything";
+    endcase
+
+    if(selectedclass)
+        SendSysMessage(who, selectedclass+ " starter gear has been given.", FONT_NORMAL, 2567 );
+    else
+        SendSysMessage(who, "Something went wrong.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+endprogram

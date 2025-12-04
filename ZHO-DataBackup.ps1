@@ -1,0 +1,2 @@
+﻿Compress-Archive C:\ZuluhotelOmega\data -DestinationPath ('C:\Users\Nagash\mega\zho-databackup\' + (get-date -Format yyyyMMdd) + '.zip')
+Compress-Archive C:\ZuluhotelOmega\log -DestinationPath ('C:\Users\Nagash\mega\zho-logbackup\' + (get-date -Format yyyyMMdd) + '.zip')

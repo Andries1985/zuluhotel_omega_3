@@ -1,0 +1,34 @@
+use os;
+use uo;
+
+include ":OrionClient:settings";
+
+/*
+Program OrionClientLogon(who)
+
+	var res;
+	var SettingsInfos := OC_GetSettingsCfgElem("Orion");
+	var ClientFeatures := SettingsInfos.ClientFeatures;
+	var AssistantFeatures := SettingsInfos.AssistantFeatures;
+	if(who.cmdlevel && who.cmdlevel >= CInt(SettingsInfos.DoNotRestrictStaffAtOrAbove))
+		ClientFeatures := "BF000BFACE0032FFFFFFFF";
+		AssistantFeatures := "BF0017FACE8001FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+	endif
+	res := SendPacket(who, ClientFeatures);
+	if (!res)
+		print("SendPacket ClientFeatures error: " + res.errortext );
+	endif
+	res := SendPacket(who, AssistantFeatures);
+	if (!res)
+		print("SendPacket AssistantFeatures error: " + res.errortext );
+	endif
+
+endprogram
+*/
+
+program orionfeatures_sendpacket(who)
+var res := SendPacket(who, "BF000BFACE0032FFF5AC13");
+	if (!res)
+		print("SendPacket error: " + res.errortext );
+	endif
+endprogram

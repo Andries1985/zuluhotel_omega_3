@@ -1,0 +1,200 @@
+use uo;
+use os;
+
+
+
+program MagicCircleAppear( parms )
+
+	var who	:= parms[1];
+	var duration	:= parms[2];
+	var color	:= parms[3];
+	var sfx	:= parms[4];
+	
+	var x := who.x;
+	var y := who.y - 5;
+	var z := who.z;
+	var realm := who.realm;
+	
+	var magic_circle := {};
+	
+	if( sfx )
+		PlaySoundEffect( who , sfx );
+	endif
+
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 7) , z , 0x1CF1 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 7) , z , 0x1CF2 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 7) , z , 0x1CF3 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 7) , z , 0x1CF4 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 2) , (y + 7) , z , 0x1CF5 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 2) , (y + 6) , z , 0x1CF6 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 2) , (y + 5) , z , 0x1CF7 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 2) , (y + 4) , z , 0x1CF8 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 2) , (y + 3) , z , 0x1CF9 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 3) , z , 0x1CFA , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 2) , z , 0x1CFB , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 2) , z , 0x1CFC , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 2) , z , 0x1CFD , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 2) , z , 0x1CFE , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 3) , (y + 2) , z , 0x1CFF , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 3) , (y + 3) , z , 0x1D00 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 3) , (y + 4) , z , 0x1D01 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 3) , (y + 5) , z , 0x1D02 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 3) , (y + 6) , z , 0x1D03 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 6) , z , 0x1D04 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 6) , z , 0x1D05 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 6) , z , 0x1D06 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 6) , z , 0x1D07 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 5) , z , 0x1D08 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x - 1) , (y + 4) , z , 0x1D09 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 3) , z , 0x1D0A , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 3) , z , 0x1D0B , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 3) , z , 0x1D0C , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 4) , z , 0x1D0D , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 2) , (y + 5) , z , 0x1D0E , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 5) , z , 0x1D0F , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 5) , z , 0x1D10 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation(  x      , (y + 4) , z , 0x1D11 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	magic_circle.append( CreateItemAtLocation( (x + 1) , (y + 4) , z , 0x1D12 , 1, realm ) );
+	if( color )
+		magic_circle[len(magic_circle)].color := color;
+	endif
+	
+	Sleepms( duration );
+	
+	foreach part in magic_circle
+		DestroyItem( part );
+	endforeach
+	
+endprogram

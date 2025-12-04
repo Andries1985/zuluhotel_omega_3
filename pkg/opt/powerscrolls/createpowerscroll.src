@@ -1,0 +1,14 @@
+use uo;
+
+include "include/attributes";
+include "include/random";
+
+program createpowerscroll(scroll)
+	var skill := GetAttributeIdBySkillId( Random(49) );
+	var skillName := GetSkillIdByAttributeId( skill );
+	if(skill == "Enticement")
+		skill := "Discordance";
+	endif
+	scroll.name := "Ancient Tome of "+skill;
+	SetObjProperty(scroll, "skill", skillName);
+endprogram

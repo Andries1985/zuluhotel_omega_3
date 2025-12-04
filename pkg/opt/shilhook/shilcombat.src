@@ -1,0 +1,27 @@
+use uo;
+use os;
+
+include "include/skillpoints";
+
+program shilcombat()
+
+	Print( "Using ShilcombatAdvancement..." );
+	return 1;
+
+endprogram
+
+
+exported function ShilCombatAdvancement( attacker, weapon, defender )
+
+	if( weapon )
+		AwardSkillPoints( attacker, GetSkillIdByAttributeId( weapon.attribute ), 20 );
+	else
+		AwardSkillPoints( attacker, 43, 20 );
+	endif
+
+	// Don't raise tactics with archery
+	if (weapon.attribute != "Archery")
+		AwardSkillPoints( attacker, 27, 20 );
+	endif
+
+endfunction

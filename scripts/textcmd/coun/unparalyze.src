@@ -1,0 +1,21 @@
+use uo;
+include ":staff:include/staff";
+
+program unparalyze( gm )
+
+	SendSysMessage( gm, "Who do you wish to release?" );
+	var res := Target( gm );
+
+	if( res.isa(POLCLASS_MOBILE) )
+		if( res.cmdlevel > gm.cmdlevel and gm.cmdlevel < 5 )
+			SendSysMessage( res.mobile , gm.name + " is trying to release you." );
+		else
+			res.frozen := 0;
+			res.paralyzed := 0;
+			SetObjProperty( res , "frozen" , 1 );
+			PrintTextAbovePrivate( res, res.name + " is now movable again", gm );
+		endif
+	endif
+	LogCommand(gm, GetProcess(GetPid()).name, res.name+"/"+res.serial);
+    
+endprogram

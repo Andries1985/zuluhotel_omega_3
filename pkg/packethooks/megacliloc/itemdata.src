@@ -1,0 +1,425 @@
+// Item data generator for tooltip packet
+//
+// Created by Agata natalia_buenota@hotmail.com
+// Modified for Zulu Hotel by Wintermute
+//
+
+use uo;
+use cfgfile;
+use polsys;
+
+include "include/math";
+include ":itemid:itemid";
+include "include/attributes";
+include ":armor:armorZones";
+
+/*todo
+add magic/bardic efficiency
+add special hitscript info
+*/
+
+program itemdata(parms)
+	var who := parms[1];
+	var xObject := parms[2];
+	var allprops := array;
+	var prop := struct;
+	prop.+ clilocid := 0;
+	prop.+ values := array;
+
+	var owner := GetObjProperty(xObject, "Owner");
+	if(owner)
+		prop.clilocid := 1061113; // Owner:
+		prop.values := array {SystemFindObjectBySerial(Cint(owner),SYSFIND_SEARCH_OFFLINE_MOBILES).name};
+		allprops.append(prop);
+	endif	
+	if( xObject.newbie )
+		prop.clilocid := 1038021; // Blessed
+		prop.values := array {};
+		allprops.append(prop);
+	endif
+	var charges := GetObjProperty(xObject, "charges");
+	if(charges)
+		prop.clilocid := 1060741; //Charges: ~1_VAL~
+		prop.values := array {charges};
+		allprops.append(prop);
+	endif
+	if(!CanBeIDed(xObject))
+		prop.clilocid := 1038000; // Unidentified
+		prop.values := array {};
+		allprops.append(prop);
+	else
+		if(xObject.isa(POLCLASS_EQUIPMENT) || IsJewel(xObject))
+			var armod := GetObjProperty(xObject, "ArBonus");
+			if(armod)
+				prop.clilocid := 1063494; // AR Mod: ~1_VAL~
+				prop.values := array {armod};
+				allprops.append(prop);
+			endif
+			if(xObject.isa(POLCLASS_ARMOR))
+				prop.clilocid := 1063495; // AR: ~1_VAL~
+				prop.values := array {CS_GetEffectiveArmor(xObject)};
+				allprops.append(prop);
+			elseif(xObject.isa(POLCLASS_WEAPON))
+				var weapondesc := GetItemDescriptor(xObject.objtype);
+				//Damage
+				prop.clilocid := 1061168; // weapon damage ~1_val~ - ~2_val~
+				prop.values := array {CINT(Calcdamage(who, xObject, weapondesc.MinDamage)), CINT(Calcdamage(who, xObject, weapondesc.MaxDamage))};
+				allprops.append(prop);
+				//Speed
+				prop.clilocid := 1061167; // weapon speed ~1_val~
+				prop.values := array {weapondesc.Speed+xObject.speed_mod};
+				allprops.append(prop);		
+				prop.clilocid := 1070722; ; // Nothing
+				prop.values := array {"DPS: "+CINT(calcdps(who, xObject, weapondesc))};
+				allprops.append(prop);
+				case(weapondesc.hitscript)
+					"slayerscript":
+						foreach	creature in SplitWords(GetObjProperty( xObject , "SlayType" ))
+							prop.clilocid := 1070722; ; // Nothing
+							prop.values := array {"Double damage vs "+creature};
+							allprops.append(prop);
+						endforeach
+					"piercingscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Pierces armor"};
+						allprops.append(prop);
+					"lifedrainscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Drains Life"};
+						allprops.append(prop);
+					"manadrainscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Drains Mana"};
+						allprops.append(prop);
+					"staminadrainscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Drains Stamina"};
+						allprops.append(prop);
+					"blindingscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Blinds the target"};
+						allprops.append(prop);
+					"voidscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Drains Vitals"};
+						allprops.append(prop);
+					"trielementalscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Blinds the target"};
+						allprops.append(prop);
+					"crithit":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Critical hits"};
+						allprops.append(prop);
+					"banishscript":
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {"Extra damage to summons"};
+						allprops.append(prop);
+				endcase
+
+				var ElementalDamage := GetObjProperty(xObject, "ElementalDamage");
+				if(ElementalDamage)
+					var totalelemental := 0;
+					var has_physical;
+					foreach element in SplitWords(ElementalDamage)
+						var split_element := SplitWords(element, ":");
+						prop.clilocid := 1070722; ; // Nothing
+						if(split_element[1] == "NO_RESIST")
+							prop.values := array {split_element[2]+"% of Omega damage"};
+						else
+							prop.values := array {split_element[2]+"% of "+lower(split_element[1])+" damage"};
+						endif
+						allprops.append(prop);
+						totalelemental += Cint(split_element[2]); // add up to check if we'll still do physical later
+						if (split_element[1] == "PHYSICAL")
+							has_physical := 1;
+						endif
+					endforeach
+					if (!has_physical) // if no physical damage was specified, it'll process the remainder as physical
+						var physical_dmg := Max(100 - totalelemental, 0);
+						prop.clilocid := 1070722; ; // Nothing
+						prop.values := array {physical_dmg+"% of Physical damage"};
+						allprops.append(prop);
+					endif
+				endif
+			endif
+			var poison := GetObjProperty(xObject, "PoisonCharges");
+			if(poison)
+				prop.clilocid := 1062413; // poison charges: ~1_val~
+				prop.values := array {poison};
+				allprops.append(prop);
+			endif
+			if(poison && IsThief(who))
+				prop.clilocid := 1063498; // Poison level: ~1_VAL~
+				prop.values := array {GetObjProperty(xObject, "SkillPoisoned")};
+				allprops.append(prop);
+			endif
+			var spellcast := GetObjProperty(xObject, "HitWithSpell");
+			if (spellcast && (IsMage(who) || IsCrafter(who) || IsPaladin(who)) )
+				var spell_cfg := ReadConfigFile(":*:spells");
+				var elem := FindConfigElem(spell_cfg, spellcast);
+				if(elem)
+					var spellname := GetConfigString(elem, "Name");
+					prop.clilocid := 1063499; // Spell: ~1_VAL~
+					prop.values := array {spellname};
+					allprops.append(prop);
+				endif
+			endif
+			var chanceofeffect := GetObjProperty(xObject, "ChanceOfEffect");
+			if (chanceofeffect && (IsMage(who) || IsCrafter(who) || IsPaladin(who)) )
+				prop.clilocid := 1063500; // Chance of Effect: ~1_VAL~
+				prop.values := array {chanceofeffect};
+				allprops.append(prop);
+				var circle := GetObjProperty(xObject, "EffectCircle");
+				if (circle)
+					prop.clilocid := 1063501; // Circle:
+					prop.values := array {circle};
+					allprops.append(prop);
+				endif
+			endif
+			var skillid := GetObjProperty(xObject, "skilladv");
+			if(skillid)
+				var skillname := GetSkillName( skillid );
+				prop.clilocid := 1060451; // ~1_skillname~ +~2_val~
+				prop.values := array {skillname, GetObjProperty(xObject, "skilladvamount")};
+				allprops.append(prop);
+			endif
+			var stat_bonus := GetObjProperty(xObject, "str");
+			if(stat_bonus)
+				prop.clilocid := 1060485; // strength bonus ~1_val~
+				prop.values := array {stat_bonus};
+				allprops.append(prop);
+			endif
+			stat_bonus := GetObjProperty(xObject, "dex");
+			if(stat_bonus)
+				prop.clilocid := 1060409; // dexterity bonus ~1_val~
+				prop.values := array {stat_bonus};
+				allprops.append(prop);
+			endif
+			stat_bonus := GetObjProperty(xObject, "int");
+			if(stat_bonus)
+				prop.clilocid := 1060432; // intelligence bonus ~1_val~
+				prop.values := array {stat_bonus};
+				allprops.append(prop);
+			endif
+			var elem_prot := GetObjProperty(xObject, "EarthProtection");
+			if(elem_prot)
+				prop.clilocid := 1063490; // Earth Protection: ~1_PERCENT~%
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "WaterProtection");
+			if(elem_prot)
+				prop.clilocid := 1063491; // Water Protection: ~1_PERCENT~%
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "FireProtection");
+			if(elem_prot)
+				prop.clilocid := 1063492; // Fire Protection: ~1_PERCENT~%
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "AirProtection");
+			if(elem_prot)
+				prop.clilocid := 1063493; // Air Protection: ~1_PERCENT~%
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "NecroProtection");
+			if(elem_prot)
+				prop.clilocid := 1063502; // Necro Protection:
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "HolyProtection");
+			if(elem_prot)
+				prop.clilocid := 1063503; // Holy Protection:
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "PhysicalProtection");
+			if(elem_prot)
+				prop.clilocid := 1063504; // Physical Protection: ~1_PERCENT~%
+				prop.values := array {Cint(elem_prot)};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "PermPoisonImmunity");
+			if(elem_prot)
+				prop.clilocid := 1063505; //Poison Immunity:
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "FreeAction");
+			if(elem_prot)
+				prop.clilocid := 1063506; // Free Action
+				prop.values := array {};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "HealingIncrease");
+			if(elem_prot)
+				prop.clilocid := 1063507; //Healing Increase: 
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "Permmr");
+			if(elem_prot)
+				prop.clilocid := 1063508; // "Magic Reflection: "+
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "PermMagicImmunity");
+			if(elem_prot)
+				prop.clilocid := 1063509; // "Magic Absorption:
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "PoisonImmunity");
+			if(elem_prot && IsMage(who))
+				prop.clilocid := 1063510; // "Poison Immunity Charges:
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "MagicImmunity");
+			if(elem_prot && IsMage(who))
+				prop.clilocid := 1063511; // "Magic Absorption Charges: 
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			elem_prot := GetObjProperty(xObject, "SpellReflect");
+			if(elem_prot && IsMage(who))
+				prop.clilocid := 1063512; // Magic Reflection Charges: 
+				prop.values := array {elem_prot};
+				allprops.append(prop);
+			endif
+			if(xObject.isa(POLCLASS_EQUIPMENT) && (IsCrafter(who)||who.cmdlevel))
+				prop.clilocid := 1060639; // durability ~1_val~ / ~2_val~
+				prop.values := array {xObject.hp, xObject.maxhp};
+				allprops.append(prop);
+			endif
+
+			// House sign
+		elseif(IsSign(xObject))
+			var owner := GetObjProperty(xObject, "lastownername");
+			if(owner)
+				prop.clilocid := 1041602; // Owner: ~1_val~
+				prop.values := array {owner};
+				allprops.append(prop);
+			endif
+		endif
+		var crafter := GetObjProperty(xObject, "CraftedBy");
+		if(crafter)
+			prop.clilocid := 1063513; // Crafted by:
+			prop.values := array {crafter};
+			allprops.append(prop);
+		endif
+
+		var artifact := GetObjProperty(xObject, "Artifact");
+		if(artifact)
+			prop.clilocid := 1063514; // "Artifact"
+			prop.values := array {};
+			allprops.append(prop);
+		endif
+		if(IsCBoost(xObject) || xObject.isa(POLCLASS_EQUIPMENT))
+			prop.clilocid := 1063515; // Item Quality:
+			prop.values := array {xObject.quality};
+			allprops.append(prop);
+		endif
+		if(xObject.isa(POLCLASS_CONTAINER) && !xObject.isa(POLCLASS_CORPSE) && !xObject.locked)
+			if(xObject.objtype == 0x6100)
+				var maxcharges := GetObjProperty(xObject, "maxcharges");
+				prop.clilocid := 1063516; //Max Charges: 
+				prop.values := array {maxcharges};
+				allprops.append(prop);
+			else
+				prop.clilocid := 1073839; // Contents: ~1_COUNT~ items, ~2_WEIGHT~ stones
+				prop.values := array {CINT(xObject.item_count-1), xObject.weight};
+				allprops.append(prop);
+			endif
+		endif
+	endif
+	return allprops;
+
+endprogram
+
+function Calcdamage(who, xObject, basedamage)
+
+	var total_skills 			:= GetClasseSkillTotal(who, GetClass(who));
+	var avg_skill				:= total_skills / 8;
+	var level 					:= GetClasseLevel(who);
+
+	basedamage += xObject.dmg_mod;
+	if( xObject.quality > 1)
+		basedamage += (xObject.quality - 1) * 15;
+	endif
+
+	var hp_percent := CDbl(xObject.hp) / CDbl(xObject.maxhp);
+	if (hp_percent < 0.5)
+		basedamage *= hp_percent;
+	endif
+	
+	if( xObject.attribute == ATTRIBUTEID_ARCHERY )
+		if(!who.isA(POLCLASS_NPC))
+			basedamage *= 1 + GetStrength(who) * 0.0015;
+			basedamage *= 1 + GetDexterity(who) * 0.0005;
+		endif
+		//Changes Jan 2025, Class Damage Changes
+		//Bumped Ranger and Bard damage to 0.005
+		if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_BARD ))
+			basedamage *= 1 + GetAttribute(who, ATTRIBUTEID_ARCHERY) * 0.005;
+		elseif( GetObjProperty( who, CLASSEID_THIEF ))
+			basedamage *= 1 + avg_skill * 0.002;
+		elseif(GetObjProperty( who, CLASSEID_WARRIOR ) || GetObjProperty( who, CLASSEID_POWERPLAYER ) || GetObjProperty( who, CLASSEID_PALADIN ))
+			basedamage *= 1 + GetAttribute(who, ATTRIBUTEID_TACTICS) * 0.002;
+		endif
+
+		if( GetObjProperty( who, CLASSEID_RANGER ) )
+			level := max(0, level-2);
+			basedamage *= ClasseSmallBonusByLevel( level );
+		endif
+
+	else
+		//Changes Jan 2025, Class Damage Changes
+		//Bumped Str damage to 0.005
+		//Added in Paladin Damage for Int
+		//Bumped Thief damage from 0.003 to 0.005
+		//Bumped Warrior and PP damage from 0.002 to 0.005
+		if(!who.isA(POLCLASS_NPC))
+			basedamage *= 1 + GetStrength(who) *0.005;
+		endif
+		if(!who.isA(POLCLASS_NPC) && GetObjProperty( who, CLASSEID_PALADIN ))
+			basedamage *= 1 + GetIntelligence(who) *0.005;
+		endif
+
+		if( GetObjProperty(who, CLASSEID_WARRIOR) || GetObjProperty(who, CLASSEID_POWERPLAYER))
+			basedamage *=  1 + GetAttribute( who, ATTRIBUTEID_ANATOMY ) * 0.005 ;
+		elseif( GetObjProperty( who, CLASSEID_THIEF ) && (xObject.attribute == ATTRIBUTEID_FENCING))
+			basedamage *= 1 + avg_skill * 0.005;
+		elseif( GetObjProperty(who, CLASSEID_PALADIN) )
+			basedamage *=  1 + GetAttribute( who, ATTRIBUTEID_EVALINT ) * 0.005 ;
+		endif
+
+		level := max(0, level-4);
+		basedamage *= ClasseSmallBonusByLevel( level );
+
+		if( GetObjProperty( who, CLASSEID_MAGE ) )
+			basedamage := basedamage / ClasseBonus( who, CLASSEID_MAGE );
+		endif
+	endif
+	return basedamage;
+
+endfunction
+
+function calcdps(who, xObject, weapondesc)
+	
+	var averagedmg := (weapondesc.MinDamage + weapondesc.MaxDamage)/2;
+	return Calcdamage(who, xObject, averagedmg)/(15000/(((GetDexterity(who)/10.0)+100)*weapondesc.Speed+xObject.speed_mod));
+
+endfunction
+
+function GetSkillName( skillid )
+
+    	var cfg := ReadConfigFile( ":shilhook:skillsdef" );
+    	return cfg[skillid].name;
+    	
+endfunction

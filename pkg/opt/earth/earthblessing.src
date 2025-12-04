@@ -1,0 +1,78 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/dotempmods";
+include "include/client";
+include "include/attributes";
+include "include/classes";
+
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_EARTH_BLESSING;
+const SPELL_EFFECT_ID		:= FX_SPELL_EARTH_BLESSING;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_EARTH_BLESSING;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_EARTH_BLESSING;
+
+program cast_earth_blessing( parms )
+
+	var circle := GetCircle( SPELLID_EARTH_BLESSING );
+	var caster;
+	var fromhit;
+	var casterismage := GetObjProperty( caster, CLASSEID_MAGE );
+	var casterismysticarcher := GetObjProperty( caster, CLASSEID_MYSTIC_ARCHER );
+	var casterispp := GetObjProperty( caster, CLASSEID_POWERPLAYER );
+
+ 	if (parms[1] == "#MOB")
+		caster := parms[2];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		if( TryToCast( caster, SPELLID_EARTH_BLESSING ) != SUCCESS )
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
+	endif
+	
+	PlayObjectCenteredEffect(caster, SPELL_EFFECT_ID, SPELL_EFFECT_SPEED, SPELL_EFFECT_LOOP);
+	PlaySoundEffect( caster , SFX_SPELL_EARTH_BLESSING );
+
+	var mod_amount;
+	if(casterismage)
+		mod_amount := Cint( GetModAmount( caster ) * 4.25 );
+	elseif(casterismysticarcher)
+		mod_amount := Cint( GetModAmount( caster ) * 4.25 );
+	elseif(casterispp)
+		mod_amount := Cint( GetModAmount( caster ) * 2 );
+	else
+		mod_amount := Cint( GetModAmount( caster ) * 3 );
+	endif
+  
+  //var mod_amount := Cint( GetModAmount( caster ) * 4 );
+	//if(casterismage || casterismysticarcher)
+	//	var mod_amount := Cint( GetModAmount( caster ) * 4.75 );
+	//endif
+
+	var duration := GetModDuration( caster );
+
+	if( CanMod( caster , "all" ) && CanMod( caster , "ebless" ) && CanMod( caster, "poly")) 
+		DoTempMod( caster, "ebless" , mod_amount , duration );
+		SendBoostMessage( caster, caster, "earth blessing", mod_amount, duration, 0 );
+	else
+		SendSysMessage( caster , "Already under the influence!" );
+	endif
+
+	/* 
+	if( CanMod( caster , "ar" ) )
+		DoTempMod( caster , "ar" , Cint(mod_amount * 0.75)+1 , duration );
+	endif */
+	
+	EraseObjProperty( caster , "#Casting" );
+
+endprogram
+
+                                                

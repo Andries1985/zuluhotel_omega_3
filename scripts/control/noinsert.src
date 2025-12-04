@@ -1,0 +1,14 @@
+use uo; 
+
+
+program no_insert( who, container,movetype, insert_type, item ) 
+
+	if( who.cmdlevel )
+		return 1;
+	else
+		return 0;
+	endif
+	
+endprogram
+
+

@@ -1,0 +1,31 @@
+use os;
+use uo;
+
+include ":staff:include/staff";
+include "include/attributes";
+
+program ft( who )
+	var totem;
+	var totemserial;
+	SendSysmessage( who , "Locate who's totem?" );
+	var player:= target(who);
+
+	LogCommand(who, GetProcess(GetPid()).name, player.name+"/"+player.serial);
+
+	if(!player or !GetStrength(player))
+	 	SendSysmessage(who,"Invalid selection."); 
+		return; 
+	endif
+	totemserial := GetObjProperty( player , "humuc" );
+	if (!totemserial)
+		SendSysmessage( who , "This mobile has no totem." );
+		return;
+	endif
+	totem := SystemFindObjectBySerial( totemserial );
+	if (!totem or !totem.x or !totem.y)
+		SendSysmessage( who , "Cannot locate totem - error data : "+totem.x+"."+totem.y+"."+totem.z );		
+		return;
+	endif
+	SendSysmessage( who , "Totem is at : "+totem.x+", "+totem.y+", "+totem.z );	
+endprogram
+

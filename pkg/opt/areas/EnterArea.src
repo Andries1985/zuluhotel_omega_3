@@ -1,0 +1,18 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// EnterArea() - Called by the region.cfg for all towns
+//
+// Note: Start_Script() is called to process the info. This is because using GetRegionName, gets the regions
+// name of the character BEFORE he enters the region. So Britain will be gotten when entering South britain Bank.
+//
+// who.location here is IN left region
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+use os;
+
+program EnterArea(who)
+
+    Start_Script(":areas:EnterAreaDelay", who);
+
+endprogram
+

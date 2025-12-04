@@ -1,0 +1,71 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/myutil";
+
+program textcmd_disarm(me, text)
+
+	if (lower(text) == "bag")
+		SetDisarmBag(me);
+	endif
+
+//	set_critical(1);
+
+	var mypack := me.backpack;
+	if ( GetObjProperty(me,"disarmbag") )
+		var bagserial := GetObjProperty(me,"disarmbag");
+		foreach item in EnumerateItemsInContainer(me.backpack)
+			if ( item.serial == bagserial )
+				mypack := item;
+				break;
+			endif
+		endforeach
+	endif
+
+	if (mypack == me.backpack)
+		EraseObjProperty(me,"disarmbag");
+	endif
+
+	if (me.dead)
+		return;
+	endif
+
+	var weaponone := GetEquipmentByLayer( me,  LAYER_HAND1 );
+	var weapontwo := GetEquipmentByLayer( me,  LAYER_HAND2 );
+	var wonecurse := Cint( GetObjProperty( weaponone , "Cursed" ) );
+	var wtwocurse := Cint( GetObjProperty( weaponone , "Cursed" ) );
+
+	if( weaponone )
+		if( !wonecurse or wonecurse == 3 )
+			MoveItemToContainer(weaponone, mypack );
+		endif
+	endif
+	
+	if( weapontwo )
+		if( !wonecurse or wonecurse == 3 )
+			MoveItemToContainer(weapontwo, mypack );
+		endif
+	endif
+
+
+endprogram
+
+function SetDisarmBag(me)
+
+	SendSysMessage(me,"Select a container");
+	var bag := Target(me);
+
+	if (!InInventory(me.backpack, bag) )
+		SendSysMessage(me,"That is not in your inventory.");
+		return;
+	endif
+
+	if(!bag.isa(POLCLASS_CONTAINER) || bag.isa(POLCLASS_SPELLBOOK))
+		SendSysMessage(me,"That is not a container.");
+		return;
+	endif
+
+	SetObjProperty(me,"disarmbag",bag.serial);
+
+endfunction

@@ -1,0 +1,14 @@
+use os;
+use uo;
+
+program movethatshiet(parms)
+	var item := parms[1];
+	var char := parms[2];
+	var count := 0, move;
+	repeat
+		sleepMS(100);
+		move := MoveItemToContainer( item, char.backpack );
+		count := count+1;
+	until(move || count > 500);
+	return;
+endprogram

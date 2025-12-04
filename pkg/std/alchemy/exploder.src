@@ -1,0 +1,85 @@
+use uo;
+use cfgfile;
+use os;
+
+
+include "include/checkcity";
+include "include/drinkpotion";
+include "include/spelldata";
+include "include/client";
+include "include/random";
+
+program exploder(parms)
+	
+	var explosion_potions := { 0xdc07 , 0xdc08 , 0xdc09 };
+	var thrower	:= parms[1];
+	var potion	:= parms[2];
+	var where	:= parms[3];
+	
+	var power := GetPotionStrength( potion );
+	SubtractAmount(potion, 1);
+	SetScriptController( thrower );
+	
+	if( CheckCity(thrower) )
+		power := power - 1;
+	endif
+	
+	if( power < 1 )
+		power := 1;
+	endif
+	
+	var lookout := CreateItemAtLocation( cint(where.x), cint(where.y), cint(where.z), 0x0f0d, 1, where.realm );
+	lookout.movable := 0;
+
+	PrintTextAbove( lookout, "3");
+	sleep(1);
+	PrintTextAbove( lookout, "2");
+	sleep(1);
+	PrintTextAbove( lookout, "1");
+	sleep(1);
+
+	PlayObjectCenteredEffect( lookout, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION );
+	DestroyItem( lookout );
+
+	var dmg := (Random(9)+12) * power;
+	var victims := ListMobilesNearLocationEx( cint(where.x),cint(where.y),cint(where.z), power, LISTEX_FLAG_NORMAL + LISTEX_FLAG_HIDDEN, where.realm );
+	
+	victims := SmartAoE(thrower, victims);
+
+	foreach critter in victims
+		if (!critter.multi.components)
+			if ( CheckLosBetween( where.x, where.y, where.z, critter.x, critter.y, where.z, critter.realm ) )
+				PlayObjectCenteredEffect( critter, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION );
+				PlaySoundEffect( critter , SFX_SPELL_EXPLOSION );
+				if( critter.npctemplate )
+					ApplyElementalDamageNoResist( critter , thrower , dmg , FIRE );
+				else
+					ApplyElementalDamageNoResist( critter , thrower , Cint(dmg/2) , FIRE );
+				endif
+			endif
+		endif
+	endforeach
+	
+	foreach item in ListItemsNearLocation( cint(where.x) , cint(where.y) , cint(where.z) , power, where.realm )
+		if( item.objtype in explosion_potions and item.movable )
+			var parms2 := {};
+			var loc := array;
+			loc.+x;
+			loc.+y;
+			loc.+z;
+			loc.+realm;
+			loc.x := item.x;
+			loc.y := item.y;
+			loc.z := item.z;
+			loc.realm := item.realm;
+			parms2[1] := thrower;
+			parms2[2] := item;
+			parms2[3] := loc;
+			
+			Start_script( ":alchemy:exploder" , parms2 );
+		endif
+	endforeach
+
+endprogram
+
+     
