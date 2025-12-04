@@ -1,0 +1,173 @@
+use uo;
+use basic;
+use os;
+
+include "include/client";
+include "include/skillpoints";
+include "include/classes";
+include "include/attributes";
+
+const POINT_VALUE := 200;
+
+program track(who)
+unloadconfigfile(":tracking:tracking");
+
+	var ranger := GetObjProperty( who , CLASSEID_RANGER );
+	var mysticarcher := GetObjProperty( who , CLASSEID_MYSTIC_ARCHER );
+	var points := POINT_VALUE;
+
+	if( !checkskill(who, SKILLID_TRACKING, -1, points)) 
+		SendSysmessage(who, "You fail to find any creatures nearby");
+		return;
+	endif
+
+	var tracker := ReadGameClock();
+	SetObjProperty(who, "TrackingCounter", tracker);
+	var range := Cint(GetEffectiveSkill(who, SKILLID_TRACKING)/3);
+	if( ranger )
+		range := Cint( range * ClasseBonusByLevel( ranger ) );
+	elseif( mysticarcher )
+		range := Cint( range * ClasseBonusByLevel( mysticarcher ) );
+	endif
+
+	var nearby := ListMobilesNearLocation (who.x,who.y, who.z, range, who.realm);
+	if(len(nearby) == 1)
+		SendSysmessage (who, "There don't seem to be any creatures nearby");
+		return;
+	endif
+	var track_list := CreateMenu("Select a category.");
+	var track_menu := CreateMenu("Select a creature.");
+	var critter_ids := array;
+	var menucount := 0;
+	var config := ReadConfigFile ("tracking");
+	var typearray := {};
+	var animal, creature, person, tiletype;
+	foreach mobile in nearby
+		if((mobile != who) and (!mobile.dead))
+			var elem := FindConfigElem(config, mobile.graphic);
+			if(elem)
+				tiletype := GetConfigString(elem, "type");
+				case(tiletype)
+					"Animal"	: animal	:= 1;
+					"Monster" 	: creature	:= 1;
+					"Person"	: person	:= 1;
+				endcase
+			endif
+		endif
+	endforeach
+	
+	if(animal == 1)
+		AddMenuItem(track_list, 0x20cf, "Animals");
+	endif
+	
+	if(creature == 1)
+		AddMenuItem(track_list, 0x20d9, "Creatures");
+	endif
+	
+	if(person == 1)
+		AddMenuItem(track_list, 0x2106, "People");
+	endif
+	
+	var thetarget := SelectMenuItem2(who, track_list);
+	var listtype := {};
+	case(thetarget.objtype)
+		8454: listtype := "Person";
+		8399: listtype := "Animal";
+		8409: listtype := "Monster";
+	endcase
+	var ttype;
+	
+	foreach mobile in nearby
+		if((mobile != who) and (!mobile.dead))
+			if(!GetObjProperty(mobile, "Boss") && !GetObjProperty(mobile, "SuperBoss"))
+				var elem := FindConfigElem(config, mobile.graphic);
+				if(elem)
+					ttype := GetConfigString(elem, "type");
+					if(ttype == listtype)
+						menucount := menucount + 1;
+						critter_ids[menucount] := mobile;
+						tiletype := GetConfigInt(elem, "tile");
+						AddMenuItem(track_menu, tiletype, mobile.name);
+					endif
+				endif
+			elseif(GetObjProperty(mobile, "Boss") && GetEffectiveSkill(who, SKILLID_TRACKING) >= 135)
+				var elem := FindConfigElem(config, mobile.graphic);
+				if(elem)
+					ttype := GetConfigString(elem, "type");
+					if(ttype == listtype)
+						menucount := menucount + 1;
+						critter_ids[menucount] := mobile;
+						tiletype := GetConfigInt(elem, "tile");
+						AddMenuItem(track_menu, tiletype, mobile.name); 
+					endif
+				endif
+			elseif(GetObjProperty(mobile, "SuperBoss") && GetEffectiveSkill(who, SKILLID_TRACKING) >= 150)
+				var elem := FindConfigElem(config, mobile.graphic);
+				if(elem)
+					ttype := GetConfigString(elem, "type");
+					if(ttype == listtype)
+						menucount := menucount + 1;
+						critter_ids[menucount] := mobile;
+						tiletype := GetConfigInt(elem, "tile");
+						AddMenuItem(track_menu, tiletype, mobile.name);
+					endif
+				endif
+			endif
+		endif
+	endforeach
+	
+	if(menucount > 0)
+		thetarget := SelectMenuItem2(who, track_menu);
+		if(!thetarget)
+			SendSysmessage (who, "Targetting canceled.");
+			return;
+		endif
+	
+		var critter := critter_ids[thetarget.index];
+
+		SetObjProperty( who , "#trackingtimeout" , ReadGameClock()+40 );
+		detach();
+		var timer := 0;
+
+		
+		while((Distance(who, critter) <= range) and (critter.dead == 0) and (timer <= 12)and (tracker == GetObjProperty(who,"TrackingCounter")))
+			timer := timer + 1;
+			var dir := Get_direction(who, critter);
+			If(dir == "nearby")
+				SendSysmessage(who, critter.name + " is " + dir);
+			else
+				SendSysmessage(who, critter.name + " is to the " + dir);
+			endif
+			sleep(5);
+		endwhile
+		SendSysmessage(who, "You have lost your quarry.");
+		EraseObjProperty(who , "#trackingtimeout");
+	endif
+
+endprogram
+
+function get_direction(who, critter)
+	var ns_desc := "";
+	var ew_desc := "";
+	var thedesc;
+	
+	if(critter.y < who.y)
+		ns_desc := "north";
+	elseif(critter.y > who.y)
+		ns_desc := "south";
+	endif
+	
+	if(critter.x < who.x)
+		ew_desc := "west";
+	elseif(critter.x > who.x)
+		ew_desc := "east";
+	endif
+	
+	if(ns_desc == "" and ew_desc == "")
+		thedesc := "nearby";
+	else
+		thedesc := ns_desc + ew_desc ;
+	endif
+	
+	return thedesc;
+endfunction

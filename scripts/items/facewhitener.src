@@ -1,0 +1,35 @@
+use uo;
+use cfgfile;
+use os;
+include "include/client";
+include "include/attributes";
+
+
+program souls(character, bottle)
+
+destroyitem(bottle);
+
+
+
+printtextabovepriVate(character, "Your arms grow weak!", character);
+
+var i;
+
+for ( i := 1; i <= 10; i := i + 1)
+
+        playlightningbolteffect(character);
+        sleep(2);
+endfor
+
+
+printtextabovepriVate(character, "You feel the creep of death approaching", character);
+
+for (i := 1; i <= GetHP(character) -1; i := I + 1)
+        applydamage(character, 1);
+        sleepms(500);
+endfor
+
+character.color := 0;
+
+
+endprogram

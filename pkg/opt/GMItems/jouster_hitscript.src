@@ -1,0 +1,83 @@
+///////////////////////////////////////////////////////
+//
+// Simply stamina drain + dismount
+//
+///////////////////////////////////////////////////////
+
+use uo;
+use os;
+
+include ":combat:hitscriptinc";
+include "include/client";
+include "include/areas";
+include "include/dismount";
+
+program jousterscript(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+
+		if (lower(TypeOf(attacker)) == "array")
+			defender 	:= attacker[2];
+			weapon 	:= attacker[3];
+			armor 	:= attacker[4];
+			basedamage := attacker[5];
+			rawdamage	:= attacker[6];
+			attacker 	:= attacker[1];
+		endif
+		
+        var drained;
+        var drainer;
+            
+        rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
+
+        if( GetObjProperty( weapon , "Cursed" ) )
+            drained := attacker;
+            drainer := defender;
+        else
+            drained := defender;
+            drainer := attacker;
+        endif
+
+        var amount := rawdamage / 2;
+        
+        if( amount > GetStamina(drained))
+            SetStamina(drained, 0);//drained.stamina := 0;
+        else
+            SetStamina(drained, GetStamina(drained)-amount);//drained.stamina := drained.stamina - amount;
+        endif
+        
+        SetStamina(drainer, GetStamina(drainer) + amount);//drainer.stamina := drainer.stamina + amount;
+        if( GetStamina(drainer) > GetMaxStamina(drainer))//drainer.stamina > drainer.maxstamina)
+            SetStamina(drainer, GetMaxStamina(drainer));//drainer.stamina := drainer.maxstamina;
+        endif
+        
+		// can attempt a dismount if your stamina is higher
+		if (GetStamina(drainer) > GetStamina(drained) && GetEquipmentByLayer(drained, 0x19))
+			AttemptDismount(drainer, drained);
+		endif
+		
+        DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
+
+endprogram
+
+function AttemptDismount(who, targ)
+
+// 50% chance of a dismount with higher stam
+var chance := 50;
+
+var whostam := GetStamina(who);
+var targstam := GetStamina(targ);
+
+// if stam is double that of victim, it becomes a 75% chance
+if (whostam/2 > targstam)
+	chance := chance+25;
+endif
+
+if (chance > RandomInt(100)+1 || GetObjProperty(who.weapon, "#Activated") )
+	SendSysMessage(who, "You knock "+targ.name+" off their mount!");
+	SendSysMessage(targ, who.name+" knocks you off your mount!");
+	PrintTextAbove(targ, "*Dismounted*");
+	dismount( targ );
+endif
+
+endfunction
+

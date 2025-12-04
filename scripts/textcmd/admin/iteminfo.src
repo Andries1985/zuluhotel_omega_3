@@ -1,0 +1,350 @@
+// command .iteminfo  started June 19, 2000
+// Zulu (zulu@zuluhotel.com)
+// last updated June 25, 2000
+
+use uo;
+use os;
+use cfgfile;
+use basic;
+use polsys;
+
+include "util/bank";
+include ":staff:include/staff";
+var layout := array( 
+
+"page 0",
+"resizepic 0 50 2620 500 310",
+"resizepic 325 100 5054 150 190",
+"text 40 59 5 0",
+"text 20 84 40 1",
+"text 114 84 40 2",
+"text 208 84 40 3",
+"button 78 81 2640 2641 0 1",
+"button 170 81 2640 2641 0 4",
+"button 256 81 2640 2641 0 5",
+"button 20 62 2118 2117 1 1 24",
+"",
+
+"page 1",
+"text 14 120 40 6",
+"text 120 120 40 7",
+"text 14 145 40 8",
+"text 120 145 40 9",
+"text 14 170 40 10",
+"text 120 170 40 11",
+"text 14 195 40 12",
+"text 120 195 40 13",
+"text 14 220 40 14",
+"text 120 220 40 15",
+"text 14 245 40 16",
+"text 120 245 40 17",
+"text 14 270 40 18",
+"text 120 270 40 19",
+"text 14 295 40 20",
+"text 120 295 40 21",
+"text 14 320 40 37", //Item Quality
+"text 120 320 40 38",
+"button 270 120 2644 2645 0 2", //Page 2 (Amount)
+"button 270 145 2640 2641 1 1 2", //x
+"button 270 170 2640 2641 1 1 3", //y
+"button 270 195 2640 2641 1 1 4", //z
+"button 270 220 2640 2641 1 1 5", //hp
+"button 270 245 2644 2645 0 3", //Page 3 ar/dam mods
+"button 270 270 2640 2641 1 1 7", //graph
+"button 270 295 2640 2641 1 1 8", //color
+"button 270 320 2640 2641 1 1 9", //quality
+
+
+"page 2",
+"text 14 120 40 6", //Amount
+"text 120 120 40 7",
+"text 14 155 40 28", //Create Stack In Backpack
+ //"textentry 235 155 250 32 60 17 29",
+"button 270 155 2640 2641 1 1 1",
+"text 14 180 40 30", //Dupe Item In Backpack
+"button 270 180 2640 2641 1 1 16",
+"button 270 120 2645 2644 0 1", //Page 1 (Amount)
+
+"page 3",
+"text 14 120 40 6",
+"text 120 120 40 7",
+"text 14 145 40 8",
+"text 120 145 40 9",
+"text 14 170 40 10",
+"text 120 170 40 11",
+"text 14 195 40 12",
+"text 120 195 40 13",
+"text 14 220 40 14",
+"text 120 220 40 15",
+"text 14 245 40 16",
+"text 120 245 40 17",
+"button 270 120 2644 2645 0 2", //Page 2 (Amount)
+"button 270 145 2640 2641 1 1 2", //x
+"button 270 170 2640 2641 1 1 3", //y
+"button 270 195 2640 2641 1 1 4", //z
+"button 270 220 2640 2641 1 1 5", //hp
+"button 270 245 2645 2644 0 1", //Page 1
+"text 14 270 40 31",            //ar/dmg mod.
+"text 120 270 40 32",            //ar/dmg mod. value
+"button 270 270 2640 2641 1 1 6",
+
+
+"page 4",
+"text 14 120 40 22",  //Destroy
+"button 270 120 2640 2641 1 1 20",
+"text 14 145 40 26",  //Bounce
+"button 270 145 2640 2641 1 1 21",
+"text 14 170 40 27",  //Set Movable
+"button 270 170 2640 2641 1 1 22",
+"text 14 195 40 25",  //Set Newbie
+"button 270 195 2640 2641 1 1 23",
+"text 14 220 40 39",  //Set inviso
+"button 270 220 2640 2641 1 1 25",
+"text 14 245 300 40",  //Show inviso
+
+"page 5",
+"text 14 120 40 35",
+"text 14 145 40 36"
+
+);
+
+var data := array(
+       "",                     //0 Mobile name
+       "General",              //1
+       "Options",              //2
+       "Other",                //3
+       "temp",                 //4
+       "/",                    //5
+       "Amount",               //6
+       "",                     //7 item amount
+       "X",                    //8
+       "",                     //9 mob x
+       "Y",                    //10
+       "",                     //11 mob y
+       "Z",                    //12
+       "",                     //13 mob z
+       "Hp/Mhp",               //14
+       "",                     //15 mob stam/maxstam
+       "Armor",                //16
+       "",                     //17 mob ar
+       "Graphic",              //18
+       "",                     //19 mob graphic
+       "Color",                //20
+       "",                     //21 mob color
+       "Destroy Item",         //22
+       "",                     //23
+       "Dupe Item",            //24
+       "",                     //25 SetNewbie
+       "Bounce Item in Backpack",  //26
+       "",                     //27 SetMovable 
+       "Create Stack in Backpack", //28
+       "0",                       //29
+       "Dupe Item in Backpack",    //30 
+       "",                     //31
+       "",                     //32 Ar/Dmg Modifier
+       "",                     //33 Ar/Dmg Modifier Value
+       "",                     //34
+       "Stats modifiers for wearable",  //35
+       "items not implemented yet.",    //36
+       "Quality",              //37
+       "",                     //38
+       "",	       //39 inviso
+       "use .showitems <range>"
+);
+
+program textcmd_info( character )
+
+    var item;
+    
+    SendSysmessage( character , "Select an Item." );
+    item :=  Target( character , TGTOPT_NOCHECK_LOS );
+
+    if (!item.isa(POLCLASS_ITEM))
+       SendSysmessage( character , "Invalid selection." );
+       return;
+    endif
+
+
+    layout[12] := "tilepic 380 180 " + item.graphic ;
+
+    data[1] := "Info On: " + item.desc;
+
+    If(item.newbie == 1)
+      Data[26] := "Set Item not Newbie";
+    else
+      Data[26] := "Set Item Newbie";
+    endif
+
+    If(item.movable == 1)
+      Data[28] := "Set Item Unmovable";
+    else
+      Data[28] := "Set Item Movable";
+    endif
+
+    If(item.invisible == 0)
+      Data[40] := "Set Item Invisible";
+    else
+      Data[40] := "Set Item Visible";
+    endif
+
+    General( item );
+
+    var result := SendDialogGump( character, layout, data );   
+    var reskey;
+
+    case( result[0] )
+         1:  //fall through intentional
+         2:
+         3:
+         4:
+         5:
+         6:
+         7:
+         8:
+         9:
+        10:
+        11:
+        12:
+        13:
+        14:
+        15: EditItem( item , character , result[0] );
+        16: if (character.cmdlevel > 2)
+            var tmpname := item.desc, tmpcolor := item.color;
+            var newitem := CreateItemInBackpack(character, item.objtype, 1);
+            newitem.desc := tmpname;
+            newitem.color := tmpcolor;
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Dupe: "+newitem.serial);
+		        setobjproperty(newitem,"LFucker",character.serial + " - " + character.name);
+            endif
+        20: DestroyItem(Item);
+            PrintTextAbovePrivate(character,"Object Destroyed",character);
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Destroy");
+        21: MoveItemToContainer( item, character.backpack, x := -1, y := -1 );
+            PrintTextAbovePrivate(character,"Object Bounced",character);
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Bounce!");
+        22: if(item.movable == 1)
+              Item.movable := 0;
+            else
+              Item.movable := 1;
+            endif
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change Movable status");
+		        setobjproperty(item,"LFucker",character.serial + " - " + character.name);
+        23: if(item.newbie == 1)
+              Item.newbie := 0;
+            else
+              Item.newbie := 1;
+            endif
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change newbie status");
+		        setobjproperty(item,"LFucker",character.serial + " - " + character.name);
+        24: SetName( item , RequestInput( character, character.backpack, "Enter a new name.") );
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Rename");
+        25: if (character.cmdlevel > 2)
+	          if(item.invisible == 1)
+              Item.invisible := 0;
+            else
+              Item.invisible := 1;
+            endif
+		        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change invisible status");
+            endif
+    endcase
+  IncRevision(item);
+endprogram
+
+
+function General( item )
+
+  var amount := GetAmount( item );
+
+  data[8]  := item.amount;
+  data[10] := item.x;
+  data[12] := item.y;
+  data[14] := item.z;
+  if(item.hp)
+    data[16] := item.hp + "/" + item.maxhp;
+  else
+    data[16] := "n/a";    
+    layout[36] := 0;
+  endif
+  var weapfile := ReadConfigFile( ":combat:itemdesc" );
+  var entry := weapfile[item.objtype].damage;
+  if(entry)
+    var dam := weapfile[item.objtype].damage;
+    data[17] := "Damage";
+    data[18] := dam;
+    data[32] := "Dmg modifier";
+    data[33] := item.dmg_mod;
+  elseif(item.ar)
+    data[17] := "Armor";
+    data[18] := item.ar;
+    data[32] := "Ar modifier";
+    data[33] := item.ar_mod;
+  else
+    data[17] := "Ar/Dam";
+    data[18] := "n/a";
+    layout[37] := 0;
+  endif
+    data[20] := item.graphic;
+    data[22] := item.color;
+  if(item.quality)
+    data[39] := item.quality;
+    //layout[40] := 0;
+  else
+    data[39] := "n/a";
+    layout[40] := 0;
+  endif
+
+endfunction
+
+function EditItem( item , character , result )
+
+    if ( result == 9 )
+        SendSysmessage( character, "Changes are made immediately, double values supported. Hit Esc to cancel." );
+        var val := cdbl(RequestInput( character, character.backpack, "Enter a new value."));
+        item.quality := val;
+        LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Alter Item.quality: "+val);
+    else
+        SendSysmessage( character, "Changes are made immediately , Integers only. Hit Esc to cancel." );
+        var val := cint(RequestInput( character, character.backpack, "Enter a new value."));
+
+    
+    if( !val )
+       if ( result == 8 )
+         item.color := val;
+       else
+         SendSysmessage( character , "canceled." );
+       return;
+       endif
+    endif
+
+    case( result )
+         1: CreateItemInInventory( character.backpack, item.objtype, val ); //SetAmount(item):= val;
+	     
+	    var newname := "";
+	    
+            if(item.amount>1)
+            	var count := SplitWords(item.desc);
+            	var i;
+            	for(i:=2; i<=len(count); i:=i+1)
+            		newname := newname + " " + count[i];
+            	endfor
+            	PrintTextAbovePrivate( character, "You have just created " + val + " " + newname + " in your backpack." , character);
+            else
+            	PrintTextAbovePrivate( character, "You have just created " + val + " " + item.desc + " in your backpack." , character);
+            endif
+            
+         2: MoveObjectToLocation( item, val, item.y, item.z , item.realm, 0);
+         3: MoveObjectToLocation( item, item.x, val, item.z , item.realm, 0);
+         4: MoveObjectToLocation( item, item.x, item.y, val , item.realm, MOVEOBJECT_FORCELOCATION );
+         5: item.hp := val;
+         6: if(!item.ar)
+             item.dmg_mod := val;
+            else             
+             item.ar_mod := val;
+            endif 
+         7: item.graphic := val;
+         8: item.color := val;         
+    endcase
+      LogCommand(character, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Result: "+result+" Value: "+val);
+    endif
+		
+endfunction

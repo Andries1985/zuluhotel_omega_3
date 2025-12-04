@@ -1,0 +1,105 @@
+// This will create an area of spawn trigger tiles
+
+
+use uo;
+use os;
+use math;
+
+include ":gumps:yesno";
+include "include/client";
+include "include/constants";
+include ":gumps:requestgump";
+include ":gumps:selectiongump";
+
+program createspawntrigger(who, input)
+	var spawnpoint;
+	if(!input)
+		SendSysmessage( who, "Select Spawnpoint to add a trigger" );
+		spawnpoint := Target(who, TGTOPT_CHECK_LOS);
+		if(!spawnpoint)
+			SendSysMessage( who, "Cancelled", FONT_NORMAL, 2595);
+			return 0;
+		elseif(spawnpoint.objtype != 0xa300)
+			SendSysMessage( who, "That's not a Spawnpoint", FONT_NORMAL, 2595);
+			return 0;
+		endif
+	else
+		spawnpoint := SystemFindObjectBySerial(Cint(input));
+		if(spawnpoint.objtype != 0xa300)
+			SendSysMessage( who, "That's not a Spawnpoint .createspawntrigger ([serial])", FONT_NORMAL, 2595);
+			return 0;
+		endif
+	endif
+	var triggertile_array := GetObjProperty(spawnpoint, "TriggerArea");
+	if(triggertile_array)
+		if(YesNo(who, "Replace current area?"))
+			foreach tile in triggertile_array
+				DestroyItem(tile);
+			endforeach
+			EraseObjProperty(spawnpoint, "TriggerArea");
+		elseif(!YesNo(who, "Append to current area?"))
+			SendSysMessage( who, "Cancelled area adition.", FONT_NORMAL, 2595);
+			return 0;
+		endif
+	else
+		triggertile_array := {};
+	endif
+	
+	var firstarea := 1;
+
+	while (firstarea || YesNo( who, "Add another area?" ))
+		firstarea := 0;
+
+		SendSysmessage( who, "Select coordinate #1" );
+		var coordStructOne := TargetCoordinates( who );
+		var temptile1;
+		if(coordStructOne)
+			temptile1 := CreateItemAtLocation( coordStructOne.x , coordStructOne.y , coordStructOne.Z, "SpawnTrigger" , 1, who.realm );
+		else
+			SendSysMessage( who, "Missing first coordinate. Aborting.", FONT_NORMAL, 2595);
+			return 0;
+		endif
+
+		SendSysmessage( who, "Select coordinate #2" );
+		var coordStructTwo := TargetCoordinates( who );
+		var temptile2;
+		if(!coordStructTwo)
+			Destroyitem(temptile1);
+			SendSysMessage( who, "Missing second coordinate. Aborting.", FONT_NORMAL, 2595);
+			return 0;
+		endif
+		
+		Destroyitem(temptile1);
+
+		var tileZ := coordStructOne.z;
+		
+		if(( tileZ < -127) || (tileZ > 128 ))
+			SendSysmessage( who, "Z is out of bounds. Aborting.", FONT_NORMAL, 2595);
+			return 0;
+		endif
+		
+		// dummy variables, won't be needed after rewrite of command.
+		var startX := Min(coordStructOne.x,coordStructTwo.x);
+		var startY := Min(coordStructOne.y,coordStructTwo.y);
+		var endX := Max(coordStructOne.x,coordStructTwo.x);
+		var endY := Max(coordStructOne.y,coordStructTwo.y);
+
+		var fooY := StartY; // store the original startY for use after each iteration.
+
+		while ( startX <= endX )
+			while ( startY <= endY )
+				var item := CreateItemAtLocation( startX , startY , tileZ, "SpawnTrigger" , 1, who.realm );
+				SetObjProperty(item, "SpawnpointSerial", spawnpoint.serial);
+				triggertile_array.append(item.serial);
+				startY := startY + 1;
+			endwhile
+			startY := fooY;
+			startX := startX + 1;
+		endwhile
+
+		SetObjProperty(spawnpoint, "TriggerArea", triggertile_array);
+	endwhile
+
+	SendSysmessage( who, "Trigger area operation complete." );
+
+endprogram

@@ -1,0 +1,33 @@
+/*
+ *  Dungeon Teleporter - fires when someone walks onto a dungeon teleporter
+ *
+ *  Assumes the destination does not contain another dungeon teleporter.
+ *
+ *  Steps should probably be taken, somehow, to make sure the destination
+ *  is not blocked by something.
+ *
+ */
+use os;
+use uo;
+
+//set_debug(1);
+
+program walk_on_moongate( mobile, gate )
+
+	if(mobile.getprop("CheckingTeleporters"))
+		return 0;
+	endif
+// Not Allow NPCS to use the tele too..
+        if( mobile.IsA( POLCLASS_NPC ))
+                return 0;
+        endif
+	
+    var x, y, z, r;
+    x := GetObjProperty( gate, "DestX" );
+    y := GetObjProperty( gate, "DestY" );
+    z := GetObjProperty( gate, "DestZ" );
+    r := GetObjProperty( gate, "DestRealm" );
+	//print( "Moving " + mobile.name + " to (" + x + "," + y + "," + z + ")" );
+    MoveObjectToLocation( mobile, x, y, z, r );
+
+endprogram

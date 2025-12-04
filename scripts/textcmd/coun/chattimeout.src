@@ -1,0 +1,35 @@
+use uo;
+use os;
+include ":staff:include/staff";
+include "include/client";
+
+program chattimeout( who , time )
+
+	if( !time )
+		SendSysMessage( who , "The command work in this way .chattimeout 60 , this will remove the chat function for that person in 60 minutes" );
+	endif
+
+	SendSysMessage( who , "Who do you wish to give a " +time+ " minutes timeout?" );
+	var object := Target( who );
+	if( !object )
+		return;
+	endif
+
+	LogCommand(who, GetProcess(GetPid()).name, object.name+"/"+time);
+time:=CInt(time*60);
+Sleep(1);
+        var ini_ip := object.ip;
+    	foreach player in EnumerateOnlineCharacters()
+                if( player.ip == ini_ip )
+			//if(GetObjProperty(player, "#nextchatmsg") > ReadGameClock() + 10 )
+				if( player.cmdlevel == 0 )
+					SetObjProperty(player, "#nextchatmsg", ReadGameClock() + (time*60));
+				endif
+			//endif
+                endif
+	endforeach
+
+endprogram
+
+
+	

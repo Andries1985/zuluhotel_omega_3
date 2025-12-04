@@ -1,0 +1,132 @@
+use uo;
+
+include "include/objtype";
+include "include/spelldata";
+include "include/areas";
+include "include/client";
+include "include/recalling";
+include ":housing:utility";
+include ":statichousing:recallgatehelp";
+
+program cast_recall( caster, spell_id )
+
+	var shp	:= GetHP(caster);
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(caster) == "Array")
+					spell_id := caster[2];
+			caster := caster[1];
+
+		endif
+	if (!can_cast(caster, 4))
+		return;
+	endif
+
+	if( IsForbiddenAreaToRecallFrom( caster ) )
+		SendSysMessage( caster, "You can't recall from here." );
+		return 0;
+	endif
+
+	var multi2 := GetStandingHeight( caster.x, caster.y, caster.z, caster.realm ).multi;
+	if( multi2 )
+		if( !Iscowner( caster, multi2 )  )
+			if( !IsFriend( caster, multi2, RECALL_TO) )
+				SendSysMessage( caster, "You can't recall from this house." );
+				return;
+			endif
+		endif
+	endif
+	// Same check as above for static houses
+	var serialstatichouse := StaticHouseSerial( caster );
+	if(serialstatichouse)
+		var sign := SystemFindObjectBySerial(serialstatichouse);
+		if( !Iscowner( caster, sign )  )
+			if( !IsFriend( caster, sign, RECALL_TO) )
+				SendSysMessage( caster, "You can't recall from this house." );
+				return;
+			endif
+		endif
+	endif
+	if (TryToCast( caster, spell_id ) != SUCCESS);
+		EraseObjProperty(caster, "#Casting");
+		return 0;
+	endif
+
+	SendSysmessage( caster, "Select a rune to recall from." );
+
+	var cast_on := CanTargetThing(caster, 4, TGTOPT_CHECK_LOS );
+	if(!cast_on)
+		return;
+	elseif( !Accessible( caster, cast_on ) )
+		SendSysMessage( caster, "You can't reach that." );
+		return 0;
+	elseif( cast_on.objtype != UOBJ_RUNE && cast_on.objtype != 0x7100 )
+		SendSysmessage( caster, "You can only cast that on a recall rune or a runebook!" );
+		return 0;
+	elseif( !ReserveItem( cast_on ) )
+		return 0;
+	endif
+
+	var tox := CInt( GetObjProperty( cast_on, "x" ) );
+	var toy := CInt( GetObjProperty( cast_on, "y" ) );
+	var toz := CInt( GetObjProperty( cast_on, "z" ) );
+	var torealm := GetObjProperty( cast_on, "realm" );
+	//var sx  := caster.x;
+	//var sy  := caster.y;
+	//var sz  := caster.z;
+	//var srealm  := caster.realm;
+
+	if( !tox && !toy && !toz && !torealm )
+		SendSysmessage( caster, "This is a blank rune!") ;
+		return 0;
+		
+	elseif( IsForbiddenAreaToRecallTo( caster, tox, toy, torealm ) )
+		SendSysMessage( caster, "You can't recall to this place." );
+		if( cast_on.objtype == UOBJ_RUNE || cast_on.objtype == 0x1f14)
+			DestroyItem(cast_on);
+		endif
+		return 0;
+
+	endif
+
+	var multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
+	if( multi )
+		if( !Iscowner( caster, multi )  )
+			if( !IsFriend( caster, multi, RECALL_TO) )
+				SendSysMessage( caster, "You can't recall to this house." );
+				return;
+			endif
+		endif
+	endif
+	var owner;
+	var lamp;
+	var Near_Items := ListItemsNearLocation(tox, toy, toz, 10, torealm);
+	foreach thing in Near_Items
+		if (thing.objtype == 0xf156)
+			lamp := thing;
+			owner := GetObjProperty(lamp,"Owner");
+		endif
+	endforeach
+	if (lamp and owner)
+		if (caster.serial != owner)
+			SendSysMessage( caster, "You can't recall to this house." );
+			return;
+		endif
+	endif
+	//Same check as above but for static houses
+	serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
+	if(serialstatichouse)
+		var sign := SystemFindObjectBySerial(serialstatichouse);
+		if( !Iscowner( caster, sign )  )
+			if( !IsFriend( caster, sign, RECALL_TO) )
+				SendSysMessage( caster, "You can't recall to this house." );
+				return;
+			endif
+		endif
+	endif
+
+	PlaySoundEffect( caster, SFX_SPELL_RECALL1 );
+	sleepms(250);
+	MoveObjectToLocation( caster, tox, toy, toz, torealm );
+	PlaySoundEffect( caster, SFX_SPELL_RECALL2 );
+
+endprogram

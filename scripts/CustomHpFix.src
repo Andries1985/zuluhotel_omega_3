@@ -1,0 +1,10 @@
+use uo;
+use os;
+
+program npcres()
+
+	SetGlobalProperty( "CustomHPFix", 1 );
+	sleep(120);
+	SetGlobalProperty( "CustomHPFix", 0 );
+
+endprogram

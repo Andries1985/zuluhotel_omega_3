@@ -1,0 +1,43 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Logon() - Records when the staff member logs in
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+use datafile;
+
+include "include/time";
+
+program Logon(who)
+
+if (!who.cmdlevel)
+	return 0;
+endif
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+var time := timeanddate[2];
+var filename := CStr(who.acctname);
+var file := OpenDataFile(":staff:"+filename);
+if (!file)
+	CreateDataFile( ":staff:"+filename, flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(date);
+
+if (!currentelement)
+	currentelement := file.CreateElement(date);
+endif
+
+var settingprop := "["+time+" - "+who.x+","+who.y+","+who.z+"]"; // set log with time date, 
+
+currentelement.SetProp(settingprop, "LOGON");
+
+UnloadDataFile(":staff:"+filename);
+
+// Log staff xyz
+Start_Script("RecordXYZ", who);
+
+endprogram

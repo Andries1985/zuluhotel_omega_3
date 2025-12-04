@@ -1,0 +1,36 @@
+use os;
+use uo;
+
+include "include/client";
+include ":staff:include/staff";
+
+program textcmd_setrper(who)
+    
+    SendSysmessage( who , "Target an item to set the IsRPer flag on.", FONT_NORMAL, 2581 );
+
+    var IsRPerItem := Target(who, TGTOPT_NOCHECK_LOS);
+
+    if(GetObjProperty(IsRPerItem, "IsRPer"))
+        SendSysmessage( who , "Canceled! " + IsRPerItem.name + " already has an IsRPer flag.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    if(!IsRPerItem.isa(POLCLASS_ITEM))
+        SendSysmessage( who , "Canceled! You must target an item.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    if(!IsRPerItem)
+       SendSysmessage( who , "Canceled.", FONT_NORMAL, 2595 );
+       return;
+    endif
+
+    if(who.cmdlevel < 5)
+        SetObjProperty(IsRPerItem, "LFucker", who.serial+"/"+who.name);
+    endif
+	    
+    SetObjProperty(IsRPerItem, "IsRPer", 1);
+    SendSysmessage( who , "RPer flag has been set on: " +IsRPerItem.name , FONT_NORMAL, 2581 );
+    LogCommand(who, GetProcess(GetPid()).name, 0, IsRPerItem.desc+"/"+IsRPerItem.serial);
+
+endprogram

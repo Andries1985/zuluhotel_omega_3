@@ -1,0 +1,21 @@
+//Edited September 20, 2024
+
+use uo;
+
+include ":staff:include/staff";
+
+program destroyradius( who, text )
+
+	var destroyed := {};
+	var ranget := cint( text );
+	
+	foreach thingie in ListItemsNearLocation( who.x, who.y, LIST_IGNORE_Z, ranget, who.realm );
+		if( thingie.objtype != 0xa301 )
+			destroyed.append(thingie.desc+"/"+thingie.serial);
+			DestroyItem( thingie );
+		endif
+	endforeach
+	LogCommand(who, GetProcess(GetPid()).name, "Radius of "+text, destroyed);
+	SendSysMessage(who, "Destroyed everything in a radius of " + ranget);
+		
+endprogram

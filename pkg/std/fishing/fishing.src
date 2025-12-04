@@ -1,0 +1,361 @@
+///////////////////////////////////
+// 20010324	Jaleem Added autolooping
+///////////////////////////////////
+
+use uo;
+use cfgfile;
+use os;
+
+include "include/random";
+include "include/client";
+include "include/objtype";
+include "include/skillpoints";
+include "include/starteqp";
+include "include/checkcity";
+include "include/autoloop";
+include "include/utility";
+include "fishing";
+include "include/itemutil";
+include "include/attributes";
+include "include/classes";
+
+Const UOBJECT_TREASURE_CHEST := 0x0E40;
+Const UACTION_FISHING := 0x9;
+Const SFX_SKILL_FISHING	:= 0x0240;
+Const UOBJ_SOS_BOTLE_TILE := 0xA365;
+Const UOBJ_SOS_BOTLE := 0xA360;
+Const FISHING_RANGE := 6;
+
+program use_fishpole( character , pole )
+
+	if(!ReserveItem(pole)) return; endif
+
+	var equipped := whatequipped(character, pole);
+	var use_on := Targetcoordinates(character);
+	var water := check_for_water(use_on);
+
+	if (!use_on) SendSysMessage(character, "Canceled"); return; endif
+
+	if (use_on.item.objtype == 41827)
+		if (FetchBottle(character)==1) 
+			return;
+		else
+			return;
+		endif	
+	endif
+
+	if ( coordist(character.x,character.y,use_on.x, use_on.y) > 15 )
+		SendSysmessage(character,"That is too far away");
+		return 0;
+	endif
+
+	if(character.multi)
+		SendSysMessage(character, "You can't fish from a house.");
+		return 0;
+	endif	
+
+	if( !CheckLosAt(character, use_on.x, use_on.y, use_on.z) )
+		SendSysMessage(character, "You can't see that.");
+		return 0;
+	endif
+
+	if(!water)
+		SendSysmessage(character,"You can't use that on this");
+		return 0;
+	endif
+
+	// Disabled random graphics from GM fishing rod as they would remain occasionally.
+	//var anis := {"Sacrifice1", "Sacrifice2", "Sacrifice3", "Sacrifice4", "Sacrifice5", "Sacrifice6", "Sacrifice7", "0x2101", "0x2103", "Sacrifice10", "Sacrifice11", "Sacrifice12", "Sacrifice13", "0x2123", "Sacrifice15"};
+	//var sacri, splashy;
+	Autoloop_init (character);
+
+ 	while (Autoloop_more() && NOT character.dead)
+
+	var newsplash;
+	var tool_bon	:= GetObjProperty( pole , "FishingBonus" );
+
+	Performaction(character, UACTION_FISHING);
+	PlaySoundEffect(character, SFX_SKILL_FISHING);
+
+	// Remove the code below and enable the commented out if/else statement if you want the random graphics.
+	newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z, 0x352d, 1, use_on.realm);
+	newsplash.movable := 0;
+	sleepms(800);
+	newsplash.graphic := 0x352e;
+	sleepms(800);
+	newsplash.graphic := 0x352f;
+	sleepms(800);
+	newsplash.graphic := 0x3530;
+	sleepms(800);
+	DestroyItem(newsplash);
+/* 	if(!tool_bon)
+		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
+		newsplash.movable := 0;
+		sleepms(500);
+		newsplash.graphic := 0x352e;
+		sleepms(500);
+		newsplash.graphic := 0x352f;
+		sleepms(500);
+		newsplash.graphic := 0x3530;
+		sleepms(500);
+		DestroyItem(newsplash);
+	else
+		sacri := Random(14)+1;
+		sacri := anis[sacri];
+		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
+		splashy := CreateItemAtLocation(use_on.x, use_on.y, use_on.z+3, sacri, 1, use_on.realm);
+		splashy.movable := 0;
+		newsplash.movable := 0;
+		sleepms(500);
+		newsplash.graphic := 0x352e;
+		sleepms(500);
+		newsplash.graphic := 0x352f;
+		sleepms(500);
+		newsplash.graphic := 0x3530;
+		sleepms(500);
+		DestroyItem(splashy);
+		DestroyItem(newsplash);
+	endif
+ */
+	var x := character.x;
+	var y := character.y;
+	var loop := 2;
+	while ( (character.x==x) and (character.y==y) and loop >0)
+		sleep(1);
+		loop := loop-1;
+	endwhile
+
+	/*** that's another check for player movement (autoloop just did it) ***/	
+	if(loop)
+		SendSysMessage(character, "You must be patient while fishing");
+		Autoloop_finish ();
+		return 0;
+	endif
+
+	var water, difficulty := cint(GetHarvestDifficulty( "fish", use_on.x, use_on.y, use_on.objtype, use_on.realm ));
+	if (!difficulty)
+		water := GetMapInfo(use_on.x, use_on.y, use_on.realm).landtile;	
+		difficulty := cint(GetHarvestDifficulty( "fish", use_on.x, use_on.y, water, use_on.realm ));
+	endif
+
+	if (!difficulty)
+		SendSysmessage(character, "You can't seem to get any fish here.");
+		Autoloop_finish ();
+		return;
+	endif
+	var thepoints := get_default_points(SKILLID_FISHING);
+	if (CheckSkill(character, SKILLID_FISHING, -1, thepoints))
+		if (Random(70)<5)
+			do_something(character);
+			else
+			var fish_amount := HarvestResource( "fish", use_on.x, use_on.y, 1, 1, use_on.realm );
+			var level := GetClasseLevel(character);
+			fish_amount := Cint(Random(fish_amount) + 1);
+		
+			if( GetObjProperty( character , CLASSEID_RANGER ) || GetObjProperty( character , CLASSEID_MYSTIC_ARCHER ) )	
+				fish_amount := Cint( fish_amount + level);
+
+			endif
+
+			if (fish_amount==0)
+				SendSysMessage(character, "There's not enough fish here.");
+				Autoloop_finish ();
+				return;
+			endif
+		
+			SendSysmessage(character, "You catch a fish!");
+			if( tool_bon )
+				fish_amount	:= fish_amount * tool_bon;
+			endif
+			createfish( character,RandomFish(character),fish_amount, equipped );
+		endif
+	else
+		SendSysMessage(character, "They don't seem to be biting.");
+	endif
+
+ endwhile
+
+ Autoloop_finish ();
+ SendSysMessage (character, "You stop fishing.");
+
+endprogram
+
+
+function do_something(character)
+	var tnum := Random(15)+1;
+	var it;
+	case (tnum)
+		1:	
+			CreateItemInBackpack( character,0xa366,1);
+			SendSysmessage(character, "You just found a special fishing net.");
+		
+		2:	
+			if (Random(11)<1)
+				it := CreateItemInBackpack( character, maplevel(), 1 );
+				SendSysMessage(character,"You find a tattered old map!");
+			endif
+
+		3:  
+			if (Random(10)<3)
+				CreateItemInBackpack( character, 0xeed, Random(200)+1);
+			endif
+
+		4:
+			CreateItemInBackpack( Character, RandomShell(Character), 1 );
+			SendSysMessage(character,"You find something valuable!");
+			
+		/*
+		5: 
+			if (Random(10)<3 and  checkcity(character)==0)
+			it := createnpcfromtemplate("waterelemental", character.x-1 , character.y, character.z, 0, character.realm);
+				if (!it.errortext)
+				     SendSysmessage(character, "You attract the attention of a water elemental");
+				endif
+			endif
+		6: 
+			if (Random(10)<1)
+	          it := createnpcfromtemplate("walrus", character.x-1, character.y, character.z, 0, character.realm);
+	          if (!it.errortext)
+	                SendSysmessage(character, "A walrus comes by to see what you're doing");
+	          endif
+			endif
+		*/
+	endcase
+
+endfunction
+
+
+function RandomShell(Character)
+
+	case (Random(7))
+	0: return 0x80ae;
+	1: return 0x80be;
+	2: return 0x80ce;
+	3:
+	4:
+	5:
+	6: if ( getEffectiveskill(Character,SKILLID_FISHING) > 120 )
+		if ( Random(4) == 2 )
+			return 0x80de;
+		else
+			return 0x80ee;
+		endif
+	else
+		return 0x80ce;
+	endif
+
+endcase
+
+endfunction
+
+
+function FetchBottle(who)
+	var good:=0;
+	var tfm := Targetcoordinates( who );
+	var msgx;
+	var msgy;
+	var done := 0 ;
+	foreach item in EnumerateItemsInContainer( who.backpack )
+	 if (item.objtype == 0xa363 and done == 0)
+		msgx := GetObjProperty(item,"tileX");
+		msgy := GetObjProperty(item,"tileY"); 
+		if ( (tfm.x > (msgx-6) and tfm.x < (msgx+6)) and (tfm.y > (msgy-6) and tfm.y < (msgy+6)) )
+			good:=1;
+			done := 1;
+			DestroyItem(item); 
+		endif
+	 endif
+	endforeach
+
+	if (done == 0)
+		SendSysMessage(who,"You're not in the right location!");
+		return 0;
+	endif
+
+	if (good)
+	if(CheckSkill(who, SKILLID_FISHING, 135, 1000))
+		SendSysMessage(who,"You catch a sunken treasure!");
+		CreateChest( who.x, who.y, who.z, who.realm);
+	else
+		good:=0;
+	endif
+	endif
+
+	return good;
+endfunction
+
+
+function FindSpot(who)
+	var spot := {0,0,0};
+	var testval := 0;
+	var i;
+
+	for(i:=1;i<9;i:=i+1)
+		case(i)
+			1:testval := GetStandingHeight( (who.x-1),(who.y-1),who.z, who.realm);
+				spot[1] := who.x-1;
+				spot[2]:= who.y-1;
+			2:testval := GetStandingHeight((who.x-1),(who.y),who.z, who.realm);
+				spot[1] := who.x-1;
+				spot[2] := who.y;
+			3:testval := GetStandingHeight((who.x-1),(who.y+1),who.z, who.realm);
+				spot[1] := who.x-1;
+				spot[2] := who.y+1;
+			4:testval := GetStandingHeight((who.x),(who.y-1),who.z, who.realm);
+				spot[1] := who.x;
+				spot[2] := who.y-1;
+			5:testval := GetStandingHeight((who.x),(who.y+1),who.z, who.realm);
+				spot[1] := who.x;
+				spot[2] := who.y+1;
+			6:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+				spot[1] := who.x+1;
+				spot[2] := who.y-1;
+			7:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+				spot[1] := who.x+1;
+				spot[2] := who.y;
+			8:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+				spot[1] := who.x+1;
+				spot[2] := who.y+1;
+		endcase
+		if(!testval.errortext)
+			spot[3] := testval.z;
+			return spot;
+		endif
+	endfor
+	return 0;
+endfunction
+
+
+function CreateChest( x , y , z, realm )
+   var chest := CreateItemAtLocation(x,y,z,UOBJECT_TREASURE_CHEST,1, realm);
+
+ 	MakeLoot( chest , Random(7), 70 , 4);
+
+endfunction
+
+function CleanSos(tile);
+
+	var msg := GetObjProperty(tile, "msgserial");
+	msg :=SystemFindObjectBySerial(msg);
+	if(msg)
+		destroyitem(msg);
+	endif
+	destroyitem(tile);
+
+endfunction
+
+
+function maplevel()
+
+	var rand := random(100000);
+	if(rand < 50000)
+		return 0x6003;
+	elseif(rand < 80000)
+		return 0x6004;
+	elseif(rand < 95000)
+		return 0x6005;
+	else
+		return 0x6005;
+	endif
+
+endfunction

@@ -1,0 +1,159 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// TODO: The commented out section is because in POL093 the HP WAS the NPC strength
+// Now HITS is seperate and it's all lower than the strength. I have to manually go
+// through each NPC and set the HITS, etc to the STR value.
+//
+// Until then, if you want new npcs with different HIT value, use the 
+// CustomHitsLevel prop
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use vitals;
+use attributes;
+use cfgfile;
+
+var rekna := 1;
+var npcdesc := ReadConfigFile( "::npcdesc" );
+include "include/attributes";
+
+program Regen()
+
+	Print( "using regen.ecl..." );
+	return 1;
+
+endprogram
+
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetLifeRegenRate() - Gets the life regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetLifeRegenRateExported( who )
+
+var life := GetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_LIFE);
+
+// who doesn't have a regen rate specified, use 1200 default
+if (!life)
+	life := 1200;
+endif
+ 
+return life;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetLifeMaximumValue() - Gets the MAX life regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetLifeMaximumValueExported( who )
+
+var life := (GetAttribute(who, ATTRIBUTEID_STRENGTH) * 100);
+
+// NPCS use HITS for hitpoints, players just use strength
+if (who.isa(POLCLASS_NPC))
+
+	var hits := npcdesc[who.npctemplate].HITS;
+	if (GetObjProperty(who, "CustomHitsLevel"))
+		life := CInt(GetObjProperty(who, "CustomHitsLevel"));
+		if ((GetMaxHp(who) != GetHp(who) and !GetObjProperty(who, "firstTimeCustomHp")) || GetMaxHp(who) != GetHp(who) && GetGlobalProperty("CustomHPFix"))
+		SetHP(who, GetMaxHP(who));
+		SetObjProperty(who, "firstTimeCustomHp", 1);
+		endif
+	endif
+endif
+
+return life;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetManaRegenRate() - Gets the mana regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetManaRegenRateExported( who )
+
+var mana := GetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_MANA);
+
+// who doesn't have a regen rate specified, use 1200 default
+if (!mana)
+	mana := 1200;
+endif
+ 
+return mana;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetManaMaximumValue() - Gets the MAX mana regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetManaMaximumValueExported( who )
+
+var mana := (GetAttribute(who, ATTRIBUTEID_INTELLIGENCE) * 100);
+
+// NPCS use MANA for mana regen, players use intelligence
+if (who.isa(POLCLASS_NPC))
+	var npcmana := npcdesc[who.npctemplate].MANA;
+	if (GetObjProperty(who, "CustomManaLevel"))
+		mana := CInt(GetObjProperty(who, "CustomManaLevel"));
+	//elseif (npcmana || npcmana == 0)
+	//	mana := npcmana*100;
+	endif
+endif
+
+return mana;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetStaminaRegenRate() - Gets the stamina regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetStaminaRegenRateExported( who )
+
+var stam := GetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_STAMINA);
+
+// who doesn't have a regen rate specified, use 1200 default
+if (!stam)
+	stam := 1200;
+endif
+ 
+return stam;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// GetStaminaMaximumValue() - Gets the MAX stamina regen rate per individual
+//
+////////////////////////////////////////////////////////////////////////// 
+exported function GetStaminaMaximumValueExported( who )
+
+var stam := (GetAttribute(who, ATTRIBUTEID_DEXTERITY) * 100);
+
+// NPCS use STAM for stam regen, players just use dex
+if (who.isa(POLCLASS_NPC))
+	var npcstam := npcdesc[who.npctemplate].STAM;
+	if (GetObjProperty(who, "CustomStaminaLevel"))
+		stam := CInt(GetObjProperty(who, "CustomStaminaLevel"));
+	//elseif (npcstam || npcstam == 0)
+	//	stam := npcstam*100;
+	endif
+endif
+
+return stam;
+
+endfunction

@@ -1,0 +1,311 @@
+// ********************************************************************************
+// ***
+// ***	magic fish script
+// ***
+// ***	This script is called each time a player uses (double-clicks) a magic fish
+// ***
+// ********************************************************************************
+
+// ********************************************************************************
+//	function modules that will be used
+// ********************************************************************************
+use uo;
+use os;
+
+// ********************************************************************************
+//	included modules that will be used
+// ********************************************************************************
+//include "include/statmod";
+include "include/dotempmods";
+include "include/classes";
+include "include/math";
+
+// ********************************************************************************
+//	Main program
+//	
+//	This is the main magic fish handler.  It is called when the player
+//	double-clicks on a magic fish.
+// ********************************************************************************
+
+var DELAY_BETWEEN_FISH := 20;
+//var DELAY_BETWEEN_FISH := 0;
+
+function CheckIfCanUseFish(character)
+	if(GetObjProperty(character , "#magicfish") and GetObjProperty(character , "#magicfish") > ReadGameClock())
+        SendSysmessage(character , "You must wait until you can eat another magic fish!");
+        return 0;
+    else
+        SetObjProperty(character , "#magicfish" , ReadGameClock() + DELAY_BETWEEN_FISH);   
+        return 1;
+    endif
+endfunction
+
+function CanUseFish(character)
+	EraseObjProperty(character , "#magicfish");
+endfunction
+
+program use_magicfish( who, fish )
+
+	var buff_delay := DELAY_BETWEEN_FISH;
+	var teleport_delay := DELAY_BETWEEN_FISH;
+
+	if( GetObjProperty(who, CLASSEID_RANGER) )
+		teleport_delay := 5;
+	elseif( GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+		teleport_delay := 10;
+	endif
+
+	if( GetObjProperty(who, CLASSEID_RANGER) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+		buff_delay := 0;
+	endif
+
+	// indicate the bottle is in use.
+	if(!ReserveItem(fish)) return; endif
+
+    // check if can drink.
+    if(!CheckIfCanUseFish(who))
+		return;
+	endif
+
+	// get the cprops we need before destroying the fish
+	var spellnum := GetObjProperty( fish, "spellnum" );
+	var spellsound := GetObjProperty( fish, "spellsound" );
+	var spelleffect := GetObjProperty( fish, "spelleffect" );
+	var miscprop1 := GetObjProperty( fish, "miscprop1" );
+	var miscprop2 := GetObjProperty( fish, "miscprop2" );
+	subtractamount(fish, 1);
+	if (spellnum > 0)
+		// this magic fish has a spell set for it
+		// play the sound and animations that are requested
+		if( spellnum != 22)
+		PlaySoundEffect( who, spellsound );
+		PlayObjectCenteredEffect( who, spelleffect, 10, 10);
+		endif
+		// debug messages
+		// SendSysMessage( who, "Fish has spell number " + spellnum);
+		// SendSysMessage( who, "Using spell sound " + spellsound);
+		// SendSysMessage( who, "Using spell effect" + spelleffect);
+        
+		case (spellnum)		// handle the different magical effects
+			4:	// heal
+				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+					var mod_amount := CInt(GetFishHeal( who, miscprop1 ) );
+					HealDamage( who, mod_amount);
+					SendSysMessage(who, "You've healed yourself for "+mod_amount+" damage.");
+				else
+					var healed := miscprop1;
+					var bonus := GetObjProperty( who , "HealingIncrease" );
+					if( bonus )
+						healed := healed + Cint( healed * bonus * 0.1 );
+					endif
+					HealDamage( who, healed);
+					SendSysMessage(who, "You've healed yourself for "+healed+" damage.");
+				endif
+			
+			6:	// night sight
+				who.setlightlevel( miscprop1, miscprop2 );
+				SendSysMessage(who, "You are now able to see in the darkness for "+miscprop2/60+" minutes.");
+
+			9:	// agility
+				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
+					
+					if (CanMod(who, "dex"))
+						DoTempMod(who, "dex", mod_amount, duration);
+						SendBoostMessage( who, who, "dex fish", mod_amount, duration, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				else
+					if (CanMod(who, "dex"))
+						DoTempMod(who, "dex", miscprop1, miscprop2);
+						SendBoostMessage( who, who, "dex fish", miscprop1, miscprop2, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				endif
+			
+			10:	// cunning
+				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
+					
+					if (CanMod(who, "int"))
+						DoTempMod(who, "int", mod_amount, duration);
+						SendBoostMessage( who, who, "int fish", mod_amount, duration, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				else
+					if (CanMod(who, "int"))
+						DoTempMod(who, "int", miscprop1, miscprop2);
+						SendBoostMessage( who, who, "int fish", miscprop1, miscprop2, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				endif
+			
+			11:	// cure
+				if (who.poisoned)
+					PlayObjectCenteredEffect( who, FX_BLESS_EFFECT, 10,10);
+					CurePoison(who,SFX_SPELL_CURE,"The fish has CURED you!");
+				else
+					SendSysMessage(who, "You are not poisoned!");
+				endif
+
+			16:	// strength
+				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
+					
+					if (CanMod(who, "str"))
+						DoTempMod(who, "str", mod_amount, duration);
+						SendBoostMessage( who, who, "str fish", mod_amount, duration, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				else
+					if (CanMod(who, "str"))
+						DoTempMod(who, "str", miscprop1, miscprop2);
+						SendBoostMessage( who, who, "str fish", miscprop1, miscprop2, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				endif
+			17:	// bless
+				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
+					
+					if (CanMod(who, "all") && CanMod( who , "ebless" ) && CanMod( who, "poly") )
+						DoTempMod(who, "all", mod_amount, duration);
+						SendBoostMessage( who, who, "bless fish", mod_amount, duration, 0 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+					if (CanMod(who, "ar"))
+						var arAmount := Cint(mod_amount/1.7);
+						DoTempMod(who, "ar", arAmount, duration);
+					endif
+				else
+					if (CanMod(who, "all"))
+						DoTempMod(who, "all", miscprop1, miscprop2);
+						SendBoostMessage( who, who, "bless fish", miscprop1, miscprop2, 1 );
+						DELAY_BETWEEN_FISH := buff_delay;
+					endif
+				endif
+			22: // Teleport
+				var spellid := 22;
+				// Do a pre mana check so we don't try cast if can't
+
+				//Variables declaration and initialisation
+				var conf	 := ReadConfigFile( ":spells:spells" );
+				var elem	 := FindConfigElem( conf, spellid );
+				var circ	 := GetConfigInt( elem, "Circle" );
+				conf	 	 := ReadConfigFile( ":*:circles" );
+				var spelldelay := Cint( conf[circ].Delay );
+				var value	 := Cint( conf[circ].PointValue );
+				var manacost	 := Cint( conf[circ].Mana );
+				var difficulty := Cint( conf[circ].Difficulty );
+
+				if (manacost > GetMana(who))
+					PrintTextAbovePrivate(who,"Not enough mana!",who);
+					return 0;
+				endif
+					
+				if (GetEffectiveSkill(who,SKILLID_FISHING) < (GetSpellDifficulty( spellid ) + 40) )
+					PrintTextAbovePrivate(who,"Not a chance...",who);
+					return 0;
+				endif
+
+				// Do a skill check to not even try to cast if we can't
+				SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_NO_SKILL_CHECK, CASTINGOPT_USE_SCROLL});
+
+				var script := elem.Script;
+
+				Start_Script(":spells:"+script, {who, spellid, fish} );
+
+				SleepMS(spelldelay);
+				DELAY_BETWEEN_FISH := teleport_delay;
+		    44:	// invisibility
+				SetObjProperty(who, "StealthCD", ReadGameClock()+10);
+				who.hidden := 1;
+		endcase
+	else
+		// bad spellnum cprop on this fish, it is 0 (not valid)
+		SendSysMessage(who, "Yech, that was a rotten fish!");
+	endif
+    Detach();
+	ReleaseItem( fish );
+    Sleep(DELAY_BETWEEN_FISH);
+    CanUseFish(who);
+endprogram
+
+function GetModAmountFish( who, miscprop1 ) 
+
+	var fishing := GetEffectiveSkill( who , SKILLID_FISHING );
+	var amount := miscprop1;
+	var level := 0;
+	if( GetObjProperty( who, CLASSEID_RANGER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_RANGER ) );
+	elseif( GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_MYSTIC_ARCHER ) );
+	endif
+	
+	amount := ( (level * amount) + Random(Cint( fishing / 10 )) );
+
+	if( !amount )
+		amount := 1;
+	endif
+
+	if( amount < 15)
+		amount := 15;
+	endif
+
+	return Cint(amount);
+
+endfunction
+
+function GetModDurationFish( who, miscprop2 )
+
+	var duration := miscprop2;
+	var level := 0;
+	if( GetObjProperty( who, CLASSEID_RANGER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_RANGER ) );
+	elseif( GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_MYSTIC_ARCHER ) );
+	endif
+
+	duration := level * duration;
+
+	if( !duration )
+		duration := 2;
+	endif
+
+	return Cint(duration);
+
+endfunction
+
+function GetFishHeal( who, miscprop1 ) 
+
+	var healed := miscprop1;
+
+	var bonus := GetObjProperty( who , "HealingIncrease" );
+	if( bonus )
+		healed := healed + Cint( healed * bonus * 0.2 );
+	endif
+	
+	var level := 0;
+	if( GetObjProperty( who, CLASSEID_RANGER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_RANGER ) );
+	elseif( GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+		level := CInt( GetObjProperty( who , CLASSEID_MYSTIC_ARCHER ) );
+	endif
+
+	healed := Trunc( ((level * 0.4) * healed), 0 );
+
+	if( !healed )
+		healed := 1;
+	endif
+
+	if( healed < 50)
+		healed := 50;
+	endif
+
+	return Cint(healed);
+
+endfunction

@@ -1,0 +1,41 @@
+use uo;
+use os;
+use polsys;
+
+include "include/dotempmods";
+
+program wraithdelay(parms)
+
+	var victims := parms[1];
+	var duration := parms[2];
+	var i := 0;
+	// a fail safe array
+	var victims2 := victims;
+	repeat
+	
+		foreach victim in victims
+			if (ReadGameClock() >= victim[2])
+				if (victim[1].frozen)
+					victim[1].frozen := 0;
+					BuffOff(victim[1],"paralyze");
+					IncRevision(victim[1]);
+				endif
+				victims2.erase(_victim_iter);
+			endif
+		endforeach
+
+		i := i + 1;
+		Sleep( 1 );
+
+	until ( i >= duration);
+
+	// If victims2 has a mobile, it unfreeze it, failsafe!
+	foreach victim in victims2
+		if (victim[1].frozen)
+			victim[1].frozen := 0;
+			BuffOff(victim[1],"paralyze");
+			IncRevision(victim[1]);
+		endif
+	endforeach
+	
+endprogram

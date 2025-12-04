@@ -1,0 +1,27 @@
+use uo;
+use polsys;
+include ":staff:include/staff";
+
+program freeze( gm )
+
+	SendSysMessage( gm, "Who do you wish to freeze?" );
+	var res := Target( gm );
+	if(gm.cmdlevel < 4 && !res.isa(POLCLASS_NPC))
+		SendSysmessage(gm, "You can only freeze NPCs.");
+		LogCommand(gm, GetProcess(GetPid()).name, gm.name+" tried to freeze a player.");
+		return;
+	endif
+
+	if( res.isa(POLCLASS_MOBILE) )
+		if( res.cmdlevel > gm.cmdlevel and gm.cmdlevel < 5 )
+			SendSysMessage( res.mobile , gm.name + " is trying to freeze you." );
+		else
+			res.frozen := 1;
+			SetObjProperty( res , "frozen" , 1 );
+			PrintTextAbovePrivate( res, res.name + " is now frozen", gm );
+		endif
+	endif
+	IncRevision(res);
+	LogCommand(gm, GetProcess(GetPid()).name, res.name+"/"+res.serial);
+    
+endprogram

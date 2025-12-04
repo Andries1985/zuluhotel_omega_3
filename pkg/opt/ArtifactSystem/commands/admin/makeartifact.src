@@ -1,0 +1,19 @@
+use uo;
+
+include ":ArtifactSystem:artifact";
+
+program textcmd_makeartifact( who )
+
+	SendSysMessage( who, "Please target an item to make it an Artifact", FONT_NORMAL,	ARTIFACT_FONT_COLOR);
+	var item := Target( who );
+
+  if (!item)
+    SendSysMessage( who, "Canceled", FONT_NORMAL,	2595 );
+  elseif(!item.isa(POLCLASS_ITEM))
+    SendSysMessage( who, "You can only transform items into Artifacts!", FONT_NORMAL,	2595 );
+  else
+    SetObjProperty(item, "Artifact", 1);
+    SendSysMessage( who, item.desc+" is now an Artifact!", FONT_NORMAL,	ARTIFACT_FONT_COLOR);
+  endif
+  
+endprogram

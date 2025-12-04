@@ -1,0 +1,13 @@
+use uo;
+use os;
+
+program deleter(parms)
+
+var it := parms[1];
+var duration := cint(parms[2]);
+
+sleep(duration);
+
+destroyitem(it);
+
+endprogram

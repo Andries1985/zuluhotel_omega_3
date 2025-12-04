@@ -1,0 +1,84 @@
+///////////////////
+//  This program is called when you use a new beehive.  It creates a brand new hive and starts
+//  the beehive control script for the hive.  When the activated beehive is used, it produces honey
+//  and wax.
+///////////////////
+
+use uo;
+use os;
+
+include ":gumps:yesno";
+include "include/areas";
+
+program harvest_honey (character, newbeehive)
+
+	//reserve the hive, give them a message, and let them place the hive
+	if(!ReserveItem(newbeehive)) return; endif
+
+	if (newbeehive.container)
+		SendSysmessage (character, "The hive cannot be used in a container.");
+		return;
+	endif
+
+	if(IsInACity(newbeehive) || IsInSafeArea(newbeehive) || IsInNOPKArea(newbeehive))
+		SendSysmessage(character, "You can't place that here!");
+		return;
+	endif
+
+	var dungteles := ListItemsNearLocation(character.x, character.y, character.z, 5, character.realm);
+	foreach thing in dungteles
+		if (thing.objtype == 0x6200)
+			sendsysmessage(character,"You can't plant that here."); 
+			return 0;
+		endif
+	endforeach
+
+	foreach beehives in ListItemsNearLocation( newbeehive.x, newbeehive.y, newbeehive.z, 5, newbeehive.realm )
+		if(beehives.graphic == 0x091a && beehives != newbeehive)
+			SendSysmessage (character, "There is another hive too close.");
+			return;
+		endif 
+	endforeach
+
+	//ask the player if they're sure this is where they want it
+	Sendsysmessage(character, "Are you sure you want to put the hive here?");
+	var sure := YesNo(character, "Place here?");
+
+	//if they are sure, create a working beehive, set it's honey and wax levels to 0, destroy
+	//the unusedhive and exit
+	if ( sure )
+		var beehive := CreateItemAtLocation (newbeehive.x, newbeehive.y, newbeehive.z, 0x091a, 1, newbeehive.realm);
+		SetObjProperty (beehive, "Wax", 100);
+		SetObjProperty (beehive, "Honey", 100);
+		SetObjProperty (beehive, "PlacedBy", character.name);
+		SendSysmessage (character, "You place the beehive.");
+		if(!DestroyItem (newbeehive))
+			DestroyItem (beehive);
+			return; 
+		endif
+		return;
+	else
+		SendSysmessage (character, "canceled.");
+		return;
+	endif
+endprogram
+
+
+
+
+
+///////////////////
+//  This function checks to make sure that the location that was targetted is accessible to the character.
+///////////////////
+
+function is_accessible (character, targetted)
+	var xdifference := character.x - targetted.x;
+	if (xdifference < -2 or xdifference > 2) 
+		return 0;
+	endif
+	var ydifference := character.y - targetted.y;
+	if (ydifference < -2 or ydifference > 2) 
+		return 0;
+	endif
+	return 1;
+endfunction

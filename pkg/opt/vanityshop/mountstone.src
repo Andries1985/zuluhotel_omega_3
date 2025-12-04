@@ -1,0 +1,135 @@
+use uo;
+use os;
+use vitals;
+use polsys;
+
+include "include/attributes";
+include "include/areas";
+include ":housing:utility";
+include "include/dismount";
+include "include/constants/locations";
+
+const MSG_COLOR := 100;
+const FX_SPEED := 0xa;
+const FX_LOOP := 0xa;
+
+
+program MountStone( who, item)
+	
+	ReserveItem(item);
+
+	var owner := GetObjProperty(item, "Owner");
+	if (!owner)
+		SetObjProperty(item,"Owner", who.serial);
+		SendSysMessage(who, "This "+item.name+" is now bound to "+who.name, FONT_NORMAL, MSG_COLOR);
+	elseif (owner != who.serial)
+		var owner_obj := SystemFindObjectBySerial(owner);
+		SendSysMessage(who, "I am already bound to "+owner_obj.name, FONT_NORMAL, MSG_COLOR);
+		ReleaseItem(item);
+		return 0;
+	endif
+
+	var curr_charges := GetObjProperty( item, "charges" );
+	if(curr_charges == error)
+		SendSysMessage( who, "Your "+item.name+" has been converted to the new model.", FONT_NORMAL, MSG_COLOR );
+		SendSysMessage( who, "You can use Rebirth Potions on it to add charges.", FONT_NORMAL, MSG_COLOR );
+		SendSysMessage( who, "One charge is used every time your mount dies.", FONT_NORMAL, MSG_COLOR );
+		SetObjProperty(item, "charges", 3);
+		SendSysMessage( who, "The "+item.name+" now has "+3+" Rebirth Potions.", FONT_NORMAL, 100);
+	endif
+
+	
+	var has_mount := GetObjProperty( who, "DonatorMounted" );
+	if (!has_mount)
+		CreateMount( who, item );
+	else
+		StoreMount( who, item );
+		SendSysMessage( who, "Your mount has been stored!", FONT_NORMAL, MSG_COLOR );
+	endif	
+	IncRevision(item);
+	ReleaseItem(item);
+	
+endprogram
+
+function CreateMount( who, item )
+
+	/* Since we now require Rebirth potions, we don't need to limit, else it's worse than an ostard!
+	if( !IsInACity( who ) && !IsFriend( who, who.multi) && !IsCowner(who, who.multi) && !who.cmdlevel)
+		SendSysMessage( who, "You must be in town or in your house to use that!", FONT_NORMAL, MSG_COLOR );
+		return 0;
+	endif
+	*/
+
+	var ismounted := GetEquipmentByLayer( who, 25 );
+
+	if( ismounted )
+		SendSysMessage( who, "You are already mounted!", FONT_NORMAL, MSG_COLOR);
+		return 0;
+	endif
+
+
+	if (!GetObjProperty(item, "MountStored"))
+		var mountserial := GetObjProperty( who, "DMountSerial" );
+		var mount := SystemFindObjectBySerial( mountserial );
+		if(!mount)
+			var charges := GetObjProperty( item, "charges");
+			if (!charges)
+				SendSysMessage( who, "The "+item.name+" requires more rebirth potions.", FONT_NORMAL, MSG_COLOR);
+				return 0;
+			endif
+			SetObjProperty(item, "charges", charges-1);
+
+			SendSysMessage( who, "Your mount has been revived.", FONT_NORMAL, MSG_COLOR );
+		endif
+		StoreMount( who, item );
+	endif
+
+
+
+	var name := GetObjProperty( item, "petname");
+	var mount_template := GetObjProperty( item, "MountTemplate");
+	var mount_tile := GetObjProperty( item, "MountTile");
+
+	var mount := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0x1F021, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+	mount.color := item.color;
+	mount.graphic := Cint(mount_tile);
+	
+	if (name)
+		SetObjProperty( mount, "petname", name);
+	endif
+	SetObjProperty( mount, "npctemplate", mount_template);
+	SetObjProperty( mount, "DMountStoneSerial", item.serial);
+	EquipItem(who,mount);
+	PlayObjectCenteredEffectEX(who, FX_SMOKE, FX_SPEED, FX_LOOP, mount.color, 4);	
+	SetObjProperty( who, "DonatorMounted", 1);
+	EraseObjProperty(item, "MountStored");
+	return 1;
+
+endfunction
+
+function StoreMount( who, item )
+		
+	var mounted := GetEquipmentByLayer( who, 25 );
+	if( mounted)
+		dismount(who);
+	endif
+
+	var mountserial := GetObjProperty( who, "DMountSerial" );
+	var mount := SystemFindObjectBySerial( mountserial );
+	PlayStationaryEffectEX(mount.x, mount.y, mount.z, mount.realm, FX_SMOKE, FX_SPEED, FX_LOOP, mount.color, 4);
+	MoveObjectToLocation( mount, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+	var original_stone := GetObjProperty( mount, "DMountStoneSerial" );
+	if (item.serial != original_stone) 
+		item := SystemFindObjectBySerial( original_stone );
+	endif
+	SetObjProperty(item, "MountHP", mount.hp);
+	SetObjProperty(item, "MountMana", mount.mana);
+	SetObjProperty(item, "MountStamina", mount.stamina);
+	SetObjProperty(item, "petname", mount.name);
+	SetObjProperty(item, "MountStored", 1);
+	SetObjProperty(mount,"guardkill",1);
+	ApplyRawDamage(mount, CInt(GetHP(mount)+3));
+	EraseObjProperty(who, "DonatorMounted");	
+	return 1;
+
+endfunction

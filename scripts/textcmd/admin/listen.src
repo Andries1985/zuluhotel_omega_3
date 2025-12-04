@@ -1,0 +1,12 @@
+use uo;
+
+program listening( who )
+    var listen := GetObjProperty(who, "EarsEverywhere");
+	if(!listen)
+		SetObjProperty(who, "EarsEverywhere", 1);
+		SendSysMessage(who, "Now listening to peoples secrets.", 3, 56);
+	else
+		EraseObjProperty(who, "EarsEverywhere");
+		SendSysMessage(who, "No longer listening to peoples secrets.", 3, 56);
+	endif
+endprogram

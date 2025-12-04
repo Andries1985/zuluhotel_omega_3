@@ -1,0 +1,12 @@
+use uo;
+use os;
+
+include "include/packets";
+
+program vote(who)
+
+SendSysMessage(who, "Opening the Omega info-vault!");
+sleep(2);
+OpenWebSite(who, "https://zuluhotelomega.com/info-vault"); 
+
+endprogram

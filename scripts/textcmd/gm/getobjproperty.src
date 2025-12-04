@@ -1,0 +1,22 @@
+use uo;
+include ":staff:include/staff";
+program txtcmd_getobjproperty( who , propname )
+
+	SendSysMessage( who , "Get " + propname + " cprop val from what?" );
+	var object := Target( who );
+	if( !object )
+		return;
+	endif
+
+	var result := GetObjProperty( object , propname );
+	if( result )
+		if ( lower(propname) == "lfucker" && who.cmdlevel < 5)
+			SendSysMessage( who , "Property " + propname + " don't exist on this object" );
+		else
+			SendSysMessage( who , "Property " + propname + " is : " + result );
+		endif
+	else
+		SendSysMessage( who , "Property " + propname + " don't exist on this object" );
+	endif
+
+endprogram

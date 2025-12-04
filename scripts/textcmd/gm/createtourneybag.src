@@ -1,0 +1,310 @@
+use uo;
+
+include "include/namingbyenchant";
+include "include/client";
+
+const UOBJ_REG_START := 0xf78;
+const UOBJ_REG_END := 0xf91;
+
+function createRangerBag(backpack, damage)
+
+    var bow := CreateItemInContainer(backpack, "StygianBow");
+
+    backpack.color := 1697;
+
+    bow.dmg_mod := damage;
+    SetNameByEnchant(bow);
+    
+    //Consumables
+    CreateItemInContainer(backpack, "arrow", 200);
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "grandmagerefreshelixir5", 10);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    //Leather Armor
+    var armor := {};
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGorget", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGloves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedSleeves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedLeggings", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedTunic", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyFemaleStudded", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyLeatherCap", 1);
+
+    setProtsAndColor(armor, 1697);
+    createReagsBag(backpack);
+
+endfunction
+
+
+function createWarriorBag(backpack, damage)
+
+    var spear := CreateItemInContainer(backpack, "StygianSpear");
+    var katana := CreateItemInContainer(backpack, "StygianKatana");
+    var kryss := CreateItemInContainer(backpack, "StygianKryss");
+    var mace := CreateItemInContainer(backpack, "StygianMace");
+
+    backpack.color := 1305;
+
+    spear.dmg_mod := damage;
+    katana.dmg_mod := damage;
+    kryss.dmg_mod := damage;
+    mace.dmg_mod := damage;
+    SetNameByEnchant(spear);
+    SetNameByEnchant(katana);
+    SetNameByEnchant(kryss);
+    SetNameByEnchant(mace);
+
+    //Consumables
+    CreateItemInContainer(backpack, "bandages", 100);
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    //Plate Armor
+    var armor := {};
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailBreastplate", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyFemalePlate", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailArms", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailLegs", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailGloves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailGorget", 1);
+	armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlateHelm", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyShield", 1);
+
+    setProtsAndColor(armor, 1305);
+
+endfunction
+
+
+function createMageBag(backpack, damage)
+
+    var armor := {};
+    var robe := CreateItemInContainer(backpack, "TourneyRobe");
+    var staff := CreateItemInContainer(backpack, "StygianGnarledstaff");
+
+    backpack.color := 2028;
+
+    staff.dmg_mod := damage;
+    armor[len(armor)+1] := robe;
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "Tourneywizardhat");
+    SetNameByEnchant(staff);
+    
+    //Consumables
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "grandmagerefreshelixir5", 10);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    setProtsAndColor(armor, 2028);
+    createReagsBag(backpack);
+
+endfunction
+
+
+function createThiefBag(backpack, damage)
+
+    var bow := CreateItemInContainer(backpack, "StygianBow");
+    var spear := CreateItemInContainer(backpack, "StygianSpear");
+    var kryss := CreateItemInContainer(backpack, "StygianKryss");
+
+    backpack.color := 1271;
+
+    bow.dmg_mod := damage;
+    spear.dmg_mod := damage;
+    kryss.dmg_mod := damage;
+    SetNameByEnchant(bow);
+    SetNameByEnchant(spear);
+    SetNameByEnchant(kryss);
+    
+    //Consumables
+    CreateItemInContainer(backpack, "arrow", 200);
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "bandages", 100);
+    CreateItemInContainer(backpack, "Deadlypoisonpotion", 100);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "grandmagerefreshelixir5", 10);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    //Leather Armor
+    var armor := {};
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGorget", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGloves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedSleeves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedLeggings", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedTunic", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyFemaleStudded", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyLeatherCap", 1);
+
+    setProtsAndColor(armor, 1271);
+    createReagsBag(backpack);
+
+endfunction
+
+
+function createBardBag(backpack, damage)
+
+    var crook := CreateItemInContainer(backpack, "StygianShepherdscrook");
+
+    backpack.color := 1696;
+
+    crook.dmg_mod := damage;
+    SetNameByEnchant(crook);
+    
+    //Misc
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "lute", 1);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "RefreshFullPotion", 10);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    //Leather Armor
+    var armor := {};
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGorget", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedGloves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedSleeves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedLeggings", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyStuddedTunic", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyFemaleStudded", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyLeatherCap", 1);
+
+    setProtsAndColor(armor, 1696);
+
+endfunction
+
+
+function createPPBag(backpack, damage)
+
+    var spear := CreateItemInContainer(backpack, "StygianSpear");
+    var katana := CreateItemInContainer(backpack, "StygianKatana");
+    var kryss := CreateItemInContainer(backpack, "StygianKryss");
+    var mace := CreateItemInContainer(backpack, "StygianMace");
+    var bow := CreateItemInContainer(backpack, "StygianBow");
+
+    backpack.color := 2567;
+
+    spear.dmg_mod := damage;
+    katana.dmg_mod := damage;
+    kryss.dmg_mod := damage;
+    mace.dmg_mod := damage;
+    bow.dmg_mod := damage;
+    SetNameByEnchant(spear);
+    SetNameByEnchant(katana);
+    SetNameByEnchant(kryss);
+    SetNameByEnchant(mace);
+    SetNameByEnchant(bow);
+
+    //Consumables
+    CreateItemInContainer(backpack, "bandages", 100);
+    CreateItemInContainer(backpack, "fishsteak", 20);
+    CreateItemInContainer(backpack, "Deadlypoisonpotion", 100);
+    CreateItemInContainer(backpack, "greaterhealpotion", 20);
+    CreateItemInContainer(backpack, "grandmagerefreshelixir5", 10);
+    CreateItemInContainer(backpack, "greatercurepotion5", 10);
+    CreateItemInContainer(backpack, "magicfish1", 10);
+    CreateItemInContainer(backpack, "magicfish5", 10);
+    CreateItemInContainer(backpack, "magicfish6", 10);
+
+    //Plate Armor
+    var armor := {};
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailBreastplate", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyFemalePlate", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailArms", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailLegs", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailGloves", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlatemailGorget", 1);
+	armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyPlateHelm", 1);
+    armor[len(armor)+1] := CreateItemInContainer(backpack, "TourneyShield", 1);
+
+    setProtsAndColor(armor, 2567);
+    createReagsBag(backpack);
+
+endfunction
+
+
+program textcmd_createtourneybag(who, text)
+
+    var backpack := CreateItemInBackpack(who, 0x0E75);
+    SendSysMessage(who, "Creating a " + text + " tournament backpack.");
+
+    var params := SplitWords(text);
+    var classString := params[1];
+    var damage := params[2];
+    if (!damage)
+        damage := "force";
+    endif
+
+    if (damage == "force")
+        damage := 15;
+    elseif (damage == "power")
+        damage := 20;
+    elseif (damage == "vanq")
+        damage := 25;
+    elseif (damage == "devas")
+        damage := 30;
+    else
+        //default power
+        damage := 15;
+    endif
+
+    if (classString == "ranger")
+        createRangerBag(backpack, damage);
+    elseif (classString == "warrior")
+        createWarriorBag(backpack, damage);
+    elseif (classString == "mage")
+        createMageBag(backpack, damage);
+    elseif (classString == "thief")
+        createThiefBag(backpack, damage);
+    elseif (classString == "bard")
+        createBardBag(backpack, damage);
+    elseif (classString == "pp")
+        createPPBag(backpack, damage);
+    endif
+
+endprogram
+
+
+function createReagsBag(backpack)
+
+    var reagsBag := CreateItemInContainer(backpack, "bag");
+
+    var i;
+    for ( i := UOBJ_REG_START; i <= UOBJ_REG_END; i := i + 1)
+    	CreateItemInContainer(reagsBag, i, 100);
+    endfor
+
+endfunction
+
+
+function setProtsAndColor(items, color)
+
+    foreach a in items 
+        a.color := color;
+        SetObjProperty(a, "EarthProtection", 50);
+        SetObjProperty(a, "AirProtection", 50);
+        SetObjProperty(a, "FireProtection", 50);
+        SetObjProperty(a, "WaterProtection", 50);
+        SetObjProperty(a, "NecroProtection", 50);
+        SetObjProperty(a, "HolyProtection", 50);
+        SetObjProperty(a, "PhysicalProtection", 2);
+        SetObjProperty(a, "FreeAction", 1);
+    endforeach
+
+endfunction
+

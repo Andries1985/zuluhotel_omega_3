@@ -1,0 +1,24 @@
+use uo;
+use os;
+
+include "include/constants";
+
+program spawntriggerwalkon(who, triggertile)
+
+	if(who.isa(POLCLASS_NPC) && !who.dead)
+		return 0;
+	endif
+
+	var spawnpoint_serial := GetObjProperty(triggertile, "SpawnpointSerial");
+	if (!spawnpoint_serial)
+		DestroyItem(triggertile);
+		return 0;
+	endif
+
+	var spawnpoint := SystemFindObjectBySerial(Cint(spawnpoint_serial));
+	if (spawnpoint.objtype == 0xa300)
+		SetObjProperty(spawnpoint, "Triggered", 1);
+		Start_Script( ":spawnpoint:checkpoint", spawnpoint );
+	endif
+
+endprogram

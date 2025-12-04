@@ -1,0 +1,107 @@
+use os;
+use uo;
+use datafile;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/time";
+include ":msg:include/message";
+
+Program clearmsgs( who )
+	var changetime:=GetObjProperty(who, "wipeLogs"); 
+	if(ReadGameClock()<changetime)
+		SendSysMessage(who, "You can only clear your message log once a day.",3,34);
+		return;
+	endif  
+  
+	var messages := RetrieveMessages(who);
+	ResetandBackup(who, messages);
+	if (len(messages) > 1)
+		SendSysMessage(who, "Message log has been wiped.", 3, 53);
+		SetObjProperty(who, "wipeLogs",ReadGameClock()+(24*3600));
+	else
+		SendSysMessage(who, "Nothing to clear.", 3, 53);
+		return;
+	endif
+endprogram
+
+
+function RetrieveMessages(who)
+var entryname := CStr(who.acctname+"_"+who.serial);
+var file := OpenDataFile(":msg:messages");
+
+if (!file)
+	CreateDataFile( ":msg:messages", flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(entryname);
+
+var msg;
+var mto := "";
+var props := currentelement.propnames();
+//props.sort();
+var props2 :={};
+foreach prop in props
+  props2[CInt(prop)] := prop;
+endforeach
+
+props := props2;
+
+// fucking .reverse() isn't working!
+var i;
+//foreach prop in props
+for(i := len(props); i > 0; i := i - 1)
+  msg := currentelement.getprop(props[i]);
+  if (msg[1] == who.serial)
+    if (msg[3] == "Sent")
+      mto := mto+msg[2]+": <b>"+CStr(msg[3])+"</b> to <b>"+msg[4]+"</b>.<br><BASEFONT COLOR=darkblue><i>"+msg[5]+"</i><BASEFONT COLOR=black><br><br>";
+    else
+      mto := mto+msg[2]+": <b>"+CStr(msg[3])+"</b> <b>"+msg[4]+"</b>.<br><BASEFONT COLOR=darkblue><i>"+msg[5]+"</i><BASEFONT COLOR=black><br><br>";
+    endif
+  endif
+endfor
+
+UnloadDataFile(":msg:messages");
+
+if (len(mto) < 2)
+  mto := "No recorded message history.";
+endif
+
+return mto;
+endfunction
+
+
+
+function ResetandBackup(who, messages)
+var timeanddate := SplitWords(NowString());
+var entryname := CStr(who.acctname+"_"+who.serial);
+var file := OpenDataFile(":msg:messages_archive");
+
+if (!file)
+	CreateDataFile( ":msg:messages_archive", flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(entryname);
+
+if (!currentelement)
+      currentelement := file.CreateElement(entryname);
+endif
+
+currentelement.setprop(CStr(timeanddate), messages);
+
+UnloadDataFile(":msg:messages_archive");
+
+// now reset
+
+entryname := CStr(who.acctname+"_"+who.serial);
+file := OpenDataFile(":msg:messages");
+
+currentelement := file.FindElement(entryname);
+
+var props := currentelement.propnames();
+foreach prop in props
+  currentelement.eraseprop(prop);
+endforeach
+
+UnloadDataFile(":msg:messages");
+endfunction

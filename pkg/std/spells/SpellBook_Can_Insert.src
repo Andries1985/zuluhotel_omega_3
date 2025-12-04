@@ -1,0 +1,47 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool 28/04/2012
+//
+// Simple check for adding items in a book
+//
+////////////////////////////////////////////////////////////////////////////////////
+
+
+use uo;
+use os;
+
+
+
+program Spellbook_CanInsertScript(who, container, movetype, inserttype,item, existing_stack, amount_to_add)
+if(GetObjProperty(item, "Scribed"))
+	SendSysMessage(who, "You can't insert scribed spells into the spellbook.");	
+	return 0;
+endif
+
+if (movetype != 0)
+	return 1;
+endif
+//NOTE: Item is already considered inserted at this point!!!!
+
+// This is the range of scrolls
+if (item.objtype >= 0x1f2d && item.objtype <= 0x1f6c)
+
+var amt := CInt(item.amount)-1;
+	// All we can do here is create scrolls in the players pack and delete extra in book
+	if (item.amount > 1)
+		CreateItemInBackpack( who, item.objtype, CInt(item.amount)-1 );
+		SubtractAmount( item, amt );
+	endif
+
+	PlaySoundEffect( who, 0x1f1);
+	if (item.container == who.backpack)
+		PlayObjectCenteredEffect( who , 0x377a , 7 , 0x10 );
+	else
+		PlayObjectCenteredEffect( item , 0x377a , 7 , 0x10 );
+	endif
+	SendSysMessage(who, "You insert the spell into the spellbook.");
+endif
+
+return 1;
+
+endprogram
+

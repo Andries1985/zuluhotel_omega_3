@@ -1,0 +1,105 @@
+use uo;
+use os;
+
+include "include/classes";
+include ":versebook:include/versefunctions";
+include ":versebook:include/verseconstants";
+
+var stamina, diff, skills, element, instrument, musicianship, name;
+
+// How many seconds between damage
+var HIDE_LOOP := 2;
+
+const GFX_EFFECT := 14201;
+const GFX_COLOUR := 1150;
+const SOUND_EFFECT := 0x204;
+
+program Shadows(parms)
+
+	// Sent with the song_id (a number like spellid)
+	var who := parms[1];
+	var song_id := parms[2];
+	
+	Attach(who);
+
+	// Checks rules for playing the particular song, class, stamina skills, instrunment
+	// Returns cfg info for song to save processing power
+	var can_play := CanPlay(who, song_id);
+	if (!can_play)
+		return 0;
+	else
+		stamina := can_play[1];
+		diff := can_play[2];
+		skills := can_play[3];		 // array of skill_ids to base verse on
+		element := can_play[4];		 // array of elements to base damage on
+		instrument := can_play[5];	 // Item ref to music instrument found
+		musicianship := can_play[6]; // The players music SKILL level
+		name := can_play[7];		 // The name of the song
+	endif
+
+	// Atm we don't allow bards to move, if they lose hp, stop
+	var x := who.x;
+	var y := who.y;
+	var hp := GetHP(who);
+
+	var last_played := ReadGameClock(); // Used JUST for the playing sound, does a check against music skill too
+
+	// All skill checks are done in here
+	if (!SucceedPlayingVerse(who, skills, diff, instrument, name))
+		return 0;
+	endif
+
+	// Calculate the range, damage, and specify the loop var, as well as hit var
+	var range := GetVerseRange(who, musicianship);
+
+	var i := HIDE_LOOP;
+	var hit;
+
+	// ------------- The looping main effect of the song ------------ \\
+	repeat
+
+		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
+		if (ReadGameClock() >= last_played)
+			if (!PlayBardicMusic(who, diff, instrument))
+				return 0;
+			endif
+			last_played := ReadGameClock()+7;
+		endif
+
+		// set hit to 0 again
+		hit := 0;
+		if ( i == HIDE_LOOP)
+
+			foreach person in (ListMobilesInLineOfSight( who, range )+who)
+				// Hit guildies or parties
+				if (SmartSongBoost(who, person))
+					if ((person == who) && (who.hidden))
+						continue;
+					endif
+					hit := 1;
+					if (ConsumeBardStamina(who, stamina, 1))
+						PlayStationaryEffectEx( person.x, person.y, person.z, person.realm, GFX_EFFECT, 8,30, GFX_COLOUR);
+						PlaySoundEffect(person, SOUND_EFFECT);
+						person.hidden := 1;
+					else
+						break;
+					endif
+				endif
+			endforeach
+			
+			i := 0;
+			
+			// No-one was hit, use half stamina
+			if (hit == 0)
+				ConsumeBardStamina(who, stamina, 0);
+			endif
+			
+		endif
+
+		i := i + 1;
+		
+		sleep(1);
+
+	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+	
+endprogram

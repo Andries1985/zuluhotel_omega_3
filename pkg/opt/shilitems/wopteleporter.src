@@ -1,0 +1,24 @@
+
+use os;
+use uo;
+
+program walk_on_moongate( mobile , gate )
+
+	if( GetObjProperty( gate , "#Revealed" ) )
+		if( mobile.npctemplate and mobile.script != "tamed" )
+			return;
+		endif
+
+		var x := Cint( GetObjProperty( gate , "GateDestX" ) );
+		var y := Cint( GetObjProperty( gate , "GateDestY" ) );
+		var z := Cint( GetObjProperty( gate , "GateDestZ" ) );
+		var realm := GetObjProperty( gate , "GateDestRealm" );
+
+		if( !x and !y and !z and !realm )
+			return;
+		endif
+		
+		MoveObjectToLocation( mobile , x , y , z, realm );
+	endif
+	
+endprogram

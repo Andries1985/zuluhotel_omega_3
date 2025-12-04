@@ -1,0 +1,121 @@
+//Edited September 20, 2024
+
+use uo;
+use os;
+use util;
+use cfgfile;
+
+include ":champspawns:skulls";
+include ":champspawns:altar";
+include ":champspawns:spawning";
+include "include/client";
+
+program control(altar)
+  var creatures := array;
+
+  var kills:=0, totalKills:=0, nextLvlUp := 20;
+  if(POLCORE().systime > GetObjProperty(altar, "NextActiv"))
+    DeactivateAltar(altar);    //erases any junk prop that might've passed by in the itemdesc
+    ActivateAltar(altar);    //and starts it
+  endif
+  var nextLVLDownCheck:=ReadGameClock()+LVLDOWNCHECK;
+  var csLevel := getAmountOfConcurrentSpawns(altar);
+
+  while(altar)
+    if(CInt(GetObjProperty(altar, "active")))
+      kills:=0;
+      var champserial := GetObjProperty(altar, "champ");
+
+      if(!champserial)    // Ok, champ didnt spawn yet, lets see how many creatures he killed and respawn
+      if(GetObjProperty(altar, "#completed"))
+          SpawnChampion(altar);
+          champserial := GetObjProperty(altar, "champ");
+      else
+          var i;
+
+          for(i:=creatures.size(); i>0;i:=i-1)
+            if(!SystemFindObjectBySerial(creatures[i]))
+              creatures.erase(i);
+              kills:=kills+1;
+            endif
+          endfor
+
+          totalKills := totalKills+kills;
+          var killPercent := (totalKills*100) / CInt(getMaxSpawns(altar, csLevel));
+          if((ReadGameClock()>nextLVLDownCheck) and killPercent<90)
+            kills:=0;
+            totalKills:=0;
+            if (killPercent>20)
+              createNextRedSkull(altar);
+            endif
+            nextLvlUp := 20;
+            destroyLastRedSkull(altar);
+            nextLVLDownCheck:=ReadGameClock()+LVLDOWNCHECK;
+          endif
+
+          if(killPercent>90)
+            if(!GetObjProperty(altar, "#completed"))
+              kills:=0;
+              totalKills:=0;
+              createNextRedSkull(altar);
+              nextLvlUp := 20;
+              nextLVLDownCheck:=ReadGameClock()+LVLDOWNCHECK;
+            else
+              SpawnChampion(altar);
+            endif
+          elseif (killPercent>nextLvlUp)
+            createNextWhiteSkull(altar);
+            nextLvlUp :=nextLvlUp+ 20;
+          endif
+
+        if (!GetObjProperty(altar, "#completed"))
+          if(creatures.size() == 0)
+            creatures := fixSpawning(altar);
+          endif
+          while(creatures.size() <= (csLevel - getRedSkullProgressionLevel(altar)) && altar)
+            var creature := SpawnCreature(altar);
+
+            if(creature)
+            creatures.append(creature.serial);
+            endif
+
+            sleepms(TINY_WAIT);
+          endwhile
+        endif
+      endif
+      elseif(!SystemFindObjectBySerial(champserial))  // Champ is dead
+        DeactivateAltar(altar);
+      endif
+
+      sleep(BIG_CHECK_WAIT);
+    else
+      var nextActiveTime := GetObjProperty(altar, "NextActiv");
+      var now := POLCORE().systime;
+      var timeUntilActivation := nextActiveTime - now;
+      var twoHours := 2 * HOUR;
+      if (timeUntilActivation <= twoHours && timeUntilActivation >= (twoHours - (INAC_WAIT/2)))
+        Broadcast("A Champion Spawn will activate in less than 2 hours!", FONT_BOLD, 1176 );
+        sleep(INAC_WAIT);
+      elseif (timeUntilActivation <= HOUR && timeUntilActivation >= (HOUR - INAC_WAIT/2))
+        Broadcast("A Champion Spawn will activate in less than 1 hour!", FONT_BOLD, 1176 );
+        sleep(INAC_WAIT);
+      elseif (now >= nextActiveTime)
+        ActivateAltar(altar);
+      else
+        sleep(INAC_WAIT);
+      endif
+    endif
+  endwhile
+
+  return 0;
+endprogram
+
+function fixSpawning(altar)
+	var creatures := {};
+		foreach creature in ListMobilesNearLocation( altar.x, altar.y, altar.z, 300, altar.realm );
+			if(GetObjProperty(creature, "iChampSpawn"))
+				creatures.append(creature.serial);
+			endif
+		endforeach
+	return creatures;
+endfunction

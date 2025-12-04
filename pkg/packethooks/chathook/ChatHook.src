@@ -1,0 +1,25 @@
+////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// ChatHook() - Function that gets fired when people press the chat button.
+//	        Will make this trigger a messaging system ingame when I make it
+//
+////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use os;
+use cfgfile;
+use polsys;
+
+program ChatHook()
+	Print("Hooking Chat window 0xb5");
+	return 1;
+endprogram
+
+exported function HandleChatPacket( character, byref packet )
+
+// Start a message script. When it's made :P
+
+return 1;
+	
+endfunction

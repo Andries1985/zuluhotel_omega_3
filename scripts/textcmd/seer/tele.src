@@ -1,0 +1,17 @@
+use uo;
+use os;
+
+include ":staff:include/staff";
+program textcmd_tele( who )
+    SendSysMessage( who, "Where do you want to teleport?" );
+
+    var where := TargetCoordinates( who );
+    if (where)
+        var result := MoveObjectToLocation( who, where.x, where.y,where.z, who.realm, MOVEOBJECT_FORCELOCATION);
+
+
+        if (!result)
+            SendSysMessage( who, result.errortext );
+        endif
+    endif
+endprogram

@@ -1,0 +1,155 @@
+use uo;
+use os;
+use cfgfile;
+use basic;
+
+include "include/time";
+include "include/classes";
+include "include/client";
+include ":karmafame:karmafame";
+include "include/dotempmods";
+include "util/bank";
+include "include/constants/locations";
+
+program logon( who )
+
+	//setchat(who);
+	var acc := who.acct;
+	var cwitem := {};
+	var checkcw := 0;
+	var found := 0;
+	var loop := 0;
+	var lfame;
+	var lkarma;
+	var payback;
+	acc.setprop("Login", NowString());
+	acc.setprop("IP", who.ip);
+	SetObjProperty(who, "#logontime", ReadGameClock() );
+	var hunger := GetObjProperty( who, "hunger" );
+	
+	if (hunger > 9)
+		who.hunger := 9;
+	endif
+
+	set_critical(1);
+	WipeMods(who);
+	CurePoison(who);
+	set_critical(0);
+	
+	var macrowhen := GetMacroString();
+	var description := GetGlobalProperty("QuestDescription");
+	if( !description )
+		description := "";
+	endif
+	
+	if( who.cmdlevel )
+		var gmpages := getglobalproperty("gmpages");
+		var counpages := getglobalproperty("counpages");
+		SendStringAsTipWindow( who, "Welcome to Zulu Hotel Omega.          There are " + CInt(gmpages.size()/2) + " page(s).                                                                                                                                                   " + description );
+		Start_Script("misc/news", who);
+	else
+		// Don't want that window open on first log on for converted chars
+		if (!GetObjProperty(who, "Converted"))
+			Start_Script("misc/news", who);
+		else
+			sleep(2);
+			SendSysMessage(who, "Welcome back "+who.name+"!", 3, 53);
+			sleep(3);
+			SendSysMessage(who, "You have been reborn and have only your past experience to define you.", 3, 53);
+		endif
+		
+		StartScripts(who);
+		AssignClasse(who);
+		SetNewNotoName(who);
+		//SetNewbieStatus(who);
+		if (getobjproperty(who,"starttime"))
+			Eraseobjproperty(who,"starttime");
+		endif
+		var release := acc.getprop("Release");
+		if( who.x >= 5270 )
+			if( who.x <= 5312 )
+				if( who.y >= 1158 )
+					if( who.y <= 1192 )
+						if( release > ReadGameClock() )
+							var timeremaining := ((release - ReadGameClock())/86400);
+							var timerh := ((release - ReadGameClock())%86400)/3600;
+							var timerm := (((release - ReadGameClock())%86400)%3600)/60;
+							var timers := (((release - ReadGameClock())%86400)%3600)%60;
+								
+							MoveObjectToLocation( who, DEFAULT_LOCATION_JAIL_X, DEFAULT_LOCATION_JAIL_Y, DEFAULT_LOCATION_JAIL_Z, DEFAULT_LOCATION_JAIL_R, MOVEOBJECT_FORCELOCATION);
+							SendSysmessage(who, "You have " + timeremaining + " day(s) "+ timerh +" hour(s) "+ timerm +" minute(s) and "+ timers +" second(s) left in jail.", FONT_NORMAL, 2595 );
+						else
+							acc.setprop("Release",0);
+		 					MoveObjectToLocation( who, 1433, 1861, 36, "britannia_alt", MOVEOBJECT_FORCELOCATION);
+		 					SendSysmessage(who, "You are freed.");
+							who.frozen := 0;
+		 				endif
+		 			endif
+		 		endif
+		 	endif
+		endif					
+	endif
+
+endprogram
+
+
+function StartScripts(who)
+
+	var process := {};
+	process.append(start_script(":cooking:hunger", who).pid);
+	process.append(start_script(":areas:areaban", who).pid);
+	SetObjProperty( who, "#RunningScripts", process );
+
+endfunction
+
+
+function setchat(who)
+
+	while (getglobalproperty("plylock") == 1)
+	sleep(10);
+	endwhile
+
+	set_critical(1);
+	setglobalproperty("plylock",1);
+
+	var plychat:=getglobalproperty("plychat"),csize:=plychat.size();
+
+	if (plychat[1] == "NONE")
+		csize:=0;
+	endif
+
+	plychat[csize+1] := who.serial;
+
+	setglobalproperty("plychat",plychat);
+	setglobalproperty("plylock",0);
+	set_critical(0);
+
+endfunction
+
+
+function SetNewbieStatus(player)
+
+	if (player.cmdlevel>0) return 0; endif
+
+	var newbieflag := GetObjProperty(player, "newbie");
+
+	//Make sure we don't tag twice
+	var result := find(player.name, " [New]", 1);
+	if (result)
+		if (!newbieflag)
+			//SetObjProperty(player,"newbie", 1);
+		endif
+		return 0;
+	endif
+
+	if (newbieflag)
+		return 0;
+	endif
+
+	var gametime := GetObjProperty(player, "onlinetimer");
+
+	if (!gametime or (gametime < 1000000))
+		//player.name := player.name + " [New]";
+		//SetObjProperty(player,"newbie", 1);
+	endif
+endfunction

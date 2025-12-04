@@ -1,0 +1,20 @@
+use uo;
+use os;
+use datafile;
+
+program OnCharDeletion(who, unused deleteby) 
+
+
+var entryname := CStr(who.acctname+"_"+who.serial);
+var file := OpenDataFile(":msg:messages");
+
+var currentelement := file.FindElement(entryname);
+
+if (!currentelement)
+	return 0;
+endif
+
+file.DeleteElement(entryname);
+
+UnloadDataFile(":msg:messages");
+endprogram

@@ -1,0 +1,16 @@
+// Properties can have one of three forms:
+//    Armor  [Armor Template]       // See armor.cfg
+//    Weapon [Weapon Template]      // See weapon.cfg
+//    Equip  [ObjType] [Color]      // Color defaults to 0
+
+Equipment Gardener
+{
+    Weapon Scimitar
+    Equip 0x1efd 775    // Woman cloth
+    Equip 0x13c6 1159   // Gloves
+    Equip 0x1515 775    // Cloack
+    Equip 0x153a 1159   // Pants
+    Equip 0x170b 1175   // Boots
+    Equip 0xa14         // Torch
+    Equip 0x153c 515    // Violet Hair
+}

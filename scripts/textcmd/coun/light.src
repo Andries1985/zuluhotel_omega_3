@@ -1,0 +1,7 @@
+use uo;
+include ":staff:include/staff";
+program light(who)
+
+who.setlightlevel(0, 999999);
+
+endprogram

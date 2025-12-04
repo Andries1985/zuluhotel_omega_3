@@ -1,0 +1,154 @@
+use uo;
+use os;
+use datafile;
+
+include "include/attributes";
+include "include/NameChecker";
+include ":areas:include/areafunctions";
+include ":karmafame:karmafame";
+include "include/constants/locations";
+include "include/client";
+include ":accounts:accounts";
+include ":accounts:settings";
+
+// Toadstool ADD
+const BANNED_IPS := ":ipban:bannedips";
+
+program logon( who )
+	//Print("I am using scripts misc logon.src");
+
+	var stafflevel := who.cmdlevel;
+
+	if(stafflevel > 0)
+		who.setlightlevel(0, 999999);
+	endif
+
+	if(DEBUG_MODE)
+		who.setlightlevel(0, 999999);
+		SetObjProperty( who, "hunger", 1 );
+	endif
+
+	RemoveLogoff( who );
+
+	// for whatever reason I didn't use # tag for this. 
+	RemoveSafeAreaProperties(who, 1);
+	
+	// Kick if IP banned
+	CheckIPBan(who);
+
+	var acc:=who.acct;
+	if(acc.getprop("acctjail"))
+		MoveObjectToLocation( who, DEFAULT_LOCATION_JAIL_X, DEFAULT_LOCATION_JAIL_Y, DEFAULT_LOCATION_JAIL_Z, DEFAULT_LOCATION_JAIL_R, MOVEOBJECT_FORCELOCATION);
+	endif
+
+	if(!acc.getprop("Release"))
+		acc.eraseprop("acctjail");
+	endif
+	
+	Print( "logon: " + who.name );
+	Start_Script( "::playermanager", who );
+	
+	var settings := ACCT_GetSettingsCfgElem( "Settings" );
+	acc.set_uo_expansion(settings.DefaultExpansion);
+
+    GrantPrivilege( who, "seeghosts" );
+	who.Enable( "seeghosts" );
+
+	// Name Check
+        var check := CheckName(who.name,who);
+        if (check[1] == 0 || check != 1 || GetObjProperty(who, "Converted"))
+			who.name := "AlreadyUsed";
+			start_script("misc/namechanger", {who, check[2]}); 
+        endif
+		
+	if (stafflevel == 0)		
+		who.concealed := 0;
+	endif
+	
+	if(!GetObjProperty(who, "OrgName"))
+		SetObjProperty(who, "OrgName", who.name);
+	endif
+
+	if(!GetObjProperty(who, "DaysOld"))
+		var time := GetObjProperty(who, "CreatedAt");
+		var timenow := ReadGameClock();
+		if(!time)
+			time := 0;
+		endif
+		time := timenow-time;
+		time := CInt(time/(24*3600));
+		SetObjProperty(who, "DaysOld", time);
+	endif
+
+	if (stafflevel == 0)		
+		who.concealed := 0;
+		Broadcast( who.name + " has arrived!");
+	else
+		Broadcast( who.name + " has come online and is here to help!");
+	endif
+	
+
+endprogram
+
+
+// Check data file for banned ip and kick
+function CheckIPBan(who)
+
+	// open banned datafile
+	var ipdfile := OpenDataFile( BANNED_IPS );
+
+	// open element
+	var bannedele := ipdfile.FindElement("BannedIPS");
+	var strip := CStr(who.ip);
+
+	UnloadDataFile( BANNED_IPS );
+
+	var iplist := bannedele.PropNames();
+
+	var i := 1;
+	var stop;
+
+	foreach ip in iplist	
+		if (ip[i] == strip[i]) // If first number is the same, check the whole thing
+
+			repeat
+				// even if this is the first one, it means entire world ban
+				if (CInt(ip[i]) == 2 && CInt(ip[(i+1)]) == 5 && CInt(ip[(i+2)]) == 5)
+					stop := 1;
+					
+					foreach person in EnumerateOnlineCharacters()
+						if (person.cmdlevel > 1)
+							SendSysMessage(person, "Account: "+who.acctname, 3, 53);
+							SendSysMessage(person, "Character: "+who.name, 3, 53);
+							SendSysMessage(person, "Tried logging in but is IP banned. Consider account ban?", 3, 43);
+						endif
+					endforeach
+					DisconnectClient( who );
+
+				elseif (strip[i] == ip[i])
+					i := i + 1;
+				else
+					stop := 1;
+				endif
+			until (stop || i > 100); //failsafe
+			stop := 0;
+			i := 1;	
+		endif
+	endforeach
+
+endfunction
+
+function RemoveLogoff( mobile )
+
+        var shrink_serial := GetObjProperty( mobile, "ShrinkLogoff" );
+        if( shrink_serial.errortext )
+                return 0;
+        endif
+        
+        var shrink_mobile := SystemFindObjectBySerial( shrink_serial );
+        if( shrink_mobile )
+                DestroyItem( shrink_mobile );
+        endif
+
+        return 1;
+endfunction

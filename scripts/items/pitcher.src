@@ -1,0 +1,85 @@
+use uo;
+use os;
+use math;
+
+include "include/eventid";
+include "include/client";
+include "include/random";
+include "include/itemutil";
+include "include/attributes";
+
+const UOBJ_PITCHER_FULL := 0x09a7;
+const UOBJ_PITCHER_EMPTY := 0x09f0;
+//const UOBJ_KEG := 0x1940;
+const UOBJ_HOPS := 0x1aa2;
+const UOBJ_WHEAT := 0x1ebd;
+
+program use_pitcher(character, item)
+
+    if (item.graphic == UOBJ_PITCHER_FULL)
+        sendsysmessage(character, "What do you want to use that on?");
+        var what := targetcoordinates(character);
+
+        if (!Accessible( character , what ))
+                sendsysmessage(character, "That's too far away!");
+                return;
+        endif
+        
+        foreach mob in listmobilesnearlocation( what.x, what.y, what.z, 1, what.realm)
+                var ev;
+                ev.+type := SYSEVENT_ENGAGED;
+                ev.+source := character;
+                sendevent(mob, ev);
+                playsoundeffect(character, 0x11);
+                sendsysmessage(mob, character.name + " wets you down with water!");
+        endforeach
+        foreach thing in listitemsnearlocation(what.x, what.y, what.z, 0, what.realm)
+                if (thing.objtype == UOBJ_KEG)
+                        do_ferment(character, thing);
+                endif
+                if (getobjproperty(thing, "w"))
+                       setobjproperty(what, "w", getobjproperty(what, "w") + 1);
+                else
+                        setobjproperty(what, "w", 1);
+                endif
+        endforeach
+
+else
+        sendsysmessage(character, "Where you you want to fill this?");
+        var where := targetcoordinates(character);
+            if (Accessible( character , where ))
+                //he's close enough
+                if (IsWater(where))
+                       item.graphic := UOBJ_PITCHER_FULL;
+                       playsoundeffect(character, 0x11);
+                else
+                        sendsysmessage(character,"You can't get water from a stone!");
+                endif
+        else
+                sendsysmessage(character, "You can't reach that");
+        endif
+endif
+
+endprogram
+
+function do_ferment(character, thing)
+
+var hops := FindObjtypeInContainer( thing, UOBJ_HOPS );
+var wheat := FindObjtypeInContainer( thing, UOBJ_WHEAT );               
+if (hops && wheat)
+       sendsysmessage(character, "You start the fermentation process");
+        if (checkskill(character, SKILLID_ALCHEMY, -1, 100))
+                setobjproperty(thing, "alequal", Random(4) + 1);
+                setobjproperty(thing, "ale", readgameclock() + (60*60*24*3));
+                thing.usescript := "ale";
+        else
+                setobjproperty(thing, "alequal", 0);
+                setobjproperty(thing, "ale", readgameclock() + (60*60*24*3));
+                thing.usescript := "ale";
+        endif
+else
+        Sendsysmessage(character, "You are still missing some ingredients");
+        return;
+endif
+
+endfunction

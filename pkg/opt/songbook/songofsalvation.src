@@ -1,0 +1,128 @@
+use uo;
+
+include "include/spelldata";
+include "include/client";
+include "include/objtype";
+include "include/skillpoints";
+include "include/bard";
+include "include/eventid";
+include "include/checkcity";
+include "include/res";
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_REVIVE;
+const SPELL_EFFECT_ID		:= FX_SPELL_REVIVE;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_REVIVE;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_REVIVE;
+program cast_songofsalvation( player )
+	SetObjProperty( player , "#Casting", 1 );
+	var singinghp := GetHp( player );
+	var circle := GetCircle( SPELLID_SONG_OF_SALVATION  );
+	var instrument := findinstrument( player );
+	var sfx_success;
+	var sfx_failure;
+	case( instrument.graphic )
+		UOBJ_HARP:	sfx_success := SFX_HARP_SUCC;
+				sfx_failure := SFX_HARP_FAIL;
+				break;
+				
+		UOBJ_LUTE:	sfx_success := SFX_LUTE_SUCC;
+				sfx_failure := SFX_LUTE_FAIL;
+				break;
+				
+		UOBJ_DRUM:	sfx_success := SFX_DRUM_SUCC;
+				sfx_failure := SFX_DRUM_FAIL;
+				break;
+				
+		UOBJ_TAMB:	sfx_success := SFX_TAMB_SUCC;
+				sfx_failure := SFX_TAMB_FAIL;
+				break;
+				
+		default:	PrintTextAbovePrivate( player, "You dont have an Instrument!",player );
+				EraseObjProperty( player , "#Casting" );
+				return;
+	endcase
+	
+
+	var peace := GetAttribute(player, ATTRIBUTEID_PEACEMAKING);
+	var mus := GetAttribute(player, ATTRIBUTEID_MUSICIANSHIP);
+	var spec := 0;
+	if (GetObjProperty(player, "IsBard"))
+		spec := GetObjProperty(player, "IsBard");
+	elseif (GetObjProperty(player, "IsBladesinger"))
+		spec := GetObjProperty(player, "IsBladesinger");
+	endif
+	var ps;
+	var proped := array();
+	var drain := (circle*6)-(spec*2);
+	var difficulty := (circle*12)+(Random(25)-(spec*8));
+	//PrintTextAbove(player,"Difficulty:"+difficulty);
+	PerformAction( player, 0X021 );
+	if (difficulty > peace or difficulty > mus or !spec)
+		PlaySoundEffect( player , sfx_failure );
+		EraseObjProperty( player , "#Casting" );
+		PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
+		ps := GetStamina( player ) -(drain/2);
+		if (ps < 0 )
+			ps := 0;
+		endif
+		SetStamina( player, ps );
+		return;
+	elseif ((GetStamina( player ) -drain) <  0)
+		PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
+		PrintTextAbovePrivate( player, "Out of Stamina!",player );
+		PlaySoundEffect( player , sfx_failure );
+	else
+		ps := GetStamina( player ) -drain;
+		if (ps < 0 )
+			ps := 0;
+		endif
+		SetStamina( player, ps );
+
+		if (GetHp( player ) < singinghp)
+			sleep(1);
+			PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
+			PrintTextAbovePrivate( player, "You were interrupted!",player );
+			PlaySoundEffect( player , sfx_failure );
+			EraseObjProperty( player , "#Casting" );
+			return;
+		else
+			sleep(1);
+			if (!spec)
+				spec := 0;	
+			endif
+			spec := spec + 2;
+			PerformAction( player, 0X021 );
+			PlaySoundEffect( player , sfx_success );
+			PrintTextAbove(player,"Misericordia Dono Animo Exanimalis");
+			sleep(1);
+			var duration := mus * 70;
+			var victims := ListMobilesInLineOfSight( player , cint( (spec+1) * 2 ));
+			
+			victims := SmartAoE(player, victims);
+
+			foreach cast_near in victims
+				if( GetObjProperty( cast_near , "Type" ) == "Undead" )
+					SetHp( cast_near, GetHp( cast_near ) / 2 );
+					PlayObjectCenteredEffect( cast_near, FX_SPELL_CURE , SPEED_SPELL_CURE , LOOP_SPELL_CURE );
+					PlaySoundEffect(cast_near, SFX_SPELL_REVIVE);
+					PlaySoundEffect(player, SFX_SPELL_REVIVE);
+				endif
+			endforeach
+
+			var affected := ListGhostsNearLocation( player.x , player.y , player.z , spec, player.realm );
+
+			affected := SmartBoost(player, affected);
+			
+			foreach cast_near in affected	
+				if(CheckLineOfSight( player, cast_near ))
+					if(!ValidSongBoost(player, cast_near))
+						continue;
+					endif
+					PlaySoundEffect(cast_near, SFX_SPELL_REVIVE);
+					PlaySoundEffect(player, SFX_SPELL_REVIVE);
+					ResurrectMobile( cast_near , player );
+				endif
+			endforeach
+		endif
+	endif
+	EraseObjProperty( player , "#Casting" );
+endprogram

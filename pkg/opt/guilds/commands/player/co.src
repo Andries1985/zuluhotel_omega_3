@@ -1,0 +1,10 @@
+use uo;
+use guilds;
+
+include ":guilds:include/guildchat";
+
+program send_own_message (who, text)
+
+chatown(who, text);
+
+endprogram

@@ -1,0 +1,53 @@
+
+use uo;
+use os;
+use cfgfile;
+use polsys;
+
+include ":security:report";
+include ":datafile:datafile";
+
+program InitializeDoors(  )
+
+		var cfg_file := ReadConfigFile( ":christmas:autosanta" );
+		if( !cfg_file )
+			ReportText( "No config file found for realm ", REPORT_SYSLOG );
+		endif
+		
+		// Allowing unlimited elem names so people can sort the configs as they wish!
+		foreach elem_name in ( GetConfigStringKeys( cfg_file ))
+			ReportText( "Setting up christmas in config elem "+elem_name, REPORT_SYSLOG );
+			var cfg_elem := cfg_file[elem_name];
+			CreateDoorsForElem( cfg_elem, "britannia" );
+			
+			SleepMS(2);
+		endforeach
+		
+		UnloadConfigFile(":christmas:autosanta");
+		
+		SleepMS(2);
+	
+	return 1;
+endprogram
+
+function CreateDoorsForElem( byref cfg_elem, byref realm )
+	MAIN: foreach entry in ( GetConfigStringArray( cfg_elem, "Icicle" ))
+		entry := SplitWords( entry );
+		var x := CInt( entry[1] );
+		var y := CInt( entry[2] );
+		var z := CInt( entry[3] );
+		var type := CInt( entry[4] );
+				
+		var door := CreateItemAtLocation( x, y, z, type, 1, realm );
+		if( !door)
+			print("door "+door);
+		else
+			SetObjProperty(door, "ChristmasDeco", 1);
+			door.movable := 0;
+		endif
+		
+		SleepMS(2);
+	endforeach
+	
+	return 1;
+endfunction

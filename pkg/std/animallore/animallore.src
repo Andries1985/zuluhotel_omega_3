@@ -1,0 +1,89 @@
+use cfgfile;
+use uo;
+use os;
+
+include "include/client";
+include "include/eventid";
+include "include/classes";
+include "include/attributes";
+
+CONST POINT_VALUE := 250;
+
+program use_animallore (character)
+	SendSysMessage( character, "What?" );
+	var targetted  := Target(character);
+	if (!targetted)
+		SendSysmessage(character, "Canceled.");
+		return;
+	endif
+
+	//if its an animal
+	if (targetted.npctemplate)
+		EvaluateAnimal (character, targetted);
+	else
+		SendSysMessage (character, "You know nothing about that.");
+	endif
+
+endprogram
+
+
+function EvaluateAnimal (character, animal)
+
+	var npc_config := ReadConfigFile ("::npcdesc");
+	var elem := FindConfigElem (npc_config, animal.npctemplate);
+	if (!elem)
+		SendSysmessage(character, "You know nothing about this creature");
+		return;
+	endif
+
+	var points := POINT_VALUE;
+	var ranger := GetObjProperty( character , CLASSEID_RANGER );
+
+	
+	if (!CheckSkill (character, SKILLID_ANIMALLORE, -1, points) )
+		PrintTextAbovePrivate(animal, "Hmm... you're not sure...", character);
+		return;
+	endif
+			
+		var descit := "mundane ";
+		if (animal.script == "firebreather")
+			descit := "firebreathing ";
+		elseif (animal.script == "spellkillpcs")
+			descit := "spellcasting ";
+		endif
+	
+		var itstr := " very weak ";
+		if (GetMaxHP(animal) > 1000)
+			itstr := " tremendously strong ";
+		elseif (GetMaxHP(animal) > 500)
+			itstr := " very strong ";
+		elseif (GetMaxHP(animal) > 300)
+			itstr := " strong ";
+		elseif (GetMaxHP(animal) > 150)
+			itstr := " fairly strong ";
+		elseif (GetMaxHP(animal) > 100)
+			itstr := " not so strong ";
+		elseif (GetMaxHP(animal) > 75)
+			itstr := " fairly weak ";
+		endif	
+
+		PrintTextAbovePrivate (animal, "Looks like a" +itstr+descit+"creature.", character);
+
+
+	if ( getobjproperty(animal, "freetime") )
+		var freetime := getobjproperty (animal, "freetime");
+		if ((ReadGameClock() + 2000) > freetime)
+			PrintTextAbovePrivate (animal, "It looks very hungry!", character);
+		elseif ((ReadGameClock() + 4200) > freetime)
+			PrintTextAbovePrivate (animal, "It looks pretty hungry.", character);
+		else
+			PrintTextAbovePrivate (animal, "It looks well fed.", character);
+		endif
+	endif
+
+	//disease
+	if (GetObjProperty (animal, "diseased") )
+		PrintTextAbovePrivate (animal, "It appears to be diseased.", character);
+	endif
+
+endfunction

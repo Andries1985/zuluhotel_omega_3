@@ -1,0 +1,62 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// EnterAreaDelay() - Called by EnterArea(). This had to be done, due to a core bug (or just not what I wanted).
+//		      See EnterArea() for the description.	
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+use os;
+use uo;
+use datafile;
+
+include "include/areas";
+include ":areas:include/areafunctions";
+
+program EnterAreaDelay(who)
+
+	set_critical(1);
+
+	var regionname := GetRegionName(who);
+	//SendSysMessage(who, "You have entered "+regionname +".", 3, 1001);
+
+	/*
+	var file := OpenDataFile(":areas:EnterArea");
+	if (!file)
+		CreateDataFile( ":areas:EnterArea");
+	endif
+
+	var region := file.FindElement(regionname);
+	UnloadDataFile(":areas:EnterArea");
+
+	// No custom message for the region, play default.
+	if (!region)
+		SendSysMessage(who, "You have entered "+regionname +".", 3, 1001);
+	endif
+
+	*/
+
+	// Safe area, no more messages atm
+	if (IsInSafeArea(who))
+		SendSysMessage(who, "This is a SAFE area.", 3, 1001);
+		SetSafeAreaProperties(who);
+		return 1;
+	endif
+
+	// Safe area, no more messages atm
+	if (IsInNOPKArea(who))
+		SendSysMessage(who, "This is a NO-PK area.", 3, 1001);
+		SetNOPK(who);
+	endif
+
+	// Yes or no to guards
+	if (IsInGuardedArea( who ))
+		SendSysMessage(who, "This is a guarded area.", 3, 1001);
+	else
+		SendSysMessage(who, "This is NOT a guarded area.", 3, 1001);
+	endif
+
+	if (IsInForbiddenArea( who ))
+		SendSysMessage(who, "This is a FORBIDDEN area.", 3, 1001);
+	endif
+
+endprogram

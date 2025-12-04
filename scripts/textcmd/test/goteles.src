@@ -1,0 +1,31 @@
+use uo;
+use os;
+
+include "include/teleporters";
+include ":gumps:yesno";
+
+program gototele(who)
+	var i := 0;
+	var j := who.getprop("CheckpointTeles");
+	if(!j)
+		j:=0;
+	endif
+
+	print("j "+j);
+
+	if(!who.getprop("CheckingTeleporters"))
+		if(YesNo(who, "Continue?"))
+			who.setprop("CheckingTeleporters", 1);
+			i := GoTeleporters(who, j);
+		else
+			who.setprop("CheckingTeleporters", 1);
+			i := GoTeleporters(who);
+		endif
+	else 
+		who.eraseprop("CheckingTeleporters");
+	endif
+
+	if(i>0)
+		who.setprop("CheckpointTeles", i);
+	endif
+endprogram

@@ -1,0 +1,97 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool - 30/04/2012
+//
+// Silence() - A command to remove chat privs from players.  
+//
+// 	       All restrictions are done in corresponding scripts
+//
+// OT: A simple, before bed script turned into a long long job.
+// NEVER script when tired, WASTE of time. Get caught on something for ages.
+// It's like reading a book and not really concentrating!
+//
+// This command was an abortion to script, total mess. wasnt in the mood?
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+
+include ":gumps:old-gumps";
+include ":staff:include/staff";
+program silence(who)
+
+var targ := Target(who);
+
+if (!targ.acct)
+	SendSysMessage(who, "You must target a player.");
+	return 0;
+endif
+
+var silence := GetObjProperty(targ, "SilenceOpts");
+
+if (!silence)
+	silence := {0, 0, 0, 0, 0, 0};
+endif
+
+GFInitGump();
+
+GFResizePic( 10, 10, 9250, 400, 230);
+
+GFTextLine( 155, 25, 53, "Silence Player" );
+GFTextLine( 30, 50, 57, "Name:" );
+GFTextLine( 85, 50, 0, targ.name );
+
+GFGumpPic(335, 28, 223);
+
+GFTextLine( 30, 85, 57, "Restrictions:" );
+
+GFTextLine( 80, 120, 60, "Speech" );
+GFTextLine( 200, 120, 60, ".chat" );
+GFTextLine( 320, 120, 60, "Guild" );
+GFTextLine( 80, 160, 60, ".msg" );
+GFTextLine( 200, 160, 60, ".barter" );
+GFTextLine( 320, 160, 60, "Paging" );
+
+GFCheckBox( 45, 120, 9026, 9027, silence[1], 1 );
+GFCheckBox( 165, 120, 9026, 9027, silence[2], 2 );
+GFCheckBox( 285, 120, 9026, 9027, silence[3], 3 );
+GFCheckBox( 45, 160, 9026, 9027, silence[4], 4 );
+GFCheckBox( 165, 160, 9026, 9027, silence[5], 5 );
+GFCheckBox( 285, 160, 9026, 9027, silence[6], 6 );
+
+GFButtonID(300, 200, 2128, 2129, 1, 100 );
+GFButtonID(60, 200, 2119, 2120, 1, 0 );
+
+var data := GFSendGump(who);
+
+if (data[0] != 100)
+	SendSysMessage(who, "Cancelled.");
+	return 0;
+endif
+
+var dkeys := data.keys;
+dkeys.erase(1);
+
+var i := 1;
+var silence2 := {0, 0, 0, 0, 0, 0};
+foreach thing in silence
+	foreach one in dkeys
+		if (one == i)
+			silence2[i] := 1;
+		endif
+	endforeach
+	i := i + 1;
+endforeach
+
+// dirty
+if (silence2[1] == 1)
+	targ.squelch(-1);
+else
+	targ.squelch(0);
+endif
+
+SendSysMessage(who, "Player: '"+targ.name+"' chat restrictions updated.", 3, 53);
+
+SetObjProperty(targ, "SilenceOpts", silence2);
+LogCommand(who, GetProcess(GetPid()).name, targ.name+"/"+targ.serial, silence2);
+
+endprogram

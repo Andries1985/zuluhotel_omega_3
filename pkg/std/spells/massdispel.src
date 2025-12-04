@@ -1,0 +1,124 @@
+use uo;
+
+include "include/dotempmods";
+include "include/spelldata";
+include "include/damages";
+include "include/classes";
+include "include/client";
+include "include/attributes";
+include "include/areas";
+
+const SPELL_EFFECT_TYPE_MOVING := MOVING_SPELL_MASS_DISPEL;
+const SPELL_EFFECT_ID		 := FX_SPELL_MASS_DISPEL;
+const SPELL_EFFECT_SPEED	 := SPEED_SPELL_MASS_DISPEL;
+const SPELL_EFFECT_LOOP		 := LOOP_SPELL_MASS_DISPEL;
+
+program mass_dispel ( parms, spell_id )
+
+	var circle := 7;
+	var caster;
+	var cast_on;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+	else
+        caster := parms;
+		if (IsPaladin(caster))
+			SendSysMessage(caster, "Paladins may not cast this spell!");
+			return 0;
+		endif
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+        cast_on := CanTargetSpell(caster , circle , TGTOPT_HARMFUL + TGTOPT_CHECK_LOS );
+        if (!cast_on)
+            return;
+		endif
+	endif
+
+	var magery	:= ModifyWithMagicEfficiency( caster , GetEffectiveSkill(caster, SKILLID_MAGERY) );
+	var range	:= Cint(magery / 15);
+	if(range > 10)
+		range := 10;
+	endif
+	var victims	:= ListMobilesNearLocation( cint(cast_on.x), cint(cast_on.y) , cint(cast_on.z) , range, cast_on.realm );
+
+	victims := SmartAoE( caster, victims);
+
+	foreach mobile in victims
+	if(!mobile.dead)
+		if( CheckLosAt( mobile, cint(cast_on.x) , cint(cast_on.y) , cint(cast_on.z) ) )
+			Send_Attack( mobile, caster, SPELLID_MASS_DISPEL );
+			var summoned := GetObjProperty( mobile, "summoned" );
+			var animated := GetObjProperty( mobile, "animated" );
+			PlayObjectCenteredEffect(mobile, SPELL_EFFECT_ID, SPELL_EFFECT_SPEED, SPELL_EFFECT_LOOP);
+		
+			if( summoned )
+				var immunity := IsProtected( caster, mobile, circle );
+				if( immunity == IMMUNED )
+					return;
+				endif
+				
+				if( immunity == CURSED )
+					magery := magery * 2;
+				endif
+				
+				if( GetObjProperty( caster, CLASSEID_MAGE ) )
+					magery := Cint( magery * ClasseBonus( caster, CLASSEID_MAGE ) );
+				endif
+		
+				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, magery, 50 ))
+					PlaySoundEffect( mobile, SFX_SPELL_DISPEL );
+					MoveObjectToLocation( mobile, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
+					ApplyTheDamage( mobile, caster, GetMaxHP(mobile)+3, DMGID_MAGIC );
+				endif
+
+			elseif( animated )
+				var immunity := IsProtected( caster, mobile, circle );
+				if( immunity == IMMUNED )
+					return;
+				endif
+				
+				if( immunity == CURSED )
+					magery := magery * 2;
+				endif
+		
+				if( GetObjProperty( caster, CLASSEID_MAGE ) )
+					magery := Cint( magery * ClasseBonus( caster, CLASSEID_MAGE ) );
+				endif
+		
+				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, magery, 50 ))
+					PlaySoundEffect( mobile, SFX_SPELL_DISPEL );
+					ApplyTheDamage( mobile, caster, GetMaxHP(mobile)+3, DMGID_MAGIC );
+				endif
+			else
+				if( mobile.script == "tamed" && IsInGuardedArea(mobile))
+				else
+					WipeMods( mobile );
+					if( mobile.graphic != mobile.trueobjtype and !mobile.dead )
+						mobile.graphic := mobile.trueobjtype;
+					endif
+					if( mobile.Color != mobile.TrueColor && !mobile.dead)
+						mobile.Color := mobile.TrueColor;
+					endif
+				endif
+			endif
+		endif
+	endif
+	endforeach
+
+endprogram

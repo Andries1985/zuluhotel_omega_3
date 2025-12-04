@@ -1,0 +1,9 @@
+use uo;
+
+include ":ArtifactSystem:artifact";
+
+program textcmd_openartifact( who )
+
+	openArtifactBox( who );
+
+endprogram

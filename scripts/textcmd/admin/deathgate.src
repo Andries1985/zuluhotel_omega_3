@@ -1,0 +1,106 @@
+use uo;
+include ":staff:include/staff";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/client";
+
+
+program deathgate( who )
+
+SendSysMessage(who, "Select the NPC you want the gate to create from");
+
+var npc := Target(who);
+
+if (!npc.isa(POLCLASS_NPC) && npc.objtype != 41728)
+	SendSysMessage(who, "You must target an NPC or a spawnpoint");
+	return 0;
+endif
+
+ShowGump(who, npc);
+
+endprogram
+
+function ShowGump(who, npc)
+
+var gateprops := GetObjProperty(npc, "GateOnDeath");
+
+if (!gateprops);
+	gateprops := {{0, 0, 0}, 0, 0};
+endif
+
+var location := gateprops[1];
+var timer := gateprops[2];
+var colour := gateprops[3];
+
+if (!colour)
+	colour := 0;
+endif
+
+if (!timer)
+	timer := 0;
+endif
+
+if (!location)
+	location := "Not Set";
+endif
+
+	//LogCommand(who, GetProcess(GetPid()).name);
+	
+	var gump := GFCreateGump(20, 20, 400, 310);
+	GFResizePic(gump, 20, 20, 9390, 400, 310);
+	
+	GFTextLine(gump,150, 50, 53, "On Death Gate Set-Up");
+	
+	GFTextLine(gump,50, 90, 57, "Destination Coords:");
+	GFTextLine(gump,340, 90, 57, "Set");
+	GFAddButton(gump, 370, 95, 2362, 2360, 1, 10);
+	GFTextLine(gump,175, 90, 90, location);	
+	GFTextLine(gump,50, 120, 57, "Open Time (seconds):");
+	GFTextEntry(gump,185, 120, 50, 20, 90, timer, 2);	
+	GFTextLine(gump,50, 150, 57, "Gate Colour:");	
+	GFTextEntry(gump,135, 150, 100, 20, 90, colour, 3);	
+	
+	GFTilePic(gump, 330, 200, 6907);
+	
+	GFAddButton(gump, 50, 200, 2128, 2129, 1, 20);
+	GFAddButton(gump, 50, 270, 2119, 2120, 1, 0);
+	
+	GFHTMLArea(gump, 115, 200, 200, 95, "An on death gate is a device used to seperate areas.<br>As well as increasing dungeon difficulty, these are also good at stopping players/ghosts from scouting dungeons.", 1, 1);
+	
+	var data := GFSendGump(who, gump);
+	
+	if (data[0] == 10)
+		SendSysMessage(who, "Target the location you want the gate to open to.");
+		var where := TargetCoordinates(who);
+		if (!where)
+			SendSysMessage(who, "Cancelled.");
+			return 0;
+		endif
+		gateprops[1][1] := where.x;
+		gateprops[1][2] := where.y;
+		gateprops[1][3] := where.z;
+		
+		SetObjProperty(npc, "GateOnDeath", gateprops);
+		SendSysMessage(who, "Gate detination set.");
+		ShowGump(who, npc);
+	endif
+	
+	if (data[0] == 0)
+			SendSysMessage(who, "Cancelled.");
+			return 0;
+	elseif (data[0] == 20)
+	
+		timer := CInt(GFExtractData(data, 2));
+		colour := CInt(GFExtractData(data, 3));
+		gateprops[1] := location;
+		gateprops[2] := timer;
+		gateprops[3] := colour;
+		Print(gateprops);
+		SetObjProperty(npc, "GateOnDeath", gateprops);
+		
+		SendSysMessage(who, "Gate on death saved.");
+		
+	endif
+	
+endfunction
+

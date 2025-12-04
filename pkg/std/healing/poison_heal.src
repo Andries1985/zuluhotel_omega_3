@@ -1,0 +1,87 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/classes";
+include "include/dotempmods";
+
+program poison_effect( parms )
+
+var pid := GetPID();
+
+var who := parms[1];
+var pznlevel := parms[2];
+
+var pids := GetObjProperty(who, "#PoisonPIDs");
+var poison_amt := CInt(GetObjProperty(who, "#PoisonAmt"));
+
+// max poison a player can have in there body before its dangerous
+var limit := 6; // base limit to poison level
+limit := limit + (IsThief(who)*2); // limit is now 6 + thief level*2, min 8 max 16
+
+if ( (poison_amt + pznlevel) > limit)
+	foreach scr in pids
+		GetProcess(scr).kill();
+	endforeach
+	EraseObjProperty(who, "#PoisonPIDs");
+	EraseObjProperty(who, "#PoisonAmt");
+	SetPoison( who , poison_amt  );
+	PrintTextAbovePrivate(who, "*Your body is overwhelmed with too much poison!*", who, 3, 62);
+	return 0;
+elseif (poison_amt < 1)
+	PrintTextAbovePrivate(who, "*The poison gently seeps into your wounds*", who);
+endif
+
+if (!pids)
+	pids := {};
+endif
+
+SetObjProperty(who, "#PoisonAmt", poison_amt + pznlevel);
+pids.append(pid);
+SetObjProperty(who, "#PoisonPIDs", pids);
+
+var total_healamt := 10.0 * (1.0 + CDbl(pznlevel*2.0)/10 );
+
+var i := 0;
+var base_loop := 7; // 5 is 10 seconds, 7 is 14 seconds
+
+var healamt := total_healamt/base_loop;
+var amthealed := 0;
+
+repeat
+
+	sleep(2);
+
+	// last heal
+	if ( i == (base_loop - 1) )
+		healamt := total_healamt-amthealed;
+	endif
+	
+	HealDamage(who, CInt(healamt));
+
+	amthealed := amthealed + (CInt(healamt));
+
+	i := i + 1;
+
+until (i >= base_loop || who.dead || GetHP(who) >= GetMaxHP(who));
+
+
+var newplevel := CInt(GetObjProperty(who, "#PoisonAmt")) - pznlevel;
+
+if (newplevel < 1)
+	EraseObjProperty(who, "#PoisonAmt");
+else
+	SetObjProperty(who, "#PoisonAmt", CInt(GetObjProperty(who, "#PoisonAmt")) - pznlevel);
+endif
+
+foreach scr in pids
+	if (scr == pid)
+		pids.erase(_scr_iter);
+		SetObjProperty(who, "#PoisonPIDs", pids);
+		break;
+	endif
+endforeach
+
+
+
+endprogram

@@ -1,0 +1,87 @@
+use cfgfile;
+use os;
+use uo;
+
+const CHECK_ALL_ITEMS := 1;
+
+program ValidateEquipFile()
+	Sleep(2);
+	Syslog("Starting EquipTemplate validation...");
+	var equip_cfg := ReadconfigFile(":*:equip");
+	if( equip_cfg )
+		var item_cfg := ReadconfigFile(":*:itemdesc");
+		if( item_cfg )
+			var equip_elem;
+			var item_elem;
+			var objtype;
+			foreach key in GetConfigStringKeys(equip_cfg)
+				equip_elem := FindConfigElem(equip_cfg, key);
+				if( equip_elem )
+					foreach armor_type in GetConfigStringArray(equip_elem, "Armor")
+						objtype := CInt(armor_type);
+						if( !objtype )
+            				objtype := GetObjtypeByName(armor_type);
+            				if( !objtype )
+            					Syslog("Invalid item in EquipTemplate '" + key + "' with Armor '" + armor_type + "'.");
+            				endif
+        				endif
+        
+        				if( objtype )
+        					if( CHECK_ALL_ITEMS || objtype > 0x3FFF )
+        						item_elem := FindConfigElem(item_cfg, objtype);
+        						if( !item_elem )
+	        						Syslog("Invalid item in EquipTemplate '" + key + "' with Armor '" + Hex(armor_type) + "'.");
+								endif
+							endif
+						endif
+					endforeach
+					
+					foreach weapon_type in GetConfigStringArray(equip_elem, "Weapon")
+						objtype := CInt(weapon_type);
+						if( !objtype )
+            				objtype := GetObjtypeByName(weapon_type);
+            				if( !objtype )
+            					Syslog("Invalid item in EquipTemplate '" + key + "' with Weapon '" + weapon_type + "'.");
+            				endif
+        				endif
+        
+        				if( objtype )
+        					if( CHECK_ALL_ITEMS || objtype > 0x3FFF )
+        						item_elem := FindConfigElem(item_cfg, objtype);
+        						if( !item_elem )
+	        						Syslog("Invalid item in EquipTemplate '" + key + "' with Weapon '" + Hex(weapon_type) + "'.");
+								endif
+							endif
+						endif
+					endforeach
+					
+					foreach equip_type in GetConfigStringArray(equip_elem, "Equip")
+						equip_type := SplitWords(equip_type)[1];
+						objtype    := CInt(equip_type);
+						if( !objtype )
+            				objtype := GetObjtypeByName(equip_type);
+            				if( !objtype )
+            					Syslog("Invalid item in EquipTemplate '" + key + "' with Equip '" + equip_type + "'.");
+            				endif
+        				endif
+        
+        				if( objtype )
+        					if( CHECK_ALL_ITEMS || objtype > 0x3FFF )
+        						item_elem := FindConfigElem(item_cfg, objtype);
+        						if( !item_elem )
+	        						Syslog("Invalid item in EquipTemplate '" + key + "' with Equip '" + Hex(equip_type) + "'.");
+								endif
+							endif
+						endif
+					endforeach
+				else
+					Syslog("Error, couldn't find equip elem...");
+				endif
+			endforeach
+			
+			Syslog("Finished EquipTemplate validation.");
+		endif
+	else
+		Syslog("Error, couldn't read equip.cfg");
+	endif
+endprogram

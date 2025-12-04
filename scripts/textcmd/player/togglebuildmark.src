@@ -1,0 +1,13 @@
+use uo;
+
+program buildmark(who)
+	
+	if(GetObjProperty(who, "ToggleBuildMark"))
+		EraseObjProperty(who, "ToggleBuildMark");
+		SendSysMessage(who, "You will no longer get asked about builders mark when crafting.");
+	else
+		SetObjProperty(who, "ToggleBuildMark", 1);
+		SendSysMessage(who, "You will now get asked about builders mark when crafting.");
+	endif
+
+endprogram

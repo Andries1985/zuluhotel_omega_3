@@ -1,0 +1,9 @@
+use uo;
+use os;
+
+program unloadall( who )
+
+var res := unload_scripts("");
+SendSysMessage(who, res+" scripts unloaded.");
+
+endprogram

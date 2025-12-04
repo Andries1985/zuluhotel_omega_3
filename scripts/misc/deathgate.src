@@ -1,0 +1,90 @@
+use uo;
+use os;
+
+include "include/client";
+
+const MOON_GATE := 0xf6c;
+
+program deathgate(parms)
+
+var corpse := parms[1];
+var spawnpoint := parms[2];
+
+var gatedetails;
+
+if (GetObjProperty(corpse, "GateOnDeath"))
+	gatedetails := GetObjProperty(corpse, "GateOnDeath");
+else
+	gatedetails := GetObjProperty(spawnpoint, "GateOnDeath");
+endif
+
+var location := gatedetails[1];
+var timer := gatedetails[2];
+var colour := gatedetails[3];
+
+var i := i;
+var gate1, gate2;
+gate1 := CreateItemAtLocation(corpse.x, corpse.y, corpse.z, MOON_GATE, 1, corpse.realm);
+gate2 := CreateItemAtLocation(location[1], location[2], location[3], MOON_GATE, 1, location[4]);
+SetObjProperty(gate1, "IgnoreCheck", 1);
+SetObjProperty(gate2, "IgnoreCheck", 1);
+
+SetName(gate1, "a Death Gate");
+SetName(gate2, "a Death Gate");
+gate2.graphic := 6899;
+gate2.movable := 0;
+gate2.color := colour;
+
+gate1.graphic := 6899;
+gate1.movable := 0;
+gate1.color := colour;
+
+SetObjProperty(gate1, "GateDestX", gate2.x);
+SetObjProperty(gate1, "GateDestY", gate2.y);
+SetObjProperty(gate1, "GateDestZ", gate2.z);
+SetObjProperty(gate1, "GateDestRealm", gate2.realm);
+
+SetObjProperty(gate2, "GateDestX", gate1.x);
+SetObjProperty(gate2, "GateDestY", gate1.y);
+SetObjProperty(gate2, "GateDestZ", gate1.z);
+SetObjProperty(gate2, "GateDestRealm", gate1.realm);
+sleepms(100);
+
+PlaySoundEffect( gate1, SFX_SPELL_GATE_TRAVEL );
+PlaySoundEffect( gate2, SFX_SPELL_GATE_TRAVEL );
+
+repeat
+	gate1.graphic := gate1.graphic+1;
+	gate2.graphic := gate2.graphic+1;
+	sleepms(200);
+	i := i + 1;
+until (gate1.graphic == 6907 || i > 8);
+
+gate1.graphic := 3948;
+gate2.graphic := 3948;
+
+sleep(timer-10);
+
+i := 10;
+repeat
+	PrintTextAbove(gate1, "*"+i+"*", 3,44);
+	PrintTextAbove(gate2, "*"+i+"*", 3,44);
+	i := i - 1;
+	sleep(1);
+until (i <= 0);
+
+gate1.graphic := 6907;
+gate2.graphic := 6907;
+i := 8;
+
+repeat
+	gate1.graphic := gate1.graphic-1;
+	gate2.graphic := gate2.graphic-1;
+	sleepms(200);
+	i := i - 1;
+until (gate1.graphic == 6899 || i <= 0);
+
+DestroyItem(gate1);
+DestroyItem(gate2);
+
+endprogram

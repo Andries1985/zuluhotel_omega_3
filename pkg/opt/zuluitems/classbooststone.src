@@ -1,0 +1,120 @@
+use uo;
+
+include "include/client";
+include "include/classes";
+
+program classbooststone( who )
+
+    if(GetObjProperty( who, "StartingClass" ))
+		SendSysmessage( who, "You've chosen a class already. Contact staff if you've made a mistake.", FONT_NORMAL, 2595 );
+		return;
+    endif
+
+    var gflayout := {
+            "nodispose",                                                // You did not want to hit esc, did you?
+            "page 0",                                                   // We initialize the first page which is the background
+            "GumpPic 860 400 11265",                                    // We want the dark background
+            "text 890 470 2595 0",                                      // The main headline 
+            "page 1",	                                                // Initialize the page
+            "text 900 510 2567 1", 
+            "text 900 525 2567 2",
+            "text 900 540 2567 3",
+            "text 900 555 2567 4",
+            "text 910 610 2595 5",
+
+            "text 940 650 2496 6", 
+            "text 940 675 2496 7",
+            "text 940 700 2496 8",
+            "text 940 725 2496 9",
+            "text 940 750 2496 10",
+            "text 940 775 2496 11",
+
+            "text 887 825 2567 12",
+            "text 880 840 2567 13",
+
+            "radio 920 652 11410 11402 0 100",                             // Ranger
+            "radio 920 677 11410 11402 0 200",                             // Warrior
+            "radio 920 702 11410 11402 0 300",                             // Mage
+            "radio 920 727 11410 11402 0 400",                             // Thief
+            "radio 920 752 11410 11402 0 500",                             // Bard
+            "radio 920 777 11410 11402 0 600",                             // Crafter
+
+            "button 926 880 249 248 1 0 1"                                // Okay button
+        };
+
+    var gfdata := {
+            "<[ STARTER CLASS ]>",
+            "You will be able to",
+            "select your starting",
+            "class. [Warning]: You",
+            "can only choose once!",
+            "<[ CLASS ]>",
+            "Ranger",
+            "Warrior",
+            "Mage",
+            "Thief",
+            "Bard",
+            "Crafter",
+            "Select a starting class",
+            "and hit the OKAY button."
+        };
+
+    var gump := SendDialogGump( who, gflayout, gfdata );
+    if( !gump )
+        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+        return;
+    endif
+
+    // Okay button wasn't pressed
+    if (gump[0] != 1)
+        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+        return 0;
+    endif
+    
+    var playerchoice;
+
+    foreach key in ( gump.keys )
+        playerchoice := key;
+    endforeach
+
+    var selectedclass;
+    var classid;
+    
+    case(playerchoice)
+        100:    selectedclass := SetObjProperty(who, "StartingClass", "Ranger" );
+                classid := CLASSEID_RANGER;
+        200:	selectedclass := SetObjProperty(who, "StartingClass", "Warrior" );
+                classid := CLASSEID_WARRIOR;
+        300:	selectedclass := SetObjProperty(who, "StartingClass", "Mage" );
+                classid := CLASSEID_MAGE;
+        400:	selectedclass := SetObjProperty(who, "StartingClass", "Thief" );
+                classid := CLASSEID_THIEF;
+        500:	selectedclass := SetObjProperty(who, "StartingClass", "Bard" );
+                classid := CLASSEID_BARD;
+        600:    selectedclass := SetObjProperty(who, "StartingClass", "Crafter" );
+                classid := CLASSEID_CRAFTER;
+        default: selectedclass := "The player must have canceled the gump without doing anything";
+    endcase
+
+    var i;
+    for(i := 0; i < 49; i := i + 1)
+        SetBaseSkill(who, i, 0);
+    endfor
+
+    var skillamount := 75;
+    foreach skill in GetClasseSkills( classid )
+        SetBaseSkill(who, skill, skillamount);
+    endforeach
+
+    SetBaseStrength(who, 90);
+    SetBaseIntelligence(who, 90);
+    SetBaseDexterity(who, 90);
+
+    AssignClasse( who );
+
+    selectedclass := GetObjProperty(who, "StartingClass");
+    SendSysmessage( who, "You are now a level 1 "+selectedclass+". Good luck in your travels!", FONT_NORMAL, 2601 );
+
+    return;
+
+endprogram

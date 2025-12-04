@@ -1,0 +1,179 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/skillpoints";
+include "include/random";
+include "include/classes";
+include "include/attributes";
+include "../pkg/opt/karmafame/karmafame";
+
+const Minutes:=1; // You can beg only after this time
+
+program begging ( character ) 
+	SendSysMessage( character, "Who do you want to beg from?" );
+	var who := target( character );
+	var defbegging := get_default_points(SKILLID_BEGGING);
+	var account := who.acctname;
+
+	if(!who.isa(POLCLASS_NPC) or (who.graphic!=0x191 and who.graphic!=0x190))
+		SendSysMessage(character, "You must target an NPC!");
+		return;
+	endif
+
+	if (who.npctemplate == "warriorforhire")
+		SendSysMessage(character, "You can't beg from warriors for hire.");
+		return;
+	endif
+
+	if (who.npctemplate == "playervendor")
+		SendSysMessage(character, "You can't beg from player vendors.");
+		return;
+	endif
+	
+	if( who == character )
+		SendSysMessage(character, "Doh! You cant beg from yourself!");
+		return;
+	endif
+
+	if (distance( character, who )>4)
+		PrintTextAbovePrivate( character,"Hey!!... Sorry!!!", character);
+		SendSysMessage( character, "You need to stay near him!");
+		return 0;
+	endif
+
+	if (!account) // work on a npc
+		var memx:=character.x;
+		var memy:=character.y;
+		var delay1:=4;
+		var delay2:=7;
+		var delay3:=3;
+		var delay4:=2;
+		var money := CInt((GetEffectiveSkill( character , SKILLID_BEGGING )/3)+Random(20));
+		var level := GetClasseLevel(character);
+		var bonus := level * 10;
+
+		if(money < 1)
+			money := 1;
+		endif
+
+		if( GetObjProperty( character , CLASSEID_BARD ) )
+			money := money + bonus;
+		endif
+		
+		performaction( character, ANIM_BOW);
+		if (who.graphic==0x191)
+			PrintTextAbovePrivate( character,"Sorry... Lady!", character);
+		else
+			PrintTextAbovePrivate( character,"Sorry... Sir!", character);
+		endif
+		while( delay1 )
+			Sleep( 1 );
+			delay1 := delay1 - 1;
+			if (memx!=character.x)
+				exitnow(character);	
+			endif
+		endwhile
+		
+		case (Random(5))
+			0: PrintTextAbovePrivate( character, "Give me something please...",character ); performaction( character, ANIM_BOW);
+			1: PrintTextAbovePrivate( character, "I need something to eat!",character ); performaction( character, ANIM_BOW);
+			2: PrintTextAbovePrivate( character, "I've got four children, please help me!",character ); performaction( character, ANIM_BOW);
+			3: PrintTextAbovePrivate( character, "Can you spare a dime?",character ); performaction( character, ANIM_BOW);
+			4: PrintTextAbovePrivate( character, "Some thieves stole everything, I'm broke now...",character ); performaction( character, ANIM_BOW);
+		endcase
+	
+		while( delay2 )
+			Sleep( 1 );
+			delay2 := delay2 - 1;
+			if (memy!=character.y)
+				exitnow(character);	
+			endif
+		endwhile
+
+		performaction( character, ANIM_BOW);
+		PrintTextAbovePrivate( character,"Pleeeease!",character);
+		
+		while( delay4 )
+			Sleep( 1 );
+			delay4 := delay4 - 1;
+			if (cint(GetObjProperty( who,"Lastbegged"))>readgameclock())
+				PrintTextAbovePrivate( who,"Hey!! Do I look like a bank?",character);	
+				return;
+			endif
+		endwhile
+
+		while( delay3 )
+			Sleep( 1 );
+			delay3 := delay3 - 1;
+			if (memy!=character.y)
+				exitnow(character);	
+			endif
+		endwhile
+		
+		if (CheckSkill(character,SKILLID_BEGGING, -1, defbegging))
+
+			if (character.graphic==0x191)
+				PrintTextAbovePrivate(who , "Ohh! Poor woman!",character);
+			else
+				PrintTextAbovePrivate(who , "Ohh! Poor man!",character);
+			endif
+
+			sleep(1);
+
+			PrintTextAbovePrivate(who , "Your compassion touched my heart!",character);
+
+			sleep(1);
+
+			case (Random(5))
+				0: PrintTextAbovePrivate( who, "Take these, poor beggar...",character );
+				1: PrintTextAbovePrivate( who, "Let me help you...",character );
+				2: PrintTextAbovePrivate( who, "Use these wisely!",character );
+				3: PrintTextAbovePrivate( who, "Alright, but stop disturbing me!",character );
+				4: PrintTextAbovePrivate( who, "I wish I could give more...",character );
+			endcase
+
+			setobjproperty( who,"Lastbegged",readgameclock()+20);
+
+			if( GetFame( character ) > MIN_FAME_LIMIT )
+		        	AwardFame( character , -25 );
+			endif//ZHS BEGGING UPDATE
+
+			CreateItemInBackpack(character, 0xeed, money);
+			SendSysmessage (character, "You receive "+money+" gold coins!");
+
+		else
+			case (Random(5))
+				0: PrintTextAbovePrivate( who, "Go away, you damn beggar!",character );
+				1: PrintTextAbovePrivate( who, "Get lost!",character );
+				2: PrintTextAbovePrivate( who, "Don't bug me now!",character );
+				3: PrintTextAbovePrivate( who, "I've got nothing to give you, I'm sorry...",character );
+				4: PrintTextAbovePrivate( who, "I'm sorry but I've gotta go now...",character );
+			endcase
+
+			sleep(2);
+			PrintTextAbovePrivate(who , "You won't have ANYTHING from me!",character);
+			SendSysmessage (character, "You receive nothing...");
+		endif
+		
+	else
+			SendSysMessage( character, "You can only beg from NPC's." );
+			return;
+	endif
+endprogram
+
+
+
+function exitnow(character)
+
+			case (Random(6))
+				0: PrintTextAbovePrivate( character, "I have to go!",character );
+				1: PrintTextAbovePrivate( character, "I must leave!!",character );
+				2: PrintTextAbovePrivate( character, "no....ehm...bye!",character );
+				3: PrintTextAbovePrivate( character, "Bye!!",character );
+				4: PrintTextAbovePrivate( character, "I must flee!!",character );
+				5: PrintTextAbovePrivate( character, "I gotta go!",character );
+			endcase
+	exit;
+
+endfunction

@@ -1,0 +1,40 @@
+// command .where  started June 19, 2000
+// Zulu (zulu@zuluhotel.com)
+// last updated June 25, 2000
+
+use uo;
+
+include "include/findcity";
+
+program textcmd_where( who )
+	/*
+	var items := ListItemsNearLocationOfType( who.x, who.y, 0, 250, 0x7566, who.realm );
+	var stone;
+	var minx;
+	var maxx;
+	var miny;
+	var maxy;
+	if( !items )
+		items := ListItemsNearLocationOfType( who.x, who.y, 1, 250, 0x7566, who.realm );
+		if( !items )
+			items := ListItemsNearLocationOfType( who.x, who.y, 2, 250, 0x7566, who.realm );
+		endif
+	endif
+	foreach item in items
+		stone := item;
+		minx := GetObjProperty( stone, "MinX" );
+		maxx := GetObjProperty( stone, "MaxX" );
+		miny := GetObjProperty( stone, "MinY" );
+		maxy := GetObjProperty( stone, "MaxY" );
+		if( (who.x >= minx) AND (who.x <= maxx) AND (who.y >= miny) AND (who.y <= maxy) )
+			PrintTextAbovePrivate(who, "I am in " + GetObjProperty( stone, "City" ) + " ("+who.x+","+who.y+","+who.z+")", who);
+			return;
+		endif
+	endforeach
+	*/
+	
+	var regionname := GetRegionName(who);
+
+	PrintTextAbovePrivate(who, "I am in " + regionname + " Territory at ("+who.x+","+who.y+","+who.z+")", who);
+	
+endprogram

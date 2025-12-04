@@ -1,0 +1,12 @@
+use uo;
+use os;
+
+include "include/teleporters";
+
+program crdteles(who)
+
+    var howmany := CreateTeleporters();
+    SendSysMessage(who, howmany+" Teleporters created.");
+
+return;
+endprogram

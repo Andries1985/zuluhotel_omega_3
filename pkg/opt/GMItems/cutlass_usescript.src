@@ -1,0 +1,35 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/dotempmods";
+
+const USE_TIME := 10; // in minutes
+
+program Cutlassofthevampiricleech(who,cutlass)
+
+if (!cutlass.layer)
+	SendSysMessage(who, "You must be holding that to use it.");
+	return 0;
+endif
+
+var last_use := GetObjProperty(cutlass, "LastUsed");
+
+if ((last_use + (USE_TIME*60)) > ReadGameClock())
+	SendSysMessage(who, "You can only harness the cutlasss energy once every "+USE_TIME+" minutes.");
+	return 0;
+endif
+
+SetObjProperty(cutlass, "LastUsed", ReadGameClock());
+PrintTextAbovePrivate(who, "*The cutlass brims with energy!*", who);
+SetObjProperty(cutlass, "#Activated", 1);
+cutlass.color := 1482;
+
+PlaySoundEffect(who, 0x100);
+sleep(5);
+
+EraseObjProperty(cutlass, "#Activated");
+cutlass.color := GetObjProperty(cutlass, "EnchantColor");
+
+endprogram

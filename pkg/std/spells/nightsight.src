@@ -1,0 +1,55 @@
+use uo;
+
+include "include/spelldata";
+include "include/client";
+include "include/attributes";
+
+program cast_nightsight( parms, spell_id )
+
+	var caster;
+	var cast_on;
+	var circle;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		cast_on := CanTargetSpell(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
+		if (!cast_on)
+			return;
+		endif
+	endif
+
+
+	PlaySoundEffect(caster, SFX_SPELL_NIGHT_SIGHT );
+	var magery := GetEffectiveskill(caster, SKILLID_MAGERY);
+	var duration := magery * 60;
+	var affected := ListMobilesNearLocation( cast_on.x , cast_on.y , cast_on.z , cint(magery/15), cast_on.realm );
+
+	affected := SmartBoost(caster, affected);
+	
+	foreach cast_near in affected
+							
+		if( !GetObjProperty( cast_near , "#Blinded" ) )
+			cast_near.setlightlevel( 0 , duration );
+			PlayObjectCenteredEffect( cast_near, FX_SPELL_NIGHT_SIGHT , SPEED_SPELL_NIGHT_SIGHT , LOOP_SPELL_NIGHT_SIGHT );
+			SendSysMessage(cast_near, "You are now able to see in the darkness for "+duration/60+" minutes.");
+		endif
+		
+	endforeach
+
+endprogram

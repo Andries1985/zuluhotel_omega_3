@@ -1,0 +1,695 @@
+use os;
+use uo;
+use cfgfile;
+use attributes;
+
+include "include/client";
+include "include/objtype";
+include "include/itemutil";
+include "include/classes";
+include "include/random";
+include "alchemy";
+include "include/autoloop";
+include "include/difficulty";
+
+Const SOUND_EFFECT_SPARKLE	:= 0x1e8;
+Const EFFECT_SPARKLE		:= 0x373a;
+Const MAX_KEG_VOLUME		:= 100;
+const POINT_MULTIPLIER		:= 15;
+
+//this is used to make sure that all potions presented use the reagent that was originally selected
+var original_reagent_objtype := 0;
+
+var basicregs := {0xf79, 0xf7a, 0xf7b, 0xf7c, 0xf84,0xf85, 0xf86, 0xf88, 0xf8c, 0xf8d};
+var basicpots := {0xDC02, 0xDC03,0xDC05, 0xDC06, 0xDC07, 0xDC09, 0xDC0c, 0xDC0d, 0xDC0f, 0xDC11, 0xDC12, 0xDC15, 0xDC16, 0xDC17, 0xDCE6};
+
+program alchemyplus ( character, myburner )
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY , 1 );
+	
+	if( !IsOnPlayer( character.backpack , myburner ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return;
+	elseif( !ReserveItem( myburner ) )
+		return;
+	elseif( !ReserveContainers( character, myburner.container ) )
+		return;
+	endif
+
+	var current_potion := SelectWhatToMake( character , myburner );
+	
+	if(current_potion)
+		if (GetConfigInt(current_potion, "product"))
+			return 0;
+		endif
+	else
+		return 0;
+	endif
+
+	//try to find out if they only have bottles or only have a keg, and other variables
+	var found_empty_bottle := FindItemInContainer( character.backpack , UOBJ_EMPTY_BOTTLE );
+	var potion_container;
+
+	//if it doesn't use up a bottle, we can just make it without a container
+	if( !current_potion.consume_bottle )
+		potion_container := "no container needed";
+		
+	//this one doesn't need a container
+	elseif( current_potion.itemtype == 36 )
+		potion_container := "no container needed";
+		
+	//if the potion can't be made in a keg and we found a bottle, automatically select the bottle
+	elseif( found_empty_bottle )
+		potion_container := found_empty_bottle;
+		
+	//if it can't be made in a keg and we didn't find any bottles, ask to select bottles
+	else
+		//choose bottles
+		SendSysMessage( character , "Select an empty bottle to make the potion in." );
+		potion_container := Target( character , TGTOPT_CHECK_LOS );
+		
+		if( !Accessible( character , potion_container ) )
+			SendSysMessage( character , "You can't reach that." );
+			return;
+		elseif (potion_container.objtype != UOBJ_EMPTY_BOTTLE)
+			SendSysMessage (character, "You can't make this potion in that.");
+			return;
+		elseif( !ReserveItem( potion_container ) )
+			return;
+		endif
+	
+	endif
+
+	if (potion_container != "no container needed")
+		if (!potion_container)
+			return;
+		elseif (!ReserveItem (potion_container) )
+			SendSysmessage (character, "You cannot make the potion in that.");
+			return;
+		elseif (potion_container.objtype != UOBJ_EMPTY_BOTTLE)
+			SendSysmessage (character, "You cannot make the potion in that.");
+			return;
+		elseif (!potion_container.movable)
+			SendSysmessage (character, "You cannot make the potion in that.");
+			return;
+		endif
+	endif
+
+	
+	AutoLoop_init( character );
+	while( AutoLoop_more() && NOT character.dead )
+
+		playsoundeffect(character, current_potion.worknoise);
+
+		//animate the burner
+		var i;
+		for (i:= 1; i < 4; i := i + 1)
+			PerformAction(character, ANIM_SALUTE );
+			myburner.graphic := myburner.graphic + 1;
+			sleep(1);
+		endfor
+		myburner.graphic := 0x1849;
+		
+		if (!CanMakePotion( character , current_potion ))
+			AutoLoop_finish();
+			return;
+		endif
+
+		destroy_all_reagents (character, current_potion);
+		
+		sendDiff( character, current_potion.skill );
+
+		if( ( CheckSkill(character,SKILLID_ALCHEMY, current_potion.skill,(current_potion.skill*POINT_MULTIPLIER))))
+			PlaySoundEffect(character, current_potion.makenoise);
+			var created_potion;
+			
+			// Finding out the level the potion should be
+			var level := 0;
+			if( GetObjProperty( character , CLASSEID_MAGE ) )
+				var pstr := current_potion.strength;
+				level := Cint( pstr * ClasseBonus( character , CLASSEID_MAGE ) ) - pstr;
+
+				// If the potion HAS strength defined AND level is below 1, set it to 1
+				if (pstr && level < 1)
+					level := 1;
+				// Making sure we don't try set a level on items that don't need one
+				elseif (!pstr)
+					level := 0;
+				endif
+            endif
+
+			// Return new potion type (level) based on mage bonus
+
+			var correct := ReturnTruePotion(current_potion.itemtype, level);
+			
+			created_potion := CreateItemInContainer(character.backpack, correct ,1);
+
+			//destroy a bottle, if needed
+			if (current_potion.consume_bottle)
+				SubtractAmount (potion_container, 1);
+				if (!potion_container)
+					SendSysMessage (character, "You run out of bottles.");
+					AutoLoop_finish();
+					return;
+				endif
+			endif
+			
+		else
+			PlaySoundEffect(character, current_potion.failnoise);
+		endif
+		
+	endwhile
+
+	AutoLoop_finish();
+
+endprogram
+
+
+
+
+///////////////////
+//  evaluates all possible potions, decides which ones its possible for a character to make, and lets them
+//  choose which to make
+///////////////////
+
+function SelectWhatToMake(character, myburner)
+
+	var alchemy_cfg_file := ReadConfigFile( "alchemyplus" );
+	var current_potion;
+	var selectmenu := CreateMenu("Make what?");
+	var number_potions := GetConfigMaxIntKey( alchemy_cfg_file );
+	var array_of_valid_potions := {};
+
+
+
+	var original_reagent := Target( character , TGTOPT_CHECK_LOS );
+
+	if( original_reagent.objtype in basicregs)
+		SendSysMessage(character, "You must use a mortar to make basic potions.");
+		return 0;
+	endif
+
+
+	if( !original_reagent )
+		return;
+	elseif( !Accessible( character , original_reagent ) )
+		SendSysMessage( character , "You can't reach that." );
+		return;
+	elseif( !ReserveItem( original_reagent ) ) 
+		return; 
+	elseif( !IsOnPlayer( character.backpack , original_reagent ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return;
+	elseif( !ReserveContainers( character, original_reagent.container ) )
+		return;
+	endif
+
+	//if they pick target the burner, make the last made item
+	if( original_reagent.serial == myburner.serial )
+		if( GetObjProperty( myburner , "lastmade" ) )
+			current_potion := alchemy_cfg_file[GetObjProperty(myburner, "lastmade")];
+			original_reagent_objtype := "success";
+
+			if( CanMakePotion(character, current_potion) )
+				return current_potion;
+			else
+				SendSysMessage (character, "You can't make that.");
+				return 0;
+			endif
+		else
+			SendSysMessage( character , "There's no recipes stored in the heating stand." );
+			return 0;
+		endif
+	else
+		original_reagent_objtype := original_reagent.objtype;
+	endif
+
+	var potion_counter;
+	for (potion_counter := 1; potion_counter <= number_potions; potion_counter := potion_counter+1)
+        	current_potion := alchemy_cfg_file[ potion_counter ];
+		
+		if ( CanMakePotion (character, current_potion) )
+			AddMenuItem (selectmenu, cint(current_potion.graphic), current_potion.name);
+			array_of_valid_potions[len(array_of_valid_potions)+1] := current_potion;
+		endif
+	endfor
+
+	if (len(array_of_valid_potions) == 0)
+		PrintTextAbovePrivate(character,"You can't make anything.",character);
+		return 0;
+	elseif (len(array_of_valid_potions) == 1)
+
+		return array_of_valid_potions[1];
+	endif
+
+	var selection := SelectMenuItem2 (character, selectmenu);
+	if (!selection)
+		SendSysMessage(character,"Canceled");
+		return 0;
+	endif
+
+	SetObjProperty(myburner, "lastmade", array_of_valid_potions[selection.index].itemtype );
+	var pot := array_of_valid_potions[selection.index];
+	return pot;
+
+endfunction
+
+
+
+
+///////////////////
+//  this function checks to make sure that everything that the currently selected potion needs in order for it
+//  to be made is available
+///////////////////
+
+function CanMakePotion( character , current_potion )
+
+	if( current_potion.specialist )
+		if( !GetObjProperty( character , CLASSEID_MAGE ) )
+			return 0;
+		endif
+	endif
+	
+	//if the potion requires a mortar to make, check to see if the character has a mortar
+	if (current_potion.needmortar)
+		var mortar := FindItemInContainer (character.backpack, 0x0e9b );
+		if (!mortar)
+			return 0;
+		else
+			if(!ReserveItem(mortar)) 
+				return 0; 
+			elseif( !IsOnPlayer( character.backpack , mortar ) )
+				SendSysmessage( character, "That item has to be in your backpack." );
+				return 0;
+			elseif( !ReserveContainers( character, mortar.container ) )
+				return 0;
+			endif
+		endif
+	endif
+
+	//check to see if they have the skill needed to make the product
+	if (GetEffectiveSkill(character,SKILLID_ALCHEMY) < (current_potion.skill-10))
+		return 0;
+	endif
+
+	//some setup
+	//load the reagent list from the current potion into an array
+	var reagent_array := GetConfigStringArray( current_potion, "reagent" );
+	var current_reagent;
+	var reagent_counter;
+	var used_selected_reagent := 0;
+
+	//Make sure that there's at least 1 reagent.  If not, something is very, very wrong
+	if ( len(reagent_array) <= 0 )
+		SendSysmessage (character, "There is an error in the recipe for " + current_potion.name );
+		return 0;
+	endif
+
+	//now we cycle through all the reagents in the potion
+	for (reagent_counter := 1; reagent_counter <= len(reagent_array); reagent_counter := reagent_counter + 1)
+
+		//Pick the current reagent out of the array and split it into 2 parts.  The first part, current_reagent[1],
+		//contains the type of reagent that is being called for by the potion.  The second part, current_reagent[2],
+		//is the number of that reagent needed
+		current_reagent := splitwords(reagent_array[reagent_counter]);
+
+		//Here is where we check to see if the reagent that we just picked out of the reagent
+		//list is the one that actually was originally selected.
+		if ( cint(current_reagent[1]) == original_reagent_objtype or original_reagent_objtype == "success")
+			used_selected_reagent := 1;
+		endif
+
+		//use the FindObjtypeInContainer function to try to find what we need quickly.  If it
+		//fails, or finds less of the reagent than we need, fail this potion.  Otherwise, reserve
+		//what was found and try the next reagent
+		//var found_reagent := FindItemInContainer (character.backpack, cint(current_reagent[1]));
+
+		// Doing a bandaid for the new potion levels. As they are different objtypes, you wouldn't
+		// be able to use a [level] greater heal potion to make a tamla.
+
+		if(cint(current_reagent[1]) in basicpots)
+			foreach reg in basicpots
+				if (Hex(reg) == current_reagent[1])
+					current_reagent[1] := GetNewPotionFromBasic(character, current_reagent[1]);
+					current_reagent[1] := Hex(current_reagent[1].objtype);
+					break;
+				endif
+			endforeach
+		endif
+
+		var amount_needed := Cint(current_reagent[2]);
+		if( GetObjProperty( character , CLASSEID_MAGE ) )
+			amount_needed := Cint( amount_needed / ClasseBonus( character , CLASSEID_MAGE ) );
+			if( amount_needed < 1 )
+				amount_needed := 1;
+			endif
+		endif
+
+		var findAll := {};
+		var amount := 0;
+		foreach reagent in EnumerateItemsInContainer( character.backpack )
+			if( reagent.objtype == cint(current_reagent[1]) )
+				findAll.append(reagent);
+				amount := amount + reagent.amount;
+			endif
+   		endforeach
+
+		if(len(findAll) > 0)
+			foreach reag in findAll
+				if (!reag)
+					return 0;
+				elseif( amount < amount_needed )
+					return 0;
+				elseif(!ReserveItem(reag))
+					return 0;
+				elseif( !IsOnPlayer( character.backpack , reag ) )
+					SendSysmessage( character, "That item has to be in your backpack." );
+					return 0;
+				elseif( !ReserveContainers( character, reag.container ) )
+					return 0;
+				endif
+			endforeach
+		else
+			return 0;
+		endif
+	endfor
+
+	//It appears we've made it through all of the reagents.  Return success if the originally selected
+	//reagent was used in this potion.  Otherwise, fail.
+	if (used_selected_reagent)
+		return 1;
+	else
+		return 0;
+	endif
+
+endfunction
+
+
+
+
+///////////////////
+//  destroys the reagents used in the potion
+///////////////////
+
+function destroy_all_reagents (character, current_potion)
+
+	//Check through the current potion and load all the reagents into an array
+	var reagent_array := GetConfigStringArray( current_potion, "reagent" );
+	var current_reagent;
+	var reagent_counter;
+	
+	//now we cycle through all the reagents
+	for (reagent_counter := 1; reagent_counter <= len(reagent_array); reagent_counter := reagent_counter + 1)
+
+		//Pick the current reagent out of the array and split it into 2 parts.  The first part, current_reagent[1],
+		//contains the type of reagent that is being called for by the potion.  The second part, current_reagent[2],
+		//is the number of that ingredien needed
+		current_reagent := splitwords(reagent_array[reagent_counter]);
+		
+		var the_reagent := FindItemInContainer( character.backpack , Cint(current_reagent[1]) );
+	
+		if (!the_reagent)
+			//if (cint(current_reagent[1]) in basicpots)
+			foreach reg in basicpots
+				if (Hex(reg) == current_reagent[1])
+					the_reagent := GetNewPotionFromBasic(character, current_reagent[1]);
+					break;
+				endif
+			endforeach
+		endif
+
+		//Then, we subtract what we need from the stack
+		var amount_needed := Cint(current_reagent[2]);
+		if( GetObjProperty( character , CLASSEID_MAGE ) )
+			amount_needed := Cint( amount_needed / ClasseBonus( character , CLASSEID_MAGE ) );
+			if( amount_needed < 1 )
+				amount_needed := 1;
+			endif
+		endif
+
+		var count := 0;
+		repeat
+			if(the_reagent.amount < amount_needed)
+				amount_needed := amount_needed - the_reagent.amount;
+				SubtractAmount( the_reagent , the_reagent.amount );
+				the_reagent := FindItemInContainer( character.backpack , Cint(current_reagent[1]) );
+			else
+				SubtractAmount( the_reagent , amount_needed );
+				amount_needed := 0;
+			endif
+			count := count+1;
+		until(amount_needed == 0 || count > 100);
+	endfor
+	
+endfunction
+
+///////////////////////////////////////////////////////////////////////
+// Toadstool - 20/04/2012 - Same as in alchemy.src
+//
+// ReturnTruePotion() - Workaround stacking script for POL093
+//			Each type of potion can have a 'ByTrueMage' prop
+//			This prop is destroyed when stack with other
+//			potions with different props. 
+//			Had to create new potions for EVERY single possible
+//			potion combination up to level 5 mage...
+//
+// Returns: an objtype
+//
+//////////////////////////////////////////////////////////////////////////
+function ReturnTruePotion(itemtype, level)
+
+// Unlike the normal alchemy function, this one HAS to return a valid potion type.
+// 0 level means return the base potion type (no ByTrueMage bonus)
+
+// I don't want to return 'itemtype' JUST incase it returns an id
+// creating an item between 1 - 35ish haha
+var type;
+
+
+case (itemtype)
+
+//invis potion
+		23:
+		case (level)
+			0: 
+			default: type := 0xff95;
+		endcase
+
+//Phandels Fine Int	
+		24:
+		case (level)
+			0: type := 0xff4e;
+			1: type := 0xff4f;
+			2: type := 0xff50;
+			3: type := 0xff51;
+			default: type := 0xff51; // Only situation when default is called is if the level is HIGHER, so it's maxed at level 5 mage atm
+		endcase
+
+//Phandels Fab Int		
+		25: 
+		case (level)
+			0: type := 0xff52;
+			1: type := 0xff53;
+			2: type := 0xff54;
+			3: type := 0xff55;
+			5: type := 0xff56;
+			6: type := 0xff57;
+			default: type := 0xff57;
+		endcase
+
+//Phandels Fan Int	
+		26:
+		case (level)
+			0: type := 0xff59;
+			1: type := 0xff5a;
+			3: type := 0xff5b;
+			5: type := 0xff5c;
+			7: type := 0xff5d;
+			9: type := 0xff5e;
+			default: type := 0xff5e;
+		endcase
+
+//Lesser Meg Inv	
+		27:
+		case (level)
+			0: type := 0xff62;
+			1: type := 0xff63;
+			2: type := 0xff64;
+			3: type := 0xff65;
+			4: type := 0xff66;
+			5: type := 0xff67;
+			default: type := 0xff67;	
+		endcase
+
+//Meg Inv	
+		28:
+		case (level)
+			0: type := 0xff68;
+			2: type := 0xff69;
+			4: type := 0xff6a;
+			6: type := 0xff6b;
+			8: type := 0xff6c;
+			10: type := 0xff6d;
+			default: type := 0xff6d;	
+		endcase
+
+//Greater Meg Inv	
+		29:
+		case (level)
+			0: type := 0xff6e;
+			3: type := 0xff6f;
+			6: type := 0xff70;
+			9: type := 0xff71;
+			12: type := 0xff72;
+			15: type := 0xff73;
+			default: type := 0xff73;	
+		endcase
+
+//Grand Mage Ref	
+		30:
+		case (level)
+			0: type := 0xff74;
+			2: type := 0xff75;
+			4: type := 0xff76;
+			6: type := 0xff77;
+			7: type := 0xff78;
+			8: type := 0xff79;
+			default: type := 0xff79;	
+		endcase
+
+//Homo might :P	
+		31:
+		case (level)
+			0: type := 0xff7a;
+			1: type := 0xff7b;
+			2: type := 0xff7c;
+			3: type := 0xff7d;
+			4: type := 0xff7e;
+			5: type := 0xff7f;
+			default: type := 0xff7f;	
+		endcase
+
+//Greater Homos might
+		32:
+		case (level)
+			0: type := 0xff80;
+			2: type := 0xff81;
+			4: type := 0xff82;
+			6: type := 0xff83;
+			9: type := 0xff84;
+			11: type := 0xff85;
+			default: type := 0xff85;	
+		endcase
+
+//Tamla
+		33:
+		case (level)
+			0: type := 0xff86;
+			2: type := 0xff87;
+			4: type := 0xff88;
+			6: type := 0xff89;
+			8: type := 0xff8a;
+			10: type := 0xff8b;
+			default: type := 0xff8b;	
+		endcase
+
+//Taints minor trans
+		34:
+		case (level)
+			0: type := 0xff8c;
+			1: type := 0xff8d;
+			default: type := 0xff8d;	
+		endcase
+
+//Taints major trans
+		35:
+		case (level)
+			0: type := 0xff8e;
+			1: type := 0xff8f;
+			2: type := 0xff90;
+			default: type := 0xff90;	
+		endcase
+
+//Totem - mage bonus isn't used hatching totem at all
+		36:
+		case (level)
+			0: 
+			default: type := 0xff92;	
+		endcase
+
+//Elixer - uses exact same script as totem
+		37:
+		case (level)
+			0: 
+			default: type := 0xff93;	
+		endcase
+
+//Dispel potion - this has no strength prop.
+		38:
+		case (level)
+			0: 
+			default: type := 0xff94;	
+		endcase
+
+//Rebirth potion - this has no strength prop.
+		39:
+		case (level)
+			0: 
+			default: type := 0xffa2;	
+		endcase
+
+		default: //Broadcast("Error in alchemy package with potion "+itemtype, 3, 57);
+
+endcase
+
+return type;
+
+endfunction
+
+
+function GetNewPotionFromBasic(who, basic)
+
+var group := {};
+
+case (CInt(basic))
+//HEAL		
+		0xDC02: group := {0xff19, 0xff1a, 0xff1b};
+//GHEAL		
+		0xDC03: group := {0x0f0c, 0xff1c, 0xff1d, 0xff1e, 0xff1f, 0xff20};	
+//Poison	
+		0xdc05: group := {0xff22,0xff23};
+//GPoison	
+		0xdc06: group := {0xff24, 0xff25,0xff26,0xff27,0xff28};			
+//DPoison	
+		0xdc17: group := {0xff29,0xff2a, 0xff2b,0xff2c,0xff2d};
+//ExPotion	
+		0xdc09: group := {0xff2f,0xff30,0xff31,0xff31};
+//GExPotion	
+		0xdc07: group := {0xff32,0xff33,0xff34,0xff35,0xff36};	
+//Agility	
+		0xdc0c: group := {0xff38, 0xff39};	
+//GAgility	
+		0xdc0d: group := {0xff3a,0xff3b,0xff3c};
+//FullRefresh	
+		0xdc0f: group := {0xff3d,0xff3e,0xff3f};
+//Strength	
+		0xdc11: group := {0xff40,0xff41};
+//GStrength	
+		0xdc12: group := {0xff42,0xff43,0xff44};
+//Cure		
+		0xdc15: group := {0xff45,0xff46,0xff47};
+//GCure		
+		0xdc16: group := {0xff48,0xff49, 0xff4a,0xff4b,0xff4c};
+endcase
+
+
+foreach thing in group
+	basic := FindItemInContainer(who.backpack, cint(thing));
+	if (basic)
+		return basic;
+	endif
+endforeach
+
+return 0;
+
+endfunction

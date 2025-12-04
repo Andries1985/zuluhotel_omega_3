@@ -1,0 +1,50 @@
+use os;
+use uo;
+
+include "include/random";
+
+program santaman(who, santa)
+
+	var time := getobjproperty(who, "onlinetimer");
+	if(!time)
+		time := 0;
+	endif
+	time := CInt(time/(24*3600));
+	
+	var GiftedAlready :=CInt(GetObjProperty(who, "#GiftedAlready")), secclock:=ReadGameClock();
+	if(secclock < GiftedAlready && !who.cmdlevel)
+		SendSysMessage(who, "You can only recieve one christmas present per day.");
+		return;
+	elseif(time < 10)
+		SendSysMessage(who, "You are too young to recieve a gift.");
+		return;
+	endif
+	SetObjProperty(who, "#GiftedAlready", ReadGameClock() + (24*3600));
+
+	PrintTextAbovePrivate(santa, "Ho Ho Ho", who);
+	SleepMS(1000);
+	PrintTextAbovePrivate(santa, "Have you been a nice kid?", who);
+	SleepMS(2500);
+	
+	var badluck := random(100);
+	if(badluck < 5)
+		PrintTextAbovePrivate(santa, "Looks like you have been a bad kid!", who);
+		SleepMS(500);
+		PrintTextAbovePrivate(santa, "Here have some coal.", who);
+		var coal := CreateItemInBackpack(who, 0x3C52);
+		coal.name := "Coal";
+		coal.color := 1157;
+	else
+		var presentType := random(3);
+		Case (presentType)
+			0: presentType := "gift1";
+			1: presentType := "gift2";
+			default: presentType := "gift3";
+		endcase
+		PrintTextAbovePrivate(santa, "Looks like you have been a good kid!", who);
+		SleepMS(500);
+		PrintTextAbovePrivate(santa, "Here have a present.", who);
+		CreateItemInBackpack(who, presentType);
+	endif
+	return;
+endprogram

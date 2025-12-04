@@ -1,0 +1,37 @@
+use os;
+use uo;
+use vitals;
+
+include ":staff:include/staff";
+include "include/attributes";
+include "include/managers";
+
+program textcmd_kill( who )
+
+	var tgt := TargetCoordinates( who );
+
+	if( tgt.mobile )
+ 		var mob := tgt.mobile;
+			
+		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
+			SendSysmessage(who, "You can only .kill NPCs.");
+			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
+			return;
+		endif
+
+		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
+			SendSysMessage( who , "You cant kill him, he is superior to you." );
+			SendSysMessage( mob , who.name + " is trying to kill you." );
+			
+		elseif( !mob.dead )
+			LogCommand(who, GetProcess(GetPid()).name, mob.name+"/"+mob.serial);
+			RevokePrivilege( mob, "invul" );
+			setobjproperty( mob, "guardkill", 1);	
+			ApplyRawDamage( mob, GetMaxHP(mob)+3 );
+			WarnManagerOfNpcDeath(mob);
+		else
+			SendSysMessage( who, "That Tickles!" );
+		endif
+	endif
+    
+endprogram

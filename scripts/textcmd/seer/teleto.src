@@ -1,0 +1,44 @@
+use uo;
+
+include ":staff:include/staff";
+include ":housing:utility";
+
+program teleto(who)
+
+	SendSysMessage(who, "Target an object to move.");
+	var what:= target(who);
+	if(!what)
+		SendSysmessage(who, "Canceled.");
+		return;
+	endif
+
+	if(who.cmdlevel < 4 && !what.isa(POLCLASS_NPC))
+		SendSysmessage(who, "You can only teleport NPCs.");
+		LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to teleto a player.");
+		return;
+	endif
+
+	if(what.multi && who.cmdlevel < 5)
+		SendSysMessage(who, "You can't teleport NPCs from inside of a multi.");
+		return;
+	endif
+
+	SendSysmessage(who, "Move this object where?");
+	
+	var where := targetcoordinates(who);
+	var multi := GetStandingHeight( where.x, where.y, where.z, where.realm ).multi;
+	if(multi && who.cmdlevel < 5) 
+		LogCommand(who, GetProcess(GetPid()).name, what.name+" tried to teleto a NPC into a house.");
+		SendSysMessage(who, "You can't teleport NPCs inside of a multi.");
+		return;
+	endif
+
+	if(where)
+		LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, where.x+" "+where.y+" "+where.z);
+		Moveobjecttolocation(what, where.x, where.y, where.z, where.realm, MOVEOBJECT_FORCELOCATION);
+	else
+		SendSysmessage(who, "Canceled.");
+		return;
+	endif
+
+endprogram

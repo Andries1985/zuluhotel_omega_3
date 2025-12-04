@@ -1,0 +1,14 @@
+use uo;
+include ":staff:include/staff";
+program textcmd_res( speaker )
+    var tgt := TargetCoordinates( speaker );
+    LogCommand(speaker, GetProcess(GetPid()).name, tgt.name+"/"+tgt.serial);
+    if (tgt.mobile)
+        if (tgt.mobile.dead)
+            Resurrect( tgt.mobile );
+        else
+            SendSysMessage( speaker, "But that's not dead!" );
+        endif
+
+    endif
+endprogram

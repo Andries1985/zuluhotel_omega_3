@@ -1,0 +1,23 @@
+use uo;
+
+const day := 86400;
+const hour := 3600;
+const minute := 60;
+const week := 604800;
+const startTime := 1543172400; //2018/11/25 19:00 gmt (sunday)
+
+program checkPH(who)
+	if(GetGlobalProperty("PHH"))
+		SendSysMessage(who, "Hunting powerhour is currently active!");
+	elseif(GetGlobalProperty("PHC"))
+		SendSysMessage(who, "Half-resources powerhour is currently active!");
+	elseif(GetGlobalProperty("PHS"))
+		SendSysMessage(who, "Double skillgain powerhour is currently active!");
+	else
+		var curTime := POLCORE().systime; 
+		var timeOver := (curTime - startTime) % week;
+		var timeLeft := week - timeOver;
+		SendSysMessage(who, "No powerhour is currently active...");
+		SendSysMessage(who, "It's "+ CInt(timeLeft/day) +" days, "+ CInt((timeLeft % day)/hour) +" hours, "+ CInt((timeLeft % hour)/minute) +" minutes and "+ CInt(timeLeft % minute) +" seconds left until the next powerhour!");
+	endif
+endprogram

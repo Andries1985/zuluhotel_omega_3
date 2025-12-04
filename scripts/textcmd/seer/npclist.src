@@ -1,0 +1,194 @@
+////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// npclist() - List all npcs
+//
+////////////////////////////////////////////////////////////////////////
+use uo;
+use cfgfile;
+include ":staff:include/staff";
+include ":gumps:include/gumps";
+
+var cfgfile := ReadConfigfile("::npcdesc");
+var npcs := GetConfigStringKeys( cfgfile);
+
+Program npclist( who)
+var merchants := "";
+var monsters := {};
+var misc := "";
+
+var npcname;
+
+foreach npc in npcs
+	npcname := npc;
+	npc := FindConfigElem( cfgfile, npc );
+	
+	case (npc.script)
+	"merchant":
+	"animaltrainer":
+	"highpriest":
+	"minstrel":
+	"noble":
+	"banker":
+	"titlemaster1":
+	"crier":
+	"cstguard":
+	"daves_healer":
+	"hairstylist":
+	"townperson":
+	"smartcrier":
+	"mennoguard":
+	"performer": 	merchants := merchants+"<br>"+npcname;
+
+	"archerkillpcs":
+	"assassinkillpcs":
+	"bardkillpcs":
+	"chaosexplosionkillpcs":
+	"chaosfirebreather":
+	"chaoskillpcs":
+	"doppel":
+	"doppelganger":
+	"dumbkillpcs":
+	"explosionkillpcs":
+	"firebreather":
+	"formationskillpcs":
+	"formationleader":
+	"chaosmultikillpcs":
+	"chaosspellkillpcs":
+	"killany":
+	"killpcs":
+	"poisonkillpcs":
+	"rockthrower":
+	"slime":
+	"spellkillpcs":
+	"spiders":
+	"stormkillpcs": 
+	monsters.append(npcname);
+
+	default:
+			misc := misc+"<br>"+npcname;
+	endcase
+endforeach
+	
+
+
+
+var gump := GFCreateGump(20, 20, 410, 450);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250, 410, 450);
+
+GFTextLine(gump, 200, 32, 67, "NPC List");
+
+GFTextLine(gump, 100, 45, 53, "Towns Folk");
+GFHTMLArea(gump, 40, 65, 180, 350, merchants, 1, 1);
+GFTextLine(gump, 280, 45, 53, "Animals/Misc");
+GFHTMLArea(gump, 230, 65, 180, 350, misc, 1, 1);
+
+GFTextLine(gump, 80, 430, 53, "Monsters Menu");
+GFAddButton(gump, 50, 430, 4005, 4006, 1, 5); 
+
+var result := GFSendGump(who, gump);
+
+if (result[0] == 5)
+	MonstersMenu(who, monsters, 0);
+endif
+
+return;
+endprogram
+
+
+function MonstersMenu(who, monsters, page)
+
+var newpagemonsters := monsters;
+
+var monstersperpage := 200;
+var maxpage := CInt(Len(monsters)/monstersperpage);
+if(page < 0)
+	page := 0;
+elseif(page > maxpage)
+	page := maxpage;
+endif
+
+var alphlist := "";
+var npcname;
+var none := "";
+var one := "";
+var two := "";
+var three := "";
+var four := "";
+var five := "";
+var six := "";
+var seven := "";
+var eight := "";
+var nine := "";
+var ten := "";
+var higher := "";
+
+var count := 0;
+foreach npc in monsters
+	var mincount := page * monstersperpage;
+	var maxcount := (page+1) * monstersperpage;
+	if(count >= mincount && count < maxcount)  
+		npcname := npc;
+		npc := FindConfigElem( cfgfile, npc );
+		alphlist := alphlist+"<br>"+npcname;
+
+		case (CInt(npc.MagicItemLevel))
+			0:	none := none+"<br>"+CInt(npc.MagicItemLevel)+" "+CInt(npc.MagicItemChance)+"   "+npcname;
+			1:	one := one+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			2:	two := two+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			3:	three := three+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			4:	four := four+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			5:	five := five+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			6:	six := six+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			7:	seven := seven+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			8:	eight := eight+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			9:	nine := nine+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			10:	ten := ten+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+			default:	higher := higher+"<br>"+npc.MagicItemLevel+" "+npc.MagicItemChance+"   "+npcname;
+		endcase
+	endif
+	count := count+1;
+endforeach
+	
+var gump := GFCreateGump(20, 20, 500, 470);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250, 500, 470);
+
+GFTextLine(gump, 230, 30, 67, "Monster List");
+
+GFTextLine(gump, 80, 45, 53, "Alphabetical List");
+GFHTMLArea(gump, 40, 65, 180, 370, alphlist, 1, 1);
+
+GFTextLine(gump, 255, 45, 53, "L");
+GFTextLine(gump, 270, 45, 53, "C");
+GFTextLine(gump, 330, 45, 53, "Sort by Loot");
+GFHTMLArea(gump, 250, 65, 240, 370, none+"<BR>"+one+"<br>"+two+"<br>"+three+"<br>"+four+"<br>"+five+"<br>"+six+"<br>"+seven+"<br>"+eight+"<br>"+nine+"<br>"+ten+"<br>"+higher, 1, 1);
+ 
+GFTextLine(gump, 90, 450, 53, "L = Loot Group Level");
+GFTextLine(gump, 300, 450, 53, "C = Magic Item Chance");
+
+if(page > 0)
+	GFTextLine(gump, 80, 430, 53, "Previous Page");
+	GFAddButton(gump, 50, 430, 4015, 4016, 1, 5); 
+endif
+
+if(page < maxpage)
+	GFTextLine(gump, 260, 430, 53, "Next Page");
+	GFAddButton(gump, 230, 430, 4005, 4006, 1, 10); 
+endif
+
+var result := GFSendGump(who, gump);
+
+var newpage;
+if (result[0] == 5)
+	newpage := page-1;
+	MonstersMenu(who, newpagemonsters, newpage);
+elseif (result[0] == 10)
+	newpage := page+1;
+	MonstersMenu(who, newpagemonsters, newpage);
+endif
+
+endfunction

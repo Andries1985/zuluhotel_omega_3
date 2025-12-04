@@ -1,0 +1,8 @@
+use uo;
+include ":staff:include/staff";
+program textcmd_turn( who, newfacing )
+    newfacing := CInt( newfacing );
+    var what := Target( who );
+    what.facing := newfacing;
+	LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "New Facing: "+newfacing);
+endprogram

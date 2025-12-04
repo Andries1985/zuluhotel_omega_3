@@ -1,0 +1,117 @@
+use uo;
+use os;
+use npc;
+use cfgfile;
+
+include ":staff:include/staff";
+include "include/attributes";
+
+program shrink(who)
+
+SendSysMessage(who, "Target an what to shrink into your backpack.");
+
+var what := Target(who, TGTOPT_NOCHECK_LOS);
+
+if (!what.isa(POLCLASS_NPC))
+	SendSysMessage(who, "You must target an what.");
+	return 0;
+endif
+
+var doll := CreateItemInBackpack( who, 0x8, 1 );
+SetName(doll, what.name);
+doll.color := what.color;
+SetGraphic(doll, what);
+
+if (SaveNPCToDoll(what, doll))
+	PrintTextAbovePrivate(what, "NPC copy shrunk and placed in your pack!", who, 3, 53);
+	LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.npctemplate, doll.name+"/"+doll.serial);
+else
+	SendSysMessage(who, "Error", 3, 43);
+endif
+
+
+endprogram
+
+function SetGraphic(dolly, mobile)
+
+var trackingcfg := ReadConfigFile(":tracking:tracking");
+var elem := FindConfigElem(trackingcfg, mobile.graphic);
+if (elem)
+	dolly.graphic := elem.tile;
+else
+	dolly.graphic := 0x20f8;
+endif
+
+endfunction
+
+function SaveNPCToDoll(what, doll)
+
+
+var o := struct, vits := struct, cprops := {}, skillids := {};
+var allprops := GetObjPropertyNames( what );
+
+o.+Name := what.name;
+o.+Graphic := what.graphic;
+o.+script := what.script;
+o.+criminal := what.criminal;
+o.+murderer := what.murderer;
+
+o.+objtype :=  GetStrength(what);
+o.+trueobjtype := what.objtype;
+o.+color := what.color;
+o.+truecolor := what.color;
+o.+Gender := what.gender;
+o.+STR := GetStrength(what);
+o.+INT := GetIntelligence(what);
+o.+DEX := GetDexterity(what);
+o.+runspeed := what.run_speed;
+o.+ar	:= what.ar;
+o.+titleprefix := what.title_prefix;
+o.+titlesuffix := what.title_suffix;
+o.+titleguild := what.title_guild;
+o.+titlerace := what.title_race;
+o.+facing := what.facing;
+
+vits.+HITS := GetMaxHp(what);
+vits.+STAM := GetMaxStamina(what);
+vits.+MANA := GetMaxMana(what);
+
+foreach prop in allprops
+	cprops.append({prop, GetObjProperty(what, prop)});
+endforeach
+
+foreach item in ListEquippedItems(what)
+	var copy;
+	if (item != what.backpack)
+		copy := CreateItemCopyAtLocation(doll.x, doll.y, doll.z, item, doll.realm);
+	endif
+	MoveItemToContainer(copy, doll);
+	copy.movable := 0;
+endforeach
+
+if (what.backpack)
+	foreach item in EnumerateItemsInContainer(what.backpack)
+		if (GetObjProperty(item, "LFucker"))
+			var copy := CreateItemCopyAtLocation(doll.x, doll.y, doll.z, item, doll.realm);
+			SetObjProperty(copy, "LFucker", 1);
+			MoveItemToContainer(copy, doll);
+			SetObjProperty(copy, "packitem", 1);
+			copy.movable := 0;
+		endif
+	endforeach
+endif
+
+var i;
+for (i := 0; i <= 48; i := i + 1)
+	skillids.append(GetBaseSkill(what, i));
+endfor
+
+SetObjProperty(doll, "NPCTemplate", what.npctemplate);
+SetObjProperty(doll, "NPCSkills", skillids);
+SetObjProperty(doll, "NPCProps", cprops);
+SetObjProperty(doll, "NPCVits", vits);
+SetObjProperty(doll, "overw", o);
+
+return 1;
+
+endfunction

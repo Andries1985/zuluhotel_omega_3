@@ -1,0 +1,26 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/eventid";
+include "include/dotempmods";
+include "include/random";
+include "include/attributes";
+
+program spiritspeak( me )
+
+	if (!CanMod(me,"spiritspeak",1))
+		SendSysMessage( me, "You are already in contact with the netherworld.");
+		return 0;
+	endif
+
+	if (!CheckSkill( me, SKILLID_SPIRITSPEAK, -3, 250 ))
+		SendSysMessage( me, "You fail to communicate with the netherworld." );
+		return 0;
+	endif
+	SendSysMessage( me, "You contact the netherworld." );
+	PlaySoundEffect( me, SFX_SKILL_SPIRITSPEAK );
+
+	DoPersistedMod(me, "spiritspeak", 1, me.enabled( "hearghosts" ), 120);
+
+endprogram

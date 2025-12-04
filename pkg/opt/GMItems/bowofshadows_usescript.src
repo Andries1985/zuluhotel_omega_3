@@ -1,0 +1,30 @@
+use uo;
+use os;
+
+const USE_TIME := 2; // in minutes
+
+program BowOfShadows(who, bow)
+
+if (!bow.layer)
+	SendSysMessage(who, "You must be holding that to use it.");
+	return 0;
+endif
+
+var last_use := GetObjProperty(bow, "LastUsed");
+
+if ((last_use + (USE_TIME*60)) > ReadGameClock())
+	SendSysMessage(who, "You can only utilise the bows energy every "+USE_TIME+" minutes.");
+	return 0;
+endif
+
+SetObjProperty(bow, "LastUsed", ReadGameClock());
+
+PlaySoundEffect(who, 0x3C5);
+bow.color := 1157;
+sleepms(1700);
+
+who.hidden := 1;
+
+bow.color := GetObjProperty(bow, "EnchantColor");
+
+endprogram

@@ -1,0 +1,14 @@
+use uo;
+
+program nogateproo(who)
+
+    if(!GetObjProperty(who, "NoPromptGate"))
+        SetObjProperty(who, "NoPromptGate", 1);
+        SendSysMessage(who, "Gates will no longer prompt when you enter them.");
+    else
+        EraseObjProperty(who, "NoPromptGate");
+        SendSysMessage(who, "Gates will now prompt when you enter them.");
+    endif
+
+return;
+endprogram

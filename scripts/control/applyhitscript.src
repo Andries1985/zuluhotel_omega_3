@@ -1,0 +1,15 @@
+use uo;
+use os;
+use cfgfile;
+
+program applyhitscript(item)
+
+	Sleep( 2 );
+	
+	if( !item.hitscript )
+		var cfg := ReadConfigFile( "::itemdesc" );
+		item.hitscript := cfg[item.objtype].Hitscript;
+	endif
+
+endprogram
+

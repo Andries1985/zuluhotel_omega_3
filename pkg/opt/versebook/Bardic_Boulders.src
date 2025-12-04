@@ -1,0 +1,158 @@
+use uo;
+use os;
+
+include "include/attributes";
+include "include/classes";
+include ":versebook:include/versefunctions";
+include ":versebook:include/verseconstants";
+
+var stamina, diff, skills, element, instrument, musicianship, name;
+var BASE_DAMAGE := 40;
+
+// How many seconds between damage
+var DAMAGE_LOOP := 2;
+
+const GFX_EFFECT := 4963;
+const SOUND_EFFECT := 0x4D0;
+
+program Bardic_Boulders(parms)
+
+	// Sent with the song_id (a number like spellid)
+	var who := parms[1];
+	var song_id := parms[2];
+
+	Attach(who);
+
+	// Checks rules for playing the particular song, class, stamina skills, instrunment
+	// Returns cfg info for song to save processing power
+	var can_play := CanPlay(who, song_id);
+	if (!can_play)
+		return 0;
+	else
+		stamina := can_play[1];
+		diff := can_play[2];
+		skills := can_play[3];		 // array of skill_ids to base verse on
+		element := can_play[4];		 // array of elements to base damage on
+		instrument := can_play[5];	 // Item ref to music instrument found
+		musicianship := can_play[6]; // The players music SKILL level
+		name := can_play[7];		 // The name of the song
+	endif
+
+	// Atm we don't allow bards to move, if they lose hp, stop
+	var x := who.x;
+	var y := who.y;
+	var hp := GetHP(who);
+
+	var last_played := ReadGameClock(); // Used JUST for the playing sound, does a check against music skill too
+
+	// All skill checks are done in here
+	if (!SucceedPlayingVerse(who, skills, diff, instrument, name))
+		return 0;
+	endif
+
+	// Calculate the range, damage, and specify the loop var, as well as hit var
+	var range := GetVerseRange(who, musicianship);
+	var damage := CalculateBardicDamage(who, skills, diff, BASE_DAMAGE);
+
+	var i := DAMAGE_LOOP;
+	var hit;
+	var targ;
+	var msg := 1;
+	EraseObjProperty(who, "#BoulderSelection");
+	EraseObjProperty(who, "#BoulderTarget");
+
+	// ------------- The looping main effect of the song ------------ \\
+	repeat
+
+		// this cursor constantly appears
+		if (!GetObjProperty(who, "#BoulderSelection"))
+			Start_Script(":versebook:Bardic_Boulders_Target", {who, msg});
+			msg := 0;
+		endif
+		
+		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
+		if (ReadGameClock() >= last_played)
+			if (!PlayBardicMusic(who, diff, instrument))
+				return 0;
+			endif
+			last_played := ReadGameClock()+7;
+		endif
+		
+		// set hit to 0 again
+		hit := 0;
+		if ( i == DAMAGE_LOOP)
+			var target_serial := GetObjProperty(who, "#BoulderTarget");
+			if (!target_serial)
+				sleep(1);
+				continue;
+			endif
+			targ := SystemFindObjectBySerial(target_serial);
+					
+			// Not enough stamina
+			if (!HitWithBoulder(who, targ, damage, range))
+				break;
+			endif
+					
+			i := 0;
+			
+		endif
+
+		i := i + 1;
+		
+		sleep(1);
+
+	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+
+	EraseObjProperty(who, "#BoulderSelection");
+	EraseObjProperty(who, "#BoulderTarget");
+	//CancelTarget( who );
+
+endprogram
+
+function HitWithBoulder(who, targ, damage, range)
+
+	// needs to be in LOS still, in range, not hidde/concealed/or dead
+	if ((Distance(who, targ) <= range) && !targ.dead && !targ.hidden && !targ.concealed && CheckLineOfSight( who, targ ))
+
+		if (ConsumeBardStamina(who, stamina, 1))
+			PlayMovingEffectXYZEx( targ.x-10, targ.y-10, targ.z+10, targ.x, targ.y, targ.z, targ.realm, GFX_EFFECT, 6, 10);
+			sleep(1);
+			PlaySoundEffect(targ, SOUND_EFFECT);
+			if(!targ.isA(POLCLASS_NPC))
+				damage := (damage/2);
+			endif
+			ApplyBardicDamage(who, targ, element, damage);
+			var rock := CreateItemAtLocation( targ.x, targ.y, targ.z, GFX_EFFECT, 1, targ.realm );
+			var z := rock.z;
+			var multiple := 0;
+			foreach thing in ListItemsNearLocationOfType( rock.x, rock.y, rock.z, 0, GFX_EFFECT, rock.realm)
+				if (thing != rock)
+					if (thing.z > z)
+						z := thing.z;
+					endif
+					multiple := 1;
+				endif
+			endforeach
+			
+			if (z == rock.z && !multiple)
+				z := z - 3;
+			endif
+			
+			rock.movable := 1;
+			MoveObjectToLocation(rock, rock.x, rock.y, z+3, rock.realm, MOVEOBJECT_FORCELOCATION);
+			rock.movable := 0;
+			SetObjProperty(rock, "f", 1);
+			Start_Script("::misc/deleter", {rock, (1+RandomInt(5))});
+			//Start_Script("::misc/deleter", {rock, (10+RandomInt(60))});
+		else
+			return 0;
+		endif
+	else
+		if (!ConsumeBardStamina(who, stamina, 3))
+			return 0;
+		endif
+	endif
+		
+	return 1;
+
+endfunction

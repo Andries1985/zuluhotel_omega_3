@@ -1,0 +1,24 @@
+use uo;
+
+include "include/client";
+include "include/attributes";
+
+program changecolor( who , color )
+	if(!color)
+		SendSysMessage( who , "Works like this .changecolor <color-id>", FONT_NORMAL, 2595 );
+		return;
+	endif
+	SendSysMessage( who , "Who do you want to give a permanent color change?", FONT_NORMAL, 2569 );
+		
+	var targ := Target( who );
+	if( !targ )
+		SendSysMessage( who , "Canceled.", FONT_NORMAL, 2595 );
+		return;
+	endif
+	
+	color := Cint(color);
+	targ.truecolor := color;
+	targ.color := color;
+	SendSysMessage( who , "Done!.", FONT_NORMAL, 2601 );
+
+endprogram

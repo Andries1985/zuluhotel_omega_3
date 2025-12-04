@@ -1,0 +1,11 @@
+use uo;
+use os;
+
+program textcmd_consreg( who, what )
+
+what := GetProcess(Cint(what));
+
+what.kill();
+
+
+endprogram

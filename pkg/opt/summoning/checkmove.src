@@ -1,0 +1,17 @@
+use uo;
+use os;
+
+program checkmove(who)
+	var sx := who.x;
+	var sy := who.y;
+	var count := 0;
+	while(GetObjProperty(who, "#Casting") && !GetObjProperty(who, "#SpellMove") && count < 1200 )
+		if(who.x != sx || who.y != sy)
+			SetObjProperty(who, "#SpellMove", 1);
+		endif
+		SleepMS(500);
+		count := count + 1;
+	endwhile
+
+	return;
+endprogram

@@ -1,0 +1,40 @@
+use uo;
+
+include ":staff:include/staff";
+include "include/itemutil";
+
+program DoubleClick()
+	Print("Hooking Double Click Packet 0x06");
+	return 1;
+endprogram
+
+exported function DoubleClickPacket(who, byref packet)
+	if(who.cmdlevel && who.cmdlevel < 3)
+		var allowed := SystemFindObjectBySerial(packet.GetInt32(1));
+		if(IsOnPlayer( who.backpack , allowed ) || allowed == who.backpack || !allowed || allowed.isa(POLCLASS_NPC) || allowed.isa(POLCLASS_MOBILE) )
+			return 0;
+		endif
+		LogCommand(who, GetProcess(GetPid()).name, "Tried to double-click "+allowed.name+"/"+allowed.serial+" at location xyz: "+allowed.x+" "+allowed.y+" "+allowed.z);
+		SendSysMessage(who, "You are not allowed to double-click anything outside your own backpack.");
+		return 1;
+	endif
+
+	var item := SystemFindObjectBySerial(packet.GetInt32(1));
+	var wfh := item.container;
+
+	if(!who.cmdlevel && wfh.isa(POLCLASS_CORPSE) && GetGlobalProperty("GlobalNoLoot"))
+		return 1;
+	endif
+	
+	if(!who.cmdlevel && item.cmdlevel && (item.concealed || item.hidden))
+		SendSysMessage(item, who.name+" is trying to double-click you while you are concealed/hidden");
+	endif
+
+	if (wfh.isa(POLCLASS_NPC))
+		var masterserial := GetObjProperty(wfh,"master");
+		if (who.serial == masterserial)
+			MoveItemToContainer( item, wfh.backpack);
+		endif
+	endif
+	
+endfunction

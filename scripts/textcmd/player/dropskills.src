@@ -1,0 +1,132 @@
+////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Dropskills()
+//
+////////////////////////////////////////////////////////////////////////
+use uo;
+
+include "include/attributes";
+include ":gumps:include/gumps";
+
+Program DropSkills( who) 
+
+var hair := GetEquipmentByLayer( who, LAYER_HAIR );
+var beard := GetEquipmentByLayer( who, LAYER_BEARD );
+
+        var list_items := 0;
+        foreach item in ListEquippedItems( who )
+                SleepMS(5);
+                if( item == who.backpack )
+                        continue;
+                elseif( item == hair )
+                        continue;
+                elseif( item == beard )
+                        continue;
+                endif
+
+                list_items := 1;
+        endforeach
+
+        if( list_items )
+                //Do not take risk and abord process now.
+		SendSysMessage( who, "You need to undress and dismount to use this command!");
+                return 0;
+        endif
+var gump := GFCreateGump(20, 20, 2, 530);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250,720, 530);
+GFResizePic(gump, 30, 30, 9350, 700, 510);
+GFResizePic(gump, 260, 20, 9250,240, 40);
+GFResizePic(gump, 270, 30, 9350, 220, 20);
+GFTextLine(gump, 330, 30, 43, "Drop Skills Menu");
+var y := 70;
+var line := 17;
+var i := 0;
+var x := 100;
+var name;
+var colour := 999;
+var count := 1;
+var skill;
+repeat
+	if(count != 49)
+		name := GetAttributeIdBySkillId( count );
+		skill := GetSkillIdByAttributeId( name );
+		skill := CDbl(GetBaseSkillBaseValue( who, skill )/10.0);
+	endif
+	if (count == 49)
+	name := ATTRIBUTEID_ALCHEMY;
+	skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_ALCHEMY )/10.0);
+	endif
+	if (i >= line)
+		x := x + 230;
+		i := 0;
+		y := 70;
+	endif
+/*
+	if (name == ATTRIBUTEID_ALCHEMY)
+		colour := 67;
+		GFCheckBox(gump, x-40, y, 9026, 9027, 0, 85); 
+	endif
+*/
+	if (skill > 0)
+		colour := 67;
+		GFCheckBox(gump, x-40, y, 9026, 9027, 0, count); 
+	else
+		colour := 0;
+	endif
+
+	GFTextLine(gump, x, y, colour, skill);
+	GFTextLine(gump, x+45, y, colour, name);
+	y := y + 26;
+	i := i + 1;
+	count := count + 1;
+until (count >= SKILLID_MAX+1);
+
+GFResizePic(gump, 470, 450, 9350, 260, 90);
+GFTextLine(gump, 510, 460, 43, "Drop the selected skills to 0?");
+GFAddButton(gump, 510, 505, 2128, 2129, 1, 100); 
+GFAddButton(gump, 640, 505, 2119, 2120, 1, 999); 
+
+var result := GFSendGump(who, gump);
+if (result[0] != 100)
+	SendSysMessage(who, "Cancelled");
+	return 0;
+endif
+
+foreach key in (result.keys)
+
+        var list_items := 0;
+        foreach item in ListEquippedItems( who )
+                SleepMS(5);
+                if( item == who.backpack )
+                        continue;
+                elseif( item == hair )
+                        continue;
+                elseif( item == beard )
+                        continue;
+                endif
+
+                list_items := 1;
+        endforeach
+
+        if( list_items )
+                //Do not take risk and abord process now.
+		SendSysMessage( who, "Aborted." );
+                return 0;
+        endif
+
+
+	if(key != 0 and key != 100 and key != 999 and key == 49)
+		SetBaseSkill(who, key == 0, 0);
+	endif
+
+	if(key != 0 and key != 100 and key != 999 and key != 49)
+		SetBaseSkill(who, key, 0);
+	endif
+	
+endforeach
+
+endprogram
+

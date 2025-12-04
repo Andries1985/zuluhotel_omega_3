@@ -1,0 +1,42 @@
+use os;
+use uo;
+use util;
+
+include "include/client";
+
+program cwprize (who)
+	Detach();
+	foreach worn in ListEquippedItems(who)
+		if (GetObjProperty( worn, "CW" ))
+			DestroyItem(worn);
+		endif
+	endforeach
+	foreach item in EnumerateItemsInContainer( who.backpack )
+		if (GetObjProperty( item, "CW" ))
+			DestroyItem(item);
+		endif
+	endforeach
+	var jackpot := GetObjProperty(who,"cwprize");
+	if (jackpot)
+		CreateItemInBackpack( who, "goldcoin", jackpot );
+		var cwprize_type := GetObjProperty(who,"cwprize_type");
+		var cwprize_quantity := GetObjProperty(who,"cwprize_quantity");
+		if(cwprize_type)
+			var prize_item := CreateItemInBackpack( who, cwprize_type, cwprize_quantity );
+			start_script( ":itemid:itemid" , prize_item );
+			SendSysmessage( who, "Congratulations! You won "+jackpot+" gold and "+cwprize_quantity+" "+prize_item.desc, FONT_NORMAL, 2567);
+		else
+			SendSysmessage( who, "Congratulations! You won "+jackpot+" gold!", FONT_NORMAL, 2567);
+		endif
+		EraseObjProperty(who,"cwprize");
+		EraseObjProperty(who,"cwprize_type");
+		EraseObjProperty(who,"cwprize_quantity");
+	else
+		SendSysmessage( who, "Sorry, you can't claim a prize.", FONT_NORMAL, 2595 ); 
+	endif
+	EraseObjProperty(who,"cwarring");
+	EraseObjProperty(who,"cwcolor");
+
+	MoveObjectToLocation( who, 3679+RandomInt(5), 2516+RandomInt(5), 0, "britannia", MOVEOBJECT_FORCELOCATION);
+endprogram
+	

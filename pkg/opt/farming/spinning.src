@@ -1,0 +1,120 @@
+use uo;
+use cfgfile;
+use os;
+
+include "include/client";
+include "include/objtype";
+include "include/myutil";
+
+Const STARTWHEEL := 0x1015;
+Const ENDWHEEL := 0x101E;
+
+program use_flax( me , flax)
+
+	if (not Accessible(me, flax))
+        	sendsysmessage(me, "Canceled");
+        	return;
+	endif
+
+	var flaxtype := flax.objtype;
+	var allmyflax := EnumerateItemsInContainerOfObjType(me.backpack, flaxtype);
+
+	if ( (flaxtype != 0x0E1D) and (flaxtype != 0xFA0) and (flaxtype != 0x0fa1) )
+		If (!NearAWheel(me))//stuff on wheel makes yarn
+			SendSysMessage(me,"You must be closer to a spinning wheel!");
+			return;
+		endif
+	else
+		If (!NearALoom(me))//yarn or thread on a loom makes a bolt
+			SendSysMessage(me,"You must be closer to a Loom!");
+			return;
+		endif
+	endif
+
+	if ( CountFlax(me, allmyflax) < 5 )
+		SendSysMessage(me,"You need 5 of those to make anything!");
+		return;
+	endif
+
+	var done := 0;
+	while ( done < 20 )
+		if (!DestroyFive(me, allmyflax))
+			SendSysMessage(me,"Done!");
+			return;
+		endif
+		if ( flaxtype == 0x0E1D ) 
+				CreateItemInContainer( me.backpack, 0x0F95, 2);
+		elseif ( (flaxtype == 0xFA0) or (flaxtype == 0x0fa1) )
+				CreateItemInContainer( me.backpack, 0x0F95, 1);
+		else
+			CreateItemInContainer( me.backpack, 0x0E1D, 2 );
+		endif
+		if ( CountFlax(me, allmyflax) < 5 )
+			SendSysMessage(me,"Done!");
+			return;
+		endif
+		done := done + 1;
+	endwhile
+
+	SendSysMessage(me,"Done!");
+
+endprogram
+
+function DestroyFive(me, byref allmyflax);
+
+	var numflax := 0;
+	foreach item in (allmyflax)
+		if (item.amount >= (5-numflax) )
+			SubtractAmount(item,(5-numflax));
+			return 1;
+		else
+			numflax := numflax + item.amount;
+			if (!Destroyitem(item))
+				sendsysmessage(me,Destroyitem(item).errortext);
+				return 0;
+			endif
+			if (numflax > 4)
+				return 1;
+			endif
+		endif
+	endforeach
+
+	return 0;
+
+endfunction
+
+function CountFlax(me, byref allmyflax)
+
+	var numflax := 0;
+	foreach item in (allmyflax)
+		numflax := numflax + item.amount;
+	endforeach
+
+	return numflax;
+
+endfunction
+
+function NearAWheel(me)
+
+	foreach item in ListItemsNearLocation(me.x, me.y, me.z,2,me.realm)
+		if ( (item.objtype >= STARTWHEEL and item.objtype <= ENDWHEEL) or 
+		   (item.objtype >= 0x10a4 and item.objtype <= 0x10a6) )
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+
+endfunction
+
+function NearALoom(me)
+
+	foreach item in ListItemsNearLocation(me.x, me.y, me.z,2,me.realm)
+		if (item.objtype >= UOBJ_LOOM_START and item.objtype <= UOBJ_LOOM_END)
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+
+endfunction

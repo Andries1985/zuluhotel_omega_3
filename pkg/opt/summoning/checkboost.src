@@ -1,0 +1,102 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/attributes";
+include "include/dotempmods";
+include "include/classes";
+include "include/client";
+
+program checkboost()
+
+	while(1)
+		foreach player in EnumerateOnlineCharacters()
+			var allmods := GetObjProperty( player , "#mods" );
+			if(allmods)
+				var newmods := {};
+				var i;
+				for( i := 1 ; i <= len(allmods) ; i := i + 1 )
+					if( ReadGameClock() >= allmods[i][3] )
+						if(allmods[i][4])
+							UndoTheMod( player , allmods[i][1] , allmods[i][2], allmods[i][4] );
+						else
+							UndoTheMod( player , allmods[i][1] , allmods[i][2] );
+						endif
+					else	
+						newmods.append( allmods[i] );
+					endif
+				endfor
+						
+				if( len(newmods) )
+					SetObjProperty( player , "#mods" , newmods );
+				else
+					EraseObjProperty( player , "#mods" );
+				endif
+			else
+				DoubleCheckMod(player);
+			endif
+		sleepMS(10);
+		endforeach
+		sleep(5);
+	endwhile
+
+endprogram
+
+function DoubleCheckMod(who)
+
+	var ts := 0, td := 0, ti := 0, ta := 0;
+	foreach it in ListEquippedItems( who );
+		if(GetObjProperty( it, "str" ))
+			ts := ts - GetObjProperty( it, "str" );
+		endif
+		if(GetObjProperty(it,"dex"))
+			td := td - GetObjProperty( it, "dex" );
+		endif
+		if(GetObjProperty(it,"DefaultDex"))
+			td := td - GetObjProperty( it, "DefaultDex" );
+		endif
+		if(GetObjProperty(it,"int"))
+			ti := ti - GetObjProperty( it, "int" );
+		endif
+		if(Cint(GetObjProperty(it, "ArBonus")))
+			ta := ta - Cint(GetObjProperty(it, "ArBonus"));
+		endif
+	endforeach
+
+	var strAmt := GetStrengthMod(who);
+	if(strAmt)
+		strAmt := strAmt + ts;
+		SetStrengthMod(who, GetStrengthMod(who) - strAmt);
+	endif
+	var dexAmt := GetDexterityMod(who);
+	if(dexAmt)
+		dexAmt := dexAmt + td;
+		SetDexterityMod(who, GetDexterityMod(who)-dexAmt);
+	endif
+	var intAmt := GetIntelligenceMod(who);
+	if(intAmt)
+		intAmt := intAmt + ti;
+		SetIntelligenceMod(who, GetIntelligenceMod(who)-intAmt);
+	endif
+	var arAmt := who.ar_mod + ta;
+	if(arAmt)
+		who.ar_mod := who.ar_mod - arAmt;
+	endif
+	if(!who.dead)
+		if(GetObjProperty( who, "IsLiche" ))						
+			EraseObjProperty( who, "IsLiche" );
+			if(GetObjProperty( who, "Type" ) == "Undead")
+				EraseObjProperty( who, "Type" );
+			endif
+		endif
+		if(who.cmdlevel < 1)
+			if(who.graphic != who.trueobjtype)
+				who.graphic := who.trueobjtype;
+			endif
+			if(who.color != who.TrueColor)
+				who.color := who.TrueColor;
+			endif
+		endif
+	endif
+return;
+endfunction

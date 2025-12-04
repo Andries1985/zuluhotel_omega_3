@@ -1,0 +1,76 @@
+use uo;
+use os;
+
+include "include/attributes";
+
+program CleanArena()
+	foreach guy in EnumerateOnlineCharacters()
+		  if  (guy.cmdlevel)
+			SendSysMessage(guy,"Cleaning up Color Wars Arena...",3,130);
+		endif
+	endforeach
+	var item_list := ListItemsNearLocation( 6080, 1356, LIST_IGNORE_Z, 100, "britannia" );
+	foreach item in item_list
+		if (GetObjProperty(item,"cwarring"))
+			DestroyItem(item);
+		endif
+		if (GetObjProperty(item,"CW"))
+			DestroyItem(item);
+		endif
+		sleepms(25);
+	endforeach
+	foreach guy in EnumerateOnlineCharacters()
+		EraseObjProperty(guy,"cwarring");
+	endforeach
+	foreach mob in ListMobilesNearLocation( 6080, 1356, LIST_IGNORE_Z, 100, "britannia" )
+		EraseObjProperty(mob,"cwarring");
+		EraseObjProperty(mob,"cwcolor");
+		EraseObjProperty(mob,"cwprize");
+		var lfame := GetObjProperty(mob,"cwfame");
+		var lkarma:= GetObjProperty(mob,"cwkarma");
+		if (lfame)
+			SetObjProperty(mob,"Fame",lfame);
+		endif
+		if (lkarma)
+			SetObjProperty(mob,"Karma",lkarma);
+		endif
+		RevokePrivilege( mob, "invul" );
+        Setobjproperty( mob, "guardkill", 1);
+		ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
+	endforeach
+	//Destroy Prize Stone and gates
+	var to_destroy := ListItemsAtLocation(6079, 1364, 50, "britannia"); //prize stone
+    to_destroy += ListItemsAtLocation(6067, 1394, 30, "britannia"); //red gate
+	to_destroy += ListItemsAtLocation(6115, 1333, 30, "britannia"); //blue gate
+	to_destroy += ListItemsAtLocation(6127, 1308, 15, "britannia"); //green gate
+    foreach item in to_destroy
+        DestroyItem(item);
+    endforeach
+	EraseGlobalProperty("cwtype");
+	EraseGlobalProperty("quickcw");
+	EraseGlobalProperty("cwsw");
+	EraseGlobalProperty("powerball");
+	EraseGlobalProperty("cwmonsters");
+	EraseGlobalProperty("numcwmonsters");
+	EraseGlobalProperty("cwfee");
+	EraseGlobalProperty("cwprize_type");
+	EraseGlobalProperty("cwprize_quantity");
+	EraseGlobalProperty("cwarsinit");
+	EraseGlobalProperty("cwarsjackpot");
+	EraseGlobalProperty("cwred");
+	EraseGlobalProperty("cwblue");
+	EraseGlobalProperty("cwgreen");
+	EraseGlobalProperty("kothnum");
+	EraseGlobalProperty("cwarsjackpot");
+	EraseGlobalProperty("lastcolor");
+	EraseGlobalProperty("kothmax");
+	EraseGlobalProperty("maxplayer");
+	EraseGlobalProperty("kothnum");
+	EraseGlobalProperty("cwars");
+	EraseGlobalProperty("cwsetup");
+	foreach guy in EnumerateOnlineCharacters()
+		  if  (guy.cmdlevel)
+			SendSysMessage(guy,"Color Wars Arena cleaned & reset.", 3, 130);
+		endif
+	endforeach		
+endprogram

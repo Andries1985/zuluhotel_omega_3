@@ -1,0 +1,63 @@
+use uo;
+use os;
+use attributes;
+use vitals;
+
+include "include/npcbackpacks";
+include "include/spelldata";
+include "include/eventid";
+include "include/client";
+include "include/random";
+include "include/attributes";
+
+program summon_creature( parms )
+
+	var caster		:= parms[1];
+	var npctemplate	:= parms[2];
+	var sfx		:= parms[3];
+
+	var magery		:= GetEffectiveSkill( caster , SKILLID_MAGERY );
+	var duration		:= magery * 2;
+	
+	PlaySoundEffect( caster , sfx );
+	
+	Detach();
+	
+	var thecritter := CreateNPCfromTemplate( npctemplate , cint(caster.x + Random(1)) , cint(caster.y + Random(1)) , cint(caster.z), 0, caster.realm );
+	SetObjProperty( thecritter , "summoned" , 1 );
+
+	var ev := {};
+	ev.+type := SYSEVENT_ENGAGED;
+	ev.+source := 0;
+
+	foreach critter in ListMobilesInLineOfSight( thecritter, 5 )
+		if ((!critter.npctemplate) or (critter.script == "tamed"))
+                	ev.source := critter;
+			SendEvent(thecritter, ev);
+		endif
+	endforeach
+	
+	Sleep( duration );
+
+	PlaySoundEffect( thecritter , 0x01fa );
+	PlayStationaryEffect( thecritter.x, thecritter.y, thecritter.z, 0x3728, 10, 10, 0, thecritter.realm);
+	var backpack := FindExistingPack( thecritter.serial );
+	if( backpack )
+		foreach item in EnumerateItemsInContainer( backpack );
+  			MoveObjectToLocation( item , thecritter.x , thecritter.y , thecritter.z, thecritter.realm, MOVEOBJECT_FORCELOCATION );
+		endforeach
+	endif
+
+	RevokePrivilege( thecritter, "invul" );
+	SetObjProperty(thecritter,"guardkill",1);
+	MoveOBJECTToLocation( thecritter, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
+	ApplyRawDamage(thecritter, GetMaxHP(thecritter)+3);
+
+	var count := 0;
+	repeat
+		SleepMS(1000);
+		ApplyRawDamage( thecritter, GetMaxHP(thecritter) + 3 );
+		count := count + 1;
+	until(!thecritter || count >= 1000);
+
+endprogram

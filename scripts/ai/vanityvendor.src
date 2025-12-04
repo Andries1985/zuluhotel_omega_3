@@ -1,0 +1,74 @@
+//Based on work by GM Gates
+//
+
+use uo;
+use os;
+use npc;
+
+include "include/eventid";
+include "include/randname";
+include "include/client";
+include "ai/setup/modsetup";
+
+set_script_option( SCRIPTOPT_NO_RUNAWAY , 1 );
+var me:= self();
+
+const HALT_THRESHOLD := 5;
+
+if( me.name["<random>"] )
+	SetName ( me , RandomName( me ) );
+	EquipFromTemplate( me , "19" );
+endif
+
+EnableMainEvents();
+
+while (1)
+	var ev := wait_for_event( 30 );
+
+	if (ev)
+		case(ev.type)
+			SYSEVENT_ENGAGED:
+			SYSEVENT_DAMAGED: 	
+				say("guards!!!");
+				Start_Script( ":areas:callguards" , me );
+			SYSEVENT_SPEECH: 
+				TurnToward( ev.source );
+				if (ev.text["buy"])
+					PrintTextAbove(me, "This is what we have for sale!");
+					start_script(":vanityshop:vanityshop", ev.source);
+				elseif(ev.text["help"] or ev.text["hello"])
+					tellinfo(ev.source);
+				endif
+			SYSEVENT_ENTEREDAREA:
+				if (randomint(5)>1) tellinfo(ev.source); endif
+		endcase
+	endif
+
+endwhile
+
+function tellinfo(who)
+
+	var sales_pitch := {
+		" Your clothing looks a bit dull, have you seen the Omega Dye? ",
+		" Use the Soul Pen to make sure future generations remember your demise! ",
+		" Have you seen the new housing options? So many floors! ",
+		" Have you seen the new housing options? Gardens! ",
+		" Have you seen the new housing options? A bridge! ",
+		" The fierce Raptalon awaits your call! ",
+		" The proud Ki Rin awaits your call! ",
+		" The imposing Polar Bear awaits your call! ",
+		" The mighty Beetle awaits your call! ",
+		" The legendary Wolf awaits your call! "};
+
+	say(sales_pitch[randomint(sales_pitch.Size())+1]);
+
+endfunction
+
+function EnableMainEvents()
+
+	EnableEvents( SYSEVENT_ENGAGED);
+	EnableEvents( SYSEVENT_DAMAGED );
+	EnableEvents( SYSEVENT_ENTEREDAREA + SYSEVENT_LEFTAREA, HALT_THRESHOLD );
+	EnableEvents( SYSEVENT_SPEECH, 2 );
+
+endfunction

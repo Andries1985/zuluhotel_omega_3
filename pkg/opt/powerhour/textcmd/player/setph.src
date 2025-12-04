@@ -1,0 +1,170 @@
+use uo;
+use os;
+use math;
+
+include "include/client";
+
+const minute := 60;
+const hour := 3600;
+const week := 604800;
+const starttime := 1543172400; //2018/11/25 19:00 gmt (sunday)
+
+program textcmd_setPH(who)
+
+	var time_now := POLCore().systime;
+	var use_time := GetObjProperty(who, "pph_use_time");
+
+	Print("Current time: "+time_now);
+	Print("Use time: "+use_time);
+
+	//var use_time_nextweek := use_time + week;
+	var use_time_nextweek := use_time + minute + minute;
+
+	Print("Next week time: "+use_time_nextweek);
+
+	var weekday_now := cint(Floor(time_now/86400)+4) % 7;
+	var use_weekday := GetObjProperty(who, "pph_use_weekday");
+
+	if(GetObjProperty(who, "usedpph") == 1)
+		SendSysMessage( who, "You currently have a Power Hour Running.", FONT_BOLD, 2595 );
+		if(GetObjProperty(who, "#PPHH"))
+			SendSysMessage( who, "You are under the influence of the Hunting Powerhour!", FONT_BOLD, 2595 );
+		elseif(GetObjProperty(who,"#PPHC"))
+			SendSysMessage( who, "You are under the influence of the Half-Resources Powerhour!", FONT_BOLD, 2595 );
+		elseif(GetObjProperty(who, "#PPHS"))
+			SendSysMessage( who, "You are under the influence of the Double-Skillgain Powerhour!", FONT_BOLD, 2595 );
+		endif
+		var remaining := (use_time+hour - time_now)/60;
+		SendSysMessage( who, "Remaining minutes left: "+remaining, FONT_BOLD, 2601 );
+		return;
+	//elseif((weekday_now < use_weekday) || (time_now > use_time_nextweek) )
+	elseif( time_now > use_time_nextweek && GetObjProperty(who, "usedpph") != 1 )
+		
+		var gump := {
+			"nodispose",
+			"page 0",
+			"gumppic 564 322 30500",
+			"gumppic 686 516 1802",
+			"gumppic 694 516 1803",
+			"gumppic 910 516 1804",
+			"gumppic 686 556 1802",
+			"gumppic 694 556 1803",
+			"gumppic 910 556 1804",
+			"gumppic 686 596 1802",
+			"gumppic 694 596 1803",
+			"gumppic 910 596 1804",
+			"text 710 360 2595 0",
+			"page 1",
+
+			"text 620 420 2578 1",
+
+			"text 710 514 2614 2",
+			"text 710 554 2614 3",
+			"text 710 594 2614 4",
+
+			"radio 663 513 208 209 0 100",								// Hunting PH button
+			"radio 663 553 208 209 0 200",								// Half-Resources PH button
+			"radio 663 593 208 209 0 300",								// Double-Skillgain PH button
+			
+			"button 700 710 243 241 1 0 0",                             // Cancel button
+			"button 840 710 249 248 1 0 1"								// Okay button
+		};
+		
+		var data := {
+			"<[ PERSONAL POWERHOUR ]>",
+			"WARNING: Logging out will make you lose your Powerhour.",
+			"Hunting Powerhour",
+			"Half-resources Powerhour",
+			"Double-skillgain Powerhour"
+		};
+
+		var gumpdata := SendDialogGump(who, gump, data);
+		if(!gumpdata)
+			SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+			return;
+		endif
+		
+		// Okay button wasn't pressed
+		if(gumpdata[0] != 1)
+			SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+			return 0;
+		endif
+		
+		var playerchoice;
+
+		foreach key in (gumpdata.keys)
+			playerchoice := key;
+		endforeach
+
+		case(playerchoice)
+			100:	activateph(who, "#PPHH");
+			200:	activateph(who, "#PPHC");
+			300:	activateph(who, "#PPHS");
+		endcase
+	else
+		SendSysMessage( who, "You have already started a Personal Powerhour this week. Try again next week!", FONT_NORMAL, 2595 );
+	endif
+
+/*
+	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
+		var remaining := (use_time+hour - time_now)/60;
+		if(GetObjProperty(who, "#PPHH"))
+			SendSysMessage( who, "You are already under the influence of the Hunting Powerhour!", FONT_BOLD, 2595 );
+		elseif(GetObjProperty(who,"#PPHC"))
+			SendSysMessage( who, "You are already under the influence of the Half-Resources Powerhour!", FONT_BOLD, 2595 );
+		elseif(GetObjProperty(who, "#PPHS"))
+			SendSysMessage( who, "You are already under the influence of the Double-Skillgain Powerhour!", FONT_BOLD, 2595 );
+		endif
+		SendSysMessage( who, "Remaining minutes left: "+remaining, FONT_BOLD, 2601 );
+		return;
+	endif
+*/
+
+endprogram
+
+
+function activateph(who, choice)
+
+	var use_time := POLCore().systime;
+	
+	var setph := SetObjProperty(who, choice, 1);
+	var use_weekday :=  cint(Floor(use_time/86400)+4) % 7;
+
+	SetObjProperty(who, "pph_use_time", use_time);
+	SetObjProperty(who, "pph_use_weekday", use_weekday);
+	SetObjProperty(who, "usedpph", 1);
+
+
+	Print("Setting Powerhour type: "+choice);
+	Print("Current weekday: "+use_weekday);
+	Print("Setting use_time to: "+use_time);
+	Print("Setting use_weekday to: "+use_weekday);
+	Print("Setting usedpph to 1");
+
+
+	if(GetObjProperty(who, "#PPHH"))
+		SendSysMessage( who, "Your Hunting Powerhour has started!", FONT_BOLD, 2601 );
+	elseif(GetObjProperty(who,"#PPHC"))
+		SendSysMessage( who, "Your Half-Resources Powerhour has started!", FONT_BOLD, 2601 );
+	elseif(GetObjProperty(who, "#PPHS"))
+		SendSysMessage( who, "Your Double-Skillgain Powerhour has started!", FONT_BOLD, 2601 );
+	endif
+
+	//Sleep(3600);
+	Sleep(60);
+
+	if(GetObjProperty(who, "#PPHH"))
+		SendSysMessage( who, "Your Hunting Powerhour has ended!", FONT_BOLD, 2595 );
+	elseif(GetObjProperty(who,"#PPHC"))
+		SendSysMessage( who, "Your Half-Resources Powerhour has ended!", FONT_BOLD, 2595 );
+	elseif(GetObjProperty(who, "#PPHS"))
+		SendSysMessage( who, "Your Double-Skillgain Powerhour has ended!", FONT_BOLD, 2595 );
+	endif
+	EraseObjProperty(who, "#PPHH");
+	EraseObjProperty(who, "#PPHC");
+	EraseObjProperty(who, "#PPHS");
+	SetObjProperty(who, "usedpph", 0);
+
+	Print("Setting usedpph to 0");
+
+endfunction

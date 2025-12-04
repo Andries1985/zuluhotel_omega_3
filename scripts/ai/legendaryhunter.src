@@ -1,0 +1,50 @@
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+
+include "include/anchors";
+include "ai/main/killpcsloop";
+include "ai/combat/fight";
+
+include "ai/main/defaultnoncombatevent";
+include "ai/combat/explosioncombatevent";
+include "ai/setup/archersetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+include "include/client";
+include "include/npcbackpacks";
+include "ai/setup/modsetup";
+
+const HALT_THRESHOLD := 10; // how close before he attacks?
+
+var runaway := 0;
+
+program KillPlayers()
+
+	SetWarMode( 0 );
+    	main_AI_loop();
+        
+endprogram
+
+function CloseDistance( opponent )
+
+		var anchor := GetObjProperty( me, PROPID_MOBILE_ANCHOR );
+		var test := me.z;
+    	if (distance(me, opponent) <= 4)
+		RunAwayFrom(opponent);
+		var test2 := me.z-test;
+		if(test2 < -20 or test2 > 20)
+		MoveObjectToLocation( me, anchor[1], anchor[2], anchor[5], anchor[6], MOVEOBJECT_FORCELOCATION );
+		endif
+		return 0;
+    	    else
+		return 1;
+    	endif
+
+endfunction

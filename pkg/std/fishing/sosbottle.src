@@ -1,0 +1,65 @@
+use uo;
+use cfgfile;
+use os;
+
+include "include/client";
+//include "include/objtype";
+include "include/starteqp";
+//include "include/skillpoints";
+include "include/coords";
+include "include/random";
+
+Const UOBJ_SOS_BOTLE_TILE := 0xA365;
+Const UOBJ_SOS_BOTLE := 0xA360;
+Const UOBJ_SOS_MESSAGE := 0xA363;
+Const MSG_COUNT := 5;
+
+program use_bottle( who, bottle )
+
+if(!ReserveItem(bottle)) return; endif
+
+var cfg := ReadConfigFile("sosarea");
+var maxI := GetConfigMaxIntKey(cfg);
+var sosnum := Random(maxI)+1;
+if ( sosnum > 10 )
+	sosnum := 10;
+endif
+var elem := cfg[Random(sosnum)];
+var X := cint(elem.x)+Random(cint(elem.range)*2) - cint(elem.range);
+var Y := cint(elem.y)+Random(cint(elem.range)*2) - cint(elem.range);
+var color := cint(elem.color);
+
+
+UnloadConfigFile( "sosarea");
+
+var tox := X;
+var toy := Y;
+var colormes := cint(GetObjProperty(bottle , "colormes"));
+// var toz := cint(GetObjProperty(bottle , "tileZ"));
+
+if( tox.errortext or toy.errortext)
+	syslog("bad bottle "+X+" "+Y);
+	destroyitem(bottle);
+	sendsysmessage(who, "You find nothing inside!");
+	return;
+endif
+
+
+var message := CreateItemInContainer(who.backpack, UOBJ_SOS_MESSAGE);
+
+SubtractAmount(bottle, 1);
+
+if(message)
+	SetObjProperty(message, "tileX", X);
+	SetObjProperty(message, "tileY", Y);
+	message.color := colormes;
+	SetObjProperty(message, "msgnum", Random(MSG_COUNT));
+	sendsysmessage(who, "You have extracted a message from the bottle!");
+	return;
+else 
+	destroyitem(message);
+	sendsysmessage(who, "You find nothing inside!");
+	return;
+endif
+sendsysmessage(who, "You find nothing inside!");
+endprogram

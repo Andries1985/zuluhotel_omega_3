@@ -1,0 +1,103 @@
+use uo;
+use os;
+
+include "include/spelldata";
+include "include/client";
+include "include/dotempmods";
+
+const USE_TIME := 30; // in minutes
+
+program StaffOfNagash(who,staff)
+
+if (!staff.layer)
+	SendSysMessage(who, "You must be holding that to use it.");
+	return 0;
+endif
+
+SetObjProperty(staff, "EnchantColor", staff.color);
+
+var time_now := ReadGameClock();
+var last_use := GetObjProperty(staff, "LastUsed");
+var remaining := (last_use+(USE_TIME*60) - time_now)/60;
+
+if ( ( (last_use + (USE_TIME*60)) > time_now) && !who.cmdlevel )
+	SendSysMessage(who, "You can only utilize the staff's energy once every "+USE_TIME+" minutes.");
+	SendSysMessage(who, "Time remaining: "+remaining+" minutes.");
+	return 0;
+endif
+
+SetObjProperty(staff, "LastUsed", ReadGameClock());
+PerformAction(who,0x0011);
+sleep(2);
+PlaySoundEffect(who, 0x1EA);
+staff.color := 1473;
+PlayObjectCenteredEffectEx( who, 14089, 7, 22, 1950 );
+
+var range := GetEffectiveSkill(who, SKILLID_MAGERY)/20; // 130 magery is 6 range
+range := range + IsMage(who); // level 4 130 magery is 10 range
+//Old Values
+var mod_amount := CInt(GetModAmount( who )*1.1);
+var duration := CInt(GetModDuration( who )*1.1);
+
+//var mod_amount := CInt(GetModAmount( who ));
+//var duration := CInt(GetModDuration( who ));
+
+ApplyBuff(who, mod_amount, duration);
+
+var first := 0;
+var lasthit := 0;
+// target has to be in los, npcs get buffed too
+var affected := ListMobilesNearLocation( who.x, who.y, who.z, range, who.realm );
+
+affected := SmartBoost(who, affected);
+
+foreach person in affected
+	if (CheckLineOfSight( who, person ) && person != who)
+	
+		sleep(2);
+		if (first == 0)
+			PlayMovingEffectEx( who, person, 14052, 1, 10, 1950 );
+			first := 1;
+		else
+			PlayMovingEffectEx( lasthit, person, 14052, 1, 10, 1950 );
+		endif
+
+		sleep(1);
+		ApplyBuff(person, mod_amount, duration);
+		PlayObjectCenteredEffectEx( person, 14089, 7, 22, 1950 );
+		PlaySoundEffect(person, 0x1EA);
+		lasthit := person;
+
+	endif
+endforeach
+
+staff.color := GetObjProperty(staff, "EnchantColor");
+
+endprogram
+
+function ApplyBuff(person, amt, duration)
+
+	if( CanMod( person , "all" ) && CanMod( person , "ebless" )  && CanMod( person , "poly"))
+		DoTempMod( person, "all" , amt , duration );
+	endif
+
+	if (CanMod(person, "dex"))
+		DoTempMod(person, "dex", amt, duration);
+	endif
+
+	if (CanMod(person, "str"))
+		DoTempMod(person, "str", amt, duration);
+	endif
+
+	if (CanMod(person, "ar"))
+		var arAmount := Cint(amt/1.25);
+		DoTempMod(person, "ar", arAmount, duration);
+	endif
+
+	if (CanMod(person, "int"))
+		DoTempMod(person, "int", amt, duration);
+	endif
+
+	SendSysMessage(person, "The power of Nagash fills you with energy!");
+
+endfunction

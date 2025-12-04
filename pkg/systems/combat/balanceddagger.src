@@ -1,0 +1,198 @@
+use uo;
+
+include ":combat:hitscriptinc";
+
+program use_balanceddagger(parms)
+
+var who := parms[1];
+var targ := parms[2];
+var dagger := parms[3];
+
+if (!ReserveItem(dagger) || !dagger.movable)
+	return 0;
+endif	
+
+var tx := targ.x;
+var ty := targ.y;
+var tz := targ.z;
+var tr := targ.realm;
+
+if (!targ)
+  return 0;
+elseif(targ == who)
+  return 0;
+elseif(!targ.isa(POLCLASS_MOBILE))
+  return 0;
+elseif (targ.hidden || targ.concealed)
+  return 0;
+elseif (Distance(who, targ) > 15)
+  SendSysMessage(who, "Too far!");
+  return 0;
+endif
+
+// Setting it for hitscript.inc
+SetObjProperty(who, "#DaggerThrow", 1);
+
+//=========================== Judging hit chance, same formula used in zhostuff.inc =======================\\
+var defwep := targ.weapon;
+var attwep;
+
+defwep := GetAttribute(targ, targ.weapon.attribute);
+attwep:=  GetAttribute(who, dagger.attribute);
+
+// defender has no skill in that weapon, we use his wrestling then.....
+if (defwep < 1) 
+	defwep := GetEffectiveSkill( targ, SKILLID_WRESTLING);
+endif
+
+// if player is a thief (or ass or mindblade for that matter) use his class
+if (IsThief(who))
+	attwep := AttackersSkill(who);
+endif
+
+// if defender is a class using a class weapon, use that skill
+if (targ.weapon.graphic in ClassWeapons(GetClass(targ))) 
+	defwep := DefendersSkill(who);
+endif
+
+
+var hit_chance := (attwep+ 50.0) / (2.0 * defwep + 50.0);
+var randomchance := RandomFloat(1.0);
+// animations and actions
+PerformAction(who, 8);
+PlaySoundEffect(who, 0x2b2);
+PlayMovingEffect(who, targ, dagger.graphic, 13, 0);
+
+// if its gm dagger, hide it/move to standing loc/and set unmovable.
+if (GetObjProperty(dagger, "IsGMItem"))
+	dagger.invisible := 1;
+	MoveObjectToLocation(dagger, who.x, who.y, who.z, who.realm, MOVEOBJECT_FORCELOCATION);
+	dagger.movable := 0;
+endif
+
+sleepms(300);
+
+if( randomchance < hit_chance ) // its a hit, apply any histcripts or launch hitscript.inc dmg
+	ApplyHitScript(who, targ, dagger, 0, 0);
+	
+	// check if the attacker will do an ambush.
+	// no need to check levels as only thiefs get this prop anyway.
+	var timeambush := GetObjProperty(who, "attackInitiatedWhileHidden");
+	if (timeambush>(ReadGameClock()-5))
+		PlaySoundEffect(targ, 0x140); // play ambush
+	else
+		PlaySoundEffect(targ, 0x3a5); // play normal
+	endif
+else
+	SendSysMessage(who, "Your throw misses the mark!");
+endif
+
+// knife normal
+if (!GetObjProperty(dagger, "IsGMItem"))
+  if (!MoveObjectToLocation(dagger, targ.x, targ.y, targ.z, targ.realm))
+    MoveObjectToLocation(dagger, tx, ty, tz, tr);   // removed knife break chance
+  endif
+else // its a gm dagger
+	
+	sleepms(1000);
+	PlayMovingEffect(targ, who, 0x0f51, 13, 0);
+	sleepms(650);
+	
+	set_critical(1);
+
+	var hand := GetEquipmentByLayer( who, LAYER_HAND1 );
+	var hand2 := GetEquipmentByLayer( who, LAYER_HAND2 );
+	if (hand && (GetObjProperty(hand, "Cursed") != 2) )
+		MoveItemToContainer( hand, who.backpack );
+	elseif (hand2.isa(POLCLASS_WEAPON) && (GetObjProperty(hand, "Cursed") != 2) )
+		MoveItemToContainer( hand2, who.backpack );
+	endif
+
+	dagger.invisible := 0;
+	hand := GetEquipmentByLayer( who, LAYER_HAND1 );
+	if (!who.dead)
+            	dagger.movable := 1;
+		if (!hand)
+			EquipItem( who, dagger);
+		else// player equiped something after throwing knife
+			MoveItemToContainer(dagger, who.backpack, MOVEOBJECT_FORCELOCATION);
+		endif
+		PrintTextAbovePrivate(who, "*Catch*", who);
+	else // player died during throwing
+		var corpse := who.GetCorpse();
+		dagger.movable := 1;
+                if (!corpse)
+			MoveObjectToLocation(dagger, who.x, who.y, who.z, who.realm, MOVEOBJECT_FORCELOCATION);
+		else
+			MoveItemToContainer(dagger, corpse);
+		endif
+	endif
+	set_critical(0);
+endif
+
+EraseObjProperty(who, "#DaggerThrow");
+
+endprogram
+
+/* New ozzo edit, this was taken from ZHO1.  fortuantly the zha2 scriptbase has hitscripts that can be passed arrays (due to archery).
+   I can just use those here! No need for copy and paste all hitscripts :P
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////
+//        										  
+//  Past here checks the knife's hitscript and uses the corresponding hitscript function. //
+//  All the hitscript functions are directly copied from each script.  This was the only  //
+//  plausible way i could thing of, as the hitscripts arn't designed to accept parms      //
+//											  //
+////////////////////////////////////////////////////////////////////////////////////////////
+
+function ApplyHitScript(attacker, defender, knife, basedamage, rawdamage);
+
+if (GetObjProperty(knife, "SlayType"))
+	Start_Script(":combat:hitscript/slayerscript", {attacker, defender, knife, defender, basedamage, 0});
+
+elseif (GetObjProperty(knife, "HitscriptNumber"))
+	var num := GetObjProperty(knife, "HitscriptNumber");
+	case(num)
+	36:	Start_Script(":combat:hitscript/piercingscript", {attacker, defender, knife, defender, basedamage, 0});
+	37:	Start_Script(":combat:hitscript/banishscript", {attacker, defender, knife, defender, basedamage, 0});
+	38:	Start_Script(":combat:hitscript/poisonhit", {attacker, defender, knife, defender, basedamage, 0});
+	39:	Start_Script(":combat:hitscript/lifedrainscript", {attacker, defender, knife, defender, basedamage, 0});
+	40:	Start_Script(":combat:hitscript/manadrainscript",{attacker, defender, knife, defender, basedamage, 0});
+	41:	Start_Script(":combat:hitscript/staminadrainscript",{attacker, defender,knife, defender, basedamage, 0});
+	42:	Start_Script(":combat:hitscript/blindingscript",{attacker, defender, knife, defender, basedamage, 0});
+	45:	Start_Script(":combat:hitscript/trielementalscript",{attacker, defender, knife, defender, basedamage, 0});
+	43:	Start_Script(":combat:hitscript/blackrockscript",{attacker, defender, knife, defender, basedamage, 0});
+	44:	Start_Script(":combat:hitscript/voidscript",{attacker, defender, knife, defender, basedamage, 0});
+	default: BroadCast("A balanced dagger script was not found, please page staff about it!", 3, 33);
+	endcase
+
+elseif (GetObjProperty(knife, "HitWithSpell"))
+	Start_Script(":combat:hitscript/spellstrikescript",{attacker, defender, knife, defender, basedamage, 0});
+
+else
+	rawdamage := RecalcDmg( attacker, defender, knife, defender, basedamage, 0 );
+	DealDamage( attacker, defender, knife, defender, basedamage, rawdamage );
+endif
+
+endfunction
+
+function AttackersSkill(who)
+
+var attackerlevelmod := GetClasseSkillTotal(who, GetClass(who));
+
+attackerlevelmod := CDbl(attackerlevelmod/8.0);
+
+return attackerlevelmod;
+
+endfunction
+
+function DefendersSkill(defender)
+
+var defenderlevelmod := GetClasseSkillTotal(defender, GetClass(defender));
+
+defenderlevelmod := CDbl(defenderlevelmod/8.0);
+
+return defenderlevelmod;
+
+endfunction

@@ -1,0 +1,7 @@
+use uo;
+use os;
+
+program can_insert(who, backpack, movetype, inserttype, item, existing_stack, amount_to_add)
+    printtextaboveprivate(backpack, "You cannot store things there.", who);
+    return 0;
+endprogram

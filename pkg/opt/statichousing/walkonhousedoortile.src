@@ -1,0 +1,44 @@
+// Made by a Giraffe
+
+use uo;
+use os;
+
+include ":housing:setup";
+
+program walkon_housetile(who, tile)
+	var aX := 0;
+	var aY := 0;
+	var facing := who.facing;
+	var houseserial := GetobjProperty( tile, "houseserial");
+	if(!houseserial)
+		return;
+	endif
+	var sign := SystemFindObjectBySerial(houseserial);
+	case(facing)
+		0:
+			aY := 1; 
+		2:
+			aX := -1;
+		4:
+			aY := -1;
+		6:
+			aX := 1;
+	endcase
+	
+	var i := 1;
+	var bannedserial;
+	while( i <= MAX_BANNED)
+		bannedserial := GetobjProperty(sign, "Banned"+i);
+		if( !bannedserial)
+			return;
+		elseif( who.serial == bannedserial)
+			MoveObjectToLocation( who, who.x+aX, who.y+aY, who.z, who.realm ,MOVEOBJECT_FORCELOCATION );
+			who.frozen := 1;
+			SendsysMessage( who, "You are banned from this house and not allowed to enter.");
+			sleepms(500);
+			who.frozen := 0;
+			return;
+		endif
+		i += 1;
+	endwhile
+endprogram

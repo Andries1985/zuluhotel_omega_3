@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        "**/*.dbg.txt": true,
+        "**/*.dbg": true,
+        "**/*.dep": true,
+        "**/*.ecl": true,
+        "**/*.lst": true
+    },
+    "files.associations": {
+    
+    }
+}

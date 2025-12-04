@@ -1,0 +1,15 @@
+use uo;
+include ":staff:include/staff";
+include "../../karmafame";
+
+program textcmd_updatekf( who )
+
+	var tgt := Target( who );
+	if( tgt )
+		var mob := tgt;
+	LogCommand(who, GetProcess(GetPid()).name, mob.name+"/"+mob.serial);
+		SetNewNotoName( mob );
+		SendSysMessage( who , "Setting " + mob.name + " right title: " + mob.title_prefix + " K:"+ GetKarma( mob ) +" F:" + GetFame( mob ) );
+	endif
+
+endprogram

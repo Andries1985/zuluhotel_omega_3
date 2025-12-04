@@ -1,0 +1,28 @@
+Use uo;
+Use os;
+
+Program createdonatorostard( who )
+	var color;
+	
+	var item;
+
+	SendSysMessage( who, "Who's ostard do you want to create?");
+	var player := Target( who );
+
+	if( !GetObjProperty( player, "Donator" ) )
+		SendSysMessage( who, "That player is not a donator!" );
+		return 0;
+	endif
+
+	item := CreateItemInBackpack( who, 0x1869, 1 );
+	SetObjProperty( item, "Owner", player.serial);
+	color := CInt( SendTextEntryGump(who, "Which color?", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 6));
+	SetObjProperty( item, "PetColor", color);
+	item.color := color;
+
+	
+Endprogram
+
+
+
+

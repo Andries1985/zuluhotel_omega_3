@@ -1,0 +1,84 @@
+use uo;
+use guilds;
+
+include ":guilds:include/guilds";
+
+program uniform( who, uniform )
+
+var guild := who.guild;
+var colour := guild.getprop(GUILD_COLOUR);
+
+// an entwined uniform
+if (!GetObjProperty(uniform, "GuildUniform"))
+	UnEntwine(who, uniform);
+	PrintTextAbovePrivate(who, "*Clothing Unentwined*",who, 3, 53);
+// Regular non entwined
+else
+	SendSysMessage(who, "Target an item of the same type to entwine the guild uniform into.");
+
+	var what := Target(who);
+
+	if (!what)
+		SendSysMessage(who, "Cancelled.");
+		return 0;
+	endif
+
+	if (!what.isa(POLCLASS_ITEM))
+		SendSysMessage(who, "You must select an item.");
+		return 0;
+		
+	elseif (what.graphic != uniform.graphic)
+		SendSysMessage(who, "You must select an item with the same graphic.");
+		return 0;
+
+	elseif (GetObjProperty(what, GUILD_UNIFORM))
+		SendSysMessage(who, "That will have little benefit!");
+		return 0;
+
+	elseif (GetObjProperty(what, "Entwined"))
+		SendSysMessage(who, "That is already entwined!");
+		return 0;
+	elseif (what.container != who && what.container != who.backpack)
+		SendSysMessage(who, "You must be wearing the selected item, or it must be in your backpack.");
+		return 0;
+	endif
+
+	SetName(what, what.desc+" [Entwined]");
+	what.usescript := ":guilds:guild_uniform";
+	SetObjProperty(what, "Entwined", uniform.serial);
+	SetObjProperty(what, "OriginalColour", what.color);
+	
+	if (what.layer)
+		what.color := colour;
+	endif
+	
+	MoveItemToContainer(uniform, who.backpack);
+	
+	var history := GetObjProperty(uniform, "EntwinedHistory");
+	
+	if (!history)
+		history := {};
+	endif
+	
+	var add := 1;
+	var existing := what.name+"/"+what.serial;
+	foreach entry in history
+		if (entry == existing)
+			add := 0;
+			break;
+		endif
+	endforeach
+	
+	if (add == 1)
+		history.append(what.name+"/"+what.serial);
+		SetObjProperty(uniform, "EntwinedHistory", history);
+	endif
+	
+	SetObjProperty(uniform, "EntwinedLast", what.name+"/"+what.serial);
+	uniform.invisible := 1;
+	uniform.movable := 0;
+	uniform.graphic := 0;
+	PrintTextAbovePrivate(who, "*Clothing Entwined*", who, 3, 53);
+endif
+
+endprogram

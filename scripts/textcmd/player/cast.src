@@ -1,0 +1,1064 @@
+use uo;
+use basic;
+use cfgfile;
+use os;
+
+include "include/bitwise";
+include "include/client";
+include "include/objtype";
+include "include/itemutil";
+include "include/skillpoints";
+include "include/classes";
+include "include/string";
+include "include/random";
+include ":gumps:yesno";
+include ":versebook:include/verseinfo";
+include ":versebook:include/versefunctions";
+
+program textcmd_cast( who, spellinput ) 
+
+	if( who.squelched > 0 )
+		SendSysmessage( who, "You cannot seem to speak the words of power." );
+		return;
+	endif
+
+	if( who.frozen || who.paralyzed )
+		SendSysmessage( who, "You are paralyzed and cannot do that." );
+		return;
+	endif
+	
+	if( GetObjProperty(who, "#Casting") )
+		SendSysmessage( who, "You are already casting a spell." );
+		return;
+	endif
+
+	var InputOne;
+	var InputTwo;
+	var CastSpell;
+	var KeyWordOne := "set";
+	var KeyWordTwo := "reset";
+	var SpellArray;
+
+	var spelldata := Getobjproperty( who , "spelldata" );
+	
+	if ( !spellinput )
+		SendSysmessage( who, "Valid Options are:" );
+		SendSysmessage( who, "#(1-50), Set #(1-50), Reset" );	
+		return;
+	else
+
+		SpellArray := SplitWords( spellinput );
+
+	endif
+
+	InputOne := SpellArray[1];
+	InputTwo := SpellArray[2];
+
+	if ( Cint( InputOne ) > 0 and Cint( InputOne ) < 51 )
+
+		CastSpell := Cint(spelldata[Cint(InputOne)]);
+
+		if ( !CastSpell )
+			SendSysmessage( who, "You do not have a spell stored under that value." );
+			return;
+		else
+		
+			SetObjProperty( who , "#Casting" , 1 );
+			CastSpellFunction( who, CastSpell );
+			return;
+			
+		endif
+	
+	elseif( (InputOne == KeyWordOne) and ( Cint( InputTwo ) > 0 ) and ( Cint( InputTwo ) < 51 ) )
+	
+		SendSysmessage(who, "Target the spell book you wish to set a spell from.");
+		SendSysmessage(who, "(Book of the Earth, a Codex Damnorum, a Codex Caelestis, a Book of Songs or a Book of Verses)");
+		
+		var WhatBook := Target( who , TGTOPT_CHECK_LOS );
+		
+		if ( !WhatBook )
+			return;
+		endif 
+
+		if ( !Accessible( who , WhatBook ) )
+			SendSysmessage(who, "You can't reach that!");
+			return;
+		endif
+
+		if ( !ReserveItem(WhatBook) )
+			return;
+		endif
+		
+		case(WhatBook.objtype)
+			UOBJ_EARTH_BOOK:
+				SetEarth( who, InputTwo, WhatBook );
+			UOBJ_CODEX_DAMNORUM:
+				SetNecro( who, InputTwo, WhatBook);
+			0x6166:
+				SetHoly( who, InputTwo, WhatBook);
+			0x6177:
+				SetSong( who, InputTwo, WhatBook);
+			0xff96:
+				SetVerse( who, InputTwo, WhatBook);
+			default:
+				SendSysmessage(who, "You must target a Book of the Earth, a Codex Damnorum, a Codex Caelestis, a Book of Songs or a Book of Verses.");
+		endcase
+		
+	elseif( InputOne == KeyWordTwo )
+		if( YesNo( who, "Reset stored spell data?") )
+			EraseObjProperty( who, "spelldata" );
+			SendSysMessage( who, "Reset." );
+		else
+			SendSysMessage( who, "Canceled." );
+			return;
+		endif
+
+	else
+		SendSysmessage( who, "Valid Options are:" );
+		SendSysmessage( who, "#(1-50), Set #(1-50), Reset" );	
+		return;
+	endif
+
+endprogram
+
+function CastSpellFunction( who, CastSpell )
+	var CastNumber;
+	var EBook := FindItemInContainer( who.backpack , UOBJ_EARTH_BOOK );
+	var NBook := FindItemInContainer( who.backpack , UOBJ_CODEX_DAMNORUM );
+	var HBook := FindItemInContainer( who.backpack , 0x6166 );
+	var SBook := FindItemInContainer( who.backpack , 0x6177 );
+	var VBook := FindItemInContainer( who.backpack , 0xff96 );
+
+		//Circle 1 Earth
+		if ( (CastSpell > 80) and (CastSpell < 89) )
+
+			if( !Ebook )
+				SendSysmessage( who, "You need a Book of the Earth to cast that." );
+				return;
+			endif
+			var lesser  := Cint(GetObjProperty(Ebook,"Lesser"));
+			CastNumber := CastSpell - 80 ;
+				
+			//Check book for spell- If its in there Cast
+			if(FlagCheck(lesser, CastNumber) == 1)
+				var CastSpellScript := GetScript( CastSpell );
+				SetObjProperty( who , "#Casting" , 1 );
+				Start_Script( CastSpellScript , who );
+		
+				while( GetObjProperty( who , "#Casting" ) )
+					Sleepms( 500 );
+				endwhile
+				return;
+				
+			else
+				SendSysmessage( who, "Your Book of the Earth does not contain that spell." );
+				return;
+				
+			endif
+		//Circle 2 Earth
+		elseif ( (CastSpell > 88) and (CastSpell < 97) )
+			if( !Ebook )
+				SendSysmessage( who, "You need a Book of the Earth to cast that." );
+				return;
+			endif
+			var greater  := Cint(GetObjProperty(Ebook,"Greater"));
+			CastNumber := CastSpell - 88 ;
+				
+			//Check book for spell- If its in there Cast
+			if(FlagCheck(greater, CastNumber) == 1)
+				SetObjProperty( who , "#Casting" , 1 );
+				var CastSpellScript := GetScript( CastSpell );
+				Start_Script( CastSpellScript , who );
+		
+				while( GetObjProperty( who , "#Casting" ) )
+					Sleepms( 500 );
+
+				endwhile
+
+				return;
+				
+			else
+				SendSysmessage( who, "Your Book of the Earth does not contain that spell." );
+				return;
+				
+			endif
+	
+		//Circle 1 Necro
+		elseif ( (CastSpell > 64) and (CastSpell < 73) )
+
+				if( !Nbook )
+					SendSysmessage( who, "You need a Codex Damnorum to cast that." );
+					return;
+				endif
+				var lesser  := Cint(GetObjProperty(Nbook,"Lesser"));
+				CastNumber := CastSpell - 64 ;
+				
+				//Check book for spell- If its in there Cast
+				if(FlagCheck(lesser, CastNumber) == 1)
+					var CastSpellScript := GetScript( CastSpell );
+					SetObjProperty( who , "#Casting" , 1 );
+					Start_Script( CastSpellScript , who );
+		
+					while( GetObjProperty( who , "#Casting" ) )
+						Sleepms( 500 );
+
+					endwhile
+					return;
+				
+				else
+					SendSysmessage( who, "Your Codex Damnorum does not contain that spell." );
+				return;
+				
+				endif
+				
+		//Circle 2 Necro
+		elseif ( (CastSpell > 72) and (CastSpell < 81) )
+
+			if( !Nbook )
+				SendSysmessage( who, "You need a Codex Damnorum to cast that." );
+				return;
+			endif
+					
+			var greater  := Cint(GetObjProperty(Nbook,"Greater"));
+			CastNumber := CastSpell - 72 ;
+				
+			//Check book for spell- If its in there Cast
+			if(FlagCheck(greater, CastNumber) == 1)
+				var CastSpellScript := GetScript( CastSpell );
+				SetObjProperty( who , "#Casting" , 1 );
+				Start_Script( CastSpellScript , who );
+		
+				while( GetObjProperty( who , "#Casting" ) )
+					Sleepms( 500 );
+
+				endwhile
+				return;
+				
+			else
+				SendSysmessage( who, "Your Codex Damnorum does not contain that spell." );
+			return;
+				
+			endif
+
+		//Circle 1 Holy
+		elseif ( (CastSpell > 165) and (CastSpell < 174) )
+
+				if( !Hbook )
+					SendSysmessage( who, "You need a Codex Caelestis to cast that." );
+					return;
+				endif
+				var lesser  := Cint(GetObjProperty(Hbook,"Lesser"));
+				CastNumber := CastSpell - 165;
+				
+				//Check book for spell- If its in there Cast
+				if(FlagCheck(lesser, CastNumber) == 1)
+					var CastSpellScript := GetScript( CastSpell );
+					SetObjProperty( who , "#Casting" , 1 );
+					Start_Script( CastSpellScript , who );
+		
+					while( GetObjProperty( who , "#Casting" ) )
+						Sleepms( 500 );
+
+					endwhile
+					return;
+				
+				else
+					SendSysmessage( who, "Your Codex Caelestis does not contain that spell." );
+				return;
+				
+				endif
+				
+		//Circle 2 Holy
+		elseif ( (CastSpell > 173) and (CastSpell < 182) )
+
+			if( !Hbook )
+				SendSysmessage( who, "You need a Codex Caelestis to cast that." );
+				return;
+			endif
+					
+			var greater  := Cint(GetObjProperty(Hbook,"Greater"));
+			CastNumber := CastSpell - 173;
+				
+			//Check book for spell- If its in there Cast
+			if(FlagCheck(greater, CastNumber) == 1)
+				var CastSpellScript := GetScript( CastSpell );
+				SetObjProperty( who , "#Casting" , 1 );
+				Start_Script( CastSpellScript , who );
+		
+				while( GetObjProperty( who , "#Casting" ) )
+					Sleepms( 500 );
+
+				endwhile
+				return;
+				
+			else
+				SendSysmessage( who, "Your Codex Caelestis does not contain that spell." );
+			return;
+				
+			endif
+
+		//Circle 1 Song
+		elseif ( (CastSpell > 181) and (CastSpell < 190) )
+		
+				if( !GetObjProperty( who, "IsBard" ) && !GetObjProperty( who, "IsBladesinger") )	
+					SendSysMessage(who,"Only Bards or Bladesingers can use this!");
+					return;
+				endif
+
+				if( !Sbook )
+					SendSysmessage( who, "You need a Book of Songs to cast that." );
+					return;
+				endif
+
+				if(who.hidden)
+					who.hidden := 0;
+				endif
+
+				var lesser  := Cint(GetObjProperty(Sbook,"Lesser"));
+				CastNumber := CastSpell - 181;
+				
+				//Check book for spell- If its in there Cast
+				if(FlagCheck(lesser, CastNumber) == 1)
+					var CastSpellScript := GetScript( CastSpell );
+					SetObjProperty( who , "#Casting" , 1 );
+					Start_Script( CastSpellScript , who );
+		
+					while( GetObjProperty( who , "#Casting" ) )
+						Sleepms( 500 );
+
+					endwhile
+					return;
+				
+				else
+					SendSysmessage( who, "Your Book of Songs does not contain that spell." );
+				return;
+				
+				endif
+				
+		//Circle 2 Song
+		elseif ( (CastSpell > 189) and (CastSpell < 198) )
+		
+			if( !GetObjProperty( who, "IsBard" ) && !GetObjProperty( who, "IsBladesinger") )	
+				SendSysMessage(who,"Only Bards or Bladesingers can use this!");
+				return;
+			endif
+
+			if( !Sbook )
+				SendSysmessage( who, "You need a Book of Songs to cast that." );
+				return;
+			endif
+
+			if(who.hidden)
+				who.hidden := 0;
+			endif
+									
+			var greater  := Cint(GetObjProperty(Sbook,"Greater"));
+			CastNumber := CastSpell - 189;
+				
+			//Check book for spell- If its in there Cast
+			if(FlagCheck(greater, CastNumber) == 1)
+				var CastSpellScript := GetScript( CastSpell );
+				SetObjProperty( who , "#Casting" , 1 );
+				Start_Script( CastSpellScript , who );
+		
+				while( GetObjProperty( who , "#Casting" ) )
+					Sleepms( 500 );
+
+				endwhile
+				return;
+				
+			else
+				SendSysmessage( who, "Your Book of Songs does not contain that spell." );
+				return 0;				
+			endif
+		// Verse Book	
+		elseif ( (CastSpell > 197) and (CastSpell < 218) )
+
+			if( !VBook )
+				SendSysmessage( who, "You need a Book of Verses to cast that." );
+				return;
+			endif
+
+			CastSpell -= 197;
+			//Check book for spell- If its in there Cast
+			var verses := GetObjProperty(VBook,"Verses");
+			if (verses[CastSpell])
+				PerformSong(who, CastSpell);
+			else
+				SendSysmessage( who, "Your Book of Verses does not contain that spell." );
+				return 0;
+			endif
+		else
+
+			SendSysmessage( who, "Invalid Spell Selection." );
+
+		endif
+
+endfunction
+
+function SetEarth( who, InputTwo, WhatBook )
+
+	var layout := {
+			"page 0",
+			"gumppic 0 0 2203",
+			"text 40 10 28 0",
+			"text 200 10 28 1"
+			};
+
+	var LSpellArray := { 0xB101 , 0xB102 , 0xB103 , 0xB104 , 0xB105 , 0xB106 , 0xB107 , 0xB108 };
+	var GSpellArray := { 0xB109 , 0xB10A , 0xB10B , 0xB10C , 0xB10D , 0xB10E , 0xB10F , 0xB110 };
+	var BookArray := {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+	var LesserButtonLayout := {
+				"button 30 40 2104 2103 1 0 101",
+				"button 30 60 2104 2103 1 0 102",
+				"button 30 80 2104 2103 1 0 103",
+				"button 30 100 2104 2103 1 0 104",
+				"button 30 120 2104 2103 1 0 105",
+				"button 30 140 2104 2103 1 0 106",
+				"button 30 160 2104 2103 1 0 107",
+				"button 30 180 2104 2103 1 0 108"
+				};
+
+
+	var GreaterButtonLayout := {
+				"button 190 40 2104 2103 1 0 109",
+				"button 190 60 2104 2103 1 0 110",
+				"button 190 80 2104 2103 1 0 111",
+				"button 190 100 2104 2103 1 0 112",
+				"button 190 120 2104 2103 1 0 113",
+				"button 190 140 2104 2103 1 0 114",
+				"button 190 160 2104 2103 1 0 115",
+				"button 190 180 2104 2103 1 0 116"
+				};
+
+
+	var LesserTextLayout := {
+				"text 50 35 0 ",
+				"text 50 55 0 ",
+				"text 50 75 0 ",
+				"text 50 95 0 ",
+				"text 50 115 0 ",
+				"text 50 135 0 ",
+				"text 50 155 0 ",
+				"text 50 175 0 "
+				};
+
+
+	var GreaterTextLayout := {
+				"text 210 35 0 ",
+				"text 210 55 0 ",
+				"text 210 75 0 ",
+				"text 210 95 0 ",
+				"text 210 115 0 ",
+				"text 210 135 0 ",
+				"text 210 155 0 ",
+				"text 210 175 0 "
+				};
+
+
+	var data 		:= {
+				"Circle 1 Scrolls",
+				"Circle 2 Scrolls"
+				};
+
+
+	var LesserSpellData := {
+				"Antidote",
+				"Owl Sight",
+				"Shifting Earth",
+				"Summon Mammals",
+				"Call Lightning",
+				"Earth Blessing",
+				"Earth Portal",
+				"Nature's Touch"
+				};
+		
+		
+	var GreaterSpellData := {
+				"Gust of Air",
+				"Rising Fire",
+				"Shapeshift",
+				"Ice Strike",
+				"Earth Spirit",
+				"Flame Spirit",
+				"Storm Spirit",
+				"Water Spirit"
+				};
+
+
+	var i := 1;
+	var q := 8;
+	var LTotal := 0;
+	var GTotal := 0;
+
+	var LayoutLen := len(layout);
+	var DataLen := len(data);
+
+	var GreaterFlag := Cint(GetObjProperty( WhatBook , "Greater" ));
+	var LesserFlag := Cint(GetObjProperty( WhatBook , "Lesser" ));
+
+	while (i < 9)
+		if (FlagCheck(LesserFlag, i)==1)
+			LTotal := LTotal + 1;
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := LesserButtonLayout[LTotal];
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := LesserTextLayout[LTotal] + Cstr(1 + LTotal + GTotal);
+			DataLen := DataLen + 1;
+			data[DataLen] := LesserSpellData[i];
+			BookArray[LTotal] := LSpellArray[i];
+		endif
+		if (FlagCheck(GreaterFlag, i)==1)
+			GTotal := GTotal + 1;
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := GreaterButtonLayout[GTotal];
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := GreaterTextLayout[GTotal] + Cstr(1 + LTotal + GTotal);
+			DataLen := DataLen + 1;
+			data[DataLen] := GreaterSpellData[i];
+			q := 8 + GTotal;
+			BookArray[q] := GSpellArray[i];
+		endif
+		i := i + 1;
+	 endwhile
+
+	SendSysMessage( who , "Select the spell you want to store." );
+   
+	var res := SendDialogGump( who, layout , data );						 
+
+	if (res[0] < 100)
+		return 0;
+	endif
+
+	var selected := res[0] - 100;
+	selected := BookArray[selected];
+	selected := selected - 45232;
+	
+	var spelldata;
+	spelldata := Getobjproperty ( who , "spelldata" );
+	if(!spelldata)
+		spelldata := {};
+	endif
+	spelldata[Cint(InputTwo)] := Cint(selected);
+	SetObjProperty( who, "spelldata", spelldata);
+	SendSysMessage( who, "Spell Data Stored.");
+	return;
+		
+endfunction
+
+function SetNecro( who, InputTwo, WhatBook)
+
+	var layout := {
+			"page 0",
+			"gumppic 30 30 2200",
+			"text 70 40 28 0",
+			"text 230 40 28 1"
+			};
+
+	var LSpellArray 	:= { 0xA101 , 0xA102 , 0xA103 , 0xA104 , 0xA105 , 0xA106 , 0xA107 , 0xA108 };
+	var GSpellArray 	:= { 0xA109 , 0xA10A , 0xA10B , 0xA10C , 0xA10D , 0xA10E , 0xA10F , 0xA110 };
+	var BookArray 	:= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+	var LesserButtonLayout := {
+					"button 60 70 2104 2103 1 0 101",
+					"button 60 90 2104 2103 1 0 102",
+					"button 60 110 2104 2103 1 0 103",
+					"button 60 130 2104 2103 1 0 104",
+					"button 60 150 2104 2103 1 0 105",
+					"button 60 170 2104 2103 1 0 106",
+					"button 60 190 2104 2103 1 0 107",
+					"button 60 210 2104 2103 1 0 108"
+					};
+
+
+	var GreaterButtonLayout := {
+					"button 220 70 2104 2103 1 0 109",
+					"button 220 90 2104 2103 1 0 110",
+					"button 220 110 2104 2103 1 0 111",
+					"button 220 130 2104 2103 1 0 112",
+					"button 220 150 2104 2103 1 0 113",
+					"button 220 170 2104 2103 1 0 114",
+					"button 220 190 2104 2103 1 0 115",
+					"button 220 210 2104 2103 1 0 116"
+					};
+
+
+	var LesserTextLayout := {
+					"text 80 65 0 ",
+					"text 80 85 0 ",
+					"text 80 105 0 ",
+					"text 80 125 0 ",
+					"text 80 145 0 ",
+					"text 80 165 0 ",
+					"text 80 185 0 ",
+					"text 80 205 0 "
+					};
+
+
+	var GreaterTextLayout := {
+					"text 240 65 0 ",
+					"text 240 85 0 ",
+					"text 240 105 0 ",
+					"text 240 125 0 ",
+					"text 240 145 0 ",
+					"text 240 165 0 ",
+					"text 240 185 0 ",
+					"text 240 205 0 "
+					};
+
+
+	var data 		:= {
+					"Lesser Scrolls",
+					"Greater Scrolls"
+					};
+
+
+	var LesserSpellData := {
+					"Control Undead",
+					"Darkness",
+					"Decaying Ray",
+					"Spectre's Touch",
+					"Abyssal Flame",
+					"Animate Dead",
+					"Sacrifice",
+					"Wraith's Breath"
+					};
+
+
+	var GreaterSpellData := {
+					"Sorcerer's Bane",
+					"Summon Spirit",
+					"Wraithform",
+					"Wyvern Strike",
+					"Kill",
+					"Liche",
+					"Plague",
+					"Spellbind"
+					};
+
+	var i := 1;
+	var q := 8;
+	var LTotal := 0;
+	var GTotal := 0;
+
+	var LayoutLen := len( layout );
+	var DataLen := len( data );
+
+	var GreaterFlag := GetObjProperty( WhatBook , "Greater" );
+	var LesserFlag := GetObjProperty( WhatBook , "Lesser" );
+
+	GreaterFlag := CInt( GreaterFlag );
+	LesserFlag := CInt( LesserFlag );
+
+	while (i < 9)
+		if( FlagCheck( LesserFlag , i ) == 1 )
+			LTotal := LTotal + 1;
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := LesserButtonLayout[LTotal];
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := LesserTextLayout[LTotal] + Cstr(1 + LTotal + GTotal);
+			DataLen := DataLen + 1;
+			data[DataLen] := LesserSpellData[i];
+			BookArray[LTotal] := LSpellArray[i];
+		endif
+		
+		if( FlagCheck( GreaterFlag , i ) == 1 )
+			GTotal := GTotal + 1;
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := GreaterButtonLayout[GTotal];
+			LayoutLen := LayoutLen + 1;
+			layout[LayoutLen] := GreaterTextLayout[GTotal] + Cstr(1 + LTotal + GTotal);
+			DataLen := DataLen + 1;
+			data[DataLen] := GreaterSpellData[i];
+			q := 8 + GTotal;
+			BookArray[q] := GSpellArray[i];
+		endif
+		
+		i := i + 1;
+	endwhile
+
+	SendSysMessage( who, "Select the spell you want to store." );
+			
+	var res := SendDialogGump( who , layout , data );						 
+
+	if( res[0] < 100 )
+		return 0;
+	endif
+
+	var selected := res[0] - 100;
+	selected := BookArray[selected];
+	selected := selected - 41152;
+	
+	var spelldata;
+	spelldata := Getobjproperty ( who , "spelldata" );
+	if(!spelldata)
+		spelldata := {};
+	endif
+	spelldata[Cint(InputTwo)] := Cint(selected);
+	SetObjProperty( who, "spelldata", spelldata);
+	SendSysMessage( who, "Spell Data Stored.");
+	return;
+
+endfunction
+
+function SetHoly( who, InputTwo, WhatBook)
+
+	var layout := {
+		"page 0",
+		"nodispose",
+		"gumppic 30 30 2203",
+		"text 70  40 28 0",
+		"text 230 40 28 1"
+	};
+
+	var LSpellArray 	:= { 0x6167 , 0x6168 , 0x6169 , 0x616a , 0x616b , 0x616c , 0x616d , 0x616e };
+	var GSpellArray 	:= { 0x616f , 0x6170 , 0x6171 , 0x6172 , 0x6173 , 0x6174 , 0x6175 , 0x6176 };
+	var BookArray 	:= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	
+	var data := {
+		"Circle 1 Spells",
+		"Circle 2 Spells"
+	};
+	
+	var spellnames := {
+		"Grand Feast",		// Circle 1
+		"Turn Undead",
+		"Light of Day",
+		"Angelic Aura",
+		"Holy Bolt",
+		"Seraphim's Will",
+		"Angelic Gate",
+		"Remove Curse",
+		"Wrath of God",		// Circle 2
+		"Divine Fury",
+		"Astral Storm",
+		"Enlightenment",
+		"Revive",
+		"Sanctuary",
+		"Summon Guardian",
+		"Apocalypse"
+	};
+	
+	var i;
+	var y1 := 70;
+	var y2 := 70;
+	var bits := { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 };
+	var greater := Cint(GetObjProperty(WhatBook,"Greater"));
+	var lesser  := Cint(GetObjProperty(WhatBook,"Lesser"));
+
+	for( i := 1; i <= 8; i := i + 1 )
+		if( lesser & bits[i] )
+			layout.append( "button 60 " + y1 + " 2104 2103 1 0 " + i );
+			layout.append( "text 80 " + (y1-5) + " 0 " + len(data) );
+			data.append( spellnames[i] );
+			y1 := y1 + 20;
+			BookArray[i] := LSpellArray[i];
+		endif
+		
+		if( greater & bits[i] )
+			layout.append( "button 220 " + y2 + " 2104 2103 1 0 " + (i+8) );
+			layout.append( "text 240 " + (y2-5) + " 0 " + len(data) );
+			data.append( spellnames[i+8] );
+			y2 := y2 + 20;
+			BookArray[i+8] := GSpellArray[i];
+		endif
+	endfor
+
+	SendSysMessage( who, "Select the spell you want to store." );
+			
+	var res := SendDialogGump( who , layout , data );
+	if( res[0] < 1 )
+		return 0;
+	endif
+
+	var selected := res[0];
+	selected := BookArray[selected];
+	selected := selected - 24769;
+	
+	var spelldata;
+	spelldata := Getobjproperty ( who , "spelldata" );
+	if(!spelldata)
+		spelldata := {};
+	endif
+	spelldata[Cint(InputTwo)] := Cint(selected);
+	SetObjProperty( who, "spelldata", spelldata);
+	SendSysMessage( who, "Spell Data Stored.");
+	return;
+
+endfunction
+
+function SetSong( who, InputTwo, WhatBook)
+
+	var layout := {
+		"page 0",
+		"nodispose",
+		"gumppic 30 30 2203",
+		"text 70  40 28 0",
+		"text 230 40 28 1"
+	};
+
+	var LSpellArray 	:= { 0x6178 , 0x6179 , 0x617a , 0x617b , 0x617c , 0x617d , 0x617e , 0x617f };
+	var GSpellArray 	:= { 0x6180 , 0x6181 , 0x6182 , 0x6183 , 0x6184 , 0x6185 , 0x6186 , 0x6187 };
+	var BookArray 	:= {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	
+	var data := {
+		"Lesser Songs",
+		"Greater Songs"
+	};
+	
+	var spellnames := {
+		"Song of Light",		// Circle 1
+		"Song of Haste",
+		"Song of Defense",
+		"Song of Glory",
+		"Song of Cloaking",
+		"Song of Remedy",
+		"Song of Life",
+		"Song of Dismissal",
+		"Song of Sirens",		// Circle 2
+		"Song of Earth",
+		"Song of Air",
+		"Song of Fire",
+		"Song of Water",
+		"Song of Beckon",
+		"Song of Fright",
+		"Song of Salvation"
+	};
+	
+	var i;
+	var y1 := 70;
+	var y2 := 70;
+	var bits := { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 };
+	var greater := Cint(GetObjProperty(WhatBook,"Greater"));
+	var lesser  := Cint(GetObjProperty(WhatBook,"Lesser"));
+
+	for( i := 1; i <= 8; i := i + 1 )
+		if( lesser & bits[i] )
+			layout.append( "button 60 " + y1 + " 2104 2103 1 0 " + i );
+			layout.append( "text 80 " + (y1-5) + " 0 " + len(data) );
+			data.append( spellnames[i] );
+			y1 := y1 + 20;
+			BookArray[i] := LSpellArray[i];
+		endif
+		
+		if( greater & bits[i] )
+			layout.append( "button 220 " + y2 + " 2104 2103 1 0 " + (i+8) );
+			layout.append( "text 240 " + (y2-5) + " 0 " + len(data) );
+			data.append( spellnames[i+8] );
+			y2 := y2 + 20;
+			BookArray[i+8] := GSpellArray[i];
+		endif
+	endfor
+
+	SendSysMessage( who, "Select the spell you want to store." );
+			
+	var res := SendDialogGump( who , layout , data );	
+	if( res[0] < 1 )
+		return 0;
+	endif
+
+	var selected := res[0];
+	selected := BookArray[selected];
+	selected := selected - 24770;
+	
+	var spelldata;
+	spelldata := Getobjproperty ( who , "spelldata" );
+	if(!spelldata)
+		spelldata := {};
+	endif
+	spelldata[Cint(InputTwo)] := Cint(selected);
+	SetObjProperty( who, "spelldata", spelldata);
+	SendSysMessage( who, "Spell Data Stored.");
+	return;
+
+endfunction
+
+function SetVerse(who, InputTwo, WhatBook)
+	
+	var verses := GetObjProperty(WhatBook, "Verses");
+	if (!verses)
+		verses := {};
+	endif
+
+	var versecfg := ReadConfigFile(":versebook:verses");
+	var PERPAGE := 5;
+
+	const FIRST_SONGS := "Prosaic Verses";
+	const SECOND_SONGS := "Prevalent Verses";
+	const THIRD_SONGS := "Good Verses";
+	const FOURTH_SONGS := "Best songs";
+
+	var gump := GFCreateGump(15, 15, 440, 300);
+
+	// The spell book
+	GFGumpPic(gump, 15, 15, 500);
+
+	// Bottom of page 2 line deco
+	GFGumpPic(gump, 235, 210, 57);
+	GFGumpPic(gump, 265, 210, 58);
+	GFGumpPic(gump, 281, 210, 58);
+	GFGumpPic(gump, 297, 210, 58);
+	GFGumpPic(gump, 313, 210, 58);
+	GFGumpPic(gump, 329, 210, 58);
+	GFGumpPic(gump, 345, 210, 58);
+	GFGumpPic(gump, 361, 210, 58);
+	GFGumpPic(gump, 375, 210, 59);
+
+			//	GFAddButton(gump, 371, 15, 502, 502, 0, 1);
+	GFPage(gump, 1);
+	GFTextLine(gump, 90, 25, 39, "Prosaic Verses");
+	gump :=	GetVerseTypeInfo(gump, 1);
+				
+	var page := 1;
+	var i := 0;
+	var i2 := 0;
+	var i3 := 0;
+	var i4 := 0;
+	var x := 70;
+	var y := 60;
+	var y2 := 60;
+	var ele;
+	var subpagecount := 0;
+	var subpage;
+	var pagemod := 0;
+	var pagetitle := FIRST_SONGS;
+	var mainpagemod := 1;
+	var first;
+
+	foreach verse in GetConfigStringKeys( versecfg )
+
+		// Next page
+		if (i >= PERPAGE );
+
+			page := page + 1;
+			first := page;
+			// Next Page
+			var si := page-1;
+			repeat	
+
+				GFPage(gump, si);
+				// next
+				GFAddButton(gump, 371, 15, 502, 502, 0, page);
+
+				if (si > 6 )
+					// back
+					GFAddButton(gump, 15, 15, 501, 501, 0, page-12);
+				endif
+				si := si - 1;
+			until (si < (page-subpagecount-1));
+			
+			GFPage(gump, page);
+			
+			case (page/PERPAGE)
+				0: pagetitle := FIRST_SONGS;mainpagemod := 1;
+				1: pagetitle := SECOND_SONGS;mainpagemod := 2;
+				2: pagetitle := THIRD_SONGS;mainpagemod := 3;
+				3: pagetitle := FOURTH_SONGS;mainpagemod := 4;
+			endcase
+			gump :=	GetVerseTypeInfo(gump, mainpagemod);
+			GFTextLine(gump, 90, 25, 39, pagetitle);
+			// Previous
+			y := 60;
+			x := 70;
+			i := 0;
+		elseif (_verse_iter == GetConfigStringKeys( versecfg ).size() && _verse_iter != PERPAGE)
+
+			var si := page;
+				repeat	
+
+				GFPage(gump, si);
+				if (si > 6 )
+					// back
+					GFAddButton(gump, 15, 15, 501, 501, 0, first-6);
+				endif
+				si := si - 1;
+			until (si < first);
+			GFPage(gump, first);
+		endif
+		
+		// All the info pages for the current page
+		// looks like SPELL PAGE - info1- info2- info3 - info4 - info5 - SPELL PAGE 2
+		if (i == 0)
+		subpagecount := 0;
+			repeat 
+				page := page + 1;
+				subpage := page - i2;
+				GFPage(gump, page);
+
+				if (verses[_verse_iter+i2 ])
+					GFTextLine(gump, 90, 25, 39, pagetitle);
+					repeat
+						if (verses[_verse_iter+i3 ])
+							
+							ele := FindConfigElem( versecfg, _verse_iter+i3 );
+							// use spell button
+							GFAddButton(gump, x-23, y2+3, 2117, 2118, 1, _verse_iter+i3);
+							// Song name
+							if (page-mainpagemod == _verse_iter+i3)
+								GFTextLine(gump, x, y2, 460, GetConfigString(ele,"Name"));
+								gump := GetVerseInfo(gump, _verse_iter+i3);
+							else
+								GFTextLine(gump, x, y2, 0, GetConfigString(ele,"Name"));
+							endif
+							// song info
+
+								if (page-mainpagemod == _verse_iter+i3)
+									GFGumpPic(gump, x+125, y2+3, 5411, 460);
+								else
+									GFAddButton(gump, x+125, y2+3, 5411,5411, 0, _verse_iter+mainpagemod+i3);
+								endif
+							y2 := y2+30;
+						endif
+						i3 := i3 + 1;
+					until (i3 == PERPAGE);
+					i3 := 0;
+					y2 := 60;
+				endif
+				subpagecount := subpagecount + 1;
+				i2 := i2 + 1;
+			until (i2 == PERPAGE);
+			i2 := 0;
+			i3 := 0;
+			y2 := 60;
+			GFPage(gump, (page-subpagecount));	
+		endif
+		
+		// Verse in book, list it - MAIN PAGE MAIN PAGE
+		if (verses[_verse_iter])
+			ele := FindConfigElem( versecfg, _verse_iter );
+			// use spell button
+			GFAddButton(gump, x-23, y+3, 2117, 2118, 1, _verse_iter);
+			// Song name
+			GFTextLine(gump, x, y, 0, GetConfigString(ele,"Name"));
+			// song info
+			GFAddButton(gump, x+125, y+3, 5411,5411, 0, _verse_iter + mainpagemod);
+			y := y + 30;
+		endif
+		
+		i := i + 1;
+
+	endforeach
+
+	SendSysMessage( who, "Select the verse you want to store." );
+
+	var data := GFSendGump(who, gump);
+
+	var selected := data[0];
+	if (!selected)
+		return;
+	endif
+	var spelldata;
+	
+	selected += 197;
+
+	spelldata := Getobjproperty ( who , "spelldata" );
+	if(!spelldata)
+		spelldata := {};
+	endif
+		spelldata[ Cint(InputTwo) ] := Cint(selected);
+		SetObjProperty( who, "spelldata", spelldata);
+		SendSysMessage( who, "Spell Data Stored.");
+	return;
+
+endfunction

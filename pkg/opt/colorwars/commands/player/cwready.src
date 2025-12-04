@@ -1,0 +1,46 @@
+use uo;
+use os;
+include "include/client";
+
+program textcmd_cwready(who)
+	Detach();
+	SendSysMessage(who,"Target an empty bag to move your items into :");
+	var destination_bag := Target(who);
+	if (destination_bag.objtype != 0xe76 and destination_bag.objtype != 0xe75 and destination_bag.objtype != 0xe79)
+		SendSysMessage(who,"You must select a bag!");
+		return;
+	endif
+	var isempty := 1;
+	foreach item in EnumerateItemsInContainer( destination_bag )
+		if (item)
+			isempty := 0;
+		endif
+	endforeach
+	if (isempty == 0)
+		SendSysMessage(who,"You must select an empty bag!");
+		return;
+	endif
+	var mount := GetEquipmentByLayer( who, 25 );
+	var hair := GetEquipmentByLayer(who, LAYER_HAIR);
+	var beard := GetEquipmentByLayer(who, LAYER_BEARD);
+	foreach worn in ListEquippedItems (who )
+		if ( worn and worn != hair and worn != beard and worn != mount and worn != who.backpack )
+			MoveItemToContainer(worn, who.backpack);
+		endif
+	endforeach
+	var num := 0;
+	var totalnum := 0;
+	var bp := who.backpack;
+	
+	foreach item in enumerateitemsincontainer(bp)
+		if (item.container.serial == bp.serial)
+			num := num + 1;
+			MoveItemToContainer(item, destination_bag);
+			sleepms(100);
+		endif
+		totalnum := totalnum + 1;
+	endforeach
+
+	sendsysmessage(who, "Top items moved: " + num);
+	sendsysmessage(who, "Total items moved: " + totalnum);
+endprogram

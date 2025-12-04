@@ -1,0 +1,49 @@
+use os;
+use uo;
+
+include "setup";
+include "utility";
+
+program use_securecont( who, container )
+	
+	var house := SystemFindObjectBySerial( GetObjProperty( container, "houseserial" ));
+
+	// The new access function
+	// 1 if we can access
+	var access := 0;
+
+	// Owner, let him access
+	if (GetObjProperty(house, "ownerserial") == who.serial || IsCowner( who, house ))
+		access := 1;
+
+	// GMs+ can access secures
+	elseif (who.cmdlevel >= 4)
+		access := 1;
+	endif
+
+	if (!access)
+		var friends := GetObjproperty(house, "Friends");
+		foreach friend in friends
+			if (friend[1] == who.serial)
+				if (friend[2] == 1)
+					access := 1;
+					break;
+				else
+					SendSysMessage(who, "You don't have the permissions to access this secure.");
+					return 0;
+				endif
+			endif
+		endforeach
+	endif
+
+	if (!access) 
+		SendSysMessage(who, "You can't use this.");
+		return 0;
+	endif
+
+	SendViewContainer( who, container );
+	SendSysmessage( who, "You open the secure container." );
+
+
+
+endprogram

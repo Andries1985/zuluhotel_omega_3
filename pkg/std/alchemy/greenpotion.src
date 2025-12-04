@@ -1,0 +1,30 @@
+use os;
+use uo;
+use cfgfile;
+
+include "include/drinkpotion";
+
+program drink_green( character , potion )
+
+	if( !CheckIfCanDrink(character) )
+		return;
+	endif
+	
+	var plvl := GetPotionStrength( potion );
+	
+	if( Checkskill( character , Cint(SKILLID_TASTEID) , Cint(plvl*15) ,  Cint(plvl*15*10) ) )
+		SendSysMessage( character , "That potion is poisonous!" );
+		return;
+	endif
+
+	if(GetObjProperty(character, "InSafeArea"))
+		SendSysMessage( character , "You can't drink that in a safe zone!");
+		return;
+	endif
+
+	EmptyBottle( character , potion );
+
+	SetPoison( character , plvl , "You've been poisoned!" );
+
+	
+endprogram

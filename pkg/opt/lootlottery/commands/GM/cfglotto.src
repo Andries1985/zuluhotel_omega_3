@@ -1,0 +1,142 @@
+use uo;
+use os;
+
+include "include/client";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include ":lootlottery:include/lootlottery";
+
+program textcmd_cfglotto(who)
+
+	SendSysMessage(who, "Target a mobile or spawnpoint to edit.");
+	var thing:= target(who);
+	if(!thing && !(thing.objtype == 0xa300))
+		SendSysmessage(who, "Canceled.");
+		return 0;
+	endif
+
+	var has_settings := "Add to ";
+	var Lotto_trigger;
+	var Lotto_quantity;
+	var Lotto_chance;
+	var Lotto_item;
+	var Lotto_single;
+	var Lotto_lootbag;
+	
+	//let's see if the thing has been set up already
+	if (Getobjproperty(thing, "LottoDrops"))
+		has_settings := "Edit ";
+		Lotto_trigger := Getobjproperty(thing, "LottoTrigger");
+		Lotto_quantity := Getobjproperty(thing, "LottoQuantity");
+		Lotto_chance := Getobjproperty(thing, "LottoChance");
+		Lotto_item := Getobjproperty(thing, "LottoItem");
+		Lotto_single := Getobjproperty(thing, "LottoSingle");
+		Lotto_lootbag := Getobjproperty(thing, "LottoLootBag");
+	endif
+
+	var thing_type := "Creature";
+	if(thing.objtype == 0xa300)
+		thing_type := "Spawnpoint";;
+	endif
+	has_settings +=thing_type;
+
+	if (!Lotto_trigger)
+		Lotto_trigger := DEFAULT_LOTTO_TRIGGER;
+	endif
+	
+	if (!Lotto_quantity)
+		Lotto_quantity := DEFAULT_LOTTO_QUANTITY;
+	endif
+	
+	if (!Lotto_chance)
+		Lotto_chance := DEFAULT_LOTTO_CHANCE;
+	endif
+	
+	if (!Lotto_item)
+		Lotto_item := DEFAULT_LOTTO_ITEM;
+	endif
+
+	if (!Lotto_single)
+		Lotto_single := 0;
+	endif
+
+	if (!Lotto_lootbag)
+		Lotto_lootbag := 0;
+	endif
+		
+	var LottoLotteryGump := GFCreateGump();
+	
+	GFPage(LottoLotteryGump, 0);
+	GFClosable(LottoLotteryGump, 0);
+	
+	//Background
+	GFResizePic(LottoLotteryGump, 67, 64, 5120, 203, 340);
+	
+	GFTextLine(LottoLotteryGump, 92, 79, 51, "Configure Loot Lottery");
+	GFTextLine(LottoLotteryGump, 118, 107, 51, has_settings);
+	
+	//% HP
+	GFTextLine(LottoLotteryGump, 87, 134, 51, "%HP Trigger");
+	GFResizePic(LottoLotteryGump, 172, 132, 9500, 86, 25);
+	GFTextEntry(LottoLotteryGump, 179, 136, 86, 20, 134, Lotto_trigger, 1);
+	
+	//	Drop Quantity
+	GFTextLine(LottoLotteryGump, 110, 166, 51, "Quantity");
+	GFResizePic(LottoLotteryGump, 172, 164, 9500, 86, 25);
+	GFTextEntry(LottoLotteryGump, 179, 168, 86, 20, 134, Lotto_quantity, 2);
+	
+	// % Chance of drop
+	GFTextLine(LottoLotteryGump, 108, 200, 51, "% Chance");
+	GFResizePic(LottoLotteryGump, 172, 197, 9500, 86, 25);
+	GFTextEntry(LottoLotteryGump, 179, 201, 86, 20, 134, Lotto_chance, 3);
+	
+	//Item Type
+	GFTextLine(LottoLotteryGump, 106, 232, 51, "Item Type");
+	GFResizePic(LottoLotteryGump, 172, 229, 9500, 86, 25);
+	GFTextEntry(LottoLotteryGump, 179, 232, 86, 20, 134, Lotto_item, 4);
+
+	//Single Winner
+	GFTextLine(LottoLotteryGump, 124, 264, 51, "Single Winner");
+	GFCheckBox(LottoLotteryGump, 93, 263, 210, 211, Lotto_item, 5);
+
+	//Loot Bag
+	GFTextLine(LottoLotteryGump, 124, 296, 51, "Loot in a Bag");
+	GFCheckBox(LottoLotteryGump, 93, 294, 210, 211, Lotto_lootbag, 6);
+
+	//Apply
+	GFAddButton(LottoLotteryGump, 183, 357, 239, 240, GF_CLOSE_BTN, 1);
+	
+	//Cancel
+	GFAddButton(LottoLotteryGump, 85, 357, 243, 241, GF_CLOSE_BTN, 2);
+
+	//Delete
+	GFAddButton(LottoLotteryGump, 136, 326, 5531, 5532, GF_CLOSE_BTN, 3);
+	
+	var ret := GFSendGump(who, LottoLotteryGump);
+	
+	if (ret[0] == 1) // Config as requested
+		SendSysmessage(who, thing_type+" configured to run loot lottery.", color:=51);
+		SetObjProperty(thing, "LottoDrops", 1);
+		SetObjProperty(thing, "LottoTrigger", CInt(GFExtractData(ret,1)));
+		SetObjProperty(thing, "LottoQuantity", GFExtractData(ret,2));
+		SetObjProperty(thing, "LottoChance", CInt(GFExtractData(ret,3)));	
+		SetObjProperty(thing, "LottoItem", GFExtractData(ret,4));
+		SetObjProperty(thing, "LottoSingle", ret[5]);
+		SetObjProperty(thing, "LottoLootBag", ret[6]);
+		return 0;
+	elseif (ret[0] == 2) //Cancel
+		SendSysmessage(who, "Canceled.");
+		return 0;
+	elseif (ret[0] == 3) //Delete all settings
+		SendSysmessage(who, "Loot Lottery removed.", color:=51);
+		EraseObjProperty(thing, "LottoDrops");
+		EraseObjProperty(thing, "LottoTrigger");
+		EraseObjProperty(thing, "LottoQuantity");
+		EraseObjProperty(thing, "LottoChance");
+		EraseObjProperty(thing, "LottoItem");
+		EraseObjProperty(thing, "LottoSingle");
+		EraseObjProperty(thing, "LottoLootBag");
+		return 0;
+	endif	
+
+endprogram

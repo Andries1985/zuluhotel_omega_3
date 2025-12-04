@@ -1,0 +1,21 @@
+Use uo;
+Use os;
+include ":staff:include/staff";
+Program makedonator( who )
+	var player;
+
+	SendSysMessage( who, "Who you want to make donator?");
+	player := Target( who );
+
+	if( GetObjProperty( player, "Donator" ) )
+		SendSysMessage( who, "That person is already a donator!" );
+		return 0;
+	endif
+	LogCommand(who, GetProcess(GetPid()).name, player.name+"/"+player.serial);
+	SetObjProperty( player, "Donator", 1);
+	
+Endprogram
+
+
+
+

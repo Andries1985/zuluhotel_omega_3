@@ -1,0 +1,73 @@
+use uo;
+use os;
+
+
+
+include "include/client";
+include "include/irc";
+include ":staff:include/staff";
+
+program chat(who, text)
+
+	// Toadstool - added silenceopts. New global chat ban thing
+	if ( GetObjProperty(who, "SilenceOpts")[2] == 1)
+		SendSysMessage( who, "You are not allowed to send chat messages.");
+		return;
+	endif
+
+	if(GetGlobalProperty("ChatClosed"))
+		SendSysMessage( who, "Chat is currently offline, welcome back later.");
+		return;
+	endif
+	
+	if ( GetObjProperty(who, "chatbanned") )
+		SendSysMessage( who, "You have been banned from the chat for all eternity, trying to go around this may result in an even greater punishment.");
+		return;
+	endif
+
+	var chatmsg, nextmsg :=CInt(GetObjProperty(who, "#nextchatmsg")), secclock:=ReadGameClock();
+
+	if (who.cmdlevel == 0)
+	if ( secclock< nextmsg)
+		SendSysMessage( who, "You have to wait " + (nextmsg-secclock) + " seconds to send another message.");
+		return;
+	endif
+	endif
+	
+	if (!text)
+		chatmsg := RequestInput(who, who.backpack, "Type in your message:" );
+	else
+		chatmsg:=text;
+	endif
+
+	if((chatmsg=="") || (!chatmsg))
+		SendSysMessage( who, "Canceled." );
+		return;
+	endif
+
+	if (chatmsg=="on")
+		SendSysMessage( who, "You have turned on chat messages.");
+		EraseObjProperty(who, "ChatOn");
+		return;
+	endif
+
+	if (chatmsg=="off")
+		SendSysMessage( who, "You have turned off chat messages.");
+		SetObjProperty(who, "ChatOn", "off");
+		return;
+	endif
+
+	foreach chr in EnumerateOnlineCharacters()
+   		if ( (GetObjProperty(chr, "ChatOn")!="off"))
+			if(who.cmdlevel)
+        		SendSysMessage( chr, "[Staff] "+who.name + ": " + chatmsg, FONT_NORMAL, 1301 );
+			else
+        		SendSysMessage( chr, who.name + ": " + chatmsg, FONT_NORMAL, 1584 );
+			endif
+   		endif
+	endforeach
+	
+	SetObjProperty(who, "#nextchatmsg", ReadGameClock() + 2);
+
+
+endprogram

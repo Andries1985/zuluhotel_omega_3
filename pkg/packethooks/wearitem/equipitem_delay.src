@@ -1,0 +1,13 @@
+use uo;
+use os;
+
+program equip_delay(parms)
+
+var who := parms[1];
+var item := parms[2];
+
+sleepms(500);
+
+EquipItem(who, item);
+
+endprogram

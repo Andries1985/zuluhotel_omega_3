@@ -1,0 +1,15 @@
+use uo;
+use os;
+
+program core_guildButton( who )
+        var guilds := start_script( "textcmd/player/chat", who );
+ 
+        if( guilds.errortext )
+ 
+                 SysLog( "Error starting guilds_logon -->"+guilds.errortext );
+   
+                 return 0;
+    
+        endif
+ 
+endprogram

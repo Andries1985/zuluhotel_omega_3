@@ -1,0 +1,192 @@
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Toadstool 18/04/2012 - Total rewrite for enticement 
+//
+// How it works now: Bard targets an npc, if in range it will blindly follow the music. 
+// This doesn't set off other NPCS, so it's a good baiting tool. If the player fails to entice
+// the monster, it will attack him. 
+//
+// After a certain range the difficulty of enticing the creature increases, as well as the
+// points gained.
+// 
+// Player must stay still, otherwise the creature 'snaps' out of it
+//
+// If the NPC starts to take damage, he 'snaps' out of the songs power.
+//
+// TODO: Allow for players to be enticed. Will need a different sort of effect
+//	 Allows pets to be enticed, will need to check criminal status's of master and bard
+//
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+use os;
+use uo;
+use cfgfile;
+
+include "include/client";
+include "include/objtype";
+include "include/skillpoints";
+include "include/bard";
+include "include/eventid";
+include "include/classes";
+include "include/attributes";
+
+
+program Enticement( who )
+	
+	var ev := STRUCT;
+	var instrument := findinstrument( who );
+	if( !instrument )
+		SendSysmessage( who, "You don't have an instrument to play!" );
+		return;
+	endif
+
+	SendSysmessage( who, "What do you want to entice?" );
+	var subject := Target(who, TGTOPT_CHECK_LOS + TGTOPT_NEUTRAL );
+
+	// Check if target chosen and that target is an npc
+	if (!subject || who.dead || who.hidden || who.concealed) 
+		SendSysMessage(who, "Cancelled.");
+		return 0; 
+	elseif (!subject.isa(POLCLASS_NPC))
+		SendSysmessage( who, "You can only entice NPC's!" );
+		return 0;
+	elseif (GetObjProperty(subject, "#EnticedBy"))
+		SendSysMessage(who, "That is already being enticed.");
+		return 0;
+	elseif (subject.master)
+		SendSysmessage( who, "You can not entice tamed NPC's" );
+		return 0;
+	endif
+
+	var configfile := ReadConfigFile("::npcdesc");
+
+	// Don't allow enticing of invul npcs, this is the only check for certain npcs.
+	var elem := FindConfigElem( configfile, subject.npctemplate );
+		if( elem.Privs == "invul" )
+			SendSysMessage( who, "You can't entice an invulnerable npc!" );
+			return;
+		elseif( elem.Script == "noble" )
+			SendSysmessage( who, "You can not entice this NPC!");
+			return;
+		endif
+
+	var difficulty;
+
+	// Set Range based on enticement, max range for a level 4 bard seems to be 26 tiles
+	// Lowest range is set to 7 tiles, as monster attack at about 6
+	var range := Cint(GetEffectiveSkill(who,SKILLID_ENTICEMENT)/10);
+	if (range < 7)
+		range := 7;
+	endif
+	range := Cint( range * ClasseBonus( who, CLASSEID_BARD ) );
+
+	// Find npc provoke difficulty, as we use that for entice difficulty.
+	// If no .provoke found, 100 used.
+
+	elem := FindConfigElem( configfile, subject.npctemplate );
+	difficulty := Cint( elem.provoke );
+	
+	if( !difficulty )
+		difficulty := 100;
+	elseif( difficulty > 150 )
+		difficulty := 150;
+	endif
+			
+	var sfx_success;
+	var sfx_failure;
+	case( instrument.graphic )
+		UOBJ_HARP:	sfx_success := SFX_HARP_SUCC;
+				sfx_failure := SFX_HARP_FAIL;
+				break;
+					
+		UOBJ_LUTE:	sfx_success := SFX_LUTE_SUCC;
+				sfx_failure := SFX_LUTE_FAIL;
+				break;
+					
+		UOBJ_DRUM:	sfx_success := SFX_DRUM_SUCC;
+				sfx_failure := SFX_DRUM_FAIL;
+				break;
+					
+		UOBJ_TAMB:	sfx_success := SFX_TAMB_SUCC;
+				sfx_failure := SFX_TAMB_FAIL;
+				break;
+					
+		default:	PrintTextAbovePrivate( who, "You don't have an instrument you are capable of playing.", who );
+				return 0;
+	endcase
+	
+	// Sent to NPC to calm if he's in warmode	
+	ev := STRUCT;
+	ev.+type;
+	ev.type := EVID_PEACEMADE;
+	
+	// Used to play fail or succeed song	
+	var succeeded	:= 0;
+	
+	// Duration of effect, base 5 seconds. Classed bards get an extra 1 second each level
+	var duration := 6;
+	duration := duration + CInt(GetObjProperty( who , CLASSEID_BARD));
+
+	var points;
+
+	// Added range check, and greater difficulty to entice a monster at further range
+	// Penalty kicks in after 5 tiles, at .05% extra difficulty every tile
+	var dist := Distance(subject, who);
+
+	if (dist > range)
+		PrintTextAbovePrivate( who, "That's creature is too far away for your music to reach", who );
+		return 0;
+	endif
+
+	points := Cint( difficulty * 10 );
+		
+	// Check difficulty against Enticement and then Musicianship. Award 1/3 the points for musicianship
+	if( CheckSkill( who, SKILLID_ENTICEMENT, difficulty, points ) )
+		if( CheckSkill( who, SKILLID_MUSICIANSHIP, difficulty, Cint(points / 3) ) )
+			succeeded := 1;
+			set_critical(1); 					// must be done instantly
+			SendEvent( subject, ev ); 				// Send peacemade to npc
+			subject.warmode := 0;					// This should be redundant, but keep to make sure
+			SetObjProperty(subject, "#EnticedBy", who.serial);
+   			SetObjProperty(subject, "AiScript", subject.script);
+			SetObjProperty(subject, "#Duration", duration+ReadGameClock());
+   			subject.script := ":taunt:enticeai";
+			RestartScript(subject);
+			set_critical(0);
+			PrintTextAbove( subject, "*"+subject.name + " follows the beautiful music!*" );
+		endif
+	endif
+	
+	 	
+	if( succeeded )
+
+	// Play song and run a loop, mainly to cancel the effect if the player moves.
+	// Failsafe set at 20 seconds, so we stop script regardless
+		PlaySoundEffect( who, sfx_success );
+		var mx := who.x, my := who.y, failsafe := 1;
+		repeat
+		
+		if (!GetObjProperty(subject, "#EnticedBy"))
+			break;
+		elseif (subject.dead)
+			break;
+		elseif (who.x != mx && who.y != my)
+			SendSysMessage(who, "Enticement cancelled, you moved.");
+			break;
+		endif
+		
+		sleepms(100);
+
+		failsafe := failsafe + 1;
+		until (failsafe > 200);
+	else
+		PlaySoundEffect( who, sfx_failure );
+		PrintTextAbove( who, "*"+ who.name + " plays a musical instrument... poorly*" );
+
+		ev := STRUCT;
+		ev.+type;
+		ev.+source;
+		ev.source := who;
+		ev.type := SYSEVENT_ENGAGED;
+		SendEvent(subject, ev);
+	endif
+endprogram 

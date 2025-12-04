@@ -1,0 +1,378 @@
+//modified by Sith 1/12/2011
+
+use uo;
+use os;
+use boat;
+
+include ":gumps:yesno";
+include ":housing:utility";
+include "include/dotempmods";
+include "include/constants/gumpids";
+include "include/constants/cmdlevels";
+
+
+const X := 210;
+const Y := 175;
+//const PROPID_MOBILE_PAGING				:= "#Paging";
+//const CMDLEVEL_COUNSELOR	:= 1;
+//const CMDLEVEL_SEER		:= 2;
+//const CMDLEVEL_GAME_MASTER	:= 3;
+//const PROPID_GLOBAL_STAFF_PAGES				:= "gmpages";
+//const GUMPID_BKGND_FANCY			:= 2600;	// Fancy corner gray background
+//const GUMPID_CHECKBOX_GRAY_0			:= 210;
+//const GUMPID_CHECKBOX_GRAY_1			:= 211;
+
+program help( who2 )
+	var who := who2[1];
+
+	if( GetObjProperty( who, PROPID_MOBILE_PAGING) )
+		SendSysMessage( who, "You're already paging." );
+		return 0;
+	else
+		SetObjProperty( who, PROPID_MOBILE_PAGING, 1 );
+	endif
+	
+	var layout := array(
+		"page 0",
+		"nodispose",
+		"resizepic " + (X+0) + " " + (Y+0) + " " + GUMPID_BKGND_FANCY + " 350 275",
+		"text " + (X+115) + " " + (Y+20)  + " 683 0",
+		"text " + (X+55)  + " " + (Y+55)  + " 995 1",
+		"text " + (X+55)  + " " + (Y+80)  + " 995 2",
+		"text " + (X+55)  + " " + (Y+105) + " 995 3",
+		"text " + (X+55)  + " " + (Y+130) + " 995 4",
+		"text " + (X+55)  + " " + (Y+155) + " 995 5",
+		"text " + (X+55)  + " " + (Y+180) + " 995 6",
+		"text " + (X+50)  + " " + (Y+210) + " 683 7",
+		"text " + (X+75)  + " " + (Y+240) + " 683 8",
+		"button " + (X+30) + " " + (Y+57)  + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 1",
+		"button " + (X+30) + " " + (Y+82)  + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 2",
+		"button " + (X+30) + " " + (Y+107) + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 3",
+		"button " + (X+30) + " " + (Y+132)  + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 4",
+		"button " + (X+30) + " " + (Y+157) + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 5",
+		"button " + (X+30) + " " + (Y+182) + " "  + GUMPID_CHECKBOX_GRAY_0 + " " + GUMPID_CHECKBOX_GRAY_1 + " 1 0 0"
+		);
+		
+	var data := array(
+		"HELP MENU",
+		"General questions about Zuluhotel Omega.",
+		"My character is physically stuck.",
+		"I wish to page a Game Master.",
+		"My character has bugged stats.",
+		"My character has bugged frozen.",
+		"Return to the game.",
+		"For more info, visit our website at",
+		"http://ZuluhotelOmega.com/"
+		);
+	
+	var res := SendDialogGump( who, layout, data );
+	if( !res[0] )
+		EraseObjProperty( who, PROPID_MOBILE_PAGING );
+		return 0;
+	else
+		res := res[0];
+	endif
+	
+	var min_level;
+	var staffs	:= array;
+	case( res )
+		1:	
+		2:	min_level := CMDLEVEL_COUNSELOR;
+		3:	min_level := CMDLEVEL_COUNSELOR;
+	endcase
+	
+	foreach player in EnumerateOnlineCharacters()
+		if( player.cmdlevel >= min_level and GetObjProperty(player, "Pages") != "STEALTH")
+				staffs.append( player );
+		endif
+
+	endforeach
+	var bbonline := GetGlobalProperty("BBRunning");
+	var staffon := SystemFindObjectBySerial(cint(bbonline));
+	var page_msg;
+	var multi := who.multi;
+	if( !staffs.size() and (!staffon or GetObjProperty(staffon,"AnswerPages") == "OFF") )
+/*	
+		SendSysMessage(who, "Pay attention, please.",3,33);//Red
+		case( res )
+			1:	page_msg := RequestInput( who, who.backpack, "Type in your question:" );
+			2:	if( multi )
+					if( !Iscowner( who, multi ) )
+						if( !IsFriend( who, multi, GATE_TO ) )
+						SendSysMessage( who , "You cannot use this in houses you don't belong!" );
+						SendSysMessage( who , "If you want to get out from someones house use .suicide" );
+						EraseObjProperty( who, PROPID_MOBILE_PAGING );
+						return 0;
+						endif
+					endif
+				endif
+				
+				if( YesNo( who , "Do you want to be teleported?" ) )
+					SendSysMessage(who, "You will be teleported in 30sec.",3,33);
+					MoveObjectToLocation( who, 2007, 1393, -90, "malas", MOVEOBJECT_FORCELOCATION);
+				else
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+			3:	page_msg := RequestInput( who, who.backpack, "Type in your problem:" );
+		endcase
+		
+		//sith
+		var ev := struct;
+		ev.+type;
+		ev.+value;
+		ev.+who;			
+		ev.+cmdlevel;
+		ev.type := "gmpage";
+		ev.value := page_msg;
+		ev.who := who.name;
+		ev.cmdlevel := who.cmdlevel;		
+		//sith
+		
+		//SendSysMessage(who, "No staff are currently online.",3,33);//Red
+		
+		//EraseObjProperty( who, PROPID_MOBILE_PAGING );
+		//return 0;
+*/
+	endif
+
+	SendSysMessage(who, "Staff will only take English pages, all others will be deleted.",3,33);//Red	
+
+	case( res )
+		1:	page_msg := RequestInput( who, who.backpack, "Type in your question:" );
+		2:	if( multi )
+				if(!SystemFindBoatBySerial( multi.serial ))
+					if( !Iscowner( who, multi ) && !who.dead )
+						if( !IsFriend( who, multi, GATE_TO ) )
+							SendSysMessage( who , "You cannot use this in houses you don't belong to!" );
+							SendSysMessage( who , "If you want to get out from a house you don't belong to, use .suicide" );
+							EraseObjProperty( who, PROPID_MOBILE_PAGING );
+							return 0;
+						endif
+					endif
+				endif
+			endif
+
+			if (who.realm == "britannia_alt")
+				if( who.x >= 6319 )
+					if( who.x <= 6362 )
+						if( who.y >= 1563 )
+							if( who.y <= 1598 )
+								SendSysMessage( who , "Can't use this in jail." );
+								EraseObjProperty( who, PROPID_MOBILE_PAGING );
+								return 0;
+							endif
+						endif
+					endif
+				endif
+			endif
+
+			var initial_x	:= who.x;
+			var initial_y	:= who.y;
+
+			if(GetObjProperty(who, "cwarring"))
+				SendSysMessage(who, "Can't use that while you're having a color war!");
+				return 0;
+			endif
+
+			var count := 0;
+			SendSysMessage(who, "You will be teleported in 10 minutes, Moving will stop the countdown!",3,33);
+			while( count < 601)
+				if( who.x != initial_x or who.y != initial_y )
+					SendSysMessage(who, "You moved, teleport canceled.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				if(who.hidden == 1)
+					SendSysMessage(who, "You can't be hidden when using this help function.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				sleep(1);
+				count := count+1;
+			endwhile
+
+			MoveObjectToLocation( who, 1433, 1861, 36, "britannia_alt", MOVEOBJECT_FORCELOCATION);
+			EraseObjProperty( who, PROPID_MOBILE_PAGING );
+			return 0;
+		3:	page_msg := RequestInput( who, who.backpack, "Type in your problem:" );
+		4:	if (who.realm == "britannia_alt")
+				if( who.x >= 6319 )
+					if( who.x <= 6362 )
+						if( who.y >= 1563 )
+							if( who.y <= 1598 )
+								SendSysMessage( who , "Can't use this in jail... :)" );
+								EraseObjProperty( who, PROPID_MOBILE_PAGING );
+								return 0;
+							endif
+						endif
+					endif
+				endif
+			endif
+
+			var initial_x	:= who.x;
+			var initial_y	:= who.y;
+
+			var count := 0;
+			SendSysMessage(who, "You will be dispelled in 60 seconds, stay put.",3,33);
+			while( count < 61)
+				if( who.x != initial_x or who.y != initial_y )
+					SendSysMessage(who, "You moved, dispel canceled.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				if(who.hidden == 1 || who.concealed == 1)
+					SendSysMessage(who, "You can't be hidden when using this help function.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				sleep(1);
+				count := count+1;
+			endwhile
+
+			if (GetObjProperty(who,"IsLiche"))
+				var str_modulation := GetObjProperty( who , "lstrmod" );
+				var dex_modulation := GetObjProperty( who , "ldexmod" );
+				var int_modulation := GetObjProperty( who , "lintmod" );
+				EraseObjProperty(who, "IsLiche");
+				EraseObjProperty(who, "Type");
+				EraseObjProperty( who , "lstrmod");
+				EraseObjProperty( who , "ldexmod");
+				EraseObjProperty( who , "lintmod");	
+				SetStrengthMod(who, GetStrengthmod(who)-str_modulation);
+				SetDexterityMod(who, GetDexteritymod(who)-dex_modulation);
+				SetIntelligenceMod(who, GetIntelligencemod(who)-int_modulation);
+			endif
+			WipeMods( who );
+			if( who.graphic != who.trueobjtype and !who.dead )
+				who.graphic := who.trueobjtype;
+			endif
+			if( who.Color != who.TrueColor && !who.dead)
+				who.Color := who.TrueColor;
+			endif
+			SendSysmessage( who , "All the magical effects active on you have been wiped." );
+
+			EraseObjProperty( who, PROPID_MOBILE_PAGING );
+			return 0;
+		5:	if (who.frozen != 1 && who.paralyzed != 1)
+				SendSysMessage(who, "You don't seem to be frozen.",3,33);
+				EraseObjProperty( who, PROPID_MOBILE_PAGING );
+				return 0;
+			endif
+			
+			if (who.realm == "britannia_alt")
+				if( who.x >= 6319 )
+					if( who.x <= 6362 )
+						if( who.y >= 1563 )
+							if( who.y <= 1598 )
+								SendSysMessage( who , "Can't use this in jail... :)" );
+								EraseObjProperty( who, PROPID_MOBILE_PAGING );
+								return 0;
+							endif
+						endif
+					endif
+				endif
+			endif
+
+			var initial_x	:= who.x;
+			var initial_y	:= who.y;
+
+			var count := 0;
+			SendSysMessage(who, "You will be thawed in 60 seconds, stay put.",3,33);
+			while( count < 61)
+				if( who.x != initial_x or who.y != initial_y )
+					SendSysMessage(who, "You moved, thaw canceled.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				if(who.hidden == 1)
+					SendSysMessage(who, "You can't be hidden when using this help function.",3,33);
+					EraseObjProperty( who, PROPID_MOBILE_PAGING );
+					return 0;
+				endif
+				sleep(1);
+				count := count+1;
+			endwhile
+			
+			SendSysMessage(who, "You are now free from your freeze!");
+			who.frozen := 0;
+			who.paralyzed := 0;
+			who.concealed := 0;
+			who.hidden := 0;
+
+			EraseObjProperty( who, PROPID_MOBILE_PAGING );
+			return 0;
+	endcase
+	
+	if( !page_msg )
+		SendSysMessage( who, "Canceled." );
+		staffreport(who.name + " cancelled the page request [POSSIBLE CHEATER].");
+		EraseObjProperty( who, PROPID_MOBILE_PAGING );
+		return 0;
+	endif
+	
+	set_critical(1);
+	var pages := GetGlobalProperty( PROPID_GLOBAL_STAFF_PAGES );
+	if( !pages )
+		pages := {};
+	endif
+	
+	var i;
+	var num_pages := pages.size();
+
+	for( i := 1; i <= num_pages; i := i + 2 )
+		if( pages[i] == who.serial )
+			pages[i+1] := page_msg;
+			break;
+		endif
+	endfor
+
+
+	if( i > num_pages )
+		SendSysMessage(who, "Available staff members have been notified of your request.",3,10);
+		SendSysMessage(who, "There are " + CInt(num_pages/2) + " pages queued ahead of you." );
+		pages[num_pages+1] := who.serial ;
+		pages[num_pages+2] := page_msg;
+
+	else
+		SendSysMessage( who, "You had an existing page. It has been updated.",3,33 );
+	endif
+
+	// Toadstool - This is here to trick players they are spamming staff
+	if (GetObjProperty(who, "SilenceOpts")[6] == 1)	
+		EraseObjProperty( who, PROPID_MOBILE_PAGING );
+		return 0;
+	endif
+
+	SetGlobalProperty( PROPID_GLOBAL_STAFF_PAGES, pages );
+	set_critical(0);
+	
+	foreach staff in staffs
+		if (GetObjProperty(staff,"Pages") != "OFF")
+			SendSysMessage( staff, "Page from " + who.name + ":" );
+			SendSysMessage( staff, page_msg );
+		endif
+	endforeach
+	//sith
+	var ev := struct;
+	ev.+type;
+	ev.+value;
+	ev.+who;			
+	ev.+cmdlevel;
+	ev.type := "gmpage";
+	ev.value := page_msg;
+	ev.who := who.name;
+	ev.cmdlevel := who.cmdlevel;
+			
+	EraseObjProperty( who, PROPID_MOBILE_PAGING );
+	
+
+endprogram
+
+function staffreport(text)
+	foreach guy in EnumerateOnlineCharacters()
+        if  (guy.cmdlevel)
+       		SendSysMessage(guy, cstr(text));
+		endif
+	endforeach
+endfunction

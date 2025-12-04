@@ -1,0 +1,248 @@
+//Edited August 25, 2024
+
+use uo;
+use cfgfile;
+use os;
+use storage;
+use datafile;
+include "include/areas";
+include "include/starteqp";
+include "include/npcbackpacks";
+include "include/eventid";
+include ":karmafame:karmafame";
+include "include/dismount";
+include "include/managers";
+include ":shilhook:shilcombat";
+include ":champspawns:death";
+include ":lootlottery:lootlottery";
+
+program npcdeath(corpse)
+
+
+	if((GetObjProperty(corpse, "SpawnPoint")))
+		var spawnpoint := SystemFindObjectBySerial(GetObjProperty(corpse, "SpawnPoint"));
+		if (GetObjProperty(corpse, "GateOnDeath") || GetObjProperty(spawnpoint, "GateOnDeath"))
+			Start_Script("misc/deathgate", {corpse, spawnpoint});
+		endif
+	endif
+
+	var masterserials := GetObjProperty( corpse, "master" );
+	var masters;
+
+	if( GetObjProperty( corpse, "PeaceKeeper") )
+		DestroyItem(corpse);
+	endif
+	
+	if(masterserials)
+		if( GetObjProperty( corpse, "DonatorMount") && !GetObjProperty( corpse, "NoDelete")  )
+			masters := SystemFindObjectBySerial( masterserials );
+			if( !masters )
+				masters := SystemFindObjectBySerial( masterserials, SYSFIND_SEARCH_OFFLINE_MOBILES );
+			endif
+			EraseObjProperty( masters, "DonatorMounted");
+			DestroyItem(corpse);
+		endif
+
+		if( (corpse.npctemplate == "donatorhorse") OR (corpse.npctemplate == "donatorllama") OR (corpse.npctemplate == "donatorostard") OR (corpse.npctemplate == "donatorbear") )
+			masters := SystemFindObjectBySerial( masterserials );
+			if( !masters )
+				masters := SystemFindObjectBySerial( masterserials, SYSFIND_SEARCH_OFFLINE_MOBILES );
+			endif
+			EraseObjProperty( masters, "DonatorMounted");
+			DestroyItem(corpse);
+		endif
+	endif
+	set_script_option( SCRIPTOPT_NO_RUNAWAY , 1 );
+
+	// so we know when it died
+	SetObjProperty(corpse, "DeathTime", ReadGameClock());
+        var npctemplate := GetObjProperty(corpse,"npctemplate");
+	
+	// For now we destory the horse.  
+	// This will just make it a boat piece, destroy it down 
+	if (GetObjProperty(corpse, "DismountOnDeath"))
+		dismount( corpse );
+	else
+		DestroyItem(GetEquipmentByLayer( corpse, 0x19 ));
+	endif
+
+	set_critical(1);
+
+	WarnManagerOfNpcDeath(corpse);
+
+	if (GetObjProperty(corpse, "rise"))
+		start_script("misc/rise", corpse);
+	endif
+
+	if (corpse.truecolor) corpse.color:=corpse.truecolor; endif
+
+	if (GetObjProperty(corpse,"color"))
+		corpse.color := Cint(GetObjProperty(corpse,"color"));
+	endif
+
+    MoveBackpackToCorpse( corpse );
+	var heart;
+	var resnum;
+	if (GetObjProperty(corpse,"WarriorForHire") and GetObjProperty(corpse,"npctemplate") == "warriorforhire")
+		resnum := GetObjProperty(corpse,"resnum");
+		if (!resnum)
+			resnum := 0;
+		endif
+		resnum := resnum + 1;
+		if (resnum < 4 and GetObjProperty(corpse,"master") != 0) 
+			heart := CreateItemAtLocation(corpse.x,corpse.y,corpse.z,0x1CED,1,corpse.realm);
+			heart.newbie := 1;	
+			heart.color := 1172;
+			heart.usescript := "";
+			heart.name := "The Heart of "+GetObjProperty(corpse,"Name");
+			SetObjProperty(heart,"Str",GetObjProperty(corpse,"Str"));
+			SetObjProperty(heart,"Int",GetObjProperty(corpse,"Int"));
+			SetObjProperty(heart,"Dex",GetObjProperty(corpse,"Dex"));
+			SetObjProperty(heart,"Name",GetObjProperty(corpse,"Name"));
+			SetObjProperty(heart,"resnum",resnum);
+			SetObjProperty(heart,"Sex",GetObjProperty(corpse,"Sex"));
+			SetObjProperty(heart,"master",GetObjProperty(corpse,"master"));
+			MoveItemToContainer(heart,SystemFindObjectBySerial(GetObjProperty(corpse,"master")).backpack);
+			SendSysMessage(SystemFindObjectBySerial(GetObjProperty(corpse,"master")), heart.name+" has been placed in your backpack.");
+		else
+			SendSysMessage(SystemFindObjectBySerial(GetObjProperty(corpse,"master")), GetObjProperty(corpse,"Name")+"'s heart has disintegrated and could not be recovered.");
+		endif
+		
+		if(IsInSafeArea(corpse))
+			foreach item in EnumerateItemsInContainer( corpse )
+				if (item.container.serial == corpse.serial)
+					MoveItemToContainer( item, SystemFindObjectBySerial(GetObjProperty(corpse,"master")).backpack );
+				endif
+			endforeach
+		endif
+	endif
+	var nocorpse  := GetObjproperty(corpse,"nocorpse");
+	var summoned  := GetObjproperty(corpse,"summoned");
+	var guardkill := GetObjproperty(corpse,"guardkill");
+
+	foreach item in EnumerateItemsInContainer( corpse )
+
+		// destroy boat piece
+		if (item.objtype == 0x1f021)
+			DestroyItem(item);
+		endif
+
+		if( GetObjProperty( item, "noloot" ) )
+			DestroyItem(item);
+		elseif( item.container == corpse )
+			if( GetObjProperty( item, "dropitem" ) )
+				EraseObjProperty( item, "dropitem" );
+				MoveObjectToLocation( item, corpse.x, corpse.y, corpse.z, corpse.realm );
+			endif
+		endif
+	endforeach
+
+    set_critical(0);
+
+	var npc_cfg	:= ReadConfigFile( "::npcdesc" );
+	var soundFx	:= npc_cfg[npctemplate].deathsnd;
+
+	if (soundFx) 
+		PlaySoundEffect( corpse, soundFx ); 
+	endif
+	
+	if ( guardkill || summoned )
+		zapstorageareas(corpse);
+		return DestroyItem(corpse);
+	endif
+
+	if (Getobjproperty(corpse, "LottoDrops"))
+		LootLottery(corpse);
+		if(GetObjProperty(corpse, "LottoLootBag"))
+			SetObjProperty(corpse, "noloot", 1);
+		endif
+	endif
+	
+    AdviseAttackers( corpse );
+
+	// Safe zone check. No loot if dead in a safe zone
+	if (IsInSafeArea(corpse) && GetObjProperty(corpse,"npctemplate") != "warriorforhire" && !GetObjProperty( corpse, "master" ))
+		PrintTextAbove(corpse, "*The magic surrounding the area strips the corpse of any items*", 3, 87);
+		SetObjProperty(corpse, "noloot", 1);
+	endif
+
+	if( !GetObjProperty( corpse, "noloot"))
+		MakeLoot(corpse);
+		RegisterNPC(corpse);
+	endif
+	
+	if( nocorpse )
+		foreach item in EnumerateItemsInContainer( corpse )
+			if( item.container == corpse )
+				MoveObjectToLocation( item, corpse.x, corpse.y, corpse.z, corpse.realm );
+			endif
+		endforeach
+		DestroyItem(corpse);
+	endif
+		
+	if(GetObjProperty(corpse, "iChampSpawn"))
+		ProcessChampSpawnCorpse(corpse);
+	endif
+
+	if(GetObjProperty(corpse, "Champion"))
+		ProcessChampionCorpse(corpse);
+	endif
+
+	zapstorageareas(corpse);
+		
+endprogram
+
+function RegisterNPC(corpse)
+	var killer;
+	if(GetObjProperty(corpse, "KilledBySerial"))
+		killer := SystemFindObjectBySerial(GetObjProperty(corpse, "KilledBySerial"),SYSFIND_SEARCH_OFFLINE_MOBILES );
+	endif
+
+	// Only record npcs killed by players
+	// Note, KilledBy needs an update. I made KilledBySerial which should be killedby really.
+	// Also need to add it to poison death, and maybe some others
+	if (!killer || killer.cmdlevel)
+		if (!killer && GetObjProperty(corpse, "poison"))
+			killer := GetObjProperty(corpse, "PoisonedBy");
+			SetObjProperty(corpse, "KilledBy", killer);
+		else
+			return 0;
+		endif
+	endif
+
+	var npctype := GetObjProperty(corpse, "npctemplate");
+
+	var file := OpenDataFile("KilledNPCS");
+	if (!file)
+		CreateDataFile( "KilledNPCS");
+	endif
+
+	var currentelement := file.FindElement("NPCDeaths");
+
+	if (!currentelement)
+		currentelement := file.CreateElement("NPCDeaths");
+	endif
+
+	var npcprop := CInt(currentelement.GetProp(npctype));
+
+	currentelement.SetProp(npctype,npcprop+1);
+
+	UnloadDataFile("KilledNPCS");
+
+endfunction
+
+function zapstorageareas(me)
+
+	var myserial:=getobjproperty(me,"serial");
+	if (!myserial) return; endif
+
+	var storage := FindStorageArea( "Merchant Storage" );
+	if (DestroyRootItemInStorageArea( storage, myserial + " FS"))
+		DestroyRootItemInStorageArea( storage, myserial + " PB");
+		DestroyRootItemInStorageArea( storage, myserial + " 1C");
+	endif
+
+	storage := FindStorageArea( "Tamed Storage" );
+	DestroyRootItemInStorageArea( storage, "Bankbox  " + HEX(myserial));
+
+endfunction

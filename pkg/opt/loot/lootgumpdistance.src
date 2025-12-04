@@ -1,0 +1,27 @@
+use uo;
+use os;
+
+program CheckDistanceGump(parms)
+
+var who := parms[1];
+var corpse := parms[2];
+var pid := parms[3];
+var count := 0;
+
+repeat
+count := count+1;
+if (Distance(who, corpse) > 2)
+	break;
+endif
+
+sleepms(100);
+if(count > 10000)
+	CloseGump( who, pid, 1 );
+	return;
+endif
+	
+until (GetObjProperty(corpse, "LootGumpIgnore") || who.dead || !corpse || !GetProcess(pid));
+
+CloseGump( who, pid, 1 );
+
+endprogram

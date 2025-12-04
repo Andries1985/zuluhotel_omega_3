@@ -1,0 +1,88 @@
+use uo;
+use datafile;
+
+include "include/time";
+
+var layout :=   {
+                    "page 0",
+                    "resizepic 0 0 5054 250 300",            // Fundo
+                    "resizepic 10 10 3000 230 280",            // Fundo2
+                    "text 20 30 0 0",
+
+					"text 20 60 0 1",
+					"text 20 80 0 2",
+					"text 20 100 0 3",
+					"text 20 120 0 4",
+					"text 20 140 0 5",
+					"text 20 160 0 6",
+					"text 20 180 0 7",
+					"text 20 200 0 8",
+					"text 20 220 0 9",
+					"text 20 240 0 10",
+					"text 20 260 0 11"
+
+                };
+
+var data :=     {   "SERVER STATUS"
+                };
+
+
+program titlechooser( who )
+
+var server := PolCore();
+var online := EnumerateOnlineCharacters().size();
+
+sysloadcolor(server.sysload);
+
+data[2] := server.verstr;
+data[3] := "Sysload: "+server.sysload+"%";
+data[4] := "Uptime: "+format_duration( server.uptime );
+data[5] := "Players Online: "+online;
+data[6] := "Number of NPCs: "+(server.mobilecount - online);
+data[7] := "Number of Items: "+server.itemcount;
+data[8] := "MB uploaded: "+((server.bytes_sent/1024)/1024)+"MB";
+data[9] := "MB downloaded: "+((server.bytes_received/1024)/1024)+"MB";
+data[10] := "Events/min: "+server.events_per_min;
+data[11] := "Inst/min: "+server.instr_per_min;
+data[12] := "Time-now: "+server.systime;
+
+SendDialogGump( who, layout, data );
+
+endprogram
+
+function sysloadcolor( nivel )
+	var cor;
+	if (nivel < 10 )
+		cor := 0;
+	elseif (nivel < 20 )
+		cor := 50;
+	elseif (nivel < 30 )
+		cor := 43;
+	elseif (nivel < 40 )
+		cor := 39;
+	elseif (nivel < 50 )
+		cor := 38;
+	else
+		cor := 37;
+	endif
+
+	layout[6] := "text 20 80 "+cor+" 2";
+endfunction
+
+
+function format_duration( seconds )
+    var hrs := CInt( seconds / 3600 );
+    seconds := seconds - hrs * 3600;
+    var mns := CInt( seconds / 60 );
+    seconds := seconds - mns * 60;
+
+    return CStr(hrs) + ":" + pad( mns, 2 ) + ":" + pad( seconds, 2 );
+endfunction
+
+function pad( value, minlen )
+    var ret := CStr( value );
+    while (len(ret) < minlen )
+        ret := "0" + ret;
+    endwhile
+    return ret;
+endfunction

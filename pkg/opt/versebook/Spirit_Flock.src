@@ -1,0 +1,214 @@
+use uo;
+use os;
+
+include "include/attributes";
+include "include/classes";
+include ":versebook:include/versefunctions";
+include ":versebook:include/verseconstants";
+include "include/constants/locations";
+
+var stamina, diff, skills, element, instrument, musicianship, name, range;
+var flock := {};
+var flock2 := {};
+var FLOCK_AMOUNT := 4;
+
+// How many seconds between damage
+var SUMMON_LOOP := 3;
+
+const GFX_EFFECT := 14089;
+const GFX_COLOUR := 1463;
+const SOUND_EFFECT := 0x216;
+
+var base_dex;
+var base_str;
+var damage := 30;
+var base_skills;
+
+program Spirit_Flock(parms)
+
+	// Sent with the song_id (a number like spellid)
+	var who := parms[1];
+	var song_id := parms[2];
+
+	Attach(who);
+
+	// Checks rules for playing the particular song, class, stamina skills, instrunment
+	// Returns cfg info for song to save processing power
+	var can_play := CanPlay(who, song_id);
+	if (!can_play)
+		return 0;
+	else
+		stamina := can_play[1];
+		diff := can_play[2];
+		skills := can_play[3];		 // array of skill_ids to base verse on
+		element := can_play[4];		 // array of elements to base damage on
+		instrument := can_play[5];	 // Item ref to music instrument found
+		musicianship := can_play[6]; // The players music SKILL level
+		name := can_play[7];		 // The name of the song
+	endif
+
+	// Atm we don't allow bards to move, if they lose hp, stop
+	var x := who.x;
+	var y := who.y;
+	var hp := GetHP(who);
+
+	var last_played := ReadGameClock(); // Used JUST for the playing sound, does a check against music skill too
+
+	// All skill checks are done in here
+	if (!SucceedPlayingVerse(who, skills, diff, instrument, name))
+		return 0;
+	endif
+
+	// Calculate the range, damage, and specify the loop var, as well as hit var
+	range := GetVerseRange(who, musicianship);
+	var i := SUMMON_LOOP;
+	FLOCK_AMOUNT := FLOCK_AMOUNT + IsBard(who);
+	SetGoatDamage(who); // sets goats damage/str etc based on bard
+
+	// ------------- The looping main effect of the song ------------ \\
+	repeat
+
+		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
+		if (ReadGameClock() >= last_played)
+			if (!PlayBardicMusic(who, diff, instrument))
+				break;
+			endif
+			last_played := ReadGameClock()+7;
+		endif
+
+		if ( i == SUMMON_LOOP)
+
+			if (SummonSpiritFlock(who))
+				if (!ConsumeBardStamina(who, stamina, 1))
+					break;
+				endif
+			else
+				ConsumeBardStamina(who, stamina, 0);
+			endif
+			
+			i := 0;
+			
+		endif
+
+		i := i + 1;
+		
+	sleep(1);
+
+	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+
+	KillFlock();
+	EraseObjProperty(who, "#Flock");
+
+endprogram
+
+//////////////////////////////////////////////////////////////////////
+//
+// Not a shared function as if I do other higher flocks I want them
+// to work differently.
+//
+//////////////////////////////////////////////////////////////////////
+function SummonSpiritFlock(who)
+
+	if (GetObjProperty(who, "#Flock"))
+		flock := GetObjProperty(who, "#Flock");
+		flock2 := {};
+		var goatobj;
+		
+		foreach goat in flock
+			if (!goat)
+				continue;
+			endif
+			goatobj := SystemFindObjectBySerial(goat);
+			if (!goatobj)
+				flock.erase(_goat_iter);
+			endif
+		endforeach
+
+	endif
+
+	if (flock.size() < FLOCK_AMOUNT)
+		var i := flock.size();
+		var goat;
+		var override := struct;
+
+		repeat
+
+			override.+color := 1473;
+			override.+name := "spirit of the goat";
+			override.+script := ":versebook:ai_spirit_flock";
+			override.+use_adjustments := 1;
+			override.+facing := RandomInt(9);
+
+			goat := CreateNpcFromTemplate("goat", who.x, who.y, who.z, override, who.realm);
+			SetObjProperty(goat, "Range", range);
+			SetObjProperty(goat, "summoned", 1);
+			SetObjProperty(goat, "NPCAttack", 1);
+			goat.setmaster(who);
+
+			var wep := CreateItemAtLocation(goat.x, goat.y, goat.z, 0x7740, 1, goat.realm);
+			wep.dmg_mod := damage;
+			DestroyItem(goat.weapon);
+			EquipItem(goat, wep);
+			
+			SetBaseDexterity(goat, base_dex);
+			SetBaseStrength(goat, base_str);
+			SetHP(goat, GetMaxHP(goat));
+			SetStamina(goat, GetMaxStamina(goat));
+			SetBaseSKill(goat, SKILLID_MACEFIGHTING, base_skills);
+			SetBaseSKill(goat, SKILLID_TACTICS, base_skills);
+			PlayObjectCenteredEffectEx( who, GFX_EFFECT, 8, 25, GFX_COLOUR);
+			PlaySoundEffect(who, SOUND_EFFECT);
+			flock.append(goat.serial);
+			
+			i := i + 1;
+
+		until (i == FLOCK_AMOUNT);
+
+		SetObjProperty(who, "#Flock", flock);
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+function KillFlock()
+
+	foreach goat in flock
+		if (!goat)
+			continue;
+		endif
+		goat := SystemFindObjectBySerial(goat);
+		PlayStationaryEffectEx( goat.x, goat.y, goat.z, goat.realm, 14120, 8, 15, GFX_COLOUR);
+		MoveObjectToLocation(goat, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+		ApplyRawdamage(goat, GetMaxHP(goat)+1);
+	endforeach
+
+endfunction
+
+function SetGoatdamage(who)
+
+	var total_skills := 0.0;
+
+	foreach skill in skills
+		skill := GetEffectiveSkill(who, CInt(skill));
+		total_skills += skill;	
+	endforeach
+
+	total_skills := (total_skills/skills.size());
+	var bard := IsBard(who);
+
+	if (bard)
+		var dmg_mod := 1.0 + (CDbl(bard)/10.0);
+		var skill_mod := 1.0 + (CDbl(bard)/20.0);
+		total_skills := total_skills * skill_mod;
+		damage := CInt(CDbl(damage) * dmg_mod);
+		var bonus := GetBardicEfficiency(who);
+		damage := bonus * damage;
+	endif
+
+	base_dex := total_skills;
+	base_str := total_skills;
+	base_skills := total_skills;
+
+endfunction

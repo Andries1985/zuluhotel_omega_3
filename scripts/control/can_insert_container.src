@@ -1,0 +1,100 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Toadstool 25/04/2012
+//
+// OninsertScript - Direct copy of remove script
+//
+// For: Every container type should have this script.
+// Currently runebooks don't as they have their own script in their own package.
+//
+// Special containers, ie spellbooks (pre 096), runebooks use their own.
+//
+// Note: Corpse now moved here, for obvious reasons.
+//
+////////////////////////////////////////////////////////////////////////////////////
+
+
+use uo;
+use os;
+
+include ":loot:antiloot";
+include ":housing:utility";
+
+program Container_CanInsertScript(who, container, movetype, inserttype, item, existing_stack, amount_to_add)
+
+// movetype player == 0;
+// movetype core   == 1;
+// NOTE: movetype is either bugged or not working pre POL095. Not used, fixed now
+
+// Further Note: This is ONLY triggered by a player moving....
+// Be carefull with using MoveItemToLocation etc....
+
+// Container locked, don't allow insertion. This is NEW!
+if (container.locked)
+	return 0;
+endif
+
+// container is in a container, we check main container to see if we can move
+repeat
+	if (container.container)
+		// again if the containers locked, don't let movement
+		if (container.locked)
+			return 0;
+		else
+			// assign the master container as the container container, and so on
+			container := container.container;
+		endif
+	endif
+until (!container.container);
+// Now we have the MASTER container, even if the container was within 100 containers...
+
+// 2nd locked check
+if (container.locked)
+	return 0;
+endif
+
+// Corpses function kept seperate, very long.
+if (container.isa(POLCLASS_CORPSE))
+	return insertintocorpse(who, container, item);
+endif
+
+// Secure container
+if (GetObjProperty(container, "houseserial"))
+	return SecureInsert(who, container, item);
+endif
+
+return 1;
+
+endprogram
+
+function SecureInsert(who, container, item)
+
+// the house/sign serial
+var sign := SystemFindObjectBySerial(GetObjProperty(container, "houseserial"));;
+
+// owner/cowoner can use his own secure, no more checking
+if ( IsCowner( who, sign ) )
+	return 1;
+endif
+
+// Only friends now, with different level of access
+var friends := GetObjProperty(sign, "Friends");
+
+foreach friend in friends
+	if (friend[1] == who.serial)
+		if (friend[ADD_TO_SECURE] == 1)
+			return 1;
+		else
+			var remtime := GetObjProperty(item, "#SecureRemove");
+			if ( (remtime[2]+30) > ReadGameClock() && remtime[1] == container.serial) // less than 5 seconds, allow to put back
+				return 1;
+			endif
+			SendSysMessage(who, "You don't have the permission level to add items.");
+			return 0;
+		endif
+	endif
+endforeach
+
+return 0;
+
+endfunction
+

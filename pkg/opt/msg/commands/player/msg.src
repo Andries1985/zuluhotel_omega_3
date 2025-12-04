@@ -1,0 +1,233 @@
+use os;
+use os;
+use datafile;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/time";
+include ":msg:include/message";
+
+program msg(who, text)
+
+Set_Script_Option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+var rekna := 0;
+var member := EnumerateOnlineCharacters();
+foreach person in member
+	if(person.cmdlevel == 0)
+	rekna := rekna +1;
+	endif
+endforeach
+var messages := RetrieveMessages(who);
+if (len(messages) > 14000)
+  ResetandBackup(who, messages);
+  SendSysMessage(who, "Message log was full and has been wiped.", 3, 53);
+  return;
+endif
+
+EraseObjProperty(who, "#MessageAlert");
+var messaging := GetObjProperty(who, "#Messaging");
+if (!messaging)
+  // status, lasttimesent, lastmsgreceivedfrom
+  messaging := {"on", 0, 0};
+  SetObjProperty(who, "#Messaging", messaging);
+endif
+
+SleepMS(500);
+var gump := GFCreateGump(20, 27, 520, 400);
+GFPage(gump, 0);
+GFResizePic(gump, 0, 0, 9250, 520, 400);
+GFResizePic(gump, 240, 12, 9200, 265, 376); // player names
+GFResizePic(gump, 260, 350, 5100, 226, 30); // button panel
+GFTextLine(gump, 20, 15, 53, "There is "+rekna+" players online!");
+
+GFHTMLArea(gump, 15, 50, 220, 240, messages, 1, 1);
+
+GFTextLine(gump, 270, 20, 600, "Player Name");
+GFTextLine(gump, 460, 20, 600, "Send");
+
+GFTextLine(gump, 60, 300, 600, "Reply to last message");
+GFTextLine(gump, 60, 360, 600, "Close window");
+
+GFAddbutton(gump, 20, 300, 4007, 4006, GF_CLOSE_BTN, 1000);
+GFAddbutton(gump, 20, 360, 4017, 4018, GF_CLOSE_BTN, 4000);
+
+if (messaging[1] == "on")
+  GFTextLine(gump, 60, 330, 600, "Disable messaging");
+  GFAddbutton(gump, 20, 330, 4007, 4008, GF_CLOSE_BTN, 2000);
+else 
+  GFTextLine(gump, 60, 330, 38, "Enable messaging");
+  GFAddbutton(gump, 20, 330, 4007, 4008, GF_CLOSE_BTN, 2000);
+endif
+
+
+var online := EnumerateOnlineCharacters();
+
+var num := 1;
+var page := 1;
+var x := 255;
+var y := 47;
+GFPage(gump,1);
+
+foreach person in online
+var personmsg := GetObjProperty(person, "#Messaging");
+  if (num > 14)
+    GFAddButton(gump, 420, 355, 5540, 5541, GF_PAGE_BTN, page+1); // forward
+    GFPage(gump, page+1);
+    GFAddButton(gump, 310, 355, 5539, 5538, GF_PAGE_BTN, page); // back
+    page := page+1;
+    num := 1;
+    y := 47;
+  endif
+if (person.serial != who.serial)
+  if (!person.cmdlevel) // tis a normal player, carry on
+    GFTextLine(gump, x, y, 40, person.name);
+    if (personmsg[1] != "off");
+      GFAddButton(gump, x+210, y+5, 2118, 2117, GF_CLOSE_BTN, _person_iter);
+    endif
+    y := y + 20;
+    num := num + 1;
+  elseif (person.cmdlevel && !who.cmdlevel) // tis a staff and user is mortal
+    // do nothing
+  elseif (person.cmdlevel && who.cmdlevel) // both staff
+    if ((!person.concealed) || (person.concealed <= who.cmdlevel))
+      GFTextLine(gump, x, y, 53, person.name);
+      if (personmsg[1] != "off");
+        GFAddButton(gump, x+210, y, 2118, 2117, GF_CLOSE_BTN, _person_iter);
+      endif
+      y := y + 20;
+      num := num + 1;
+    elseif (person.concealed > who.cmdlevel) // hes concealed greter than ur level, don't show
+    // do nothing
+    endif
+  endif
+endif
+endforeach
+
+var data := GFSendGump(who, gump);
+
+if (data == error)
+  ResetandBackup(who, messages);
+  SendSysMessage(who, "Message log was full and has been wiped.", 3, 53);
+  return 0;
+endif
+
+if (data[0] == 0 || !data[0] || data[0] == 4000)
+  return 0;
+endif
+
+if (data[0] == 1000)
+	if (!SystemFindObjectBySerial(messaging[3]))
+		SendSysMessage(who, "There is not last message to reply to.");
+		return 0;
+	endif
+  SendMessage(who, SystemFindObjectBySerial(messaging[3]));
+  return 0;
+endif
+
+if (data[0] == 2000)
+  if (messaging[1] == "on")
+    messaging[1] := "off";
+    SetObjProperty(who, "#Messaging", messaging);
+    SendSysMessage(who, "You have turned messaging off.", 3, 39);
+    return 0;
+  else
+    messaging[1] := "on";
+    SetObjProperty(who, "#Messaging", messaging);
+    SendSysMessage(who, "You have turned messaging on.", 3, 600);
+    return 0;
+  endif
+endif
+
+if (data[0] > 0 && data[0] < 1000) // its player msg
+  SendMessage(who, online[data[0]]);
+endif
+
+endprogram
+
+function RetrieveMessages(who)
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+var time := timeanddate[2];
+var entryname := CStr(who.acctname+"_"+who.serial);
+var file := OpenDataFile(":msg:messages");
+
+if (!file)
+	CreateDataFile( ":msg:messages", flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(entryname);
+
+var msg;
+var mto := "";
+var props := currentelement.propnames();
+//props.sort();
+var props2 :={};
+foreach prop in props
+  props2[CInt(prop)] := prop;
+endforeach
+
+props := props2;
+
+// fucking .reverse() isn't working!
+var i;
+//foreach prop in props
+for(i := len(props); i > 0; i := i - 1)
+  msg := currentelement.getprop(props[i]);
+  if (msg[1] == who.serial)
+    if (msg[3] == "Sent")
+      mto := mto+msg[2]+": <b>"+CStr(msg[3])+"</b> to <b>"+msg[4]+"</b>.<br><BASEFONT COLOR=darkblue><i>"+msg[5]+"</i><BASEFONT COLOR=black><br><br>";
+    else
+      mto := mto+msg[2]+": <b>"+CStr(msg[3])+"</b> <b>"+msg[4]+"</b>.<br><BASEFONT COLOR=darkblue><i>"+msg[5]+"</i><BASEFONT COLOR=black><br><br>";
+    endif
+  endif
+endfor
+
+UnloadDataFile(":msg:messages");
+
+if (len(mto) < 2)
+  mto := "No recorded message history.";
+endif
+
+return mto;
+
+endfunction
+
+function ResetandBackup(who, messages)
+
+var timeanddate := SplitWords(NowString());
+var date := timeanddate[1];
+var time := timeanddate[2];
+var entryname := CStr(who.acctname+"_"+who.serial);
+var file := OpenDataFile(":msg:messages_archive");
+
+if (!file)
+	CreateDataFile( ":msg:messages_archive", flags := DF_KEYTYPE_STRING );
+endif
+
+var currentelement := file.FindElement(entryname);
+
+if (!currentelement)
+      currentelement := file.CreateElement(entryname);
+endif
+
+currentelement.setprop(CStr(timeanddate), messages);
+
+UnloadDataFile(":msg:messages_archive");
+
+// now reset
+
+entryname := CStr(who.acctname+"_"+who.serial);
+file := OpenDataFile(":msg:messages");
+
+currentelement := file.FindElement(entryname);
+
+var props := currentelement.propnames();
+foreach prop in props
+  currentelement.eraseprop(prop);
+endforeach
+
+UnloadDataFile(":msg:messages");
+
+endfunction

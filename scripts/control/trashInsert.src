@@ -1,0 +1,12 @@
+use uo;
+use os;
+
+program on_insert(who, container, movetype, inserttype, adding_item, existing_stack, amt_to_add )
+	var item;
+	if(inserttype == INSERT_INCREASE_STACK)
+		item := existing_stack;
+	else
+		item := adding_item;
+	endif
+	SetObjProperty(item, "#DestroyAt", ReadGameClock() + 60);
+endprogram

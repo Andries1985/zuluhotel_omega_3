@@ -1,0 +1,173 @@
+
+ // Test color ranges on different objects
+ //
+ //
+ //
+ //
+ //
+
+
+use os;
+use uo;
+
+program colorstest( who, text )
+	
+    if(text == "" || text == "?" || Lower(text) == "help")
+		SendSysMessage(who, "Usage is .colorstest item colorindexstart", color := 88);
+		return;
+	endif
+
+	var params := SplitWords( text );
+    var item := params[1];
+    var color := CInt(params[2]);
+
+    var loc := TargetCoordinates(who);
+
+    RainDownColors(loc, item, color);
+
+endprogram
+
+
+function RainDownColors(loc, item, color)
+
+    var i,tile;
+    var icolor := CInt(color);
+
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 100;
+
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 200;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 300;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 400;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 500;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 600;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 700;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 800;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+    loc.y := loc.y + 1;
+    icolor := CInt(color) + 900;
+    
+    for (i := 0; i <= 99; i := i + 1)
+        tile := GetMapInfo(loc.x+i, loc.y, loc.realm);
+        if(tile)
+            var newitem := CreateItemAtLocation( loc.x+i, loc.y, loc.z, item, 1, loc.realm);
+            newitem.color := icolor + i;
+            newitem.name := "Color is : " + CStr(newitem.color);
+            newitem.movable := 0;
+            sleepms(1);
+        endif
+    endfor
+
+endfunction

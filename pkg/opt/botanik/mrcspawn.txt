@@ -1,0 +1,17 @@
+// MrcSpawn append
+
+
+MerchantType  Gardener
+{
+    Sells     TreeSeed
+}
+
+ProductGroup    TreeDeed
+{
+    Item        0xe000   8       // grapesvines deed
+    Item        0xe001   8       // apple tree deed
+    Item        0xe003   8       // peach tree deed
+    Item        0xe002   8       // pear tree deed
+    Item        0xe004   8       // banana tree deed
+    Item        0xe005   8       // botanic scissor
+}

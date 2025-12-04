@@ -1,0 +1,68 @@
+///////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Changed skill gain to half of what you get casting with regs.
+// Scrolls are just so easy to come by
+//
+///////////////////////////////////////////////////////////////////
+
+
+use uo;
+use os;
+use cfgfile;
+
+include "include/attributes";
+include "include/client";
+include "getspellid";
+include "include/spelldata";
+
+
+program use_scroll( who, scroll )
+
+	if (!scroll.amount)
+		return;
+    endif
+
+	if(!ReserveItem(scroll)) 
+		return; 
+	endif
+
+	// If its in the book, dont use
+	if (scroll.container.objtype == 0x0EFA)
+		return 0;
+	endif
+
+	var spellid := GetSpellId( scroll );
+	// Do a pre mana check so we don't try cast if can't
+
+	//Variables declaration and initialisation
+	var conf	 := ReadConfigFile( ":spells:spells" );
+	var elem	 := FindConfigElem( conf, spellid );
+	var circ	 := GetConfigInt( elem, "Circle" );
+	conf	 	 := ReadConfigFile( ":*:circles" );
+	var spelldelay := Cint( conf[circ].Delay );
+	var value	 := Cint( conf[circ].PointValue );
+	var manacost	 := Cint( conf[circ].Mana );
+	var difficulty := Cint( conf[circ].Difficulty );
+
+	if (manacost > GetMana(who))
+		PrintTextAbovePrivate(who,"Not enough mana!",who);
+		return 0;
+	endif
+        
+	if (GetEffectiveSkill(who,SKILLID_MAGERY) < (GetSpellDifficulty( spellid ) - 20) )
+		PrintTextAbovePrivate(who,"Not a chance...",who);
+		return 0;
+	endif
+
+	// Do a skill check to not even try to cast if we can't
+	SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_SCROLL_SKILL_GAIN, CASTINGOPT_USE_SCROLL});
+
+	var script := elem.Script;
+
+	Start_Script(":spells:"+script, {who, spellid} );
+
+	SubtractAmount(scroll, 1);
+	SleepMS(spelldelay);
+
+endprogram

@@ -1,0 +1,108 @@
+use os;
+use uo;
+use util;
+
+include "include/fields";
+include "include/objtype";	
+include "include/spelldata";
+include "include/client";
+include "include/attributes";
+
+program stonewall( parms, spell_id )
+
+	var circle := 3;
+	var caster;
+	var thetarget;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		thetarget := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		thetarget := CanTargetArea(caster, circle);
+		if (!thetarget)
+			return;
+		endif
+	endif
+
+	var fields;
+	var duration;
+
+	var x := thetarget.x;
+	var y := thetarget.y;
+	var z := thetarget.z;
+	
+	var dungteles := ListItemsNearLocation(x, y, z, 5, thetarget.realm);
+	foreach thing in dungteles
+		if (thing.objtype == 0x6200)
+			SendSysMessage(caster, "Can't wall this close to dungeon teleporters.");
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+	endforeach
+	
+	var houseteles := ListItemsNearLocation(x, y, z, 15, thetarget.realm);
+	foreach thing in houseteles
+		if (thing.objtype == 0xa3c8)
+			SendSysMessage(caster, "Can't wall here.");
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+	endforeach
+
+	case (get_direction (caster, x, y, z))
+		"north" : fields:= CreateNorthSouthField(caster, UOBJ_STONEWALL_NS, x, y, z, 5);
+		"south" : fields:= CreateNorthSouthField(caster, UOBJ_STONEWALL_NS, x, y, z, 5);
+		"east"  : fields:= CreateEastWestField(caster, UOBJ_STONEWALL_EW, x, y, z, 5);
+		"west"  : fields:= CreateEastWestField(caster, UOBJ_STONEWALL_EW, x, y, z, 5);
+		default:  
+			case (RandomInt(2))
+				0: fields:= CreateNorthSouthField(caster, UOBJ_STONEWALL_NS, x, y, z, 5);
+        	  	1: fields:= CreateEastWestField(caster, UOBJ_STONEWALL_EW, x, y, z, 5);
+				default:  fields:= CreateEastWestField(caster, UOBJ_STONEWALL_EW, x, y, z, 5);
+			endcase
+	endcase
+
+	// Toadstool add, just in case	
+	if (!fields)
+		return 0;
+	endif
+
+	detach();
+
+	duration := CInt(ModifyWithMagicEfficiency( caster , Cint(GetEffectiveSkill( caster, SKILLID_MAGERY ) ) * 3 )/2);
+	SendSysMessage( caster , "Your wall of stone will remain for "+duration+" seconds." );
+   
+
+	PlaySoundEffect(caster, SFX_SPELL_WALL_OF_STONE);
+        
+	sleep(duration);
+	
+	var count := 0;
+		
+	foreach fieldpart in fields
+        	DestroyItem(fieldpart);
+			if(count > 100)
+				return 0;
+			endif
+			count := count+1;
+	endforeach
+
+endprogram

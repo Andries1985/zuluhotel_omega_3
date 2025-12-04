@@ -1,0 +1,53 @@
+include "include/spelldata";
+include "include/client";
+include "include/attributes";
+
+program summon_water( parms, spell_id )
+
+	var circle := 8;
+	var caster;
+	var cast_loc;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_loc := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+		var wheretocast := Random(4);
+		case (wheretocast)
+				0: 	SummonCreature( caster , "waterelemental" , cast_loc );
+				1: 	SummonCreature( caster , "waterelemental" , caster );
+				2: 	SummonCreature( caster , "waterelemental" , cast_loc );
+				3: 	SummonCreature( caster , "waterelemental" , caster );
+		endcase
+	else
+		caster := parms;
+		if (IsPaladin(caster))
+			SendSysMessage(caster, "Paladins may not cast this spell!");
+			return 0;
+		endif
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		cast_loc := CanTargetArea(caster, circle);
+		if (!cast_loc)
+			return;
+		endif
+		SummonCreature( caster , "waterelementallord" , cast_loc );
+	endif
+
+	//SummonCreature( caster , "waterelemental" , cast_loc );
+
+endprogram

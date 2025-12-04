@@ -1,0 +1,103 @@
+use uo;
+use os;
+
+include "include/attributes";
+include "include/classes";
+include ":versebook:include/versefunctions";
+include ":versebook:include/verseconstants";
+
+const GFX_EFFECT := 14000;
+const GFX_COLOUR := 33;
+const SOUND_EFFECT := 0x309;
+
+var who, corpse, damage, elements;
+var x, y, z;
+var allparts := {};
+
+program explode_corpse(parms)
+
+	who := parms[1];
+	corpse := parms[2];
+	damage := parms[3];
+	elements := parms[4];
+	var musicianship := GetEffectiveSkill(who, SKILLID_MUSICIANSHIP);
+	var range := GetVerseRange(who, musicianship);
+
+	PlayStationaryEffectEx( corpse.x, corpse.y, corpse.z, corpse.realm, GFX_EFFECT, 8,30, GFX_COLOUR);
+	PlaySoundEffect(corpse, SOUND_EFFECT);
+
+	FlingItems(range);
+	if (!GetObjProperty(corpse, "npctemplate"))
+		PlayerExplosion(range);
+	endif
+
+	foreach part in allparts
+		part.movable := 0;
+		Start_Script("::misc/deleter", {part, 120});
+	endforeach
+
+	foreach person in ListMobilesInLineOfSight( corpse, range );
+		if (SmartSongAoE(who, person))
+			PerformAction( person, 0x14 );
+			ApplyBardicDamage(who, person, elements, damage);
+		endif
+	endforeach
+
+	DestroyItem(corpse);
+
+endprogram
+
+function PlayerExplosion(range)
+
+	var parts := {7584, 7588, 7601, 7599};
+	var player := SystemFindObjectBySerial(GetObjProperty(corpse, "whose"));
+
+	foreach part in parts
+		x := (corpse.x-range) + RandomInt((range*2+1));
+		y := (corpse.y-range) + RandomInt((range*2+1));
+		z := GetStandingHeight( x, y, corpse.z, corpse.realm).z;
+		part := CreateItemAtLocation(x, y, z, part, 1, corpse.realm);
+		if (!CheckLineOfSight( corpse, part))
+			MoveObjectToLocation(part, corpse.x, corpse.y, corpse.z, corpse.realm);
+		endif
+		part.color := player.color;
+		SetName(part, part.desc+" of "+player.name);
+		allparts.append(part);
+	endforeach
+
+	//torso
+	var part := CreateItemAtLocation(corpse.x, corpse.y, corpse.z, 7583, 1, corpse.realm);
+	part.color := player.color;
+	SetName(part, part.desc+" of "+player.name);
+	allparts.append(part);
+
+endfunction
+
+function FlingItems(range)
+
+	foreach item in EnumerateItemsInContainer(corpse)
+		x := (corpse.x-range) + RandomInt((range*2+1));
+		y := (corpse.y-range) + RandomInt((range*2+1));
+		z := GetStandingHeight( x, y, corpse.z, corpse.realm).z;
+		MoveObjectToLocation(item, x, y, z, corpse.realm);
+		if (!CheckLineOfSight( corpse, item ))
+			MoveObjectToLocation(item, corpse.x, corpse.y, corpse.z, corpse.realm);
+		endif
+	endforeach
+
+	var blood;
+
+	var i := 0;
+	repeat
+		x := (corpse.x-range) + RandomInt((range*2+1));
+		y := (corpse.y-range) + RandomInt((range*2+1));
+		z := GetStandingHeight( x, y, corpse.z, corpse.realm).z;
+		blood := CreateItemAtLocatioN(x, y, z, 4650+RandomInt(6), 1, corpse.realm);
+		if (!CheckLineOfSight( corpse,blood))
+			MoveObjectToLocation(blood, corpse.x, corpse.y, corpse.z, corpse.realm);
+		endif
+		i := i + 1;
+		allparts.append(blood);
+	until (i == 3);
+
+endfunction

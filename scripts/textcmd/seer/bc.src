@@ -1,0 +1,25 @@
+use uo;
+include ":staff:include/staff";
+
+program textcmd_bcast( who )
+
+    var wtext := cstr(RequestInput( who, who.backpack, "Message:" ));
+    if (!wtext or wtext == "0")
+	SendSysMessage( who, "Cancelled." );	
+	return 0;
+    endif
+    var wfont := cint(RequestInput( who, who.backpack, "Font:" ));
+    if (!wfont)
+	SendSysMessage( who, "Cancelled" );	
+	return 0;
+    endif
+    var wcolor := cint(RequestInput( who, who.backpack, "Color:" ));
+    if (!wcolor)
+	SendSysMessage( who, "Cancelled." );	
+	return 0;
+    endif
+
+	Broadcast( who.name + ": " + wtext, wfont, wcolor );
+	LogCommand(who, GetProcess(GetPid()).name, 0, "Message: "+wtext);
+
+endprogram

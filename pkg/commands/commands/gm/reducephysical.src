@@ -1,0 +1,18 @@
+use os;
+use uo;
+use party;
+
+include "include/client";
+
+program txtcmd_ReducePhysical(who, mult)
+
+	mult := CDbl(mult);
+		
+	if( SetGlobalProperty( "ReducePhysical" , mult ) )
+		SendSysMessage( who , "Physical damage is being multiplied by " + mult);
+	else
+		SendSysMessage( who , "Couldn't write the var property." );
+	endif
+	    
+endprogram
+

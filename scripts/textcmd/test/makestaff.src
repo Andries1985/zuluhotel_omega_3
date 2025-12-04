@@ -1,0 +1,191 @@
+//////////////////////////////////////////////////////////////////////////
+// Toadstool
+//
+// Makestaff() - A simple command to create staff members
+//
+// This is very very messy and probably hard to follow.
+// Written in a hurry, so not commented
+//
+//////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+use polsys;
+
+include "include/attributes";
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/privs";
+
+program makestaff(who)
+
+SendSysMessage(who, "Target a player/staff member to upgrade their command level.");
+
+var what := Target(who);
+
+if (!what.acctname)
+	SendSysMessage(who, "You must target a player, or staff member.");
+	return 0;
+elseif (what.serial == who.serial)
+	SendSysMessage(who, "You can't set your own level.");
+	return 0;
+elseif (what.cmdlevel >= who.cmdlevel)
+	SendSysMessage(who, "You can only alter those at a command level below yours.");
+	return 0;
+endif
+
+var gump := GFCreateGump( 15, 15, 250, 270);
+GFResizePic(gump, 15, 15, 9250, 250, 270);
+
+GFResizePic(gump, 60, 31, 9200, 155, 17);
+GFTextLine(gump, 70, 30, 53, "Create/Promote Staff");
+GFTextLine(gump, 35, 60, 56, "Account Name: ");
+GFTextLine(gump, 155, 60, 87, what.acctname);
+GFTextLine(gump, 35, 80, 56, "Character Name: ");
+GFTextLine(gump, 155, 80, 87, what.name);
+GFTextLine(gump, 35, 100, 56, "Current Level: ");
+GFTextLine(gump, 155, 100, 87, what.cmdlevelstr);
+
+GFResizePic(gump, 82, 131, 9200, 110, 17);
+GFTextLine(gump, 92, 130, 53, "Set New Level:");
+
+if (what.cmdlevel == 0)
+	GFRadioButton(gump, 35, 160, 9026, 9027, 1, 10);
+else
+	GFRadioButton(gump, 35, 160, 9026, 9027, 0, 10);
+endif
+GFTextLine(gump, 60, 160, 999, "Player");
+
+if (what.cmdlevel == 1)
+	GFRadioButton(gump, 35, 190, 9026, 9027, 1, 11);
+else
+	GFRadioButton(gump, 35, 190, 9026, 9027, 0, 11);
+endif
+GFTextLine(gump, 60, 190, 98, "Counselor");
+
+if (what.cmdlevel == 2)
+	GFRadioButton(gump, 35, 220, 9026, 9027, 1, 12);
+else
+	GFRadioButton(gump, 35, 220, 9026, 9027, 0, 12);
+endif
+GFTextLine(gump, 60, 220, 67, "Seer");
+
+if (what.cmdlevel == 3)
+	GFRadioButton(gump, 145, 160, 9026, 9027, 1, 13);
+else
+	GFRadioButton(gump, 145, 160, 9026, 9027, 0, 13);
+endif
+GFTextLine(gump, 170, 160, 33, "Game Master");
+
+if (what.cmdlevel == 4)
+	GFRadioButton(gump, 145, 190, 9026, 9027, 1, 14);
+else
+	GFRadioButton(gump, 145, 190, 9026, 9027, 0, 14);
+endif
+GFTextLine(gump, 170, 190, 0, "Admin");
+
+if (who.cmdlevel == 5)
+
+	if (what.cmdlevel == 5)
+		GFRadioButton(gump, 145, 220, 9026, 9027, 1, 15);
+	else
+		GFRadioButton(gump, 145, 220, 9026, 9027, 0, 15);
+	endif
+
+	GFTextLine(gump, 170, 220, 117, "Developer");
+endif
+
+GFAddButton(gump, 115, 250, 2450, 2451, 1, 5);
+var data := GFSendGump(who, gump);
+
+if (data[0] == 5)
+
+	foreach key in (data.keys)
+		if (key > 9 )
+			if (SetCommandLevel(what, key-10) == 1)
+				SendSysMessage(who, what.name+" command level set to "+GetCmdLevelName((key-10)), 3, 53);
+			else
+				SendSysMessage(who, "Failed to alter command level of "+what.name, 3, 43);
+			endif
+				return 1;
+		endif
+	endforeach
+
+endif
+
+endprogram
+
+function SetCommandLevel(who, lvl)
+
+var oldlevel := who.cmdlevel;
+
+if (oldlevel > lvl)
+	SendSysMessage(who, "You have been demoted to "+GetCmdLevelName(lvl)+".", 3, 43);
+elseif (oldlevel == lvl)
+	return 0;
+else
+	SendSysMessage(who, "You have been promoted to "+GetCmdLevelName(lvl)+"!", 3, 53);
+endif
+
+who.cmdlevel := lvl;
+
+if (lvl > 0 )
+	// destory beard/hair/robe
+	DestroyItem(GetEquipmentByLayer(who, 0x0b)); //hair
+	DestroyItem(GetEquipmentByLayer(who, 0x10)); // beard
+	DestroyItem(GetEquipmentByLayer(who, 0x16)); //robe
+	var robe := CreateItemAtLocation( who.x, who.y, who.z, 8271, 1, who.realm);
+	SetBaseStrength(who, 80);
+	SetBaseDexterity(who, 80);
+	SetBaseIntelligence(who, 80);	
+	EquipItem(who, robe);
+	AlterPrivsBase(who, oldlevel, lvl);
+	SetStaffName(who, lvl);
+else
+	//player
+	DestroyItem(GetEquipmentByLayer(who, 0x16)); // destroy staff robe
+	AlterPrivsBase(who, oldlevel, lvl);
+	SetBaseStrength(who, 80);
+	SetBaseDexterity(who, 80);
+	SetBaseIntelligence(who, 80);	
+	SetStaffName(who, lvl);
+endif
+
+return 1;
+
+endfunction
+
+function SetStaffName(who, lvl)
+
+var names := {"Counselor", "Seer", "GM", "Admin", "Developer"};
+
+var name := SplitWords(who.name);
+
+var lvlname;
+case (lvl)
+	1: lvlname := "Counselor";
+	2: lvlname := "Seer";
+	3: lvlname := "GM";
+	4: lvlname := "Admin";
+	5: lvlname := "Developer";
+	default: lvlname := "";
+endcase
+
+// It's a promotion from a previous staff level, easy
+if (name[1] in names)
+	name[1] := lvlname;
+
+// No title found in names, name[1] is probably the persons name
+else
+	name.insert(1, lvlname);
+endif
+
+foreach thing in name
+	if (_thing_iter > 1)
+		lvlname := lvlname+" "+thing;
+	endif
+endforeach
+
+who.name := lvlname;
+who.acct.setdefaultcmdlevel(lvl);
+
+endfunction

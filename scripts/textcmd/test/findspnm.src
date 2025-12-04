@@ -1,0 +1,20 @@
+use uo;
+
+program findspnm(who, input)
+
+	if(!input)
+		input := 10;
+	else
+		input := CInt(input);
+	endif
+
+	var i := 0;
+	SendSysMessage(who, "Spawnpoint location in "+input+" radius.");
+	foreach item in ListItemsNearLocation( who.x, who.y, who.z, input, who.realm);
+		if(item.graphic == 8440)
+			SendSysMessage(who, "Spawnpoint"+i+": x: "+item.x+" y: "+item.y+" z: "+item.z);
+			i := i+1;
+		endif
+	endforeach
+
+endprogram

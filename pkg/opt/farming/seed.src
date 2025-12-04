@@ -1,0 +1,81 @@
+use uo;
+use cfgfile;
+use os;
+
+include "include/checkcity";
+include "include/areas";
+include "include/utility";
+include "include/client";
+
+program plant_seed(character, seed)
+
+	var where := character;
+	var use_on := Targetcoordinates(character);
+	var plantable := is_plantable(use_on);
+	
+	 if(!ReserveItem(seed)) 
+		 return; 
+	 endif
+
+	if ( coordist(character.x,character.y,use_on.x, use_on.y) > 3 )
+		SendSysmessage(character,"That is too far away");
+		return 0;
+	endif
+
+	if( !CheckLosAt(character, use_on.x, use_on.y, use_on.z) )
+		SendSysMessage(character, "You can't see that.");
+		return 0;
+	endif
+	
+	var cfg := readconfigfile("::itemdesc");
+
+	if (!cfg)
+        	return;
+	endif
+
+	if (IsInSafeArea(character) || IsInNOPKArea(character)) 
+		sendsysmessage(character,"You can't plant that here."); 
+		return; 
+	endif
+
+/* 	if (character.multi) 
+		sendsysmessage(character,"You can't plant inside houses."); 
+		return; 
+	endif */
+	
+	if(!plantable)
+		sendsysmessage(character, "You cannot plant here!");
+		return;
+	endif
+
+	var parms := {};
+	parms[1] := use_on;
+	parms[2] := cfg[seed.objtype].plant;
+
+	start_script("seedling", parms);
+	
+	subtractamount(seed,1);
+	sendsysmessage(character, "You plant the seed");
+
+endprogram
+
+function is_plantable(theobj)
+
+	//check valid static dirt tiles
+	if( (theobj.objtype >=0x31F4) and (theobj.objtype <= 0x31FB) )
+		return 1;
+	endif
+
+	//check valid maptiles
+	var info := GetMapInfo( cint(theobj.x) , cint(theobj.y), theobj.realm );
+	var tile := info.landtile;
+
+	if (tile >= 0x9 and tile <= 0x15) 
+		return 1;
+	elseif (tile >= 0x150 and tile <= 0x15c) 
+		return 1;        
+	else
+		return 0;
+	endif
+
+endfunction

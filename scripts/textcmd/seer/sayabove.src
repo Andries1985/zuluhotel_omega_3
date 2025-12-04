@@ -1,0 +1,12 @@
+use os;
+use uo;
+include ":staff:include/staff";
+program textcmd_sayabove( who, text )
+    SendSysMessage( who, "Say above what or whom?" );
+
+    var what := Target( who );
+    LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "Text: "+text);
+    if (what)
+        PrintTextAbove( what, text );
+    endif
+endprogram

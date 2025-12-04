@@ -1,0 +1,89 @@
+use os;
+use uo;
+
+include "include/spelldata";
+include "include/client";
+include "include/damages";
+include "include/res";
+include "include/attributes";
+
+const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_RESURRECTION;
+const SPELL_EFFECT_ID		:= FX_SPELL_RESURRECTION;
+const SPELL_EFFECT_SPEED	:= SPEED_SPELL_RESURRECTION;
+const SPELL_EFFECT_LOOP		:= LOOP_SPELL_RESURRECTION;
+
+program spell_resurrect( parms, spell_id )
+
+	var circle := 8;
+	var caster;
+	var cast_on;
+	var fromhit;
+
+	if (parms[1] == "#MOB")
+		caster := parms[2];
+		cast_on := parms[3];
+		if (parms[4])
+			circle := parms[4];
+		endif
+		if (parms[5])
+			fromhit := parms[5];
+		endif
+
+	else
+		caster := parms;
+		// For scrolls, StartSpellScript isn't working >:(
+		if (TypeOf(parms) == "Array")
+			caster := parms[1];
+			spell_id := parms[2];
+		endif
+		if (TryToCast( caster, spell_id ) != SUCCESS);
+			EraseObjProperty(caster, "#Casting");
+			return 0;
+		endif
+		cast_on := CanTargetSpell(caster, circle, TGTOPT_NEUTRAL + TGTOPT_CHECK_LOS );
+		if( !cast_on )
+			return;
+		endif
+	endif
+
+	var multi1 := cast_on.multi;
+	if( multi1 )
+		var multi2 := caster.multi;
+		if( multi2 )
+			if( multi1.serial != multi2.serial )
+				SendSysMessage(caster, "You can't see " + cast_on.name);
+				return 0;
+			endif
+		else
+			SendSysMessage(caster, "You can't see " + cast_on.name);
+			return 0;
+		endif
+	endif
+	
+	//ResurrectMobile( cast_on , caster );
+
+	if( !fromhit )
+		detach();
+		cast_on := Reflected( caster , cast_on , circle );
+	endif
+		//PlayObjectCenteredEffect(cast_on,SPELL_EFFECT_ID, SPELL_EFFECT_SPEED, SPELL_EFFECT_LOOP);
+		PlayObjectCenteredEffectEx( cast_on, SPELL_EFFECT_ID, SPELL_EFFECT_SPEED, SPELL_EFFECT_LOOP );
+	
+			
+	PlaySoundEffect(caster, SFX_SPELL_RESURRECTION);
+	PlaySoundEffect(cast_on, SFX_SPELL_RESURRECTION);
+
+	if( GetObjProperty( cast_on , "Type" ) == "Undead" )
+		var circle_mult := ModifyWithMagicEfficiency( caster , 8 );
+		if( !CheckSkill( cast_on , SKILLID_MAGICRESISTANCE , ( circle * circle_mult ) , 0 ) )
+			ApplyTheDamage( cast_on , caster , (GetMaxHP(cast_on) + 3) , DMGID_MAGIC );
+		else
+			ApplyTheDamage( cast_on , caster , CInt(GetHP(cast_on) / 2) , DMGID_MAGIC );
+		endif
+		
+	else
+		ResurrectMobile( cast_on , caster );
+	endif
+	
+
+endprogram

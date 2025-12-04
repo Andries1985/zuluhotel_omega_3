@@ -1,0 +1,24 @@
+use uo;
+
+include "include/attributes";
+include "include/random";
+
+program createstatpotion(potion)
+  var stat;
+  
+  var randStat := Random(5)+1;
+  if(randStat < 2)
+      stat := ATTRIBUTEID_INTELLIGENCE;
+      potion.graphic := 0x182A;
+  elseif(randStat < 4)
+      stat := ATTRIBUTEID_DEXTERITY;
+      potion.graphic := 0x182B;
+  else
+      stat := ATTRIBUTEID_STRENGTH;
+      potion.graphic := 0x182C;
+  endif
+
+  potion.name := "a Curious Concoction of Pure "+ stat;
+  SetObjProperty(potion, "sStat", stat);
+  SetObjProperty(potion, "iIncrease", 1);
+endprogram

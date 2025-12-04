@@ -1,0 +1,19 @@
+use uo;
+
+program unbanacc( who, text )
+
+	if( !text )
+		SendSysMessage( who , "Work as .unbanacc accname" );
+		return;
+	endif
+
+	var acc := FindAccount(text);
+	var unban := acc.unban();
+	if(!unban)
+		SendSysMessage( who , "Error something went wrong..." );
+		return;
+	endif
+	
+	SendSysMessage( who , "Account "+text+" is unbanned." );
+
+endprogram

@@ -1,0 +1,19 @@
+use os;
+use uo;
+
+include "include/attributes";
+
+program resetpw( who, acc )
+	
+acc := FindAccount(acc);
+
+if (!acc)
+	SendSysMessage(who, "Could not find that account!");
+endif
+
+var newpw := "temp"+RandomInt(1000);
+acc.setpassword(newpw);
+
+SendSysMessage(who, "Account: "+acc.name+" Password reset to: "+newpw);
+		
+endprogram

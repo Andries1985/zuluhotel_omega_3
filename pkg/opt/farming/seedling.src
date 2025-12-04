@@ -1,0 +1,27 @@
+use os;
+use uo;
+use cfgfile;
+
+program seedling(parms)
+
+	var plantseed;
+	var where := parms[1];
+	var what := parms[2];
+	var x:= where.x;
+	var y:= where.y;
+	var z:= where.z;
+
+	var cfg := readconfigfile("plants");
+	if (!cfg)
+		return;
+	endif
+
+	var checkloc := ListItemsNearLocation( x,y,z,0,where.realm );
+	sleep(1);
+	if(len(checkloc) == 0)
+		plantseed := createitematlocation(x, y, z, what, 1, where.realm);
+		SetObjProperty(plantseed, "RegrowTime", ReadGameClock() + cfg[plantseed.objtype].replenishperiod);
+		SetObjProperty(plantseed, "#amt", cfg[plantseed.objtype].maxamount);
+	endif
+
+endprogram

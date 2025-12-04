@@ -1,0 +1,90 @@
+use uo;
+use cfgfile;
+use os;
+
+
+include "include/checkcity";
+include "include/drinkpotion";
+include "include/spelldata";
+include "include/client";
+include "include/random";
+
+program cains_exploder(parms)
+	
+	var explosion_potions := { 0xdc08, 0xdc09, 0xdc07, 0xff2f, 0xff30, 0xff31, 0xff32, 0xff33, 0xff34, 0xff35, 0xff36 };
+	var thrower	:= parms[1];
+	var potion	:= parms[2];
+	var where	:= parms[3];
+	
+	// over double the power of a level 4 mage gex (10) - This doubles the range... RUN!!!!
+	var power := 25;
+	var range := 18;
+	
+	SubtractAmount(potion, 1);
+	SetScriptController( thrower );
+	
+	if( CheckCity(thrower) )
+		power := power - 1;
+	endif
+	
+	if( power < 1 )
+		power := 1;
+	endif
+	
+	var lookout := CreateItemAtLocation( cint(where.x), cint(where.y), cint(where.z), 0x183e, 1, where.realm );
+	lookout.color := 1305;
+	lookout.movable := 0;
+
+	PrintTextAbove( lookout, "*3*", 3, 119);
+	sleep(1);
+	PrintTextAbove( lookout, "*2*", 3, 119);
+	sleep(1);
+	PrintTextAbove( lookout, "*1*", 3, 119);
+	sleep(1);
+
+	PlayObjectCenteredEffectEx( lookout, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION, 1304 );
+	PlayStationaryEffectEx( lookout.x+1, lookout.y, lookout.z, lookout.realm, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION, 1304 );
+	PlayStationaryEffectEx( lookout.x-1, lookout.y, lookout.z, lookout.realm, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION, 1304 );
+	PlayStationaryEffectEx( lookout.x, lookout.y+1, lookout.z, lookout.realm, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION, 1304 );
+	PlayStationaryEffectEx( lookout.x, lookout.y-1, lookout.z, lookout.realm, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION, 1304 );
+	DestroyItem( lookout );
+
+
+	var dmg := (Random(9)+12) * power;
+	var victims := ListMobilesNearLocationEx( cint(where.x),cint(where.y),cint(where.z), range, LISTEX_FLAG_NORMAL + LISTEX_FLAG_HIDDEN, where.realm );
+	
+	victims := SmartAoE(thrower, victims);
+	
+	foreach critter in victims
+		if (!critter.multi.components)
+			PlayObjectCenteredEffectEx( critter, FX_SPELL_EXPLOSION, SPEED_SPELL_EXPLOSION , LOOP_SPELL_EXPLOSION,  1304 );
+			PlaySoundEffect( critter , 0x30a );
+			if( critter.npctemplate )
+				ApplyElementalDamageNoResist( critter , thrower , dmg , FIRE );
+			else
+				ApplyElementalDamageNoResist( critter , thrower , Cint(dmg/2) , FIRE );
+			endif
+		endif
+	endforeach
+	
+	foreach item in ListItemsNearLocation( cint(where.x) , cint(where.y) , cint(where.z) , power, where.realm )
+		if( item.objtype in explosion_potions and item.movable )
+			var parms2 := {};
+			var loc := array;
+			loc.+x;
+			loc.+y;
+			loc.+z;
+			loc.x := item.x;
+			loc.y := item.y;
+			loc.z := item.z;
+			parms2[1] := thrower;
+			parms2[2] := item;
+			parms2[3] := loc;
+			
+			Start_script( ":alchemy:exploder" , parms2 );
+		endif
+	endforeach
+
+endprogram
+
+     

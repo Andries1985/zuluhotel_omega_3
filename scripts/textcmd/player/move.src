@@ -1,0 +1,104 @@
+use uo;
+
+include "include/client";
+
+program move(who)
+
+	SendSysMessage(who, "Target a type of item to move to another container.");
+	var what := Target(who);
+
+	if (!what.isa(POLCLASS_ITEM))
+		SendSysMessage(who, "You must target an item to move.");
+		return 0;
+	elseif (!InBackpack(who, what))
+		SendSysMessage(who, "The item must be in your backpack.");
+		return 0;
+	endif
+
+	SendSysMessage(who, "Select a container to move all these types of items to.");
+	var cont := Target(who);
+
+	if (!cont.isa(POLCLASS_CONTAINER))
+		SendSysMessage(who, "You must target a container.");
+		return 0;
+	elseif (!InBackpack(who, cont))
+		SendSysMessage(who, "The container must be in your backpack.");
+		return 0;
+	endif
+
+	var originalcontainer := what.container;
+	var all := MoveAll(who);
+	if(all)
+		var count := 0;
+		foreach item in EnumerateItemsInContainer(who.backpack, ENUMERATE_ROOT_ONLY)
+			if (item.objtype == what.objtype && item != cont && Accessible( who, item ) && item.container != cont)
+				if (all || item.container == originalcontainer)
+					if (MoveItemToContainer(item, cont))
+						count := count + 1;
+					endif
+				endif
+			endif
+		endforeach
+
+		if (count == 0)
+			SendSysMessage(who, "No items were moved.");
+		elseif (count < 2)
+			SendSysMessage(who, count+" item moved to the container.");
+		else
+			SendSysMessage(who, count+" items moved to the container.");
+		endif
+	endif
+
+endprogram
+
+function InBackpack(who, thing)
+
+	if (thing.serial == who.backpack.serial)
+		return 1;
+	endif
+
+	foreach item in EnumerateItemsInContainer(who.backpack)
+		if (item.serial == thing.serial)
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+
+endfunction
+
+
+function MoveAll(who)
+
+	var gflayout := {
+			"nodispose",                                                // You did not want to hit esc, did you?
+			"page 0",                                                   // We initialize the first page which is the background
+			"GumpPic 260 100 9460",		                           		// We want a nice picture
+			"text 308 130 238 0",                                       // The main headline 
+			"page 1",	                                                // Initialize the page
+			"text 293 160 190 1",
+			"text 293 175 190 2",
+			"button 306 220 243 241 1 0 1",                             // Cancel button
+			"button 406 220 249 248 1 0 2"                            	// Okay button
+		};
+
+	var gfdata := {
+			"<[ MOVE ITEMS MENU ]>",
+			"Move items from one container",
+			"to another container?"
+		};
+
+	var gump := SendDialogGump( who, gflayout, gfdata );
+
+    if( !gump )
+        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+    	return 0;
+    endif
+    
+	case( gump[0] )
+		1:	SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+			return 0;
+		2:	return 1;
+	endcase
+
+endfunction

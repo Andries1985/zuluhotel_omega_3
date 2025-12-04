@@ -1,0 +1,98 @@
+use uo;
+
+include "include/random";
+include "include/attributes";
+include "include/itemutil";
+include ":gumps:yesno";
+
+program powerscroll(who, scroll)
+
+	if( !ReserveItem( scroll ) )
+		return;
+	endif
+	
+	if( !Accessible( who , scroll ) )
+		SendSysMessage( who , "You can't reach that." );
+		return;
+	endif
+
+	if( !IsInContainer( who.backpack , scroll ) )
+		SendSysmessage( who, "That item has to be in your backpack." );
+		return;
+	endif
+
+	if(!GetObjProperty(who, "pScrollMatrix"))
+		var newMatrix := {}, i;
+		for(i:=0; i<49; i:=i+1)
+			newMatrix.append(0);
+		endfor
+		SetObjProperty(who, "pScrollMatrix", newMatrix);
+	endif
+
+	var matrix := GetObjProperty(who, "pScrollMatrix");
+	var skill := GetObjProperty(scroll, "skill");
+	if(matrix[skill] > 15)
+		SendSysMessage(who, "You can't raise this cap any higher.");
+		return;
+	endif
+
+	if( YesNo( who , "Are you sure?" ))
+	else
+		SendSysMessage( who , "Canceled." );
+		return;
+	endif
+		
+	if(skill == 666)
+		DestroyItem(scroll);
+		return;
+	endif
+	var chance := chances(matrix, skill);
+
+	if(chance > Random(101))
+		var des := DestroyItem(scroll);
+		sleepMS(200);
+		if(!des)
+			return;
+		endif
+		var skillName := GetAttributeIdBySkillId(skill);
+		SendSysMessage(who, "Your "+skillName+" skill cap is increased by 5, type .showcaps to see your current skillcaps.");
+		if(skill == 0)
+			skill := 49;
+		endif
+		matrix[skill] := matrix[skill]+5;
+		if(matrix[skill] > 20)
+			matrix[skill] := 20;
+		endif
+		SetObjProperty(who, "pScrollMatrix", matrix);
+		
+		PlayObjectCenteredEffect(who, 0x33EA, 0x1, 10);
+		PlayObjectCenteredEffect(who, 0x373A, 0x1, 10);
+		PlaySoundEffect(who, 0x5C1);
+	else
+		SendSysMessage(who, "This tome has no power.");
+		SetObjProperty(scroll, "skill", 666);
+		DestroyItem(scroll);
+		PlayObjectCenteredEffect(who, 0x3735, 0x1, 20);
+		PlaySoundEffect(who, 0x5D0);
+	endif
+	return;
+
+endprogram
+
+function chances(matrix, skill)
+	var chance := 0;
+	if(skill == 0)
+		skill := 49;
+	endif
+
+	if(matrix[skill] < 5)
+		chance := 80;
+	elseif(matrix[skill] < 10)
+		chance := 60;
+	elseif(matrix[skill] < 15)
+		chance := 40;
+	else
+		chance := 20;
+	endif
+	return chance;
+endfunction

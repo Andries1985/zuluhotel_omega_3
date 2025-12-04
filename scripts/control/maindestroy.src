@@ -1,0 +1,60 @@
+use uo;
+use os;
+use cfgfile;
+
+include "include/constants";
+include "include/managers";
+include ":ArtifactSystem:artifact";
+
+program maindestroy( item )
+
+	// I thought that DestroyItem would at least run the unequip script for equipped items	
+	// It doesn't, so we unequip any item by moving it to jail first to force it to run
+	if (item.unequipscript) // The item has an unequip script
+		if (item.container.isa(POLCLASS_MOBILE)) // The item in equipped
+			MoveObjectToLocation( item, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_NORMAL );
+		endif
+	endif
+
+	// it's an entwined clothing item being destroyed (not the uniform itself)
+	if (GetObjProperty(item, "Entwined"))
+		return 0;
+	endif
+
+	// send artifacts back to their box
+	if (GetObjProperty(item,"Artifact"))
+		toArtifactBox(item);
+		return 0;
+	endif
+
+	if( item.IsA(POLCLASS_MULTI) )
+		return 1;
+	elseif( GetObjProperty( item, PROPID_ITEM_DESTROY_IT ) )
+		WarnSpawnPoint(item);
+		return 1;
+	elseif( GetObjProperty( item, PROPID_ITEM_OWNER ) )
+		Start_Script( SCRIPTID_ITEM_RETURNER, item );
+		item.decayat	:= 0;
+		item.buyprice	:= -1;
+		return 0;
+	elseif( GetObjProperty(item,PROPID_ITEM_INDESTRUCTIBLE) )
+		return 0;
+	else
+		WarnSpawnPoint(item);
+		return 1;
+	endif
+
+endprogram
+
+
+function WarnSpawnPoint(item)
+
+	var pointserial := GetObjProperty( item, PROPID_MOBILE_SPAWNPOINT_SERIAL );
+	if( !pointserial )
+		return 1;
+	endif
+
+	SendSpawnPointEvent( EVID_SPAWNPOINT_DEATH, pointserial, item.serial );
+	return 1;
+
+endfunction

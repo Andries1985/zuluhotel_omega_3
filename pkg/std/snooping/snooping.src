@@ -1,0 +1,331 @@
+// New Snooping Script
+//
+
+use uo;
+use os;
+use util;
+use storage;
+
+include "include/client";
+include "include/skillpoints";
+include "include/utility";
+include "include/eventid";
+include "include/classes";
+include "include/attributes";
+include "include/difficulty";
+include "include/random";
+include "include/snoop";
+include "../pkg/opt/karmafame/karmafame";
+
+var stealme_cfg:= ReadConfigFile( "stealme" );
+var items_cfg:= ReadConfigFile( "stealitems" );
+program snoop(who)
+
+	freehands(who);
+	needgloves(who);
+
+	var storage:= FindStorageArea("Merchant Storage");
+
+	var newpack:=find_or_create_item(storage, "temp "+who.serial,0xE75);
+
+	if (!storage)
+		sendsysmessage(who,"unable to find merchant storage");
+		return;
+	endif
+
+	if (!newpack)
+		sendsysmessage(who,"unable to create temporary backpack");
+		return;
+	endif
+
+	SendSysmessage(who, "Who would you like to snoop?");
+
+	var victim:=Target(who, TGTOPT_CHECK_LOS);
+
+	if (!victim)
+		sendsysmessage(who, "canceled");
+		return;
+	endif
+	if(GetObjProperty(victim, "Boss") || GetObjProperty(victim, "SuperBoss"))
+		SendSysMessage(who, "You can't snoop bosses.");
+		return;
+	endif
+
+	if (victim.npctemplate == "warriorforhire")
+		SendSysMessage(who, "You can't snoop warriors for hire.");
+		return;
+	endif
+
+	if (victim.npctemplate == "playervendor")
+		SendSysMessage(who, "You can't snoop player vendors.");
+		return;
+	endif
+
+	if(victim.script != "merchant" && victim.script != "highpriest" && victim.script != "vanityvendor"
+		 && victim.script != "animaltrainer" && victim.script != "noble")
+		SendSysMessage(who, "You can only snoop merchants!");
+		return;
+	endif
+
+	if( (GetObjProperty(victim, "snooped")+90) > ReadGameClock())
+		sendsysmessage(who, "You must wait some time before snooping this victim again");
+		return;
+	endif;
+
+	//open stealme.cfg
+	if(!stealme_cfg)
+		sendsysmessage(who, "Could not open stealme.cfg");
+		syslog("Unable to open stealme.cfg");
+		return;
+	endif
+
+	var difficulty:= isaplayer(who, victim);
+
+	var stealdiff:= (getobjproperty(victim, "stealme"));
+
+	//debug message
+	//sendsysmessage(who, "snoop difficulty of this npc = "+difficulty);
+	//sendsysmessage(who, "steal difficulty of this npc = "+stealdiff);
+
+	sendDiff( who , difficulty );
+
+	if(Distance(who, victim)>1)
+		sendsysmessage(who, "You need to stay close to "+ victim.name+" !");
+	endif
+
+	var snoopingskill:=GetEffectiveSkill(who, SKILLID_SNOOPING);
+	var points:= difficulty*40;
+
+	printtextaboveprivate(who, "You carefully try to open the backpack...", who);
+	sleep(5);
+
+	if(Distance(who, victim)>1)
+		sendsysmessage(who, "You need to stay close to " + victim.name);
+		return;
+	endif
+
+	if(CheckSkill(who, SKILLID_SNOOPING, difficulty, points))
+
+		sendsysmessage(who, "You successfully open the backpack.");
+
+
+		if (getobjproperty(who, "snooping"))
+			foreach item in EnumerateItemsInContainer(newpack)
+      				destroyitem(item);
+			endforeach
+		endif
+
+
+		setobjproperty(victim, "snooped", ReadGameClock());
+		setobjproperty(who, "snooping",  ReadGameClock());
+
+		var npctemplateID := victim.npctemplate;
+		var elem := stealme_cfg[npctemplateID];
+		var item := GetConfigStringArray(elem,"item");
+                var randum := GetConfigStringArray(elem,"random");
+
+
+		var stealitem;
+		var randnum;
+
+		//bonus to get rarer items determined by snoop skill
+		var bonus:= (snoopingskill/10);
+
+		if(GetObjProperty(who, CLASSEID_THIEF ) )
+			var classbonus := Cint( CLASSE_BONUS );
+			var speclevel := (Classbonus * 4);
+			bonus:= (bonus + speclevel);
+		endif
+
+
+		if (bonus < 1)
+			bonus:= 1;
+		endif
+
+
+		for i:=1 to item.size()
+			var throwaway := splitwords(item[i]);
+			var amount:=RandomDiceStr(throwaway[2]);
+			var chance:=RandomDiceStr(throwaway[3]);
+
+			var thischance:= Cint(chance);
+
+			randnum:= randomint(100) + bonus;
+			if (randnum <= thischance)
+
+			        var itemname := CInt(throwaway[1]);
+
+				if (!itemname)
+					itemname := GetObjtypeByName( cstr(throwaway[1]) );
+				endif
+
+				stealitem:=createitemincontainer(newpack,cint(itemname),Cint(amount));
+				stealitem.movable:= 0;
+				setobjproperty(stealitem,"cansteal", 1);
+				setobjproperty(stealitem,"stealdiff", stealdiff);
+
+				if (getobjproperty(victim, "snoopme"))
+					var dodgy:= getobjproperty(victim, "snoopme");
+					setobjproperty(stealitem, "dodgy", dodgy);
+				endif
+
+			endif
+
+		endfor
+		var item2;
+		var total_amount:=0;
+		for i:=1 to randum.size()
+		    var splitrandum:= SplitWords( randum[i] );
+			var amount:=RandomDiceStr(splitrandum[2]);
+			var chance:=RandomDiceStr(splitrandum[3]);
+
+			var thischance:= Cint(chance);
+
+			randnum:= randomint(100) + bonus;
+			if (randnum <= thischance)
+				var elem1:= items_cfg[splitrandum[1]];
+				if(elem1)
+					item2 := GetConfigStringArray(elem1,"item");
+				endif
+
+				var rand_item_num:=randomint(item2.size())+1;
+
+				amount[i]:=RandomDiceStr(amount[i]);
+				total_amount:=total_amount+amount[i];
+
+			    var resolveditems := CInt( item2[rand_item_num] );
+				if (!resolveditems)
+					resolveditems := GetObjtypeByName( cstr(item2[rand_item_num]) );
+				endif
+
+				stealitem:=createitemincontainer(newpack,cint(resolveditems),Cint(amount[i]));
+				stealitem.movable:= 0;
+				setobjproperty(stealitem,"cansteal", 1);
+				setobjproperty(stealitem,"stealdiff", stealdiff);
+			endif
+
+		endfor
+
+		SendOpenSpecialContainer(who, newpack);
+
+		var snooptime := getobjproperty(who, "snooping")+65;
+		var x := who.x;
+		var y := who.y;
+		var z := who.z;
+		var r := who.realm;
+
+		detach();
+		sleep(60);
+
+		if (getobjproperty(who, "snooping")+60 < snooptime)
+			foreach item in EnumerateItemsInContainer(newpack)
+				destroyitem(item);
+			endforeach
+
+			DestroyRootItemInStorageArea(storage, "temp " + who.serial);
+
+			eraseobjproperty(who, "snooping");
+			MoveObjectToLocation(who, who.x, who.y, who.z, who.realm);
+			if (who.x == x && who.y == y && who.z == z && who.realm == r)
+				SendSysMessage(who, "The opportunity for stealing from "+victim.name+" elapses..");
+			endif
+		endif
+		return;
+
+	else
+
+		//they have failed to snoop the target
+
+		SendSysmessage(who, "You are noticed snooping in the backpack!");
+		PrintTextAbovePrivate(victim, "Hey "+who.name+"! If you dont stop that I will call the guards!", who);
+
+		var karma:=GetKarma(who);
+		var lossKarma:=0;
+
+			if (karma>-625)
+				lossKarma:=0-(Random(200)+1);
+			endif
+
+		AwardKarma(who, lossKarma);
+
+		var fame:=Getfame(who);
+		var lossfame:=0;
+		if (fame>-625)
+			lossfame:=0-(Random(200)+1);
+		endif
+		Awardfame(who, lossfame);
+
+		return;
+	endif
+
+
+
+
+endprogram
+
+
+
+function freehands(who)
+
+	if(GetEquipmentByLayer(who, LAYER_HAND1) || GetEquipmentByLayer(who, LAYER_HAND2))
+		sendsysmessage(who, "You need empty hands to perform this action!");
+	exit;
+	endif
+
+	return 1;
+
+endfunction
+
+function isaplayer(who, victim)
+
+	if (victim.serial == who.serial)
+		sendsysmessage(who, "You dont need to snoop in your own backpack!");
+		exit;
+	endif
+
+	if (victim.acct)
+		sendsysmessage(who, "Snooping other players is forbidden.");
+		exit;
+	endif;
+
+	if (victim.script == "tamed")
+		sendsysmessage(who, "You can't snoop tamed animals!");
+		exit;
+	endif
+
+	if (GetObjProperty(victim, "summoned"))
+		sendsysmessage(who, "You can't snoop summoned creatures!");
+		exit;
+	endif
+
+
+	if (getobjproperty(victim, "snoopme"))
+		var newdiff:= getobjproperty(victim, "snoopme");
+		return newdiff;
+	else
+		sendsysmessage(who, "You are unable to snoop this target");
+		exit;
+	endif
+
+endfunction
+
+function needgloves(who)
+
+	var weargloves:= 0;
+
+    	foreach item in listequippeditems(who)
+
+    		if (item.objtype == 0xc639)
+			weargloves:= 1;
+		endif
+
+	endforeach
+
+	if(weargloves == 0)
+		sendsysmessage(who,"You need to equip thief gloves to do that");
+		exit;
+	endif
+
+	return 1;
+
+endfunction

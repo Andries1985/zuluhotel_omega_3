@@ -1,0 +1,10 @@
+Toadstool
+
+Areas are only changable in the config file. 
+
+* Make a data file, so staff may define new areas in game.
+
+* If there is an area within an area, it will pick the first 
+  area.  Maybe change this so it picks the SMALLEST area.
+  That makes sense right? This is better than trying to keep
+  a file organised from smallest to largestS

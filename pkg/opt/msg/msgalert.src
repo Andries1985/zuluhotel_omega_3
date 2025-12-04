@@ -1,0 +1,30 @@
+use os;
+use os;
+use datafile;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/time";
+include ":msg:include/message";
+
+program msggumpalert(who)
+
+SetObjProperty(who, "#MessageAlert", 1);
+
+// a bit lower than staff leavemessage
+var gump := GFCreateGump(0, 67, 100, 50);
+GFMovable(gump, 0);
+GFResizePic(gump, 0, 0, 2620, 102, 55);
+GFAddAlphaRegion(gump, 5, 6, 92, 43);
+GFTextLine(gump, 12, 6, 600, "New Message");
+GFAddButton(gump, 29, 27, 2450, 2451, GF_CLOSE_BTN, 1);
+
+var data := GFSendGump(who, gump);
+
+EraseObjProperty(who, "#MessageAlert");
+
+if (data[0] == 1)
+  Start_Script(":msg:commands/player/msg", who);
+endif
+
+endprogram

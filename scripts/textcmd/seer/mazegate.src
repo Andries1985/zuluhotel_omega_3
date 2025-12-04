@@ -1,0 +1,25 @@
+use uo;
+use os;
+
+include "include/moongate";
+include ":staff:include/staff";
+
+program mazetajm( who, text )
+	if(!who.cmdlevel)
+		SendSysMessage( who , "You can't use this command." );
+		EraseObjProperty(who, ".mazegate");
+		return;
+	endif
+
+	var coords := SplitWords( text );
+	if(len(coords) < 3)
+		SendSysMessage(who, "Works like .mazegate x y z (coordinates for where you want the gate to go).");
+		return;
+	endif
+
+	var item := CreateItemAtLocation( who.x, who.y, who.z, 0xa3c7, 1, who.realm );
+    SetObjProperty( item, "GateDestX", coords[1] );
+    SetObjProperty( item, "GateDestY", coords[2] );
+    SetObjProperty( item, "GateDestZ", coords[3] );
+	LogCommand(who, GetProcess(GetPid()).name, who.name+" made a mazegate from xyz: "+ who.x +" "+ who.y +" "+ who.z +" to xyz: "+ coords[1] +" "+ coords[2] +" "+ coords[3] );
+endprogram

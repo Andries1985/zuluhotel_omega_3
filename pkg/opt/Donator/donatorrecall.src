@@ -1,0 +1,135 @@
+/////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Donator Recall stone, used for lumber yards etc.  Staff first set the destination up.
+// The player then uses the stone to tele to his yard
+//
+// ANY player may use the stone, just incase he gives it away etc. Up the him isnt it :P
+//
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+Use uo;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/attributes";
+
+//seconds
+var TELE_TIME := 5;
+
+program donator_recall(who, stone)
+
+var owner := GetObjProperty(stone, "Owner");
+var dest := GetObjProperty(stone, "Destination");
+
+// send set-up menu for seer +
+if (who.cmdlevel > 1)
+	
+	// for using as a palyer
+	var use_stone := 0;
+	
+	var gump := GFCreateGump(20, 20, 300, 230);
+	GFResizePic(gump, 20, 20, 9250, 300, 230);
+	
+	GFResizePic(gump, 95, 35, 9200, 147, 21);
+	GFTextLine(gump, 105, 35, 67, "Donator Recall Stone");
+	
+	GFResizePic(gump, 40, 65, 9350, 260, 60);
+	GFTextLine(gump, 50, 70, 0, "Owner: ");
+	
+	if (owner)
+		GFTextLine(gump, 100, 70, 0, owner[1]+"/"+owner[2]);
+	endif
+	
+	GFTextLine(gump, 50, 95, 0, "Destination: ");
+	
+	if (dest)
+		GFTextLine(gump, 130, 95, 0, dest[1]+" "+dest[2]+" "+dest[3]);
+	endif
+	
+	GFAddButton(gump, 40, 140, 4005, 4006, 1, 1);
+	GFTextLine(gump, 80, 140, 57, "Add/Change Owner");
+	
+	GFAddButton(gump, 40, 170, 4005, 4006, 1, 2);
+	GFTextLine(gump, 80, 170, 57, "Set Destination Point");
+	
+	GFAddButton(gump, 40, 200, 4005, 4006, 1, 3);
+	GFTextLine(gump, 80, 200, 57, "Use the Stone");
+	
+	var data := GFSendGump(who, gump);
+	
+	// change owner
+	if (data[0] == 1)
+		SendSysMessage(who, "Target the new owner for this recall stone.");
+		var what := Target(who, TGTOPT_NOCHECK_LOS);
+		if (!what.acct)
+			SendSysMessage(who, "You must target a player.");
+			return 0;
+		endif
+		SetObjProperty(stone, "Owner", {what.acctname, what.name});
+		SendSysMessage(who, what.name+" is now the registered owner of the stone.", 3, 53);
+
+	// change destination
+	elseif (data[0] == 2)
+		SendSysMessage(who, "Target where you want this stone to teleport the user.");
+		var where := TargetCoordinates(who);
+		if (!where)
+			SendSysMessage(who, "Cancelled.");
+		endif
+		SetObjProperty(stone, "Destination", {where.x, where.y, where.z, where.realm});
+		SendSysMessage(who, "Stones destination updated.", 3, 53);
+		
+	elseif (data[0] == 3)
+		use_stone := 1;
+	endif
+	
+	if (use_stone == 0)
+		return 1;
+	endif
+	
+endif
+
+// Player using stone.
+
+if (!dest)
+	SendSysMessage(who, "This stone has not been set-up, page staff.", 3, 33);
+	return 0;
+endif
+
+if (dest[1] == who.x && dest[2] == who.y && dest[4] == who.realm)
+	SendSysMessage(who, "You are already at the stones destination point.");
+	return 0;
+endif
+
+PrintTextAbove(who, "*Donator recall stone activated*", 3, 53);
+PlaySoundEffectXYZ(who.x, who.y, who.z, 0x381, who.realm);
+SendSysMessage(who, "Please stay still while you prepare to teleport...");
+
+var i := 0;
+var x := who.x;
+var y := who.y;
+var hp := GetHP(who);
+
+repeat
+
+	sleep(1);
+	
+	if (GetHP(who) < hp)
+		SendSysMessage(who, "You lose your concentration, recall cancelled!");
+		return 0;
+	elseif (who.x != x || who.y != y)
+		SendSysMessage(who, "You moved, recall cancelled!");
+		return 0;
+	endif
+	
+	SendSysMessage(who, CStr(TELE_TIME-i)+"..", 3, 53);
+
+	i := i + 1;
+
+	
+until ( i >= TELE_TIME);
+
+PlaySoundEffectXYZ(who.x, who.y, who.z, 0x210, who.realm);
+SendSysMessage(who, "You are succesfully teleported to the stones destination");
+MoveObjectToLocation(who, dest[1], dest[2], dest[3], dest[4]);
+
+endprogram

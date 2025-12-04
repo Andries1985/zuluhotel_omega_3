@@ -1,0 +1,48 @@
+use os;
+use uo;
+
+include "include/recalling";
+include "include/random";
+
+program mazegates( mobile , gate )
+
+	if( mobile.npctemplate and mobile.script != "tamed" )
+		return;
+	endif
+
+	var x := GetObjProperty( gate, "GateDestX" );
+	var y := GetObjProperty( gate, "GateDestY" );
+	var z := GetObjProperty( gate, "GateDestZ" );
+	var r := GetObjProperty( gate, "GateDestRealm" );
+
+	if( !x or !y )
+		return;
+	endif
+
+	var move := MoveObjectToLocation( mobile , CInt(x) , CInt(y) , CInt(z) , r , MOVEOBJECT_FORCELOCATION );
+	if(!move)
+		Print(mobile.name+" somehow didn't teleport on maze gate");
+		Print("Move error msg: "+move);
+	else
+		var msg := Random(17);
+		case (msg)
+			1: SendSysMessage(mobile, "Woops, that's not the right way.");
+			2: SendSysMessage(mobile, "Tough luck, try again!");
+			3: SendSysMessage(mobile, "awww, almost.....");
+			4: SendSysMessage(mobile, "So close, yet so far!");
+			5: SendSysMessage(mobile, "bzzzt");
+			6: SendSysMessage(mobile, "Better luck next time!");
+			7: SendSysMessage(mobile, "Wrong again.");
+			8: SendSysMessage(mobile, "Weeeeeeeeeeeee!");
+			9: SendSysMessage(mobile, "Isn't this fun?!");
+			10: SendSysMessage(mobile, "One step forward, a teleportation back.");
+			11: SendSysMessage(mobile, "To fail is to learn, try again.");
+			12: SendSysMessage(mobile, "You haven't failed until you quit trying!");
+			13: SendSysMessage(mobile, "If 'Plan A' didn't work. The alphabet has 25 more letters!");
+			14: SendSysMessage(mobile, "If at first you don't succeed, try and try and try again.");
+			15: SendSysMessage(mobile, "*Psst* Over here.");
+			16: SendSysMessage(mobile, "Last chance! Just kidding you can go for however long you want!");
+			default: SendSysMessage(mobile, "Giving up already?");
+		endcase
+	endif
+endprogram

@@ -1,0 +1,833 @@
+//Edited August 25, 2024
+
+////////////////////////////////////
+//Created by Developer Alryc
+//Aug 25, 2024
+///////////////////////////////////
+
+use uo;
+use os;
+use vitals;
+use attributes;
+use file;
+
+include "include/attributes";
+include "include/client";
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+include "include/spelldata";
+include "include/math";
+
+const TEXT_COLOR := 657;
+
+var old_stats := array;
+var new_stats := array;
+var desc_list := array;
+var gump_ret;
+var is_npc := 0;
+var earth, fire, water, air, necro, poison, physical, freeaction, holy := 0;
+var healing, magicefficiency, magicimmunity, magicreflection, tempmagicimmunity, tempmagicreflection, temppoisonimmunity := 0;
+
+program textcmd_mobedit(who)
+
+	desc_list[1] := "Name";
+	desc_list[2] := "Strength";
+	desc_list[3] := "Dexterity";
+	desc_list[4] := "Inteligence";
+	desc_list[5] := "HP";
+	desc_list[6] := "Stamina";
+	desc_list[7] := "Mana";
+	desc_list[8] := "MoveSpeed";
+	desc_list[9] := "Graphic";
+	desc_list[10] := "Color";
+	desc_list[11] := "AR";
+	desc_list[12] := "EarthProtection";
+	desc_list[13] := "FireProtection";
+	desc_list[14] := "WaterProtection";
+	desc_list[15] := "AirProtection";
+	desc_list[16] := "HolyProtection";
+	desc_list[17] := "NecroProtection";
+	desc_list[18] := "PhysicalProtection";
+	desc_list[19] := "PermPoisonImmunity";
+	desc_list[20] := "FreeAction";
+	desc_list[21] := "HealingIncrease";
+	desc_list[22] := "magicefficiency";
+	desc_list[23] := "PermMagicImmunity";
+	desc_list[24] := "Permmr";
+	desc_list[25] := "tempmagicimmunity";
+	desc_list[26] := "tempmagicreflection";
+	desc_list[27] := "temppoisonimmunity";
+	desc_list[28] := "alchemy";
+	desc_list[29] := "anatomy";
+	desc_list[30] := "animallore";
+	desc_list[31] := "itemidentification";
+	desc_list[32] := "armslore";
+	desc_list[33] := "parry";
+	desc_list[34] := "begging";
+	desc_list[35] := "blacksmithy";
+	desc_list[36] := "bowcraft";
+	desc_list[37] := "peacemaking";
+	desc_list[38] := "camping";
+	desc_list[39] := "carpentry";
+	desc_list[40] := "cartography";
+	desc_list[41] := "cooking";
+	desc_list[42] := "detectinghidden";
+	desc_list[43] := "enticement";
+	desc_list[44] := "evaluatingintelligence";
+	desc_list[45] := "healing";
+	desc_list[46] := "fishing";
+	desc_list[47] := "forensics";
+	desc_list[48] := "herding";
+	desc_list[49] := "hiding";
+	desc_list[50] := "provocation";
+	desc_list[51] := "inscription";
+	desc_list[52] := "lockpicking";
+	desc_list[53] := "magery";
+	desc_list[54] := "magicresistance";
+	desc_list[55] := "tactics";
+	desc_list[56] := "snooping";
+	desc_list[57] := "musicianship";
+	desc_list[58] := "poisoning";
+	desc_list[59] := "archery";
+	desc_list[60] := "spiritspeak";
+	desc_list[61] := "stealing";
+	desc_list[62] := "tailoring";
+	desc_list[63] := "taming";
+	desc_list[64] := "tasteidentification";
+	desc_list[65] := "tinkering";
+	desc_list[66] := "tracking";
+	desc_list[67] := "veterinary";
+	desc_list[68] := "swordsmanship";
+	desc_list[69] := "macefighting";
+	desc_list[70] := "fencing";
+	desc_list[71] := "wrestling";
+	desc_list[72] := "lumberjacking";
+	desc_list[73] := "mining";
+	desc_list[74] := "meditation";
+	desc_list[75] := "stealth";
+	desc_list[76] := "removetrap";
+
+	var mobile := target(who);
+
+	if (!mobile)
+		SendSysMessage(who, "Canceled", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	if (mobile.isa(POLCLASS_NPC))
+		is_npc := 1;
+	endif
+
+	//Calculate Stats
+	old_stats[0] := 0;
+	old_stats[1] := mobile.name;
+	old_stats[2] := GetStrength(mobile);
+	old_stats[3] := GetDexterity(mobile);
+	old_stats[4] := GetIntelligence(mobile);
+	old_stats[5] := GetMaxHP(mobile);
+	old_stats[6] := GetMaxStamina(mobile);
+	old_stats[7] := GetMaxMana(mobile);
+	if (is_npc)
+		old_stats[8] := mobile.run_speed;
+	else
+		old_stats[8] := 0;
+	endif
+	old_stats[9] := mobile.graphic;
+	old_stats[10] := mobile.color;
+	old_stats[11] := mobile.ar;
+	
+	//Calculate Immunities of the mobile and put into array
+	CalculateProtections(mobile);
+
+	var i := 0;
+	var j := 28;
+	for (i := 0; i < 49; i := i+1)
+		old_stats[j] := GetBaseSkill(mobile, i);
+		j +=1;
+	endfor
+	//Print($"Old Stats Array 1:" +old_stats);
+
+	new_stats := old_stats;
+	//Print($"New Stats Array 2:" +new_stats);
+
+	var safeexit;
+	while ((gump_ret[0] !=100) && (gump_ret[0] != 999) && (gump_ret[0] != 777) && (safeexit < 1000))
+		gump_ret := gump_mobedit(who);
+		safeexit +=1;
+		if( gump_ret[0] == 100 )
+			SendSysMessage(who, "Cancel button pressed", FONT_NORMAL, 43);
+			return 0;
+		endif
+
+		new_stats[1] := GFExtractData(gump_ret, 1);
+
+		for (i := 2; i <= 76; i := i+1)
+			new_stats[i] := Cint(GFExtractData(gump_ret, i));
+		endfor
+
+		if ( gump_ret[0] <= 7 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_ANATOMY ] := skill_change;
+			new_stats[28+SKILLID_FENCING ] := skill_change;
+			new_stats[28+SKILLID_HEALING ] := skill_change;
+			new_stats[28+SKILLID_MACEFIGHTING ] := skill_change;
+			new_stats[28+SKILLID_PARRY ] := skill_change;
+			new_stats[28+SKILLID_SWORDSMANSHIP ] := skill_change;
+			new_stats[28+SKILLID_TACTICS ] := skill_change;
+			new_stats[28+SKILLID_WRESTLING ] := skill_change;
+		elseif ( gump_ret[0] <= 14 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_ANIMALLORE ] := skill_change;
+			new_stats[28+SKILLID_TAMING ] := skill_change;
+			new_stats[28+SKILLID_ARCHERY ] := skill_change;
+			new_stats[28+SKILLID_CAMPING ] := skill_change;
+			new_stats[28+SKILLID_COOKING ] := skill_change;
+			new_stats[28+SKILLID_FISHING ] := skill_change;
+			new_stats[28+SKILLID_TRACKING ] := skill_change; 
+			new_stats[28+SKILLID_VETERINARY ] := skill_change;
+			new_stats[28+SKILLID_FORENSICS ] := skill_change;
+		elseif ( gump_ret[0] <= 21 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_ALCHEMY ] := skill_change;
+			new_stats[28+SKILLID_EVALINT ] := skill_change;
+			new_stats[28+SKILLID_INSCRIPTION ] := skill_change;
+			new_stats[28+SKILLID_ITEMID ] := skill_change;
+			new_stats[28+SKILLID_MAGERY ] := skill_change;
+			new_stats[28+SKILLID_MEDITATION ] := skill_change;
+			new_stats[28+SKILLID_MAGICRESISTANCE ] := skill_change;
+			new_stats[28+SKILLID_SPIRITSPEAK ] := skill_change;
+		elseif ( gump_ret[0] <= 28 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_DETECTINGHIDDEN ] := skill_change;
+			new_stats[28+SKILLID_HIDING ] := skill_change;
+			new_stats[28+SKILLID_LOCKPICKING ] := skill_change;
+			new_stats[28+SKILLID_POISONING ] := skill_change;
+			new_stats[28+SKILLID_REMOVETRAP ] := skill_change;
+			new_stats[28+SKILLID_SNOOPING ] := skill_change;
+			new_stats[28+SKILLID_STEALING ] := skill_change;
+			new_stats[28+SKILLID_STEALTH ] := skill_change;
+		elseif ( gump_ret[0] <= 35 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_ARMSLORE ] := skill_change;
+			new_stats[28+SKILLID_BLACKSMITHY ] := skill_change;
+			new_stats[28+SKILLID_BOWCRAFT ] := skill_change;
+			new_stats[28+SKILLID_CARPENTRY ] := skill_change;
+			new_stats[28+SKILLID_LUMBERJACKING ] := skill_change;
+			new_stats[28+SKILLID_MINING ] := skill_change;
+			new_stats[28+SKILLID_TAILORING ] := skill_change;
+			new_stats[28+SKILLID_TINKERING ] := skill_change;
+		elseif ( gump_ret[0] <= 42 )
+			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
+			multiplier := Trunc(multiplier, 1);
+			var skill_change := 0;
+			if (multiplier)
+				skill_change := 60+(15*multiplier);
+			endif
+			new_stats[28+SKILLID_ARMSLORE ] := skill_change;
+			new_stats[28+SKILLID_BLACKSMITHY ] := skill_change;
+			new_stats[28+SKILLID_BOWCRAFT ] := skill_change;
+			new_stats[28+SKILLID_CARPENTRY ] := skill_change;
+			new_stats[28+SKILLID_LUMBERJACKING ] := skill_change;
+			new_stats[28+SKILLID_MINING ] := skill_change;
+			new_stats[28+SKILLID_TAILORING ] := skill_change;
+			new_stats[28+SKILLID_TINKERING ] := skill_change;
+		endif
+	endwhile
+	if (gump_ret[0] == 100)//Exit
+		return 0;
+	elseif (gump_ret[0] == 777)  //Save Button
+        SendSysMessage(who, "Saved mob info to cfg!", FONT_NORMAL, 43);
+        var props := array;
+        Print($"props is currently 1: " +props);
+        for (i := 1; i <= 76; i := i + 1)
+            props.append(array { desc_list[i], old_stats[i] });
+        endfor
+        Print($"props is currently 2: ");
+        foreach el in (props)
+            Print($"elem: {el[1]} -> {el[2]}");
+        endforeach
+        AppendConfigFileElem( ":spawnpoint:newnpcs", "npctemplate", old_stats[1], props );
+	elseif (gump_ret[0] == 999)//Apply Button
+		if (old_stats == new_stats)
+			SendSysMessage(who, "No change detected.");
+			return 0;
+		endif
+		if (old_stats[1] != new_stats[1])
+			mobile.name := new_stats[1];
+			SendSysMessage(who, "Changing Name to: "+new_stats[1]);
+		endif
+		if (old_stats[2] != new_stats[2])
+			SetBaseStrength(mobile, Cint(new_stats[2]) - GetStrengthMod(mobile));
+			SendSysMessage(who, "Changing STR to: "+new_stats[2]);
+		endif
+		if (old_stats[3] != new_stats[3])
+			SetBaseDexterity(mobile, new_stats[3] - GetDexterityMod(mobile));
+			SendSysMessage(who, "Changing DEX to: "+new_stats[3]);
+		endif
+		if (old_stats[4] != new_stats[4])
+			SetBaseIntelligence(mobile, new_stats[4] - GetIntelligenceMod(mobile));
+			SendSysMessage(who, "Changing INT to: "+new_stats[4]);
+		endif
+		if (old_stats[5] != new_stats[5])
+			SetVital(mobile, VITALID_LIFE, Cint(new_stats[5]));
+			SendSysMessage(who, "Changing HP to: "+new_stats[5]);
+		endif
+		if (old_stats[6] != new_stats[6])
+			SetVital(mobile, VITALID_STAMINA, Cint(new_stats[6]));
+			SendSysMessage(who, "Changing Stamina to: "+new_stats[6]);
+		endif
+		if (old_stats[7] != new_stats[7])
+			SetVital(mobile, VITALID_MANA, Cint(new_stats[7]));
+			SendSysMessage(who, "Changing Mana to: "+new_stats[7]);
+		endif
+		if (old_stats[8] != new_stats[8])
+			if (is_npc)
+				mobile.run_speed := Cint(new_stats[8]);
+			endif
+		endif
+		if (old_stats[9] != new_stats[9])
+			mobile.graphic := Cint(new_stats[9]);
+			SendSysMessage(who, "Changing Mobile Graphic to: "+mobile.graphic);
+		endif
+		if (old_stats[10] != new_stats[10])
+			mobile.color := Cint(new_stats[10]);
+			SendSysMessage(who, "Changing Mobile Graphic to: "+mobile.color);
+		endif
+		if (old_stats[11] != new_stats[11])
+			mobile.ar_mod := 0;
+			SendSysMessage(who, "Adding AR_MOD of " +new_stats[11]+ " to base AR of "+mobile.ar);
+			mobile.ar_mod := (Cint(new_stats[11]) - who.ar);
+		endif
+		if (old_stats[12] != new_stats[12])
+			EraseObjProperty(mobile, "EarthProtection");
+			SetObjProperty(mobile, "EarthProtection", Cint(new_stats[12]));
+			SendSysMessage(who, "Changing Earth Protection to: "+new_stats[12]);
+		endif
+		if (old_stats[13] != new_stats[13])
+			EraseObjProperty(mobile, "FireProtection");
+			SetObjProperty(mobile, "FireProtection", Cint(new_stats[13]));
+			SendSysMessage(who, "Changing Fire Protection to: "+new_stats[13]);
+		endif
+		if (old_stats[14] != new_stats[14])
+			EraseObjProperty(mobile, "WaterProtection");
+			SetObjProperty(mobile, "WaterProtection", Cint(new_stats[14]));
+			SendSysMessage(who, "Changing Water Protection to: "+new_stats[14]);
+		endif
+		if (old_stats[15] != new_stats[15])
+			EraseObjProperty(mobile, "AirProtection");
+			SetObjProperty(mobile, "AirProtection", Cint(new_stats[15]));
+			SendSysMessage(who, "Changing Air Protection to: "+new_stats[15]);
+		endif
+		if (old_stats[16] != new_stats[16])
+			EraseObjProperty(mobile, "HolyProtection");
+			SetObjProperty(mobile, "HolyProtection", Cint(new_stats[16]));
+			SendSysMessage(who, "Changing Holy Protection to: "+new_stats[16]);
+		endif
+		if (old_stats[17] != new_stats[17])
+			EraseObjProperty(mobile, "NecroProtection");
+			SetObjProperty(mobile, "NecroProtection", Cint(new_stats[17]));
+			SendSysMessage(who, "Changing Necro Protection to: "+new_stats[17]);
+		endif
+		if (old_stats[18] != new_stats[18])
+			EraseObjProperty(mobile, "PhysicalProtection");
+			SetObjProperty(mobile, "PhysicalProtection", Cint(new_stats[18]));
+			SendSysMessage(who, "Changing Physical Protection to: "+new_stats[18]);
+		endif
+		if (old_stats[19] != new_stats[19])
+			EraseObjProperty(mobile, "PermPoisonImmunity");
+			SetObjProperty(mobile, "PermPoisonImmunity", Cint(new_stats[19]));
+			SendSysMessage(who, "Changing Perm PoisonImmunity to: "+new_stats[19]);
+		endif
+		if (old_stats[20] != new_stats[20])
+			EraseObjProperty(mobile, "FreeAction");
+			SetObjProperty(mobile, "FreeAction", Cint(new_stats[20]));
+			SendSysMessage(who, "Changing Free Action to: "+new_stats[20]);
+		endif
+		if (old_stats[21] != new_stats[21])
+			EraseObjProperty(mobile, "HealingIncrease");
+			SetObjProperty(mobile, "HealingIncrease", Cint(new_stats[21]));
+			SendSysMessage(who, "Changing Healing Increase to: "+new_stats[21]);
+		endif
+		if (old_stats[22] != new_stats[22])
+			EraseObjProperty(mobile, "magicefficiency");
+			SetObjProperty(mobile, "magicefficiency", Cint(new_stats[22]));
+			SendSysMessage(who, "Changing Magic Efficiency to: "+new_stats[22]);
+		endif
+		if (old_stats[23] != new_stats[23])
+			EraseObjProperty(mobile, "magicimmunity");
+			SetObjProperty(mobile, "magicimmunity", Cint(new_stats[23]));
+			SendSysMessage(who, "Changing Blackrock to: "+new_stats[23]);
+		endif
+		if (old_stats[24] != new_stats[24])
+			EraseObjProperty(mobile, "magicreflection");
+			SetObjProperty(mobile, "magicreflection", Cint(new_stats[24]));
+			SendSysMessage(who, "Changing Moonstone to: "+new_stats[24]);
+		endif
+		if (old_stats[25] != new_stats[25])
+			EraseObjProperty(mobile, "tempmagicimmunity");
+			SetObjProperty(mobile, "tempmagicimmunity", Cint(new_stats[25]));
+			SendSysMessage(who, "Changing Absorbsion to: "+new_stats[25]);
+		endif
+		if (old_stats[26] != new_stats[26])
+			EraseObjProperty(mobile, "tempmagicreflection");
+			SetObjProperty(mobile, "tempmagicreflection", Cint(new_stats[26]));
+			SendSysMessage(who, "Changing Warding to: "+new_stats[26]);
+		endif
+		if (old_stats[27] != new_stats[27])
+			EraseObjProperty(mobile, "temppoisonimmunity");
+			SetObjProperty(mobile, "temppoisonimmunity", Cint(new_stats[27]));
+			SendSysMessage(who, "Changing Anitdotes to: "+new_stats[27]);
+		endif
+
+		j := 28;
+		for (i := 0; i < 49; i := i+1)
+			if (old_stats[j] != new_stats[j])
+				SetBaseSkill(mobile, i, new_stats[j]);
+				SendSysMessage(who, "Changing "+GetAttributeIdBySkillId(i)+" to: "+new_stats[j]);
+			endif
+			j +=1;
+		endfor
+	endif
+endprogram
+
+function gump_mobedit(who)
+
+	var mobedit := GFCreateGump();
+	
+	GFPage(mobedit, 0);
+	
+	GFResizePic(mobedit, 16, 19, 9300, 473, 351);
+	GFTextLine(mobedit, 207, 25, TEXT_COLOR, "Edit Mobile");
+	GFResizePic(mobedit, 273, 62, 83, 199, 233);
+	//Cancel
+	GFAddButton(mobedit, 30, 334, 2121, 2120, GF_CLOSE_BTN, 100);
+	//Apply
+	GFAddButton(mobedit, 100, 334, 2123, 2124, GF_CLOSE_BTN, 999);
+	//Log to file
+	GFAddButton(mobedit, 170, 334, 5202, 5203, GF_CLOSE_BTN, 777);
+
+	//PageButtons	
+	GFAddButton(mobedit, 255, 85, 216, 216, GF_PAGE_BTN, 1);
+	GFTextLine(mobedit, 205, 80, TEXT_COLOR, "Warrior");
+	GFAddButton(mobedit, 255, 110, 216, 216, GF_PAGE_BTN, 2);
+	GFTextLine(mobedit, 208, 105, TEXT_COLOR, "Ranger");
+	GFAddButton(mobedit, 255, 135, 216, 216, GF_PAGE_BTN, 3);
+	GFTextLine(mobedit, 215, 130, TEXT_COLOR, "Mage");
+	GFAddButton(mobedit, 255, 160, 216, 216, GF_PAGE_BTN, 4);
+	GFTextLine(mobedit, 212, 155, TEXT_COLOR, "Thief");
+	GFAddButton(mobedit, 255, 185, 216, 216, GF_PAGE_BTN, 5);
+	GFTextLine(mobedit, 205, 180, TEXT_COLOR, "Crafter");
+	GFAddButton(mobedit, 255, 210, 216, 216, GF_PAGE_BTN, 6);
+	GFTextLine(mobedit, 215, 205, TEXT_COLOR, "Bard");
+	GFAddButton(mobedit, 255, 235, 216, 216, GF_PAGE_BTN, 7);
+	GFTextLine(mobedit, 212, 230, TEXT_COLOR, "Prots");
+	GFAddButton(mobedit, 255, 260, 216, 216, GF_PAGE_BTN, 8);
+	GFTextLine(mobedit, 205, 255, TEXT_COLOR, "Prots 2");
+	
+	GFTextLine(mobedit, 335, 290, TEXT_COLOR, "Set Lvl");
+
+	//Left Side Boxes
+	GFResizePic(mobedit, 400, 79, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 101, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 124, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 146, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 169, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 191, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 214, 9550, 57, 22);
+	GFResizePic(mobedit, 400, 236, 9550, 57, 22);
+	
+	// Right side Boxes
+	GFResizePic(mobedit, 39, 45, 9550, 214, 22);
+	GFResizePic(mobedit, 123, 70, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 95, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 120, 9550, 65, 22);	
+	GFResizePic(mobedit, 123, 145, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 170, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 195, 9550, 65, 22);
+	//GFResizePic(mobedit, 123, 220, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 245, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 270, 9550, 65, 22);
+	GFResizePic(mobedit, 123, 295, 9550, 65, 22);
+
+	//name entry
+	GFTextEntry(mobedit, 48, 45, 200, 20, TEXT_COLOR, new_stats[1], 1);
+	
+	GFTextLine(mobedit, 61, 70, TEXT_COLOR, "Strength");	
+	GFTextEntry(mobedit, 131, 72, 50, 20, TEXT_COLOR, new_stats[2], 2);
+
+	GFTextLine(mobedit, 57, 95, TEXT_COLOR, "Dexterity");
+	GFTextEntry(mobedit, 131, 97, 50, 20, TEXT_COLOR, new_stats[3], 3);
+
+	GFTextLine(mobedit, 51, 120, TEXT_COLOR, "Inteligence");
+	GFTextEntry(mobedit, 131, 122, 50, 20, TEXT_COLOR, new_stats[4], 4);
+
+	GFTextLine(mobedit, 101, 145, TEXT_COLOR, "HP");
+	GFTextEntry(mobedit, 131, 147, 50, 20, TEXT_COLOR, new_stats[5], 5);
+	
+	GFTextLine(mobedit, 68, 170, TEXT_COLOR, "Stamina");
+	GFTextEntry(mobedit, 131, 172, 50, 20, TEXT_COLOR, new_stats[6], 6);
+
+	GFTextLine(mobedit, 87, 195, TEXT_COLOR, "Mana");
+	GFTextEntry(mobedit, 131, 197, 50, 20, TEXT_COLOR, new_stats[7], 7);
+
+	if (is_npc)
+		GFTextLine(mobedit, 47, 220, TEXT_COLOR, "Move Speed");
+		GFResizePic(mobedit, 123, 220, 9550, 65, 22);
+		GFTextEntry(mobedit, 131, 222, 50, 20, TEXT_COLOR, new_stats[8], 8);
+	endif
+	
+	GFTextLine(mobedit, 71, 245, TEXT_COLOR, "Graphic");
+	GFTextEntry(mobedit, 131, 247, 50, 20, TEXT_COLOR, new_stats[9], 9);
+
+	GFTextLine(mobedit, 85, 270, TEXT_COLOR, "Color");
+	GFTextEntry(mobedit, 131, 272, 50, 20, TEXT_COLOR, new_stats[10], 10);
+
+	GFTextLine(mobedit, 85, 295, TEXT_COLOR, "AR");
+	GFTextEntry(mobedit, 131, 297, 50, 20, TEXT_COLOR, new_stats[11], 11);
+
+	GFPage(mobedit, 1);
+
+	//Warrior
+	GFTextRight(mobedit, 425, 46, TEXT_COLOR, "Warrior Skills");
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Anatomy");
+	GFTextRight(mobedit, 402, 101, TEXT_COLOR, "Fencing");
+	GFTextRight(mobedit, 402, 124, TEXT_COLOR, "Healing");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Mace Fighting");
+	GFTextRight(mobedit, 402, 169, TEXT_COLOR, "Parrying");
+	GFTextRight(mobedit, 402, 192, TEXT_COLOR, "Swordsmanship");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Tactics");
+	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Wrestling");
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ANATOMY], 28+SKILLID_ANATOMY);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_FENCING], 28+SKILLID_FENCING);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_HEALING], 28+SKILLID_HEALING);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MACEFIGHTING], 28+SKILLID_MACEFIGHTING);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_PARRY], 28+SKILLID_PARRY);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SWORDSMANSHIP], 28+SKILLID_SWORDSMANSHIP);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TACTICS], 28+SKILLID_TACTICS);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_WRESTLING], 28+SKILLID_WRESTLING);
+	
+	//Warrior LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 1);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 2);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 3);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 4);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 5);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 6);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 7);
+	
+	GFPage(mobedit, 2);
+	
+	//Ranger
+	GFResizePic(mobedit, 399, 258, 9550, 57, 22);
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Ranger Skills");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Animal Lore");
+	GFTextRight(mobedit, 402, 101, TEXT_COLOR, "Taming");
+	GFTextRight(mobedit, 402, 124, TEXT_COLOR, "Archery");
+	GFTextRight(mobedit, 402, 146, TEXT_COLOR, "Camping");
+	GFTextRight(mobedit, 402, 169, TEXT_COLOR, "Cooking");
+	GFTextRight(mobedit, 402, 191, TEXT_COLOR, "Fishing");
+	GFTextRight(mobedit, 402, 214, TEXT_COLOR, "Tracking");
+	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Veterinary");
+	GFTextRight(mobedit, 402, 260, TEXT_COLOR, "Forensic Eval");
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ANIMALLORE], 28+SKILLID_ANIMALLORE);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TAMING], 28+SKILLID_TAMING);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ARCHERY], 28+SKILLID_ARCHERY);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_CAMPING], 28+SKILLID_CAMPING);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_COOKING], 28+SKILLID_COOKING);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_FISHING], 28+SKILLID_FISHING);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TRACKING], 28+SKILLID_TRACKING);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_VETERINARY], 28+SKILLID_VETERINARY);
+	GFTextEntry(mobedit, 408, 260, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_FORENSICS], 28+SKILLID_FORENSICS);
+	
+	//Ramger LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 8);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 9);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 10);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 11);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 12);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 13);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 14);
+
+	GFPage(mobedit, 3);
+
+	//Mage
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Mage Skills");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Alchemy");
+	GFTextRight(mobedit, 402, 104, TEXT_COLOR, "Eval Int");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Inscription");
+	GFTextRight(mobedit, 402, 149, TEXT_COLOR, "Item ID");
+	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Magery");
+	GFTextRight(mobedit, 402, 194, TEXT_COLOR, "Meditation");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Resisting Spells");
+	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Spirit Speak");
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ALCHEMY], 28+SKILLID_ALCHEMY);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_EVALINT], 28+SKILLID_EVALINT);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_INSCRIPTION], 28+SKILLID_INSCRIPTION);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ITEMID], 28+SKILLID_ITEMID);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MAGERY], 28+SKILLID_MAGERY);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MEDITATION], 28+SKILLID_MEDITATION);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MAGICRESISTANCE], 28+SKILLID_MAGICRESISTANCE);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SPIRITSPEAK], 28+SKILLID_SPIRITSPEAK);
+	
+	//Mage LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 15);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 16);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 17);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 18);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 19);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 20);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 21);
+	
+	GFPage(mobedit, 4);
+		
+	//Thief
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Thief Skills");
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Detect Hidden");
+	GFTextRight(mobedit, 402, 100, TEXT_COLOR, "Hiding");
+	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Lockpicking");
+	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Poisoning");
+	GFTextRight(mobedit, 402, 168, TEXT_COLOR, "Remove Trap");
+	GFTextRight(mobedit, 402, 190, TEXT_COLOR, "Snooping");
+	GFTextRight(mobedit, 402, 213, TEXT_COLOR, "Stealing");
+	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Stealth");
+	
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_DETECTINGHIDDEN], 28+SKILLID_DETECTINGHIDDEN);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_HIDING], 28+SKILLID_HIDING);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_LOCKPICKING], 28+SKILLID_LOCKPICKING);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_POISONING], 28+SKILLID_POISONING);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_REMOVETRAP], 28+SKILLID_REMOVETRAP);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SNOOPING], 28+SKILLID_SNOOPING);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALING], 28+SKILLID_STEALING);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALTH], 28+SKILLID_STEALTH);
+	
+	//Thief LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 22);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 23);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 24);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 25);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 26);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 27);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 28);
+	
+	GFPage(mobedit, 5);
+		
+	//Crafter
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Crafter Skills");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Arms Lore");
+	GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Blacksmithy");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Bowcraft");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Carpentry");
+	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Lumberjacking");
+	GFTextRight(mobedit, 402, 193, TEXT_COLOR, "Mining");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Tailoring");
+	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Tinkering");
+	
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ARMSLORE], 28+SKILLID_ARMSLORE);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_BLACKSMITHY], 28+SKILLID_BLACKSMITHY);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_BOWCRAFT], 28+SKILLID_BOWCRAFT);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_CARPENTRY], 28+SKILLID_CARPENTRY);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_LUMBERJACKING], 28+SKILLID_LUMBERJACKING);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MINING], 28+SKILLID_MINING);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TAILORING], 28+SKILLID_TAILORING);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TINKERING], 28+SKILLID_TINKERING);
+
+	//Crafter LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 29);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 30);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 31);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 32);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 33);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 34);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 35);
+	
+	GFPage(mobedit, 6);
+	
+	//Bard
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Bard Skills");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Begging");
+	GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Cartography");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Discordance");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Herding");
+	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Musicianship");
+	GFTextRight(mobedit, 402, 193, TEXT_COLOR, "Peacemaking");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Provocation");
+	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Taste Id");
+	
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_BEGGING], 28+SKILLID_BEGGING);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_CARTOGRAPHY], 28+SKILLID_CARTOGRAPHY);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_ENTICEMENT], 28+SKILLID_ENTICEMENT);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_HERDING], 28+SKILLID_HERDING);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MUSICIANSHIP], 28+SKILLID_MUSICIANSHIP);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_PEACEMAKING], 28+SKILLID_PEACEMAKING);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_PROVOCATION], 28+SKILLID_PROVOCATION);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TASTEID], 28+SKILLID_TASTEID);
+
+	//Bard LVL
+	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 36);
+	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 37);
+	GFAddButton(mobedit, 333, 319, 2227, 2227, GF_CLOSE_BTN, 38);
+	GFAddButton(mobedit, 360, 319, 2228, 2228, GF_CLOSE_BTN, 39);
+	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 40);
+	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 41);
+	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 42);
+
+	GFPage(mobedit, 7);
+
+	//Reading Prot Levels
+	GFTextRight(mobedit, 450, 46, TEXT_COLOR, "Elemental Protections");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Earth");
+	GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Water");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Fire");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Air");
+	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Necro");
+	GFTextRight(mobedit, 402, 193, TEXT_COLOR, "Holy");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Physical");
+	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Poison");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[12], 12);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[13], 13);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[14], 14);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[15], 15);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[16], 16);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[17], 17);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[18], 18);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[19], 19);
+
+	GFPage(mobedit, 8);
+
+	//Reading More Prot Levels
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Temporary Protections");
+	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Free Action");
+	GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Healing");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "ME");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Blackrock");
+	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Moonstone");
+	GFTextRight(mobedit, 402, 193, TEXT_COLOR, "Absorbsion");
+	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Warding");
+	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Antidotes");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[20], 20);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[21], 21);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[22], 22);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[23], 23);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[24], 24);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[25], 25);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[26], 26);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[27], 27);
+
+	return GFSendGump(who, mobedit);
+
+endfunction
+
+function CalculateProtections(who)
+
+	earth := CInt(GetObjProperty(who, "EarthProtection"));
+	fire := CInt(GetObjProperty(who, "FireProtection"));
+	water := CInt(GetObjProperty(who, "WaterProtection"));
+	air := CInt(GetObjProperty(who, "AirProtection"));
+	holy := CInt(GetObjProperty(who, "HolyProtection"));
+
+	necro := CInt(GetObjProperty(who, "NecroProtection"));
+	physical := CInt(GetObjProperty(who, "PhysicalProtection"));
+	poison := CInt(GetObjProperty(who, "PermPoisonImmunity"));
+	freeaction := CInt(GetObjProperty(who, "FreeAction"));
+
+	healing := CInt(GetObjProperty(who, "HealingIncrease"));
+	magicefficiency := GetMagicEfficiencyPenalty( who );
+
+	if (magicefficiency < 0)
+		magicefficiency := abs(magicefficiency);
+	else
+		magicefficiency := magicefficiency - (magicefficiency*2);
+	endif
+
+	magicimmunity := CInt(GetObjProperty(who, "PermMagicImmunity"));
+	magicreflection := CInt(GetObjProperty(who, "Permmr"));
+	tempmagicimmunity := GetImmunityCharges(who);
+	tempmagicreflection := GetReflectionCharges(who);
+	temppoisonimmunity := GetPoisonCharges(who);
+
+	old_stats[12] := earth;
+	old_stats[13] := fire;
+	old_stats[14] := water;
+	old_stats[15] := air;
+	old_stats[16] := holy;
+	old_stats[17] := necro;
+	old_stats[18] := physical;
+	old_stats[19] := poison;
+	old_stats[20] := freeaction;
+	old_stats[21] := healing;
+	old_stats[22] := magicefficiency;
+	old_stats[23] := magicimmunity;
+	old_stats[24] := magicreflection;
+	old_stats[25] := tempmagicimmunity;
+	old_stats[26] := tempmagicreflection;
+	old_stats[27] := temppoisonimmunity;
+endfunction
+
+function GetImmunityCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "MagicImmunity" ) )
+		charges := charges + Cint( GetObjProperty( thing, "MagicImmunity" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction
+
+function GetReflectionCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "SpellReflect" ) )
+		charges := charges + Cint( GetObjProperty( thing, "SpellReflect" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction
+
+function GetPoisonCharges(who)
+
+var charges := 0;
+
+foreach thing in ListEquippedItems( who )
+	if( GetObjProperty( thing, "PoisonImmunity" ) )
+		charges := charges + Cint( GetObjProperty( thing, "PoisonImmunity" ) );
+	endif
+endforeach
+	
+return charges;
+
+endfunction

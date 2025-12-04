@@ -1,0 +1,11 @@
+use uo;
+use os;
+
+include ":staff:include/staff";
+
+program identify( who )
+	LogCommand(who, GetProcess(GetPid()).name);
+	start_script( ":itemid:itemid" , who );
+endprogram
+
+  

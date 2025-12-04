@@ -1,0 +1,30 @@
+use uo;
+
+include "util/bank";
+include ":staff:include/staff";
+
+program openbank( who )
+
+	var mobile := Target( who );
+	if( !mobile )
+		return;
+	endif
+	
+	if( !mobile.isa(POLCLASS_MOBILE) )
+		SendSysMessage( who , "You must target a mobile." );
+		return;
+	endif
+	
+	if( mobile.npctemplate )
+		SendSysMessage( who , "You can only use this on players." );
+		return;
+	endif
+	
+	var bankbox := FindBankBox( mobile );
+	if( bankbox )
+		SendOpenSpecialContainer( who , bankbox );
+	LogCommand(who, GetProcess(GetPid()).name, mobile.name+"/"+mobile.serial);
+	endif
+
+endprogram
+        

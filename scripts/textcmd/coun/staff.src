@@ -1,0 +1,43 @@
+use uo;
+include ":staff:include/staff";
+
+program staff( who, text )
+
+	if( !text )
+		SendSysMessage( who, "Usage is : .staff <msg>" );
+	else
+		var color;
+		var words := SplitWords(text);
+		var min_cmdlevel := 1;
+		if( TypeOf(words) == "Array" && words.size() > 1 && Cint(words[1][1]) > 0)
+			min_cmdlevel := Cint(words[1][1]);
+			text := text - (words[1]+" ");
+		endif
+		
+		if( min_cmdlevel > 5 )
+			SendSysMessage( who, "You can't set a minimum cmdlevel above 5." );
+			return 0;
+		endif
+		
+		text := who.name + ": " + text;
+		
+		// only have 1 colour, but display level said at
+		color := 2580;
+
+		case( min_cmdlevel )
+			1: text := text;
+			2: text := "[Seer+] "+text;
+			3: text := "[GM+] "+text;
+			4: text := "[Admin+] "+text;
+			5: text := "[Dev Only] "+text;
+		endcase
+	
+		foreach character in EnumerateOnlineCharacters()
+			if( character.cmdlevel >= min_cmdlevel )
+				SendSysMessage( character, "[S] " + text, 3, color );
+			endif
+		endforeach
+		LogCommand(who, GetProcess(GetPid()).name, "Text: "+text);
+	endif
+	
+endprogram

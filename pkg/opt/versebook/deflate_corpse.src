@@ -1,0 +1,40 @@
+use uo;
+use os;
+
+program deflate_corpse(corpse)
+
+var amt := 5;
+var bloat;
+repeat
+
+sleep(2);
+
+bloat := GetObjProperty(corpse, "Bloat");
+
+bloat := bloat - amt;
+
+SetObjProperty(corpse, "Bloat", bloat);
+
+if (bloat > 85)
+	corpse.color := 32;
+elseif (bloat > 70)
+	corpse.color := 33;
+elseif (bloat > 65)
+	corpse.color := 37;
+elseif (bloat > 50)
+	corpse.color := 38;
+elseif (bloat > 35)
+	corpse.color := 39;
+elseif (bloat > 20)
+	corpse.color := 40;
+elseif (bloat > 0)
+	corpse.color := 41;
+endif
+
+until (CInt(GetObjProperty(corpse, "Bloat")) < 1);
+
+corpse.color := GetObjProperty(corpse, "TrueColour");
+EraseObjProperty(corpse, "Bloat");
+
+endprogram
+

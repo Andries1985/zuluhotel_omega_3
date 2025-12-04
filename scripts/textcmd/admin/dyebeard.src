@@ -1,0 +1,30 @@
+use os;
+use uo;
+
+include ":staff:include/staff";
+
+program DyeBear( who, colour )
+
+if (!colour)
+	SendSysMessage(who, "Usage is '.dyehair <colourcode>'");
+	SendSysMessage(who, "Cancelled.");
+	return 0;
+endif
+
+var what := Target(who);
+
+if (!what.isa(POLCLASS_MOBILE))
+	SendSysMessage(who, "You must target a mobile.");
+	return 0;
+endif
+
+LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "Colour: "+colour);
+	
+var beard := GetEquipmentByLayer(what, 0x10);
+
+beard.color := Cint(colour);
+SetObjProperty(what, "BeardColour", colour);
+
+SendSysMessage(who, "Dyed "+what.name+"'s bear colour: "+colour); 
+endprogram
+

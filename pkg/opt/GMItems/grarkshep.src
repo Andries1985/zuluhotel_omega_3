@@ -1,0 +1,124 @@
+use uo;
+use cfgfile;
+
+include "include/client";
+include "include/objtype";
+include "include/skillpoints";
+include "include/bard";
+include "include/eventid";
+include "include/checkcity";
+include "include/attributes";
+include "include/difficulty";
+
+
+program superprovoke(who, crook)
+
+	if(!GetObjProperty(who,"IsBard"))	
+		SendSysMessage(who,"Only Bards can use this!");
+		return;
+	endif
+
+	var instrument := findinstrument( who );
+
+	if(!instrument)
+		SendSysmessage(who, "You don't have an instrument to play!");
+		return;
+	endif
+
+	var last_use := GetObjProperty(crook, "LastUsed");
+	if((last_use + 20) > ReadGameClock())
+		SendSysMessage(who, "You can only utilise the crook's power once every 20 seconds.");
+		return 0;
+	endif
+
+	var amt := GetClasseLevel(who) * 2;
+	var range := Cint(GetEffectiveSkill(who,SKILLID_PEACEMAKING)/10);
+	range := Cint(range * ClasseBonus( who, CLASSEID_BARD));
+	if(range > 25)
+		range := 25;
+	endif
+	var configfile := ReadConfigFile( "::npcdesc");
+
+	SendSysmessage( who, "Against who would you like to provoke these on?" );
+	var provtarg := Target( who, TGTOPT_CHECK_LOS+TGTOPT_HARMFUL );
+	var theobj := provtarg.npctemplate;
+	var elem := FindConfigElem(configfile, theobj);
+	if( !provtarg )
+		SendSysmessage( who, "Canceled.");
+		return;
+	elseif(elem.Privs == "invul")
+		SendSysmessage( who, "Canceled.");
+		return;
+	elseif(provtarg == who)
+		SendSysmessage( who, "Can't target yourself.");
+		return;
+	elseif(provtarg.cmdlevel)
+		SendSysmessage( who, "Can't target superior beings.");
+		return;
+	elseif(provtarg.isa(POLCLASS_ITEM))
+		SendSysmessage( who, "Can't target that.");
+		return;
+	elseif(Len(ListMobilesInLineOfSight(who, range)) < 1)
+		SendSysmessage( who, "No targets close enough.");
+		return;
+	endif
+		
+	SetObjProperty(crook, "LastUsed", ReadGameClock());
+	
+	var i := 0;
+	foreach targ in ListMobilesInLineOfSight(who, range)
+		theobj := targ.npctemplate;
+		elem := FindConfigElem(configfile, theobj);
+		var difficulty := Cint(elem.provoke);
+		if(!difficulty && targ.isa(POLCLASS_NPC))
+			difficulty := Cint(GetIntelligence(targ));
+		endif
+
+		if(targ.isa(POLCLASS_NPC) && elem && elem.Privs != "invul" && difficulty && targ != provtarg)
+			if(i < amt)
+				provoke(who, provtarg, targ, difficulty);
+			endif
+			i := i + 1;
+		endif
+	endforeach
+return;
+endprogram
+
+function provoke(character, newtarg, thetarg, difficulty)
+
+	var ev := struct;
+	ev.+ type;
+	ev.+ source;
+
+	if( CheckSkill( character, SKILLID_PROVOCATION, difficulty, Cint(difficulty * 10) ) )
+		if( CheckSkill( character, SKILLID_MUSICIANSHIP, difficulty, Cint(difficulty * 5) ) )
+			ev.source	:= character;
+			ev.type		:= SYSEVENT_ENGAGED;
+			SendEvent( newtarg, ev );
+			ev.source	:= thetarg;
+			ev.type		:= SYSEVENT_ENGAGED;
+			SendEvent( newtarg, ev );
+			ev.source	:= newtarg;
+			ev.type		:= EVID_PEACEMADE;
+			SendEvent( thetarg, ev );
+			ev.type		:= SYSEVENT_DAMAGED;
+			SendEvent( thetarg, ev );
+			PrintTextAbovePrivate( thetarg, "You provoke " + thetarg.name + " to attack " + newtarg.name + "!", character );
+		else
+			ev.source	:= character;
+			ev.type		:= EVID_PEACEMADE;
+			SendEvent( thetarg, ev );
+			ev.type		:= SYSEVENT_DAMAGED;
+			SendEvent(thetarg, ev);
+			PrintTextAbovePrivate( thetarg, "You enrage " + thetarg.name + "!", character );
+		endif
+	else
+		ev.source	:= character;
+		ev.type		:= EVID_PEACEMADE;
+		SendEvent( thetarg, ev );
+		ev.type		:= SYSEVENT_DAMAGED;
+		SendEvent(thetarg, ev);
+		PrintTextAbovePrivate( thetarg, "You enrage " + thetarg.name + "!", character );
+	endif
+return;
+endfunction

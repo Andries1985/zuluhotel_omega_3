@@ -1,0 +1,18 @@
+use uo;
+include ":staff:include/staff";
+program openit( character )
+
+	var what := Target( character );
+
+	if( !what )
+		return;
+	endif
+
+	if( !what.isa( POLCLASS_CONTAINER ) )
+		SendsysMessage( character , "That isn't a container." );
+	else
+		SendOpenSpecialContainer( character , what );
+	LogCommand(character, GetProcess(GetPid()).name, what.desc+"/"+what.serial);
+	endif
+
+endprogram

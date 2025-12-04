@@ -1,0 +1,150 @@
+use os;
+use uo;
+
+include ":gumps:include/gumps";
+
+var HUMAN := struct;
+HUMAN.+GateName := "Human Race Gate";
+HUMAN.+RaceName := "Human";
+HUMAN.+RaceColour := 1002;
+HUMAN.+GumpColour := 1002;
+
+var ELF := struct;
+ELF.+GateColour 	:= 770;
+ELF.+RaceColour 	:= 770;
+ELF.+GateName   	:= "Elf Race Gate";
+ELF.+RaceName 		:= "Elf";
+ELF.+GumpColour		:= 770;
+
+var DARKELF := struct;
+DARKELF.+GateColour 	:= 33877;
+DARKELF.+RaceColour 	:= 33877;
+DARKELF.+GateName  	:= "Dark Elf Race Gate";
+DARKELF.+RaceName	:= "Dark Elf";
+DARKELF.+GumpColour		:= 1109;
+
+var GOBLIN := struct;
+GOBLIN.+GateColour	:= 34186;
+GOBLIN.+RaceColour	:= 34186;
+GOBLIN.+GateName		:= "Goblin Race Gate";
+GOBLIN.+RaceName		:= "Goblin";
+GOBLIN.+GumpColour		:= 1418;
+
+var BARBARIAN := struct;
+BARBARIAN.+GateColour 	:= 33804;
+BARBARIAN.+RaceColour	:= 33804;
+BARBARIAN.+GateName	:= "Barbarian Race Gate";
+BARBARIAN.+RaceName	:= "Barbarian";
+BARBARIAN.+GumpColour		:= 1036;
+
+var DWARF := struct;
+DWARF.+GateColour	:= 33888;
+DWARF.+RaceColour	:= 33888;
+DWARF.+GateName		:= "Dwarf Race Gate";
+DWARF.+RaceName		:= "Dwarf";
+DWARF.+GumpColour		:= 1120;
+
+var OMEGA := struct;
+OMEGA.+GateColour	:= 1765;
+OMEGA.+RaceColour	:= 1765;
+OMEGA.+GateName		:= "Omega Race Gate";
+OMEGA.+RaceName		:= "Omega";
+OMEGA.+GumpColour	:= 1765;
+
+var ORC := struct;
+ORC.+GateColour	:= 2212;
+ORC.+RaceColour	:= 2212;
+ORC.+GateName		:= "Orc Race Gate";
+ORC.+RaceName		:= "Orc";
+ORC.+GumpColour	:= 2212;
+
+Program use_racegate(who, gate)
+
+// Only GM+ can set up race gates
+if (who.cmdlevel < 3)
+	return 0;
+endif	
+
+var gump := GFCreateGump(20, 20, 300, 350);
+
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250, 300, 350);
+
+GFResizePic(gump, 105, 32, 9200, 131, 27);
+GFTextLine(gump, 115, 35, 53, "Race Gate Set-Up");
+
+GFResizePic(gump, 110, 79, 9200, 160, 22);
+GFResizePic(gump, 110, 109, 9200, 160, 22);
+GFResizePic(gump, 110, 139, 9200, 160, 22);
+GFResizePic(gump, 110, 169, 9200, 160, 22);
+GFResizePic(gump, 110, 199, 9200, 160, 22);
+GFResizePic(gump, 110, 229, 9200, 160, 22);
+GFResizePic(gump, 110, 259, 9200, 160, 22);
+GFResizePic(gump, 110, 289, 9200, 160, 22);
+
+GFTextLine(gump, 150, 80, 88, "Human");
+GFTextLine(gump, 150, 110, 68, "Elf");
+GFTextLine(gump, 150, 140, 1108, "Dark-Elf");
+GFTextLine(gump, 150, 170, 667, "Goblin");
+GFTextLine(gump, 150, 200, 1129, "Barbarian");
+GFTextLine(gump, 150, 230, 1131, "Dwarf");
+GFTextLine(gump, 150, 260, 742, "Omega");
+GFTextLine(gump, 150, 290, 682, "Orc");
+
+GFRadioButton(gump, 70, 80, 9020, 9021, 0, 10);
+GFRadioButton(gump, 70, 110, 9020, 9021, 0, 20);
+GFRadioButton(gump, 70, 140, 9020, 9021, 0, 30);
+GFRadioButton(gump, 70, 170, 9020, 9021, 0, 40);
+GFRadioButton(gump, 70, 200, 9020, 9021, 0, 50);
+GFRadioButton(gump, 70, 230, 9020, 9021, 0, 60);
+GFRadioButton(gump, 70, 260, 9020, 9021, 0, 70);
+GFRadioButton(gump, 70, 290, 9020, 9021, 0, 80);
+
+GFAddButton(gump, 70, 320, 2128, 2129, 1, 5);
+GFAddButton(gump, 215, 320, 2119, 2120, 1, 0);
+
+GFTextLine(gump, 115, 35, 53, "Race Gate Set-Up");
+
+var result := GFSendGump(who, gump);
+
+// Okay button wasn't pressed
+if (result[0] != 5)
+	return 0;
+endif
+
+var race;
+
+case(result.keys[3])
+	10:	race := HUMAN;
+	20:	race := ELF;
+	30:	race := DARKELF;
+	40:	race := GOBLIN;
+	50:	race := BARBARIAN;
+	60:	race := DWARF;
+	70:	race := OMEGA;
+	80:	race := ORC;
+endcase
+
+if (SetRace(race, gate))
+	PrintTextAbovePrivate(gate, "*Gate is now a "+race.RaceName+" race gate*",who, 3, 67);
+	SendSysMessage(who, "Gate set up successfully .");
+endif
+
+endprogram
+
+function SetRace(race, gate)
+
+gate.color := CInt(race.GateColour);
+
+if (gate.name != race.GateName)	
+	gate.name := race.GateName;
+else
+	return 0;
+endif
+
+SetObjProperty(gate, "GumpColour", race.GumpCOlour);
+SetObjProperty(gate, "Race", race.RaceName);
+SetObjProperty(gate, "RaceColour", race.RaceColour);
+return 1;
+
+endfunction

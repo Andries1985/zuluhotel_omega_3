@@ -1,0 +1,142 @@
+use uo;
+use os;
+
+include "include/client";
+include "include/objtype";
+include "include/skillpoints";
+include "include/attributes";
+include "include/classes";
+
+var config;
+var harp;
+
+Const BIGHARP := 0x0EB1;
+
+function play(character,succeed_sound,fail_sound)
+
+	var diff := Cint(GetEffectiveSkill(character,SKILLID_MUSICIANSHIP)-10);
+	if (diff<10) diff := 10; endif
+	var thepoints := diff*2;
+	
+
+   	if (CheckSkill(character, SKILLID_MUSICIANSHIP, diff, thepoints))
+      		PlaySoundEffect( character, succeed_sound );
+      		return 1;
+   	else
+      		PlaySoundEffect( character, fail_sound);
+      		return 0;
+   	endif
+
+endfunction
+
+program music(character, instrument, skill)
+
+   var inst_id := instrument.objtype;
+   var ret := 0;
+   harp := inst_id;
+
+	if( instrument.movable == 0 )
+		instrument.movable := 1;
+	endif
+	if( instrument.newbie == 1 )
+		instrument.newbie := 0;
+	endif
+
+   if (!skill)
+	AutoRepeat(character, instrument);
+	return;
+   endif
+ 
+   if (inst_id == UOBJ_HARP)
+      ret := play(character,SFX_HARP_SUCC,SFX_HARP_FAIL);
+   elseif (inst_id == UOBJ_LUTE)
+      ret := play(character,SFX_LUTE_SUCC,SFX_LUTE_FAIL);
+   elseif (inst_id == UOBJ_DRUM)
+      ret := play(character,SFX_DRUM_SUCC,SFX_DRUM_FAIL);
+   elseif (inst_id == UOBJ_TAMB)
+      ret := play(character,SFX_TAMB_SUCC,SFX_TAMB_FAIL);
+   elseif (inst_id == BIGHARP)
+      ret := play(character,SFX_HARP_SUCC,SFX_HARP_FAIL);     
+
+   else
+      PrintTextAbovePrivate( character, "That's not something you can play", character );
+	return 0;
+   endif
+
+   return ret;
+
+endprogram
+
+function AutoRepeat(character, instrument)
+
+	var inst_id := instrument.objtype;
+	var ret := 0;
+	var cx := character.x;
+	var cy := character.y;
+	var ftic := 0;
+	//var bard := GetObjProperty( character , CLASSEID_BARD );
+
+	SendSysMessage(character,"You begin playing...");
+	if (GetObjProperty( character , CLASSEID_BARD ) && GetStamina(character) < GetMaxStamina(character))
+		PrintTextAbovePrivate(character, "*The tranquil music slowly replenishes your stamina*", character);
+	endif
+	if (GetObjProperty( character , CLASSEID_BLADESINGER ) && GetStamina(character) < GetMaxStamina(character))
+		PrintTextAbovePrivate(character, "*The singing music slowly replenishes your stamina*", character);
+	endif
+
+	repeat
+
+		if (inst_id == UOBJ_HARP)
+				ret := play(character,SFX_HARP_SUCC,SFX_HARP_FAIL);
+		elseif (inst_id == UOBJ_LUTE)
+				ret := play(character,SFX_LUTE_SUCC,SFX_LUTE_FAIL);
+		elseif (inst_id == UOBJ_DRUM)
+				ret := play(character,SFX_DRUM_SUCC,SFX_DRUM_FAIL);
+		elseif (inst_id == UOBJ_TAMB)
+				ret := play(character,SFX_TAMB_SUCC,SFX_TAMB_FAIL);
+		elseif (inst_id == BIGHARP)
+			ret := play(character,SFX_HARP_SUCC,SFX_HARP_FAIL);
+		else
+			PrintTextAbovePrivate( character, "That's not something you can play", character );
+			return 0;
+		endif
+		
+		sleep(2);
+
+		if(GetObjProperty( character , CLASSEID_BARD ) || GetObjProperty( character , CLASSEID_BLADESINGER ) )
+			if(ftic == 1)
+			RegenBardMana(character);
+			endif
+		endif
+
+		//if (GetStamina(who) >= GetMaxStamina(who))
+		//	SendSysMessage(character,"You stop playing...");
+		//	return 0;
+		//endif
+
+		ftic := 1;
+	
+	until ((character.x != cx) or (character.y != cy) || character.dead);
+	SendSysMessage(character,"You stop playing...");
+
+endfunction
+
+// Bards 'meditate' when playing
+function RegenBardMana(who)
+
+	if (GetStamina(who) >= GetMaxStamina(who))
+		return 0;
+	endif
+
+	var stamina_regen;
+
+	if (IsBard(who))
+		stamina_regen := 10 * (1 + (IsBard(who)*0.5));
+	endif
+	if (IsBladesinger(who))
+		stamina_regen := 10 * (1 + (IsBladesinger(who)*0.5));
+	endif
+
+	SetStamina(who, (GetStamina(who)+stamina_regen));
+
+endfunction

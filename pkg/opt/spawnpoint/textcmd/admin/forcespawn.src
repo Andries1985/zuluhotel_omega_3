@@ -1,0 +1,30 @@
+use uo;
+use os;
+
+include "include/constants";
+include "include/client";
+
+program forcespawn(who, input)
+    var spawnpoint;
+    if(!input)
+        SendSysMessage(who, "Select Spawnpoint");
+        spawnpoint := Targetcoordinates( who ).item;
+	else
+        spawnpoint := SystemFindObjectBySerial(Cint(input));
+		if(spawnpoint.objtype != 0xa300)
+			SendSysMessage( who, "That's not a Spawnpoint .forcespawn ([serial])", FONT_NORMAL, 2595);
+			return 0;
+		endif
+	endif
+
+	var pt_data := GetObjProperty( spawnpoint, PROPID_SPAWNPOINT_SETTING );
+	if(pt_data[15])
+		SetObjProperty(spawnpoint, "Triggered", 1);
+	endif
+
+	EraseObjProperty(spawnpoint, PROPID_SPAWNPOINT_NEXT_SPAWNING);
+	SendSysMessage(who, "Forcing spawn");
+	PrintTextAbovePrivate( spawnpoint, "*forced*", who, FONT_NORMAL, 2595);
+	Start_Script( ":spawnpoint:checkpoint", spawnpoint );
+
+endprogram

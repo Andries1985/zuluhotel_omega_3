@@ -1,0 +1,93 @@
+
+use npc;
+use os;
+use uo;
+use cfgfile;
+
+include "include/myutil";
+include "include/npcbackpacks";
+include "include/attributes";
+include "include/random";
+include "include/speech";
+
+include "include/eventid";
+include "include/randname";
+include "include/npcutil";
+include "include/objtype";
+include "include/npccast";
+include "include/anchors";
+include "ai/main/chaoskillpcsloop";
+include "ai/combat/chaosfight";
+include "ai/combat/spellcombatevent";
+include "ai/setup/spellsetup";
+include "ai/setup/modsetup";
+include "ai/main/loot";
+include "ai/main/sleepmode";
+
+Const MOVING_EFFECT_FIREBALL  := 0x36D4; 
+const HALT_THRESHOLD := 8; // how close before he attacks?
+
+program KillPlayers()
+
+	if (getobjproperty(me, "frozen"))
+		me.frozen := 1;
+	endif
+
+	SetWarMode( 0 );
+
+	main_AI_loop();
+
+endprogram
+
+function CloseDistance( opponent )
+
+	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
+	if (sleepdelay < 0) 
+		sleepdelay := 0; 
+	endif
+	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
+	if(MoveSpeed)
+		sleepdelay := GetSpeed(me, MoveSpeed);
+	endif
+
+		var anchor := GetObjProperty( me, PROPID_MOBILE_ANCHOR );
+		var test := me.z;
+//RETARGET IF NO LOS
+if (!CheckLineOfSight( me, opponent) )
+	if (GetObjProperty(me,"lastnolos") != opponent.name)
+		if (runrandom(opponent))
+			Sleepms(sleepdelay);
+		endif
+	endif
+	SetObjProperty(me,"lastnolos",opponent.name);
+	RestartScript(me);
+	return;
+endif
+
+var rolled := random (110);
+
+	if ( 100 < rolled)
+		RestartScript(me);
+		return 0;
+	endif
+
+var rolling := random (150);
+	if ( 100 < rolling)
+		spellattack(opponent);
+	endif
+  
+    case (Distance( me, opponent ))
+        1:              // the most likely, so first 
+        0:
+            return 1;
+        default:
+            RunToward( opponent );
+            Sleepms(sleepdelay);
+		var test2 := me.z-test;
+		if(test2 < -20 or test2 > 20)
+		MoveObjectToLocation( me, anchor[1], anchor[2], anchor[5], anchor[6], MOVEOBJECT_FORCELOCATION );
+		endif
+            return 0;
+    endcase
+
+endfunction

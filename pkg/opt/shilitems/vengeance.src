@@ -1,0 +1,46 @@
+use uo;
+use os;
+use vitals;
+
+include "include/attributes";
+
+const DELAY_BETWEEN_USE	:= 20;
+
+program item_vengeance( who , item )
+
+	if( !ReserveItem( item ) )
+		return;
+	endif
+
+	var last_use := Cint(GetObjProperty( item , "#last_use" ));
+	if( last_use and last_use > Cint(ReadGameClock() - DELAY_BETWEEN_USE) )
+		SendSysMessage( who , "You must wait before using it again." );
+		return;
+	endif
+		
+	SetObjProperty( item  , "#last_use" , Cint(ReadGameClock()) );
+	
+	if( !GetObjProperty( item , "RequireNoCharges" ) )
+		var charges := Cint(GetObjProperty( item , "charges" ));
+		if( !charges )
+			PrintTextAbovePrivate( item , "That is out of charges", who );
+			return;
+		else
+			charges := charges - 1;
+			SetObjProperty( item , "charges" , charges );
+		endif
+	endif
+
+	var victim := Target( who , TGTOPT_HARMFUL + TGTOPT_CHECK_LOS );
+	if( !victim )
+		return;
+	endif
+		
+	var dmg := Cint(GetMaxHP(who) - GetHp(who));
+	ApplyRawDamage( victim , dmg );
+	
+	Detach();
+	Sleep( DELAY_BETWEEN_USE );
+	EraseObjProperty( item , "#last_use" );	
+	
+endprogram

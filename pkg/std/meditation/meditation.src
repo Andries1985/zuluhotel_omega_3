@@ -1,0 +1,142 @@
+// Version 0.3
+
+use uo;
+use os;
+
+include "include/client";
+include "include/classes";
+include "include/spelldata";
+include "include/attributes";
+include "include/dotempmods";
+
+const SFX_MEDITATION := SFX_FA;
+const POINTS := 250;
+
+var weapcfg := ReadConfigFile( ":*:itemdesc" );
+
+program meditation( who )
+
+	if( ReadGameClock() < Cint(GetObjProperty( who , "#lastmeditation" ) + 30) )
+		SendSysMessage( who , "You must wait some time before being able to meditate again." );
+		return;
+	endif
+	
+	if( GetMana(who) >= GetMaxMana(who) )
+		SendSysMessage( who , "You are at peace." );
+		return;
+	endif
+	
+	if( who.poisoned )
+		SendSysMessage( who , "You can't meditate while poisoned." );
+		return;
+	endif
+	
+	if( who.warmode )
+		SendSysMessage( who , "You can't meditate in war mode." );
+		return;
+	endif
+	
+	if( InvalidInHands( who ) )
+		SendSysMessage( who , "You can't meditate with something in your hands." );
+		return;
+	endif
+	
+	
+	var sx    	:= who.x;
+	var sy   	 := who.y;
+	var shp  	 := GetHP(who);
+	var wait  	:= 5;
+	var mage  	:= GetObjProperty( who , CLASSEID_MAGE );
+	var paladin  := GetObjProperty( who , CLASSEID_PALADIN );
+	var mysticarcher  := GetObjProperty( who , CLASSEID_MYSTIC_ARCHER );
+	var skill 	:= GetEffectiveSkill( who , SKILLID_MEDITATION );
+	var base  	:= Cint( (skill / 25) + (GetIntelligence(who) / 35) );
+		
+	if( mage )
+		wait := Cint( wait / ClasseBonus( who , CLASSEID_MAGE ) );
+		base := Cint( base * ClasseBonus( who , CLASSEID_MAGE ) );
+
+	elseif( paladin )
+		wait := Cint( wait / ClasseBonus( who , CLASSEID_PALADIN ) );
+		base := Cint( base * ClasseBonus( who , CLASSEID_PALADIN ) );
+
+	elseif( mysticarcher )
+		wait := Cint( wait / ClasseBonus( who , CLASSEID_MYSTIC_ARCHER ) );
+		base := Cint( base * ClasseBonus( who , CLASSEID_MYSTIC_ARCHER ) );
+
+	endif
+	
+	var modifier := 100 - Cint( GetMagicEfficiencyPenalty( who ) * 2 );
+	if( modifier <= 0 )
+		SendSysMessage( who , "Regenerative forces cannot penetrate your armor." );
+		Sleep( 5 );
+		return;
+	endif
+	
+	if( CheckSkill( who , SKILLID_MEDITATION , -1 , POINTS ) )
+		SendSysMessage( who , "You enter a meditative trance." );
+		SetObjProperty( who , "#lastmeditation" , ReadGameClock() );
+		PrintTextAbove( who , "*Meditating*" );
+		BuffOn(who, "Meditation", 100, 0);
+		PlaySoundEffect( who , SFX_MEDITATION );
+		while(	(who.x == sx) and		// the character moved
+			(who.y == sy) and		// the character moved
+			(GetMana(who) < GetMaxMana(who)) and	// the character is full mana
+			(GetHP(who) >= shp ) and		// the character was damaged
+			(!who.poisoned) and		// the character was poisoned
+			(!who.warmode) and		// the character got in war mode
+			(!InvalidInHands( who )))	// the character equipped an invalid equipment
+			
+			Sleep( wait );
+
+			modifier := 100 - Cint( GetMagicEfficiencyPenalty( who ) * 2 );
+			if( modifier > 0 )
+				var restored := Cint( base * modifier / 100 );
+				if( restored )
+					SetMana(who, GetMana(who)+restored);
+				else
+					SendSysMessage( who , "Regenerative forces cannot penetrate your armor." );
+					Sleep( 5 );
+					break;
+				endif
+				
+				if( GetMana(who) > GetMaxMana(Who) )
+					SetMana(who, GetMaxMana(who));
+				endif
+			else
+				SendSysMessage( who , "Regenerative forces cannot penetrate your armor." );
+				break;
+			endif
+		endwhile
+		
+		if( GetMana(who) >= GetMaxMana(who) )
+			SendSysMessage( who , "You stop meditating." );
+		else
+			SendSysMessage( who , "You've lost your concentration." );
+		endif
+		BuffOff(who, "Meditation");
+	else
+		SendSysMessage( who , "You cannot focus your concentration." );
+	endif
+	
+endprogram
+
+
+function InvalidInHands( who )
+
+	var hand1	:= GetEquipmentByLayer( who , LAYER_HAND1 );
+	var hand2	:= GetEquipmentByLayer( who , LAYER_HAND2 );
+	
+	if( hand1 or hand2 )
+		if( hand1 and weapcfg[hand1.objtype].BlocksCastingIfInHand != 0 )
+			return 1;
+		endif
+		
+		if( hand2 and weapcfg[hand2.objtype].BlocksCastingIfInHand != 0)
+			return 1;
+		endif
+	endif
+	
+	return 0;
+	
+endfunction

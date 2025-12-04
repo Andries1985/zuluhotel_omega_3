@@ -1,0 +1,134 @@
+// Increases Equipment Quality
+use math;
+use uo;
+use os;
+use util;
+use polsys;
+
+include "include/client";
+include "include/itemutil";
+
+const TEXT_COLOR 		:= 115;
+const TYPE_PENALTY 		:= 1;	// Offset to GM item quality, makes it harder to upgrade
+const ITEM_INFLUENCE 	:= 3;	// Power of item quality over upgrade quality
+const GLOBAL_PENALTY 	:= 80;	// Percentage to multiply all upgrade chances
+const DESTROY_CHANCE 	:= 5;	// Percentage chance that an item will be destroyed on failure
+CONST LARGE_FAIL_CHANCE := 15;	// Percentage chance of losing 0.2 quality on failure
+CONST SMALL_FAIL_CHANCE := 30;	// Percentage chance of losing 0.1 quality on failure
+
+program apply_refiner(who, refiner)
+
+	if (!ReserveItem(refiner))
+		return 0;
+	endif
+
+	SendSysMessage(who, "Select the equipment you'd like to improve.", FONT_NORMAL, TEXT_COLOR);
+	var item := Target( who, TGTOPT_NOCHECK_LOS );
+
+	if(!item || !ReserveItem(item))
+		SendSysMessage(who, "Canceled", FONT_NORMAL, 2595);
+		Releaseitem(refiner);
+		return 0;
+	elseif (item.container != who.backpack)
+		SendSysmessage( who, "That needs to be in your backpack.", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(refiner);
+		Releaseitem(item);
+		return 0;
+	elseif ((!item.isa(POLCLASS_ARMOR)) && (!item.isa(POLCLASS_WEAPON)))
+		SendSysmessage( who, "You can only improve equipment.", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(refiner);
+		Releaseitem(item);
+		return 0;
+
+	elseif((item.quality >= 3.6) || GetObjProperty(item, "IsGmItem") || GetObjProperty(item, "Artifact") || GetObjProperty(item, "FromLoot"))
+		SendSysMessage( who, "That item has been perfected already.", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(refiner);
+		Releaseitem(item);
+		return 0;
+	elseif ((item.quality >= 3.0) && !GetObjProperty(item, "IsExceptional"))
+		SendSysMessage( who, "That item can't be refined further.", FONT_NORMAL, TEXT_COLOR );
+		Releaseitem(refiner);
+		Releaseitem(item);
+		return 0;
+	endif
+	var refiner_type;
+	case(GetObjProperty(refiner, "Material"))
+		"Metal":
+			if(!IsMetalEquipment(item))
+				SendSysMessage( who, "Alloys can only refine metal weapons and armor.", FONT_NORMAL, TEXT_COLOR );
+				Releaseitem(refiner);
+				Releaseitem(item);
+				return 0;
+			endif
+			refiner_type := "alloy";
+		"Wood":
+			if(!IsWoodEquipment(item))
+				SendSysMessage( who, "Varnishes can only refine wooden weapons and armor.", FONT_NORMAL, TEXT_COLOR );
+				Releaseitem(refiner);
+				Releaseitem(item);
+				return 0;
+			endif
+			refiner_type := "varnish";
+		"Leather":
+			if(!IsLeatherEquipment(item))
+				SendSysMessage( who, "Compounds can only refine leather weapons and armor.", FONT_NORMAL, TEXT_COLOR );
+				Releaseitem(refiner);
+				Releaseitem(item);
+				return 0;
+			endif
+			refiner_type := "compound";
+	endcase
+
+	var item_quality := item.quality;
+	
+	if (GetObjProperty(item, "FromLoot"))
+		item_quality += TYPE_PENALTY;
+	endif
+	var improve_chance := (refiner.quality/pow(item_quality,ITEM_INFLUENCE))*GLOBAL_PENALTY;
+	var chance_text := "a";
+	if (improve_chance < 10)
+		chance_text := "almost no";
+	elseif (improve_chance < 25)
+		chance_text := "a very low";
+	elseif (improve_chance < 50)
+		chance_text := "a low";
+	elseif (improve_chance < 75)
+		chance_text := "a good";
+	else
+		chance_text := "a very good";
+	endif
+	SendSysMessage( who, "You feel "+chance_text+" chance of success.", FONT_NORMAL, TEXT_COLOR );
+	Sleep(1);
+	var final_hp := 1.0;
+	if (item.hp != item.maxhp)
+		final_hp := item.hp/item.maxhp;
+	endif
+	if (randomint(100) < improve_chance)
+		item.quality += 0.1;
+		SendSysMessage( who, "Success!", FONT_BOLD, 94 );
+		SendSysMessage( who, "The "+refiner_type+" melds with your item and improves it's quality.", FONT_NORMAL, 94 );
+		PlayObjectCenteredEffectEx(who, 0x375A, 255, 10, item.color,5);
+	else
+		SendSysMessage( who, "Failure!", FONT_BOLD, 2595 );
+		var failure := randomint(100);
+
+		if (failure < DESTROY_CHANCE)
+			SendSysMessage( who, "The "+refiner_type+" completely destroys your item!", FONT_BOLD, 2595 );
+			DestroyItem(item);
+		elseif (failure < LARGE_FAIL_CHANCE+DESTROY_CHANCE)
+			SendSysMessage( who, "The "+refiner_type+" degrades your item!", FONT_NORMAL, 2595 );
+			item.quality -= 0.2;
+		elseif (failure < SMALL_FAIL_CHANCE+LARGE_FAIL_CHANCE+DESTROY_CHANCE)
+			SendSysMessage( who, "The "+refiner_type+" slightly degrades your item!", FONT_NORMAL, 2595 );
+			item.quality -= 0.1;
+		else
+			SendSysMessage( who, "The "+refiner_type+" flakes off and doesn't affect your item.", FONT_NORMAL, 2595 );
+		endif
+	endif
+	item.hp := Cint(item.maxhp * final_hp);
+
+	IncRevision(item);
+	DestroyItem(refiner);
+	ReleaseItem(item);
+
+endprogram

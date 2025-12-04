@@ -1,0 +1,32 @@
+use uo;
+
+program Bardic_Boulders_Target(parms)
+
+	var who := parms[1];
+	var msg := parms[2];
+
+	// This means teh cursor is still up
+	if (GetObjProperty(who, "#BoulderSelection"))
+		return 0;
+	endif
+
+	SetObjProperty(who, "#BoulderSelection", 1);
+	if (msg)
+		SendSysMessage(who, "Select a target to unleash the bardic boulders upon.");
+	endif
+	var what := Target(who, TGTOPT_CHECK_LOS+TGTOPT_HARMFUL);
+
+	// Checks against the target and the player
+	if (!GetObjProperty(who, "#BoulderSelection"))
+		return 0;
+	elseif (!what.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "You must target a mobile for boulders to hit.");
+	elseif (what.dead || what.hidden || what.concealed)
+		SendSysMessage(who, "Cancelled.");
+	else
+		SetObjProperty(who, "#BoulderTarget", what.serial);
+	endif
+
+	EraseObjProperty(who, "#BoulderSelection");
+
+endprogram

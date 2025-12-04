@@ -1,0 +1,37 @@
+use uo;
+use os;
+
+include "include/dotempmods";
+include ":combat:hitscriptinc";
+
+program thiefpoisonhit(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+		if (lower(TypeOf(attacker)) == "array")
+			defender 	:= attacker[2];
+			weapon 	:= attacker[3];
+			armor 	:= attacker[4];
+			basedamage := attacker[5];
+			rawdamage	:= attacker[6];
+			attacker 	:= attacker[1];
+		endif
+		
+	var poison := GetObjProperty( weapon , "Poisonlvl" );
+	var targ;
+
+	if( GetObjProperty( weapon , "Cursed" ) )
+		targ := attacker;
+	else
+		targ := defender;
+	endif
+
+	if( GetObjProperty( weapon , "Thiefpermweapon") )
+		if((!attacker.npctemplate) && (!defender.npctemplate))
+				poison := poison +1;
+		endif
+	endif
+
+	SetPoison( targ , poison , "You have been poisoned by " + attacker.name);
+	rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
+	DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
+	
+endprogram

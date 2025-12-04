@@ -1,0 +1,10 @@
+use uo;
+
+program destroy_multi( who )
+	if(!who.multi)
+		var targ := Targetcoordinates( who ).multi;
+		DestroyMulti(targ);
+	else
+		DestroyMulti( who.multi );
+	endif
+endprogram

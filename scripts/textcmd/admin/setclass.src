@@ -1,0 +1,55 @@
+use uo;
+use os;
+use polsys;
+
+include ":gumps:include/gumps";
+include "include/classes";
+include "include/attributes";
+
+program textcmd_class(who, lvl)
+
+	if (!lvl)
+		lvl := 1;
+	endif
+
+	SendSysMessage(who, "Who do you want to make spec "+lvl+"?");
+	var targ := Target( who );
+	if( !targ )
+		return;
+	endif
+
+	var gump := GFCreateGump(15, 15, 200, 400);
+	GFResizePic(gump, 15, 15, 9250, 200, 400);
+	GFTextLine(gump, 60, 30, 53, "--Choose a Class--");
+
+	var y := 60;
+	foreach thing in GetClasseIds()
+		GFTextLine(gump, 55, y, 67, GetClasseName( thing ));
+		GFAddButton(gump, 35, y+5, 2362, 2361, 1, _thing_iter);
+		y := y + 20;
+	endforeach
+
+	var result := GFSendGump(who, gump);
+
+	if (result[0] < 1)
+		SendSysMessage(who, "Canceled.");
+		return 0;
+	endif
+
+	var classid := GetClasseIds()[result[0]];
+
+	var i;
+	for (i := 0; i < 49; i := i + 1)
+		SetBaseSkill(targ, i, 0);
+	endfor
+
+	foreach skill in GetClasseSkills( classid )
+		var skillamount := 60 + (CInt(lvl) * 15);
+		SetBaseSkill(targ, skill, skillamount);
+	endforeach
+
+	AssignClasse( targ );
+	IncRevision(targ);
+	SendSysMessage(targ, "You are now a level " + lvl + " " + GetClasseName( classid ), 3, 53);
+
+endprogram

@@ -1,0 +1,20 @@
+use uo;
+use os;
+use util;
+
+include ":ArtifactSystem:artifact";
+
+program dblclick_artifactbox( player, box )
+
+	var item := getItemArtifactBox();
+	MoveItemToContainer(item, player.backpack);
+	DestroyItem( box );
+	
+	if (item)
+		SendSysMessage(player, "It seems you have found something very rare !", FONT_NORMAL, ARTIFACT_FONT_COLOR);
+		SendSysMessage(player, "You take an item out of the box and place it in your backpack", FONT_NORMAL, ARTIFACT_FONT_COLOR);
+		SendSysMessage(player, "The Strange box vanishes", FONT_NORMAL,	ARTIFACT_FONT_COLOR);
+	else
+		SendSysMessage(player, "Hmm, the box was empty.", FONT_NORMAL, ARTIFACT_FONT_COLOR);
+	endif
+endprogram

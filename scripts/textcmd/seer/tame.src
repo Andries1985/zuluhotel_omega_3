@@ -1,0 +1,23 @@
+use uo;
+
+include ":staff:include/staff";
+include "include/managers";
+
+program tame( who )
+
+    SendSysmessage( who , "Tame what?" );
+    var npc := Target( who );
+
+    WarnManagerOfNpcDeath(npc);
+    SetObjProperty( npc , "master" , who.serial );
+    SetObjProperty( npc , "script" , npc.script );
+	EraseObjProperty( npc, "SpawnPoint" );
+	EraseObjProperty( npc, "Anchor" );
+    // hmm, 'script' could be read from npcdesc to restore..
+    
+    npc.setmaster( who );
+
+    npc.script := "tamed";
+    RestartScript(npc);
+	LogCommand(who, GetProcess(GetPid()).name, npc.name+"/"+npc.serial);
+endprogram

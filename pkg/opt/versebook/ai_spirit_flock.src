@@ -1,0 +1,249 @@
+use npc;
+use os;
+use uo;
+
+include "include/eventid";
+include "include/classes";
+include "include/npcbackpacks";
+include "include/npccast";
+include "include/randname";
+include "include/string";
+include "include/rituals";
+include "include/client";
+include "include/spelldata";
+include "ai/setup/modsetup";
+include "include/random";
+include "include/attributes";
+include ":versebook:include/versefunctions";
+
+const HALT_THRESHOLD := 10;
+Const MOVING_EFFECT_FIREBALL  := 0x36D4;
+
+var me := Self();
+var master := me.master;
+
+var following := 0;
+var staying := 0;
+var nextwatch := ReadGameClock();
+var range := GetObjProperty(me, "Range");
+
+
+program Spirit_Flock()
+
+	EnableEvents( SYSEVENT_SPEECH, 12 );
+	EnableEvents( SYSEVENT_ENGAGED + SYSEVENT_DAMAGED );
+	EnableEvents( SYSEVENT_DOUBLECLICKED );
+	EnableEvents( SYSEVENT_ITEM_GIVEN );
+	EnableEvents( EVID_PEACEMADE );
+
+	SetObjProperty(me, "serial", me.serial);
+
+	MainAILoop();
+
+endprogram
+
+function MainAILoop()
+
+	var ev;
+	var evtext;
+	var mename := lower(me.name);
+	var warnings := 0;
+
+	nextwatch := ReadGameClock();
+	var waittime := 120;
+
+	var loops := 60;
+	var firstwander := 1;
+
+	if (master.opponent && SmartSongAoE(master, master.opponent))
+		fight(master.opponent);
+	else
+		foreach mobile in ListMobilesInLineOfSight( master, range )
+			if ((mobile.opponent.serial == master.serial) && SmartSongAoE(master, mobile))
+				fight(mobile);
+			elseif ((mobile.master.serial == master.serial) && mobile.opponent && SmartSongAoE(master,mobile.opponent))
+				fight(mobile.opponent);
+			endif
+		endforeach
+	endif
+	
+	RunCircle();
+
+endfunction
+
+function RunCircle()
+
+	var dist := 4;
+	var coord;
+	var coordstart := RandomInt(4)+1;
+	var starttime;
+	var coords := {{master.x+dist, master.y}, {master.x, master.y+dist}, {master.x-dist, master.y}, {master.x, master.y-dist}};
+
+	if (Distance(me, master) != dist )
+		starttime := ReadGameClock();
+		coord := coords[coordstart];
+		repeat
+			RunTowardLocation( coord[1], coord[2] );
+		until(Distance(me, master) == dist || (starttime + 4 < ReadGameClock()) || me.x == coord[1] && me.y == coord[2]);
+	endif
+
+	var i;
+	if (coordstart == 4)
+		i := 1;
+	else
+		i := coordstart+1;
+	endif
+
+	starttime := ReadGameClock();
+	repeat
+		RunTowardLocation(coords[i][1], coords[i][2]);
+		SetOpponent( 0 );
+		var ev := os::wait_for_event( 0);
+		if ( ev )
+			case (ev.type)
+				SYSEVENT_ENGAGED:
+				SYSEVENT_DAMAGED:
+					if (ev.source && Distance(ev.source, master) <= range && !me.opponent)
+						foreach goat in GetObjProperty(master, "#Flock")
+							if (!goat)
+								continue;
+							endif
+							goat := SystemFindObjectBySerial(goat);
+							var eve := struct;
+							eve.+type := SYSEVENT_DAMAGED;
+							eve.+source := ev.source;
+							eve.+target := ev.source;
+							SendEvent( goat , eve );
+						endforeach
+						Fight( ev.source );
+					endif
+			endcase
+		endif
+		
+		if (master.opponent)
+			fight(master.opponent);
+		else
+			foreach mobile in ListMobilesInLineOfSight( master, range )
+				if (mobile.opponent.serial == master.serial)
+					fight(mobile);
+				endif
+			endforeach
+		endif
+		
+		if ((me.x == coords[i][1] && me.y == coords[i][2]) || starttime+3 < ReadGameClock() )
+			if (i == 4)
+				i := 1;
+			else 
+				i := i + 1;
+			endif
+			starttime := ReadGameClock();
+		endif
+		
+	until (i == 0 || !GetObjProperty(master, "#Flock"));
+	
+	ApplyRawDamage(me, GetMaxHP(me)+1);
+
+endfunction
+
+function Fight( opponent )
+
+	var targetname := opponent.name;
+	var oldfollowing := following;
+
+	SetDexterityMod(me, 0);
+	following := 0;
+
+	if ( (opponent.serial == me.serial) or (opponent.serial == master.serial) )
+		return;
+	endif
+
+	TurnToward( opponent );
+	SetOpponent( opponent );
+
+	var ev;
+
+	var loops := 0;
+	var waittime := 0;
+
+	while ( (opponent) and
+	        not (opponent.dead or opponent.hidden or opponent.concealed) and
+	        (distance(me,opponent) < 20) )
+
+		if (Distance(opponent, master) > range)
+			return RunCircle();
+		endif
+
+		if (!CloseDistance( opponent ) )
+			loops := loops + 1;
+			waittime := 0;
+		else
+			loops := 0;
+			waittime := 1;
+		endif
+
+		ev := wait_for_event( waittime );
+
+		case (ev.type)
+			EVID_ALL_ATTACK_CMD:
+				opponent := ev.target;
+				SetOpponent( ev.target );
+			EVID_ALL_FOLLOW_CMD:
+				following := ev.target;
+			SYSEVENT_ENGAGED:
+			SYSEVENT_DAMAGED:
+				if (ev.source)
+					if ( (ev.source.serial != opponent.serial) and (ev.source.serial != master.serial) and
+					     (ev.source.serial != me.serial) )
+						if( (!CheckLineOfSight( me, opponent )) or (Random(8)==1) )
+							opponent := ev.source;
+							SetOpponent( opponent );
+						endif
+					endif
+					turntoward( opponent );
+				endif
+		endcase
+
+		
+		if (following)
+			SetWarMode( 0 );
+			opponent := 0;
+			staying := 0;
+			return;
+		endif
+
+	endwhile
+
+	SetWarMode( 0 );
+	opponent := 0;
+
+	foreach mob in ListHostiles( me, 9, 0 )
+		fight(mob);
+		return;
+	endforeach
+
+	if ( distance(me, master) < 8 )
+		following := oldfollowing;
+	else
+		following := 0;
+		staying := 0;
+	endif
+
+endfunction
+
+function CloseDistance( opponent )
+	
+	var sleepdelay := 300 - ((GetDexterity(me)) * 1.5);
+	if (sleepdelay < 0) sleepdelay := 0; endif
+
+	if( Distance( me, opponent ) <= 1)
+		return 1;
+	else
+		if(!RunToward( opponent ))
+			Sleepms(sleepdelay);
+			return 1;
+		else
+			return 0;
+		endif
+	endif
+
+endfunction

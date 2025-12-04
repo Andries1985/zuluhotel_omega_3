@@ -1,0 +1,74 @@
+use uo;
+
+include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
+include "include/NameChecker";
+
+program SendNameChangeGump(who, msg)
+
+if (Lower(TypeOf(who)) == "array")
+	msg := who[2];
+	who := who[1];
+endif
+
+who.paralyzed := 1;
+var help := "";
+
+case (msg)
+"blacklist": help := "<BASEFONT COLOR=RED>Error: <BASEFONT COLOR=BLACK>The name you chose is blacklisted, please choose another.<br><br>";
+"too short": help := "<BASEFONT COLOR=RED>Error: <BASEFONT COLOR=BLACK>The name you chose is too short, please choose another.<br><br>";
+"too long": help := "<BASEFONT COLOR=RED>Error: <BASEFONT COLOR=BLACK>The name you chose is too long, please choose another.<br><br>";
+"duplicate": help := "<BASEFONT COLOR=RED>Error: <BASEFONT COLOR=BLACK>The name you chose is taken, please choose another.<br><br>";
+"illegal characters": help := "<BASEFONT COLOR=RED>Error: <BASEFONT COLOR=BLACK>The name you chose contains illegal characters, please choose another.<br><br>";
+endcase
+
+if (GetObjProperty(who, "Converted") == 1 && TypeOf(msg) != "String")
+	help := "You now have the chance to change your name!<br><br>";
+endif
+
+var gump := GFCreateGump(20, 20, 300, 300);
+// The main gump screen
+GFResizePic(gump, 20, 20, 9250, 300, 300);
+
+// The area background gumps
+GFResizePic(gump, 95, 32, 9200, 145, 22);
+
+GFMovable(gump, 0);
+GFDisposable(gump, 0);
+GFClosable(gump, 0);
+
+GFTextLine(gump, 110, 32, 67, "Name Change Menu");
+
+
+GFTextLine(gump, 50, 75, 67, "Enter a name:");
+
+GFTextEntry(gump, 150, 75, 160, 20, 53, who.name, 5);
+
+help := help+"* Names can be no longer than 19 characters.<br>* Names can be no shorter than 3 characters.<br>* Only letters are acceptable.";
+GFHTMLArea(gump, 40, 140, 260, 160, help, 1, 1);
+GFAddButton(gump, 140, 110, 2128, 2129, 1, 100);
+
+var data:= GFSendGump(who, gump);
+
+var newname := GFExtractData(data, 5);
+
+var valid := CheckName(newname, who);
+
+if (valid[1] == 0)	
+	if (who.connected)
+		start_script("misc/namechanger", {who, valid[2]}); 
+	endif
+	return 0;
+endif
+
+who.paralyzed := 0;
+who.concealed := 0;
+
+if (newname == who.name);
+	SendSysMessage(who, "Your name is unchanged.", 3, 67);
+else
+	who.name := newname;
+	SendSysMessage(who, "Your name has been changed to "+who.name+".", 3, 67);
+endif
+
+endprogram

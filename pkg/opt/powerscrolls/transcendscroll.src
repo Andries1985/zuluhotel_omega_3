@@ -1,0 +1,157 @@
+use uo;
+
+include "include/attributes";
+include ":gumps:include/gumps";
+include "include/itemutil";
+
+Program tss( who, scroll) 
+
+	if (!scroll.amount)
+		return;
+    endif
+
+	if( !ReserveItem( scroll ) )
+		return;
+	endif
+	
+	if( !Accessible( who , scroll ) )
+		SendSysMessage( who , "You can't reach that." );
+		return;
+	endif
+
+	if( !IsInContainer( who.backpack , scroll ) )
+		SendSysmessage( who, "That item has to be in your backpack." );
+		return;
+	endif
+
+	var gump := GFCreateGump(20, 20, 2, 530);
+
+	// The main gump screen
+	GFResizePic(gump, 20, 20, 9250,720, 530);
+	GFResizePic(gump, 30, 30, 9350, 700, 510);
+	GFResizePic(gump, 260, 20, 9250,240, 40);
+	GFResizePic(gump, 270, 30, 9350, 220, 20);
+	GFTextLine(gump, 310, 30, 43, "Transcend Skills Menu");
+	var y := 70;
+	var line := 17;
+	var i := 0;
+	var x := 100;
+	var name;
+	var colour := 999;
+	var count := 1;
+	var skill;
+	repeat
+	if(count != 49)
+		name := GetAttributeIdBySkillId( count );
+		skill := GetSkillIdByAttributeId( name );
+		skill := CDbl(GetBaseSkillBaseValue( who, skill )/10.0);
+	endif
+	if (count == 49)
+		name := ATTRIBUTEID_ALCHEMY;
+		skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_ALCHEMY )/10.0);
+	endif
+
+	if (i >= line)
+		x := x + 230;
+		i := 0;
+		y := 70;
+	endif
+
+	colour := 67;
+	GFAddButton(gump, x-40, y, 9026, 9027, 1, count); 
+
+	GFTextLine(gump, x, y, colour, skill);
+	GFTextLine(gump, x+45, y, colour, name);
+	y := y + 26;
+	i := i + 1;
+	count := count + 1;
+	until (count >= SKILLID_MAX+1);
+
+	GFResizePic(gump, 470, 460, 9350, 260, 90);
+	GFTextLine(gump, 485, 460, 43, "Which skill do you want to transcend?");
+
+	var result := GFSendGump(who, gump);
+	var counter := 0, amount;
+	if(counter == 0)
+		amount := checkAmount(who, result[0]);
+		if(amount == 0)
+			SendSysMessage(who, "You can't transcend that skill any higher!");
+			return;
+		endif
+
+		if(result[0] == 0)	
+			SendSysMessage(who, "Cancelled.");
+			return;
+		endif
+
+		var des := SubtractAmount(scroll, 1);
+		if(!des)
+			SendSysMessage(who, "Cancelled.");
+			return;
+		endif		
+		
+		if(result[0] != 0 and result[0] != 100 and result[0] != 999 and result[0] == 49)
+			SetBaseSkillBaseValue(who, 0, amount);
+		endif
+
+		if(result[0] != 0 and result[0] != 100 and result[0] != 999 and result[0] != 49)
+			SetBaseSkillBaseValue(who, result[0], amount);
+		endif
+		counter := 1;
+	endif
+
+
+endprogram
+
+
+function checkAmount( who, skill )
+	var amount, value;
+	var matrix := GetObjProperty(who, "pScrollMatrix");
+	if(skill == 49)
+		skill := 0;
+	endif
+	var base := GetBaseSkillBaseValue(who, skill);
+	if(base == 1500)
+		return 0;
+	endif
+	if(base < 500)
+		amount := 200;
+	elseif(base < 750)
+		amount := 150;
+	elseif(base < 900)
+		amount := 100;
+	elseif(base < 1050)
+		amount := 50;
+	elseif(base < 1200)
+		amount := 20;
+	elseif(base < 1350)
+		amount := 10;
+	elseif(base < 1450)
+		amount := 5;
+	else
+		amount := 1;
+	endif
+	
+	value := base+amount;
+	if(matrix)
+		var pscrollSkillCap := 130+matrix[skill];
+		if(skill == 0)
+			pscrollSkillCap := 130+matrix[49];
+		endif
+		if(pscrollSkillCap > 150);
+			pscrollSkillCap := 150;
+		endif
+		if(base == (pscrollSkillCap*10))
+			return 0;
+		elseif(value > (pscrollSkillCap*10))
+			value := pscrollSkillCap*10;
+		endif
+	else
+		if(base == 1300)
+			return 0;
+		elseif(value > 1300)
+			value := 1300;
+		endif
+	endif
+	return value;
+endfunction

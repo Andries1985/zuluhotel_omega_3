@@ -1,0 +1,121 @@
+//Edited Sept 6, 2024
+
+use uo;
+
+include "include/client";
+include "include/random";
+include "include/areas";
+
+program frenziedeggs( who, item )
+
+
+var secclock:=ReadGameClock();
+var lasthatch :=CInt(GetObjProperty(who, "#LastHatch"));
+
+if(!ReserveItem(item)) 
+	return 0; 
+endif
+
+	if ( secclock< lasthatch)
+		SendSysMessage( who, "You have to wait " + (lasthatch-secclock) + " seconds to hatch another egg.");
+		return 0;
+	endif
+
+
+	if (IsInSafeArea(who))
+		SendSysMessage( who, "You can't hatch eggs in this area.");
+		return 0;
+	endif
+
+	if (IsInGuardedArea(who))
+		SendSysMessage( who, "You can't hatch eggs in this area.");
+		return 0;
+	endif
+
+	if( IsInNOPKArea(who) )
+		SendSysMessage( who, "You can't hatch eggs in this area.");
+		return 0;
+	endif
+		
+
+	SendSysMessage( who, "The egg begins to move..." );
+
+	var ostard;
+	var masteralone := Random(100);
+
+	case( Random(35) )
+		0:	ostard := "windfrenziedostard";
+		1:	ostard := "amethystfrenziedostard";
+		2:	ostard := "bloodfrenziedostard";
+		3:	ostard := "necrofrenziedostard";
+		4:	ostard := "icefrenziedostard";
+		5:	
+		6:	ostard := "earthfrenziedostard";
+		7:	ostard := "goldenfrenziedostard";
+		8:	ostard := "obsidianfrenziedostard";
+		9:	ostard := "junglefrenziedostard";
+		10:	ostard := "plainsfrenziedostard";
+		11:	ostard := "phasedfrenziedostard";
+		12:	ostard := "mistfrenziedostard";
+		13:	ostard := "mountainfrenziedostard";
+		14:
+		15:	ostard := "plumfrenziedostard";
+		16:	ostard := "swampfrenziedostard";
+		17:	ostard := "sapphirefrenziedostard";
+		18:	ostard := "highlandfrenziedostard";
+		19:	ostard := "terrorfrenziedostard";
+		20:	ostard := "shadowfrenziedostard";
+		21:	ostard := "undeadfrenziedostard";
+		22:	ostard := "valleyfrenziedostard";
+		23:	ostard := "waterfrenziedostard";
+		24:	ostard := "stonefrenziedostard";
+		25:	if( Random(15) < 1)
+				ostard := "ifrenziedostard";
+			else
+				ostard := "frenziedostard";
+			endif
+		26:	ostard := "emeraldfrenziedostard";
+		27:
+		28:	ostard := "rubyfrenziedostard";
+		29:	if( Random(5) < 1)
+				ostard := "dfrenziedostard";
+			else
+				ostard := "frenziedostard";
+			endif
+		30:	ostard := "tropicalfrenziedostard";
+		31:	ostard := "snowfrenziedostard";
+		32:
+		33:	ostard := "firefrenziedostard";
+		34:	ostard := "heavenlyfrenziedostard";
+		35: if( Random(100) < 1)
+				ostard := "rainbowfrenziedostard";
+			else
+				ostard := "frenziedostard";
+			endif
+	endcase
+
+	subtractamount( item, 1 );
+
+	var newpet := CreateNpcFromTemplate( ostard, who.x, who.y, who.z, 1, who.realm );
+
+	if( !newpet )
+		SendSysMessage( who, "The poor creature died just after hatching." );
+		return;
+	endif
+	
+	if( masteralone < 75 )
+		SendSysMessage( who, "A baby " + newpet.name + " appears and accepts you as his master!" );
+		SetObjProperty( newpet, "master", who.serial );
+		SetObjProperty( newpet, "script", newpet.script );
+		newpet.setmaster( who );
+		newpet.script := "tamed";
+		RestartScript( newpet );
+	else
+		SendSysMessage( who, "A baby " + newpet.name + " appears." );
+	endif
+
+	// Toadstool - Set hatched info on mob as a string: "players serials, x y z coords of release"
+	SetObjProperty(newpet, "HatchedBy", "Player: "+who.serial+" XYZ: "+newpet.x+" "+newpet.y+" "+newpet.z+" "+newpet.realm);
+	SetObjProperty(who, "#LastHatch", ReadGameClock()+30);
+
+endprogram
