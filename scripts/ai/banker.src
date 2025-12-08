@@ -9,10 +9,10 @@ include "include/eventid";
 include "include/findcity";
 include ":mdgumps:gumps";
 include ":mdgumps:confirmationSizable";
-include "../pkg/items/currency/include/currency";
-include "../pkg/items/currency/include/itemdesc";
+include ":currency:currency";
+include ":currency:itemdesc";
 include ":accounts:accounts";
-include "../pkg/items/containers/include/storageAreas";
+include ":containers:storageAreas";
 include "include/randname";
 include "include/npcboosts";
 
@@ -467,7 +467,8 @@ endfunction
 function ConvertSilver(who, me, currency := 0x0EF0)
 
 	//var box := FindBankBox( who );  
-	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );var stuff := EnumerateItemsInContainer(box);
+	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	var stuff := EnumerateItemsInContainer(box);
 	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EED;

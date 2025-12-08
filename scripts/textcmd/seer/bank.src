@@ -1,15 +1,18 @@
 
 Use uo;
 include ":staff:include/staff";
-include "util/bank";
+//include "util/bank";
+include ":containers:storageAreas";
 
 program open_bank( who )
 
-             var bankbox;
+            //var bankbox;
+            var bank_region := CP_DEFAULT_AREA;
+            var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
             
-             bankbox := FindBankBox( who );
+            //bankbox := FindBankBox( who );
 
-             SendOpenSpecialContainer( who, bankbox );
+            SendOpenSpecialContainer( who, bankbox );
     
 endprogram
 

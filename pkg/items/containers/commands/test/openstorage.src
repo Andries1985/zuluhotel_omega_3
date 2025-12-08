@@ -2,7 +2,7 @@ use uo;
 use os;
 
 include ":mdgumps:requestGump";
-include "../pkg/items/containers/include/storageAreas";
+include ":containers:storageAreas";
 
 program command_OpenStorage( mobile )
 

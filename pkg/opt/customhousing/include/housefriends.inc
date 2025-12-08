@@ -2,7 +2,7 @@
 //include ":customhousing:house";
 include "house";
 include "housefriends";
-include "../pkg/utils/mdgumps/include/yesNo";
+include ":mdgumps:yesNo";
 
 //This was split off from the main house.inc file simply for neatness
 

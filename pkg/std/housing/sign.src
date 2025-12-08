@@ -359,7 +359,7 @@ program textcmd_sign( who , sign )
 						endif
 
 						if (house.objtype==0x608D)
-							foreach item in ListItemsNearLocation( sign.x, sign.y, 0, 8, sign.realm )
+							foreach item in ListItemsNearLocation( sign.x, sign.y, LIST_IGNORE_Z, 8, sign.realm )
 								if((item.objtype==0x177d) or (item.objtype==0xb41) or (item.objtype==0xb42))
 									destroyitem(item);
 								endif
@@ -381,6 +381,22 @@ program textcmd_sign( who , sign )
 						else
 							RemoveHouseFromCharacter(GetObjProperty(house, "ownerserial"), house.serial);
 						endif
+
+						var packkeyserial := GetObjProperty( house, "packkeyserial");
+
+						var bank := FindStorageArea( "Tamed Storage" );
+						var bank_obj_name := "Bankbox  " + hex(packkeyserial);
+						var keyring := FindRootItemInStorageArea( bank, bank_obj_name );
+						Print("PackKey Serial : " + packkeyserial);
+
+						foreach otherkey in EnumerateItemsInContainer(keyring)
+							MoveItemToContainer(otherkey, who.backpack);
+						endforeach
+
+						var packkeylockid := CInt(GetObjProperty( house, "packkey"));
+						Print("PackKey LockID : " + packkeylockid);
+						var key := FindKeyByLockID(who, packkeylockid);
+						DestroyItem( key );
 						DestroyMulti( house );
 					endif
 				else
@@ -1877,5 +1893,38 @@ function GetMaxProps( house )
 		0xA434: SetObjProperty( house , "maxnumlockdowns" , 1300 ); // customhouse68
 		        SetObjProperty( house , "maxnumsecure" , 13 );				
 	endcase
+
+endfunction
+
+function FindKeyByLockID(who, lockid)
+
+	foreach item in EnumerateItemsInContainer( who.backpack )
+		if (item.graphic in KEYTYPES)
+			if (GetObjProperty( item, "lockid" ) == lockid)
+				return item;
+			endif
+		endif
+	endforeach
+	
+	return 0;
+
+endfunction
+
+function FindMyPack(myserial)
+
+	var bank := FindStorageArea( "Tamed Storage" );
+    if (!bank)
+        bank := CreateStorageArea( "Tamed Storage" );
+    endif
+
+    var bank_obj_name := "Bankbox  " + hex(myserial);
+
+    var bankbox := FindRootItemInStorageArea( bank, bank_obj_name );
+
+    if (!bankbox)
+        bankbox := CreateRootItemInStorageArea(bank, bank_obj_name, UOBJ_BANKBOX  );
+    endif
+    
+    return bankbox;
 
 endfunction

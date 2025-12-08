@@ -5,9 +5,10 @@ use uo;
 use os;
 
 include "util/key";
-include "util/bank";
+//include "util/bank";
 include "include/objtype";
 include "include/multicommands";
+include ":containers:storageAreas";
 
 program useshipdeed( character, deed )
 
@@ -155,7 +156,9 @@ function ShipFacingFlags( facing )
 endfunction
 
 function CreateShipKeysAndBuiltDeed( character, shiptype, x, y, z, realm, flags )
-  var bankbox := FindBankBox( character );
+	var bank_region := CP_DEFAULT_AREA;
+	var bankbox := CP_GetStorageContainerForMobile( character, bank_region, CP_CREATE );
+  //var bankbox := FindBankBox( character );
   /*var packkey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
   if (!packkey)
 	PrintTextAbovePrivate( character, "My backpack is too full!", character );

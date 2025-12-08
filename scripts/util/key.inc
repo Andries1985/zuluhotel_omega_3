@@ -1,6 +1,11 @@
 /*
  * key.inc - key functions
  */
+
+use uo;
+use os;
+use storage;
+
 include "include/client";
 include "include/objtype";
 

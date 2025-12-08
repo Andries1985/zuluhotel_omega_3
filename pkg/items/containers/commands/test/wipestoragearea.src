@@ -2,7 +2,7 @@ use uo;
 use os;
 use file;
 use storage;
-
+ 
 include ":mdgumps:gumps";
 
 program wipe_storage_area( mobile )

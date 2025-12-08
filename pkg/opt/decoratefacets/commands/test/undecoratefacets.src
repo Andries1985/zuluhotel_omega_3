@@ -30,7 +30,8 @@ program UndecorateFacets( who )
 
 	var selected_facets := {};	// An array that contains the facets to be undecorated.
 	var decorate_all := 0;
-	var Post_SA := YesNo( who, "Are you are using Post Stygian Abyss Maps?", "Yes", "No", 0, NOT_LOCALIZED );
+	//var Post_SA := YesNo( who, "Are you are using Post Stygian Abyss Maps?", "Yes", "No", 0, NOT_LOCALIZED );
+	var Post_SA := 1;
 
 	selected_facets := UnecorateFacetsGump ( who, decorate_all );
 	foreach facet in selected_facets

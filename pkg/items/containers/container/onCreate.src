@@ -8,7 +8,7 @@
 use uo;
 use util;
 
-include "../pkg/items/containers/include/containers";
+include ":containers:containers";
 //include ":keys:key";
 
 program OnCreateContainer( item )

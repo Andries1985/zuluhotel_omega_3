@@ -24,10 +24,12 @@ use uo;
 use os;
 
 include "util/key";
-include "util/bank";
+//include "util/bank";
 include "include/objtype";
-include "include/checkcity";
+//include "include/checkcity";
 include "utility";
+include "include/findcity";
+include ":containers:storageAreas";
 
 Const UOBJECT_DOORS_START := 0x0675;
 Const UOBJECT_DOORS_END   := 0x06f4;
@@ -72,6 +74,45 @@ function Buildhouse( character, deed )
     var where := TargetMultiPlacement( character, housetype );
     if (!where) return; endif
 
+    var wherenw;
+    wherenw.x := where.x - 16;
+    wherenw.y := where.y - 16;
+    var wherene;
+    wherene.x := where.x + 16;
+    wherene.y := where.y - 16;
+    var wheresw;
+    wheresw.x := where.x - 16;
+    wheresw.y := where.y + 16;
+    var wherese;
+    wherese.x := where.x + 16;
+    wherese.y := where.y - 16;
+
+    if (IsInsideCity(character) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("character1");
+        return;
+    elseif (IsInsideCity(where) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("Where");
+        return;
+   elseif (IsInsideCity(wherenw) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("wherenw");
+        return;
+    elseif (IsInsideCity(wherene) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("wherene");
+        return;
+    elseif (IsInsideCity(wheresw) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("wheresw");
+        return;
+   elseif (IsInsideCity(wherese) == 1)
+        PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", character );
+        Print("wherese");
+        return;
+    endif
+
 	//var antigate := ListItemsNearLocation(where.x, where.y, where.z, 50, where.realm);
 	var antihouse :=  ListObjectsInBox( where.x-25, where.y-25, where.z-25, where.x+25,where.y+25,where.z+25, where.realm );
 	foreach item in antihouse
@@ -89,7 +130,7 @@ function Buildhouse( character, deed )
 		endif
 	endforeach
 
-    var landtype := hex(GetMapInfo( where.x, where.y, where.realm ).landtile);
+    var landtype := Hex(GetMapInfo( where.x, where.y, where.realm ).landtile);
 
     if ((landtype>=0x9 and landtype<=0x15) or (landtype>=0x150 and landtype<=0x15c))
         PrintTextAbovePrivate( deed, "You can't build on farmland.", character );
@@ -112,27 +153,6 @@ function Buildhouse( character, deed )
         return;
     endif
 
-    if (CheckCity(character)==1)
-        PrintTextAbovePrivate( deed, "You can't build in cities.", character );
-        return;
-    endif
-
-    // TODO: Add the restrictions for the other facets.
-    if(character.realm == "britannia")
-        if(character.cmdlevel < 4)
-            if(where.x >= 5120)
-                if(where.x <= 7167)
-                    if(where.y >= 1)
-                        if(where.y <= 2299)
-                            PrintTextAbovePrivate( deed, "You can't build here.", character );
-                            return;
-                        endif
-                    endif
-                endif
-            endif
-        endif
-    endif
-	
     // try to create the house
     set_critical( 1 );
 
@@ -150,6 +170,9 @@ function Buildhouse( character, deed )
     var lockid := AllocLockId();
     SetObjProperty( created.packkey, "lockid", lockid );
     SetObjProperty( created.bankkey, "lockid", lockid );
+    SetObjProperty( created.house, "packkey", lockid);
+     SetObjProperty( created.house, "packkeyserial", created.packkey.serial);
+    SetObjProperty( created.house, "bankkey", lockid);
 
     var logdoor, item;
 
@@ -282,7 +305,9 @@ endfunction
 //
 
 function CreatehouseKeysAndBuiltDeed( character, housetype, where, deed )
-    var bankbox := FindBankBox( character );
+	var bank_region := CP_DEFAULT_AREA;
+    //var bankbox := FindBankBox( character );
+    var bankbox := CP_GetStorageContainerForMobile( character, bank_region, CP_CREATE );
     var x:=where.x, y:=where.y, z:=where.z;
     var realm := where.realm;
    

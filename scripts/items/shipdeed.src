@@ -26,8 +26,9 @@ use uo;
 use os;
 
 include "util/key";
-include "util/bank";
+//include "util/bank";
 include "include/objtype";
+include ":containers:storageAreas";
 
 program useshipdeed( character, deed )
     if (DeedAlreadyBuiltFrom( deed ))
@@ -130,7 +131,9 @@ endfunction
 //
 
 function CreateShipKeysAndBuiltDeed( character, shiptype, x, y, z, realm )
-    var bankbox := FindBankBox( character );
+    //var bankbox := FindBankBox( character );
+    var bank_region := CP_DEFAULT_AREA;
+	var bankbox := CP_GetStorageContainerForMobile( character, bank_region, CP_CREATE );
 
     var packkey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
     if (!packkey)

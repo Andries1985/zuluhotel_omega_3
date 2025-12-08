@@ -6,7 +6,7 @@
 use uo;
 use cliloc;
 
-include "../pkg/items/containers/include/checks";
+include ":containers:checks";
 //include "include/housing";
 
 program canInsert( mobile, container, move_type, unused inserttype, unused adding_item, unused existing_stack, unused amount_to_add )

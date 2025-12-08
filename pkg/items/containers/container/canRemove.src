@@ -6,8 +6,8 @@
 use uo;
 use cliloc;
 
-include "../pkg/items/containers/include/checks";
-include "../pkg/items/containers/include/canRemove";
+include ":containers:checks";
+include ":containers:canRemove";
 //include "include/housing";
 
 program canRemove( mobile, container, unused item, move_type )

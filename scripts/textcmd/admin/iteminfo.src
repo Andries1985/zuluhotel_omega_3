@@ -8,7 +8,7 @@ use cfgfile;
 use basic;
 use polsys;
 
-include "util/bank";
+//include "util/bank";
 include ":staff:include/staff";
 var layout := array( 
 

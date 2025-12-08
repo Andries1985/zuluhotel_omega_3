@@ -10,7 +10,7 @@ use uo;
 use os;
 use polsys;
 
-include "../pkg/items/containers/include/storageAreas";
+include ":containers:storageAreas";
 include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
 

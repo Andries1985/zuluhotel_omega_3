@@ -266,6 +266,7 @@ function CacheData( house )
 
 endfunction
 
+/*
 function Demolish(house, sign)
 
 	if (who.x<=sign.x+2 and who.x>=sign.x-2 and who.y<=sign.y+2 and who.y>=sign.y-2)
@@ -316,6 +317,7 @@ function Demolish(house, sign)
 	endforeach
 
 endfunction
+*/
 
 function InsideTent(who,house)
 

@@ -46,11 +46,11 @@ program use_key(character, key)
     endif
 
     if (key.objtype == KEYRING)
-	Use_KeyRing(character,key,thetarget);
-	return;
-    elseif (thetarget.serial == key.serial)
-	RenameKey( character, key );
-	return;
+		Use_KeyRing(character,key,thetarget);
+		return;
+		elseif (thetarget.serial == key.serial)
+		RenameKey( character, key );
+		return;
     endif
 
     var lockid := GetObjProperty( key, "lockid" );
@@ -106,7 +106,7 @@ function Use_KeyRing(character, key, thetarget)
 	var lockid := GetObjProperty( key, "lockid" );
 	var targetlockid := GetObjProperty( thetarget, "lockid" );
 	var insidering := FindMyPack(key.serial);
-
+	
 	//target the keyring to dump the contents all over your pack
 	if (key.serial == thetarget.serial)
 		PrintTextAbovePrivate( character, "You remove the keys from the ring.", character );
