@@ -9,7 +9,6 @@ include "include/eventid";
 include "include/myutil";
 include "include/client";
 include ":gumps:yesno";
-include "util/key";
 include "plankutil";
 include "include/random";
 include "include/res";
@@ -324,16 +323,16 @@ function DryDock(event)
 	if (!boat.tillerman.name)
 	  newboat.name := "a dry dock boat";
 	endif
-    var key := FindKey(me, boat.portplank);
+    //var key := FindKey(me, boat.portplank);
     if (boat.tillerman.name)
       newboat.name := boat.tillerman.name;
     endif
     if (!DestroyBoat(me))
 	  DestroyItem(newboat);
-	else
-	  if (key)
-        DestroyItem(key);
-      endif
+	//else
+	  //if (key)
+        //DestroyItem(key);
+      //endif
 	endif
   endif
 endfunction

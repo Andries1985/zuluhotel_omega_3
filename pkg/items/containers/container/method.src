@@ -4,7 +4,7 @@ use cfgfile;
 use polsys;
 
 include ":containers:containers";
-include ":currency:itemdesc";
+include ":itemUtils:itemdesc";
 
 program Install()
 	return 1;

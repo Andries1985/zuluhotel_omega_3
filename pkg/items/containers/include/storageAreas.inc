@@ -30,6 +30,7 @@ CONST CP_BANK_AREA              := "World Bank";
 CONST CP_DEFAULT_AREA           := "World Bank";
 CONST CP_KEYRING_AREA           := "Keyring Storage";
 CONST CP_MERCHANT_AREA          := "Merchant Storage";
+CONST CP_SNOOPING_AREA          := "Snooping Storage";
 
 CONST CP_DEFAULT_PREFIX         := "[Root Container] ";
 
@@ -52,7 +53,7 @@ var STORAGE_DEBUG	:= 1;
 
 function CP_ListStorageAreas()
 
-    return { CP_AUCTION_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_MERCHANT_AREA };
+    return { CP_AUCTION_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_MERCHANT_AREA, CP_SNOOPING_AREA };
 endfunction
 
 /*

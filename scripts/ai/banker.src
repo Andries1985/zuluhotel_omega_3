@@ -10,7 +10,7 @@ include "include/findcity";
 include ":mdgumps:gumps";
 include ":mdgumps:confirmationSizable";
 include ":currency:currency";
-include ":currency:itemdesc";
+include ":itemUtils:itemdesc";
 include ":accounts:accounts";
 include ":containers:storageAreas";
 include "include/randname";
@@ -291,7 +291,7 @@ function BuyBankersNote(who, me, currency)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
 	
 	if (currency == 0x0EEA)
 		created.color := 0x5DE;
@@ -459,7 +459,7 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
 	created.color := 1154;
 
 endfunction
@@ -526,7 +526,7 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
 	created.color := 0x501;
 
 endfunction

@@ -16,7 +16,8 @@ use cfgfile;
 use os;
 use math;
 
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "util/repair";
 include ":gumps:yesno";
 include "include/client";
@@ -486,7 +487,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 					Setobjproperty( theitem , "LockDifficulty", lockdiff );
 				endif
 				SetObjProperty(theitem, "lockable","1");
-				var lockid := AllocLockId();
+				var lockid := AllocateLockID();
 				theitem.locked := 1;
 				var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
 				SetObjProperty( thekey ,  "lockid" , lockid );

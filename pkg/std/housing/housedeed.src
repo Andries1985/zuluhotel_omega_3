@@ -23,7 +23,8 @@ use cfgfile;
 use uo;
 use os;
 
-include "util/key";
+//include "util/key";
+include ":keys:key";
 //include "util/bank";
 include "include/objtype";
 //include "include/checkcity";
@@ -167,7 +168,7 @@ function Buildhouse( character, deed )
     SetObjProperty( created.builtdeed, "builtserial", created.house.serial );
     AddHouseToCharacter(character, created.house.serial);	    
 
-    var lockid := AllocLockId();
+    var lockid := AllocateLockID();
     SetObjProperty( created.packkey, "lockid", lockid );
     SetObjProperty( created.bankkey, "lockid", lockid );
     SetObjProperty( created.house, "packkey", lockid);

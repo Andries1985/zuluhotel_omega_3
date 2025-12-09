@@ -2,7 +2,8 @@ use uo;
 use os;
 use cfgfile;
 
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "include/objtype";
 include ":gumps:yesno";
 include ":housing:utility";
@@ -195,7 +196,7 @@ program place_deed( who , deed )
 				Setobjproperty( the_item , "LockDifficulty", lockdiff );
 			endif
 			SetObjProperty( the_item , "lockable" , "1" );
-			var lockid := AllocLockId();
+			var lockid := AllocateLockID();
 			the_item.locked := 1;
 			var thekey := CreateItemInBackpack( who , UOBJ_COPPER_KEY ); 
 			SetObjProperty( thekey ,  "lockid" , lockid );

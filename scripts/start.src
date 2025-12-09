@@ -15,18 +15,26 @@ use os;
 
 include "include/utility";
 include "include/teleporters";
+include ":containers:storageAreas";
 
-include "util/bank";
+//include "util/bank";
 
 start_script("blockLogin");
 
 SetGlobalProperty("signs",{"NONE"});
 
-OpenWorldBank();
+foreach name in ( CP_ListStorageAreas() )
+    CP_GetStorageArea( name, CP_CREATE );
+    Print( "Initializing "+name+" Area." );
+endforeach
+
+Start_Script( "storageWipe" );
+Print( "Wiping merchant storage (NEEDS FIXING)" );
 
 SetGlobalProperty( "#NoNpcLooting" , 1 );
 
-find_or_create_storage("Merchant Storage");
+//OpenWorldBank();
+//find_or_create_storage("Merchant Storage");
 
 start_script("EquipTemplateValidation");
 

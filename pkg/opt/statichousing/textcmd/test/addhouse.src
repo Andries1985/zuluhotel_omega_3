@@ -3,7 +3,8 @@
 use uo;
 
 include "include/client";
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include ":gumps:yesno";
 include ":housing:setup";
 
@@ -95,7 +96,7 @@ program textcmd_addhouse( who )
 	endwhile
 
 	var houseserial := GetObjProperty( sign, "houseserial" );
-	var lockid := AllocLockId();
+	var lockid := AllocateLockID();
 	SetObjProperty( sign, "lockid", lockid );
 
 	while( YesNo( who, "Add lock?" ) )

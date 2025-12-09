@@ -3,7 +3,6 @@ use uo;
 
 include "include/client";
 include "include/objtype";
-include "util/key";
 include "plankutil";
 
 /*
@@ -69,13 +68,13 @@ program plankwalk( who, plank, lastx, lasty, lastz, lastrealm )
         // it would be nice if core had a "canwalk" script capability, so
         // this code could just tell core to reject the walk in the first place.
         //
-    if (!FindKey( who, plank ))
+    //if (!FindKey( who, plank ))
         var sh := GetStandingHeight( lastx, lasty, lastz, lastrealm );
         if (!sh or !sh.multi or sh.multi.serial != plank.multi.serial)
             MoveObjectToLocation( who, lastx, lasty, lastz, lastrealm, MOVEOBJECT_FORCELOCATION );
             return;
         endif
-    endif
+    //endif
     
     if (ListMobilesNearLocation( plank.x, plank.y, plank.z, 0, plank.realm ).size() > 1)
         MoveObjectToLocation( who, lastx, lasty, lastz, lastrealm, MOVEOBJECT_FORCELOCATION );

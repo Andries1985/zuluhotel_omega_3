@@ -11,7 +11,7 @@ include ":gumps:yesno";
 include "include/utility";
 //include "util/bank";
 include ":containers:storageAreas";
-include "include/constants/storageareas";
+//include "include/constants/storageareas";
 
 Const UOBJECT_BRASS_SIGN := 0x0bd2;
 Const UOBJECT_WOOD_SIGN := 0x0bd0;

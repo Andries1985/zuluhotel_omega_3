@@ -19,7 +19,7 @@ include "include/speech";
 include "include/anchors";
 
 include "ai/main/loot";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "ai/setup/modsetup";
 include "include/attributes";
 

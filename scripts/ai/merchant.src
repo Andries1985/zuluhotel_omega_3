@@ -5,9 +5,9 @@ use uo;
 
 include "include/dotempmods";
 include "include/eventid";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/randname";
-include "include/utility";
+//include "include/utility";
 include "include/mrcspawn";
 include "include/speech";
 include "include/myutil";
@@ -27,17 +27,19 @@ const MAX_SKILLS      := 48;
 const IDENTIFY := 50;
 
 var me := Self();
-var storage, inv_fs, inv_pb, inv_1c;
+//var storage;
+var inv_fs, inv_pb, inv_1c;
 var gldamt := 0 ;
 var gldttl := 0 ;
+
 storage := FindStorageArea( "Merchant Storage" );
 if (!storage)
 	exit;
 endif
 
-inv_fs := find_or_create_item( storage, me.serial + " FS", 0xE7C );
-inv_pb := find_or_create_item( storage, me.serial + " PB", 0xE7C );
-inv_1c := find_or_create_item( storage, me.serial + " 1C", 0xE7C );
+inv_fs := find_or_create_in_pack( storage, me.serial + " FS");
+inv_pb := find_or_create_in_pack( storage, me.serial + " PB");
+inv_1c := find_or_create_in_pack( storage, me.serial + " 1C" );
 
 if (!inv_fs or !inv_pb or !inv_1c)
 	exit;
@@ -1132,4 +1134,21 @@ function TrainEntry(who, skill, data, trained)
 
 	return 0;
 
+endfunction
+
+//From Modern Distro
+function find_or_create_in_pack(name, objtype);
+  var mypack := me.backpack;
+  var check := 0;
+  foreach thing in EnumerateItemsInContainer(mypack, ENUMERATE_ROOT_ONLY)
+    if(thing.name == name)
+      check := thing;
+      break;
+    endif
+  endforeach
+  if(check == 0)
+    check := CreateItemInContainer(mypack, objtype, 1);
+    SetName(check, name);
+  endif
+  return check;
 endfunction

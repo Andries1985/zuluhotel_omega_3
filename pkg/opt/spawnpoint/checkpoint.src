@@ -12,7 +12,8 @@ include "include/itemutil"; // added for getcursedlevel()
 include ":spawnpoint:customnpc";
 include ":lootlottery:include/lootlottery";
 include "include/all";
-include "include/constants";
+//include "include/constants";
+include "include/mrcspawn";
 
 const VALIDATE_INTERVAL	:= 4 * TIMEID_SECONDS_PER_HOUR;
 
@@ -416,6 +417,7 @@ function CreateSpawnPointNpc( byref point, byref template, byref pt_data )
 	var z		:= Cint(point.z);
 	var realm	:= point.realm;
 	var range	:= Cint(pt_data[5]);
+	
 	var critter;
 	var vits;
 	
@@ -440,6 +442,7 @@ function CreateSpawnPointNpc( byref point, byref template, byref pt_data )
 	
 	critter.hidden := 1;
 	var appear := Cint(pt_data[4]);
+
 	if( appear )
 		x := x + RandomInt((appear*2)+1) - appear;
 		y := y + RandomInt((appear*2)+1) - appear;
@@ -478,12 +481,21 @@ function CreateSpawnPointNpc( byref point, byref template, byref pt_data )
 						CopyLottery(point, critter);
 					endif
 					critter.hidden := 0;
+					if(critter.script == "merchant" || critter.script == "vanityvendor" || critter.script == "animaltrainer")
+						var merctype := FindMerchantType( template );
+						//Print("Spawnpoint:  Merctype is "+merctype);
+						Create_Node_Merc( merctype, Hex(critter.serial), point );
+						//Print("Spawnpoint:  Created merchant storage for "+ Hex(critter.serial));
+					endif
+					//Print("Spawnpoint:  Spawned NPC "+Hex(critter.serial)+" from spawnpoint "+Hex(point.serial));
 					return critter;
+					
 				endif
 			endif
 		endif
 		
 		count := count + 1;
+		//Print("Count is "+count);
 		if( appear )
 			x := point.x + RandomInt((appear*2)+1) - appear;
 			y := point.y + RandomInt((appear*2)+1) - appear;

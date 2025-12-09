@@ -5,6 +5,7 @@ use uo;
 
 include "include/attributes";
 include ":staff:include/staff";
+include "include/managers";
 
 program akill( who, dist )
 	
@@ -26,6 +27,7 @@ program akill( who, dist )
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
+			WarnManagerofNPCDeath(mob);
 		endif
 	endforeach
 		
@@ -44,6 +46,7 @@ program akill( who, dist )
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
+			WarnManagerofNPCDeath(mob);
 		endif
 	endforeach
 
@@ -62,6 +65,7 @@ program akill( who, dist )
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
+			WarnManagerofNPCDeath(mob);
 		endif
 	endforeach
 endprogram

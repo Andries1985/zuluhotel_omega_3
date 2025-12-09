@@ -21,7 +21,7 @@ use os;
 use uo;
 
 include "include/npccast";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/randname";
 include "include/eventid";
 include "include/anchors";

@@ -25,7 +25,7 @@ program storagewipe()
 	setobjproperty(npctest, "guardkill", 1);
 	ApplyRawDamage( npctest, GetMaxHP(npctest)+3 );
 
-	Print ("Wiping orphaned storage locations");
+	Print ("Wiping orphaned storage locations (Needs Fixing)");
 	var tamedstorage, merchantstorage;
 	tamedstorage := FindStorageArea( "Tamed Storage" );
 	merchantstorage := FindStorageArea( "Merchant Storage" );

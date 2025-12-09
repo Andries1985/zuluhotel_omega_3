@@ -7,7 +7,7 @@ use storage;
 use datafile;
 include "include/areas";
 include "include/starteqp";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/eventid";
 include ":karmafame:karmafame";
 include "include/dismount";

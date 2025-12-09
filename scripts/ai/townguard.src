@@ -11,7 +11,7 @@ include "include/randname";
 include "include/anchors";
 include "ai/combat/fight";
 include "ai/combat/defaultcombatevent";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include ":gumps:yesno";
 include "ai/main/npcinfo";
 include "include/attributes";

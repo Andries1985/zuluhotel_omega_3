@@ -1,7 +1,6 @@
 use os;
 use uo;
 
-include "util/key";
 include "include/objtype";
 include "plankutil";
 

@@ -12,7 +12,8 @@ include "include/drinkpotion";
 include "include/itemutil";
 include "include/classes";
 include "include/random";
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "include/autoloop";
 include "include/attributes";
 include "include/difficulty";
@@ -594,7 +595,7 @@ function TryToMakeItem( character , ressource , to_make_objtype , sfx )
 			if( theitem.isa(POLCLASS_LOCKABLE) )
 			  if( theitem.objtype <> 0x0EFA )
 					SetObjProperty(theitem, "lockable", 1);
-					var lockid := AllocLockId();
+					var lockid := AllocateLockID();
 					theitem.locked := 1;
 					var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
 					SetObjProperty( thekey ,  "lockid" , lockid );
@@ -994,7 +995,7 @@ function TryToMakeAContainerLockable( character , key )
 
 	if( CheckSkill( character , SKILLID_TINKERING , TINKER_LOCKABLE , TINKER_LOCKABLE * POINTS_MULTIPLIER ) )
 		SetObjProperty( the_chest , "lockable" , 1 );
-		var lockid := AllocLockId();
+		var lockid := AllocateLockID();
 		the_chest .locked := 1;
 		SetObjProperty( key ,  "lockid" , lockid );
 		SetObjProperty( the_chest , "lockid" , lockid );

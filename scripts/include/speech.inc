@@ -1,8 +1,10 @@
 use npc;
 use cfgfile;
 
-var speech_cfg := ReadConfigFile("speechgroup");
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
+include "include/random";
 
+var speech_cfg := ReadConfigFile("speechgroup");
 
 function process_text(inspeech, mood, templatename)
 var retval, wordgroup, elem, tmpword;
@@ -39,6 +41,7 @@ return retval;
 endfunction
 
 function TakeItem(you,it)
+	var me := self();
 
 	TurnToward(you);
 	if (!getobjproperty(me,"serial"))

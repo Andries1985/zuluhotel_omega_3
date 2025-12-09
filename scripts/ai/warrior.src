@@ -11,7 +11,7 @@ include "include/client";
 include "include/eventid";
 include "include/randname";
 include "include/anchors";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/dotempmods";
 include "include/myutil";
 include ":gumps:yesno";

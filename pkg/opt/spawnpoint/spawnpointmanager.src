@@ -15,7 +15,7 @@ include "include/managers";
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 const DEFAULT_WAIT_FOR_EVENT_TIME	:= 1 * TIMEID_SECONDS_PER_HOUR;
 const DEFAULT_TIME_BETWEEN_ALL_SPAWN	:= 5 * TIMEID_SECONDS_PER_HOUR;
-const UOBJ_SPAWNPOINT			:= 0xa300;
+//const UOBJ_SPAWNPOINT			:= 0xa300;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // THE SPAWNPOINTS
@@ -118,9 +118,9 @@ endfunction
 function DeleteSpawnPoint( byref point )
 
 	if( point )
-		/*if( GetObjProperty( point, PROPID_SPAWNPOINT_SETTING )[9] )
+		if( GetObjProperty( point, PROPID_SPAWNPOINT_SETTING )[9] )
 			DespawnAll(point);
-		endif*/
+		endif
 	
 		SetObjProperty( point, PROPID_SPAWNPOINT_CAN_BE_DESTROYED, 1 );
 		DestroyItem(point);

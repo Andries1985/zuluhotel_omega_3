@@ -4,8 +4,11 @@ use uo;
 use os;
 
 include "include/objtype";
+include "include/client";
 include "include/itemutil";
-include "util/key";
+include ":containers:storageAreas";
+//include "util/key";
+include ":keys:key";
 include ":gumps:old-gumps";
 include ":gumps:yesno";
 include ":housing:setup";
@@ -298,7 +301,7 @@ function ChangeLocks( who , sign )
 	var addonitem, newkey := Target( who );
 
 	if( (newkey.objtype >= KEYSTART) and (newkey.objtype <= KEYEND) and (newkey.objtype != KEYRING) )
-		var lockid := AllocLockId();
+		var lockid := AllocateLockID();
 
 		foreach item in ListItemsNearLocation( sign.x,sign.y, LIST_IGNORE_Z , 75, sign.realm);
 			if( ((item.objtype >= UOBJECT_DOORS_START) and (item.objtype <= UOBJECT_DOORS_END)) and (GetObjProperty(item, "HouseDoor") == 1))

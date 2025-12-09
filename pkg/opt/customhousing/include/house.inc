@@ -4,7 +4,7 @@ use uo;
 use os;
 
 include "housefriends";
-include "include/constants/objtypes";
+include "include/objtype";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;

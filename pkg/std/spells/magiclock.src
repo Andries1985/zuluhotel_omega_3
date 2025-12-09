@@ -7,7 +7,8 @@ use uo;
 include "include/spelldata";
 include "include/classes";
 include "include/client";
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "include/checkcity";
 include "include/attributes";
 
@@ -106,7 +107,7 @@ program magiclock( parms, spell_id )
 
 	PlaySoundEffect( cast_on , SFX_SPELL_MAGIC_LOCK1 );
 	Setobjproperty( cast_on , "LockDifficulty", lockdiff );
-	SetObjProperty( cast_on , "lockid" , AllocLockId() );
+	SetObjProperty( cast_on , "lockid" , AllocateLockID() );
 	EraseObjProperty( cast_on , "spawnchest");
 	PrintTextAbovePrivate( cast_on , "*Locked*" , caster );
 	cast_on.locked := 1;
