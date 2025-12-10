@@ -1,5 +1,8 @@
-include ":attributes:attributes";
+//include ":attributes:attributes";
+use uo;
+use cfgfile;
 
+include "include/random";
 
 //
 // CheckToolWear (who, tool, attributeID)

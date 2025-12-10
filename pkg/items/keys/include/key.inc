@@ -1,7 +1,7 @@
 use uo;
 
 include ":itemUtils:itemdesc";
-include "../pkg/mobiles/npcs/include/NPCBackpacks";
+//include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include ":containers:storageAreas";
 include ":containers:containers";
 
@@ -146,7 +146,7 @@ endfunction
  * Return Values:
  * Boolean - 1 on success, 0 on failure
  *
- */
+ 
 function DuplicateKeyRing( byref keyring )
 	var failed := 0,
 		LockID := 0,
@@ -181,3 +181,4 @@ function DuplicateKeyRing( byref keyring )
 
 	return 0;
 endfunction
+*/

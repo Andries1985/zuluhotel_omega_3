@@ -4,8 +4,8 @@
 
 use uo;
 
-include "../pkg/utils/itemutils/include/itemdesc";
-include "../pkg/utils/itemutils/include/itemInfo";
+include ":itemutils:itemdesc";
+include ":itemutils:itemInfo";
 
 /*
  * FormatDescForObjectType(source, plural:=0)

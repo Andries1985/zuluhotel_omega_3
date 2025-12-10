@@ -4,7 +4,7 @@ use os;
 include ":mdgumps:gumps";
 include ":mdgumps:requestGump";
 
-program kering_gump( mobile )
+program keyring_gump( mobile )
 	SendSysMessage( mobile, "What keyring do you want to view?", 0x3, 0x42 );
 	var targ := Target( mobile );
 
