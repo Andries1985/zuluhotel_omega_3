@@ -9,15 +9,15 @@ use uo;
 use util;
 
 include ":containers:containers";
-//include ":keys:key";
+include ":keys:key";
 
 program OnCreateContainer( item )
 
 	if(GetObjProperty(item, "NoKey"))
 		return 1;
-	//elseif( KP_IsLockable( item ))
-		//Create_ChestKey( item );
-		//SetObjProperty( item, "LockPickDiff", RandomIntMinMax( 29, 91 ) );
+	elseif( KP_IsLockable( item ))
+		Create_ChestKey( item );
+		SetObjProperty( item, "LockPickDiff", RandomIntMinMax( 29, 91 ) );
 	endif
 
 	return 1;

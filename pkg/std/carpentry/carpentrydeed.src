@@ -6,7 +6,8 @@ use cfgfile;
 include ":keys:key";
 include "include/objtype";
 include ":gumps:yesno";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 include "include/attributes";
 include "include/chests";
 

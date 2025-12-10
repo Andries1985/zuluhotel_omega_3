@@ -28,7 +28,8 @@ include "include/anchors";
 include "include/speech";
 include "include/res";
 include "ai/setup/modsetup";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 
 Const SOUND_EFFECT_RES := 0x215;
 Const ACTION_EFFECT_CAST2 := 0x11;

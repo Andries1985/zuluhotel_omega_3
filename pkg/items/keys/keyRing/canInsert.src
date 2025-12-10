@@ -1,7 +1,6 @@
 use uo;
 
 program OnInsert( mobile, keyring, movetype, insert_type, adding_item, existing_stack, amt_to_add )
-
 	amt_to_add := amt_to_add;
 	existing_stack := existing_stack;
 	insert_type := insert_type;

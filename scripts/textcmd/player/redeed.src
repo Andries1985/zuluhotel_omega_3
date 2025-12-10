@@ -2,7 +2,8 @@ use uo;
 use os;
 
 include "include/objtype";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 
 program redeed( who )
 

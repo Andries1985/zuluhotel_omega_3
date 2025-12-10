@@ -17,7 +17,8 @@ use uo;
 use os;
 
 include ":loot:antiloot";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 
 program Container_CanInsertScript(who, container, movetype, inserttype, item, existing_stack, amount_to_add)
 

@@ -1,9 +1,11 @@
 use uo;
+use storage;
 
 include ":itemUtils:itemdesc";
 //include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include ":containers:storageAreas";
 include ":containers:containers";
+include "include/objtype";
 
 function KP_ToggleLock( object, mobile:=0 )
 
