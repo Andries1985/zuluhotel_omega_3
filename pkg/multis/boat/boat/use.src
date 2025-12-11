@@ -72,9 +72,9 @@ program UseBoatDeed( mobile, boat )
 	elseif (ship_name == "GargoyleShip")
 		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+16, multi.realm, MOVEOBJECT_FORCELOCATION );
 	elseif (ship_name == "TokunoShip")
-		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+2, multi.realm, MOVEOBJECT_FORCELOCATION );
+		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+7, multi.realm, MOVEOBJECT_FORCELOCATION );
 	elseif (ship_name == "BritannianShip")
-		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+2, multi.realm, MOVEOBJECT_FORCELOCATION );
+		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+18, multi.realm, MOVEOBJECT_FORCELOCATION );
 	else
 		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+3, multi.realm, MOVEOBJECT_FORCELOCATION );
 	endif

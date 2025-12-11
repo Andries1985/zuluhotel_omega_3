@@ -18,28 +18,28 @@ program Userope( mobile, rope )
 
 	var ldist, rdist := 0;
 	var shiptype := GetObjProperty( rope, "ShipType" );
-	Print(shiptype);
+	//Print(shiptype);
 
 	if (shiptype == "0x16058") //Orc Ship
 		ldist := 7;
 		rdist := 5;
-		Print("Orc Ship detected. " + ldist + ", " + rdist);
+		//Print("Orc Ship detected. " + ldist + ", " + rdist);
 	elseif (shiptype == "0x16059") //Gargoyle Ship	
 		ldist := 8;
 		rdist := 6;
-		Print("Gargoyle Ship detected. " + ldist + ", " + rdist);
+		//Print("Gargoyle Ship detected. " + ldist + ", " + rdist);
 	elseif (shiptype == "0x1605A") //Tokuno Ship
-		ldist := 3;
-		rdist := 3;
-		Print("Tokuno Ship detected. " + ldist + ", " + rdist);
+		ldist := 5;
+		rdist := 4;
+		//Print("Tokuno Ship detected. " + ldist + ", " + rdist);
 	elseif (shiptype == "0x1605C") //Britannia Ship
-		ldist := 10;
+		ldist := 9;
 		rdist := 6;
-		Print("Britannia Ship detected. " + ldist + ", " + rdist);
+		//Print("Britannia Ship detected. " + ldist + ", " + rdist);
 	else
 		ldist := 2;
 		rdist := 2;
-		Print("Regular Ship detected. " + ldist + ", " + rdist);
+		//Print("Regular Ship detected. " + ldist + ", " + rdist);
 	endif
 
 	if( mobile.multi != rope.multi )
