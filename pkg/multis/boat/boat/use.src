@@ -42,6 +42,16 @@ program UseBoatDeed( mobile, boat )
 	if( !multi )
 		return 0;
 	endif
+	
+	var LockID := AllocateLockId();
+	foreach item in(multi.multi.components)
+		//Print(item.objtype);
+		if(item.objtype == 0x1f014)
+			item.locked := 1;
+			SetObjProperty( item,	"LockID", LockID );
+			SetObjProperty( item,	"ShipType", Hex(CInt(boat.objtype)) );
+		endif
+	endforeach
 
 	var tillerman := multi.tillerman;
 	tillerman.SetShipType( boat.objtype );
@@ -52,7 +62,6 @@ program UseBoatDeed( mobile, boat )
 		return 0;
 	endif
 
-
 	tillerman.SetOwner( mobile );
 
 	SetObjProperty( mobile, "HasBoat", multi.serial );
@@ -61,7 +70,7 @@ program UseBoatDeed( mobile, boat )
 	if (ship_name == "OrcShip")
 		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+14, multi.realm, MOVEOBJECT_FORCELOCATION );
 	elseif (ship_name == "GargoyleShip")
-		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+4, multi.realm, MOVEOBJECT_FORCELOCATION );
+		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+16, multi.realm, MOVEOBJECT_FORCELOCATION );
 	elseif (ship_name == "TokunoShip")
 		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+2, multi.realm, MOVEOBJECT_FORCELOCATION );
 	elseif (ship_name == "BritannianShip")
@@ -71,15 +80,16 @@ program UseBoatDeed( mobile, boat )
 	endif
 
 	// Create boat key
-	var LockID := AllocateLockId();
+	//var LockID := AllocateLockId();
 	var key := CreateItemInBackpack(mobile, UOBJ_RUSTY_IRON_KEY);
 	key.SetLockId(LockID);
 	key.SetName("A boat key");
 	SetObjProperty(multi.portplank, "LockID", lockID);
-	SetObjProperty(multi.Rope, "LockID", lockID);
+	//SetObjProperty(multi.rope, "LockID", lockID);
 	SetObjProperty(multi.starboardplank, "LockID", lockID);
 	SetObjProperty(multi.hold, "LockID", lockID);
 	return 1;
+
 endprogram
 
 function ForShipFacing( mobile )

@@ -16,19 +16,48 @@ program Userope( mobile, rope )
 		endif
 	endif
 
+	var ldist, rdist := 0;
+	var shiptype := GetObjProperty( rope, "ShipType" );
+	Print(shiptype);
+
+	if (shiptype == "0x16058") //Orc Ship
+		ldist := 7;
+		rdist := 5;
+		Print("Orc Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x16059") //Gargoyle Ship	
+		ldist := 8;
+		rdist := 6;
+		Print("Gargoyle Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x1605A") //Tokuno Ship
+		ldist := 3;
+		rdist := 3;
+		Print("Tokuno Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x1605C") //Britannia Ship
+		ldist := 10;
+		rdist := 6;
+		Print("Britannia Ship detected. " + ldist + ", " + rdist);
+	else
+		ldist := 2;
+		rdist := 2;
+		Print("Regular Ship detected. " + ldist + ", " + rdist);
+	endif
+
 	if( mobile.multi != rope.multi )
-		if( Distance( mobile, rope ) <= 5 )
+		if( Distance( mobile, rope ) <= rdist )
 			MoveObjectToLocation( mobile, rope.x, rope.y, rope.z+1, rope.realm, MOVEOBJECT_FORCELOCATION );
 		endif
 	else
-		var i := 0,
-			z := 0,
-			coords := GetCoordsInFrontOf( mobile, 7 ),
+		var i := 0;
+		var z := 0;
+		
+
+		var coords := GetCoordsInFrontOf( mobile, ldist ),
 			origx := mobile.x,
 			origy := mobile.y,
 			origz := mobile.z;
 
 		for( i:=1; i<=coords.Size(); i+=1 )
+			//Print("Checking coord "+i+": "+coords[i].x+", "+coords[i].y);
 			z := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm ).z;
 			if( !CheckLosBetween( mobile.x, mobile.y, mobile.z+5, coords[i].x, coords[i].y, z, mobile.realm ) )
 				//Print("No LOS to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
@@ -38,7 +67,7 @@ program Userope( mobile, rope )
 			//Print("Moved to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
 			if (mobile.multi == rope.multi )
 				MoveObjectToLocation( mobile, origx, origy, origz, mobile.realm, MOVEOBJECT_FORCELOCATION );
-				//Print("On boat at coord "+i+", returning to orig loc.");
+				Print("On boat at coord "+i+", returning to orig loc.");
 				continue;
 			else
 				//Print("Breaking:  Off boat at coord "+i+".");
