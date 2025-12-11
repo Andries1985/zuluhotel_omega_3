@@ -3,9 +3,9 @@ use os;
 
 include ":itemutils:itemUtil";
 include "include/objtype";
-include "../pkg/multis/multiCommands/include/multicommands";
+include ":multicommands:multicommands";
 include ":timeutils:time";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include ":keys:key";
 
 program UseBoatDeed( mobile, boat )
@@ -32,6 +32,7 @@ program UseBoatDeed( mobile, boat )
 	endif
 
 	var boat_flag := ForShipFacing( mobile );
+	//Print("Boat flag selected: "+boat_flag);
 	var targ := Multi_GetTarget( mobile, ship_name, boat_flag, 10 );
 	if( !targ )
 		return 0;
@@ -56,16 +57,28 @@ program UseBoatDeed( mobile, boat )
 
 	SetObjProperty( mobile, "HasBoat", multi.serial );
 
-	MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+3, multi.realm, MOVEOBJECT_FORCELOCATION );
+	// Move the user onto the boat, need different heights for galleons
+	if (ship_name == "OrcShip")
+		MoveObjectToLocation( mobile, multi.x+0, multi.y+1, multi.z+14, multi.realm, MOVEOBJECT_FORCELOCATION );
+	elseif (ship_name == "GargoyleShip")
+		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+4, multi.realm, MOVEOBJECT_FORCELOCATION );
+	elseif (ship_name == "TokunoShip")
+		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+2, multi.realm, MOVEOBJECT_FORCELOCATION );
+	elseif (ship_name == "BritannianShip")
+		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+2, multi.realm, MOVEOBJECT_FORCELOCATION );
+	else
+		MoveObjectToLocation( mobile, multi.x+1, multi.y+1, multi.z+3, multi.realm, MOVEOBJECT_FORCELOCATION );
+	endif
+
 	// Create boat key
 	var LockID := AllocateLockId();
 	var key := CreateItemInBackpack(mobile, UOBJ_RUSTY_IRON_KEY);
 	key.SetLockId(LockID);
 	key.SetName("A boat key");
 	SetObjProperty(multi.portplank, "LockID", lockID);
+	SetObjProperty(multi.Rope, "LockID", lockID);
 	SetObjProperty(multi.starboardplank, "LockID", lockID);
 	SetObjProperty(multi.hold, "LockID", lockID);
-
 	return 1;
 endprogram
 

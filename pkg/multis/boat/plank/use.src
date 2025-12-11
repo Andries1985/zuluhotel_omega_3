@@ -15,7 +15,7 @@ program UsePlank( mobile, plank )
 
 	if( plank.Extended() )
 		if( mobile.multi != plank.multi )
-			if( Distance( mobile, plank ) <= 2 )
+			if( Distance( mobile, plank ) <= 3 )
 				MoveObjectToLocation( mobile, plank.x, plank.y, plank.z+1, plank.realm, MOVEOBJECT_FORCELOCATION );
 			endif
 		else

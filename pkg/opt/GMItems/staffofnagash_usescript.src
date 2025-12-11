@@ -14,6 +14,7 @@ if (!staff.layer)
 	return 0;
 endif
 
+staff.color := GetObjProperty(staff, "EnchantColor");
 SetObjProperty(staff, "EnchantColor", staff.color);
 
 var time_now := ReadGameClock();

@@ -4,12 +4,12 @@ use boat;
 use cfgfile;
 use util;
 
-include "../pkg/multis/boat/include/cmdParser";
-include "../pkg/multis/boat/include/autoPilot";
+include ":boat:cmdParser";
+include ":boat:autoPilot";
 include "include/eventid";
 include "include/sounds";
-include ":gumps:gumps";
-include "../pkg/multis/multiCommands/include/multicommands";
+include ":mdgumps:gumps";
+include ":multiCommands:multicommands";
 
 // Global Variables
 var g_cmd_cfg;

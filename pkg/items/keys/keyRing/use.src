@@ -44,6 +44,7 @@ function ShowKeyRingGump( byref mobile, byref keyring )
 
 	if( !keys.Size() )
 		SendSysMessage( mobile, "There are no keys on this keyring.", 0x3, 0x32 );
+		keyring.UpdateGraphicID();
 		return 0;
 	endif
 

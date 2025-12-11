@@ -52,11 +52,113 @@ function Buildhouse(who, deed)
 	SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
     return;
   endif
+
+//Added from old housing system
+  var wherenw;
+  wherenw.x := where.x - 16;
+  wherenw.y := where.y - 16;
+  var wherene;
+  wherene.x := where.x + 16;
+  wherene.y := where.y - 16;
+  var wheresw;
+  wheresw.x := where.x - 16;
+  wheresw.y := where.y + 16;
+  var wherese;
+  wherese.x := where.x + 16;
+  wherese.y := where.y - 16;
+
+  if (IsInsideCity(who) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("character1");
+    return;
+  elseif (IsInsideCity(where) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("Where");
+    return;
+  elseif (IsInsideCity(wherenw) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherenw");
+    return;
+  elseif (IsInsideCity(wherene) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherene");
+    return;
+  elseif (IsInsideCity(wheresw) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wheresw");
+    return;
+  elseif (IsInsideCity(wherese) == 1)
+    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherese");
+    return;
+  endif
+
+	//var antigate := ListItemsNearLocation(where.x, where.y, where.z, 50, where.realm);
+	var antihouse :=  ListObjectsInBox( where.x-25, where.y-25, where.z-25, where.x+25,where.y+25,where.z+25, where.realm );
+	foreach item in antihouse
+		if (item.objtype == 0xa3c8)
+			SendSysMessage( who, "Anti-House Nearby." );
+			return;
+		endif
+	endforeach
+
+  var systele :=  ListObjectsInBox( where.x-25, where.y-25, where.z-25, where.x+25,where.y+25,where.z+25, where.realm );
+	foreach item in systele
+		if (item.objtype == 0x6200)
+			SendSysMessage( who, "System Teleporter nearby, no house allowed." );
+			return;
+		endif
+	endforeach
+
+  var landtype := Hex(GetMapInfo( where.x, where.y, where.realm ).landtile);
+
+  if ((landtype>=0x9 and landtype<=0x15) or (landtype>=0x150 and landtype<=0x15c))
+      PrintTextAbovePrivate( deed, "You can't build on farmland.", who );
+      return;
+  endif
+
+  // dirt and sand was rem'd out
+  if ((landtype>=0x71 and landtype<=0x78) or (landtype>=0x27e and landtype<=0x281) or (landtype>=0x377 and landtype<=0x37a) or (landtype>=0x553 and landtype<=0x556))// or (landtype>=0x16 and landtype<=0x19))
+      PrintTextAbovePrivate( deed, "You can't build here.", who );
+      return;
+  endif
+
+  if (where.objtype>=0x31f4 and where.objtype<=0x31fb) // dirt
+      PrintTextAbovePrivate( deed, "You can't build on farmland.", who );
+      return;
+  endif
+
+  if (where.objtype>=0x515 and where.objtype<=0x518)// cobblestone
+      PrintTextAbovePrivate( deed, "You can't build on the road.", who );
+      return;
+  endif
+
+
+
+
+
+//Back to new housing stuff
+
+
+
+
+
+
   if((WhatCityAmIIn(who) != "notincity") || (WhatCityAmIIn(where) != "notincity"))
 	SendSysMessageCL(who, 500269, color := 33); // You cannot build that there.
     PrintTextAbovePrivate(deed, "You can't build in cities.", who, color := 33);
     return;
   endif
+
+
+
+
+
+
+
+
+
+
   if (Distance(who,where) > 50)
     PrintTextAbovePrivate(deed, "You are too far from where you are trying to build.", who);
     return;

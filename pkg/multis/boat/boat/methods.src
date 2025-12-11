@@ -9,7 +9,7 @@ endprogram
 
 exported function GetShipName( boat )
 
-	var cfg_file := ReadConfigFile( ":*:itemdesc" ); // package itemdesc
+	var cfg_file := ReadConfigFile( ":boat:itemdesc" ); // package itemdesc
 	var elem := cfg_file[boat.objtype];
         var name := CStr( elem.ShipObjType );
 

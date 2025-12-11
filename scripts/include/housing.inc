@@ -3,7 +3,8 @@ use cfgfile;
 
 include "include/findcity";
 
-//include "../pkg/multis/multiCommands/include/multicommands";
+include ":multicommands:multicommands";
+var settings := SH_GetSettingsCfgElem("settings");
 
 var footage, sign;
 

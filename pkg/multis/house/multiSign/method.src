@@ -6,7 +6,7 @@ use os;
 
 include "include/housing";
 //include ":staticHousing:settings";
-include "../pkg/multis/multiCommands/include/multicommands";
+include ":multicommands:multicommands";
 
 program Install()
 

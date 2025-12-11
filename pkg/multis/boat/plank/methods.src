@@ -46,7 +46,7 @@ endfunction
 
 exported function Occupied( plank )
 
-	return ListMobilesNearLocationEX( plank.x, plank.y, plank.z, 0, LISTEX_FLAG_NORMAL+LISTEX_FLAG_HIDDEN+LISTEX_FLAG_GHOST );
+	return ListMobilesNearLocationEX( plank.x, plank.y, plank.z, 0, LISTEX_FLAG_NORMAL+LISTEX_FLAG_HIDDEN+LISTEX_FLAG_GHOST, plank.realm );
 endfunction
 
 exported function MoveOnto( plank, mobile )

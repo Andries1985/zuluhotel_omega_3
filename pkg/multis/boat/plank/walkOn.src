@@ -8,7 +8,7 @@ program PlankWalkOn( mobile, unused plank, unused last_x, unused last_y, unused 
 
 	var i := 0,
 		z := 0,
-		coords := GetCoordsInFrontOf( mobile, 2 );
+		coords := GetCoordsInFrontOf( mobile, 3 );
 
 	for( i:=1; i<=coords.Size(); i+=1 )
 		z := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm ).z;
