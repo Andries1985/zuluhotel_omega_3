@@ -237,7 +237,7 @@ function DoCommand( boat, byref cur_cmd, new_cmd )
 		endif
 
 		if( new_cmd.Move )
-                        ClosePlanks( boat );
+			ClosePlanks( boat );
 			var orig_x := boat.x;
 			var orig_y := boat.y;
 
@@ -245,7 +245,7 @@ function DoCommand( boat, byref cur_cmd, new_cmd )
 			if( orig_x == boat.x && orig_y == boat.y )
 				// Unable to move.
 				PrintTextAbove( tillerman, "Arrr we hit land!", 3, 55 );
-                                SmackEveryone( boat );
+				SmackEveryone( boat );
 				cur_cmd := 0;
 			else
 				CheckWorldWrap( boat );

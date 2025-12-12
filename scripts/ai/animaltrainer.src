@@ -36,19 +36,19 @@ use uo;
 use storage;
 
 //include "include/attributes";
-include "include/anchors";
-include "include/eventid";
+//include "include/anchors";
+//include "include/eventid";
 include "include/randname";
 //include "include/utility";
-include "include/mrcspawn";
-include "include/speech";
+//include "include/mrcspawn";
+//include "include/speech";
 //include "include/client";
 include "include/vetement";
 //include "ai/setup/modsetup";
 //include "include/random";
 //include "include/objtype";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 include "include/npcboosts";
 include ":containers:storageAreas";
 include "include/managers";
@@ -68,18 +68,13 @@ me.hidden := 0;
 var buyimage  := {0x211b, 0x211c, 0x2121, 0x2124, 0x211f, 0x2120, 0x2126, 0x20f6, 0x211a, 0x2123, 0x2125, 0x2122, 0x211e, 0x211d, 0x2119, 0x20e6, 0x2108, 0x2103, 0x2101, 0x2135, 0x2136, 0x2137, 0x2127};
 var sellimage := {0xc9, 0xd9, 0xcc, 0xc8, 0xe2, 0xe4, 0x123, 0xdc, 0x06, 0xee, 0xcd, 0xe1, 0xd4, 0x05, 0xd6, 0xcf, 0xd1, 0xd8, 0xcb, 0xd2, 0xda, 0xdb, 0x124};
 
-//var pettemplate :={"cat", "dog", "horse", "horse2", "horse3", "horse4", "packhorse", "llama", "bird", "rat", "rabbit", "wolf", "grizzly", "eagle", "panther", "sheep", "goat", "cow", "pig", "desertostard", "frenziedostard", "forestostard", "packllama"};
-
-//var storage, inv_fs, inv_pb, inv_1c;
+//New Storage Area System
 var shop_sell, shop_buy, shop_resale;
-var wanders := 0;
-var wanderlimit := 10;
-
-//var merchant_type := "AnimalTrainer";
-
-
-//var merchant_type := GetObjProperty(me, "MerchantType");
 var merchant_type := FindMerchantType("AnimalTrainer");
+var spawnname := Hex(me.serial);
+shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
+shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
+shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
 
 if( me.name["<random>"] )
   case( Random(2) )
@@ -89,6 +84,11 @@ if( me.name["<random>"] )
   SetName ( me , RandomName( me ) + " the Animal Trainer");
   Habille( me , "AnimalTrainer" );
 endif
+
+var wanders := 0;
+var wanderlimit := 10;
+
+EnableEvents( REACT_THRESHOLD );
 
 program animaltrainerai()
 
@@ -103,46 +103,20 @@ program animaltrainerai()
   endif
 	WalkHome();
 
-  //storage := FindStorageArea( CP_MERCHANT_AREA );
-  //if (!storage)
-  //    exit;
-  //endif
-
-  //inv_fs := find_or_create_item( storage, me.serial + " FS", UOBJ_METALCHEST );
-  //inv_pb := find_or_create_item( storage, me.serial + " PB", UOBJ_METALCHEST );
-  //inv_1c := find_or_create_item( storage, me.serial + " 1C", UOBJ_METALCHEST );
-
-  //var spawnname := merchant_type + " " + myanchor[1] + " " + myanchor[2] + " " + myanchor[5];
-  var spawnname := Hex(me.serial);
-  //Print("Animal Trainer: Spawnname: "+spawnname);
-
-  //Create_Node_Merc( merchant_type, spawnname );
-  //Create_Node_Merc( merchant_type, merchant_type+" "+myanchor[1]+" "+myanchor[2]+" "+myanchor[5]+" "+me.realm );
-  //Print("Sending to mrcspawn.inc");
-  //Create_Node_Merc( merchant_type, spawnname );
-
-
- 
-  shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
-  shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
-  shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
 	StockInventory( merchant_type, shop_sell );
-	//RestockInitialInventory( shop_sell, shop_resale );
-
-  // if (!shop_sell or !shop_buy or !shop_resale)
-  //     exit;
-  // endif
 
   var text;
 	var splitted := {};
-  //RestockInventory( merchant_type, shop_sell );
   var next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
   var next_gold_restock := ReadGameClock() + RESTOCK_GOLD_MINUTES;
 
-	EnableEvents(SYSEVENT_ITEM_GIVEN);
-	EnableEvents(SYSEVENT_SPEECH, REACT_THRESHOLD);
+  EnableMainEvents();
 
   while (1)
+	  if (me.hidden)
+			me.hidden := 0;
+		endif
+
     if(!GetObjProperty(me, "lbc") || GetObjProperty(me, "lbc") < ReadGameClock())
       SetObjProperty(me, "lbc", ReadGameClock()+5);
       checkmymod(me);
@@ -162,37 +136,43 @@ program animaltrainerai()
 			// 	EraseObjProperty(me, "OriginalSpeechColor");
 			// 	return 0;
 			// endif
-			if(text["buy"] )
-				//PrintTextAbove(me, "" + ev.source.name + " one moment please.");
-				//Sleep(2);
-        TurnToward( ev.source );
-        setobjproperty(ev.source, "#buy", 1);
-        var res := SendBuyWindow( ev.source, shop_sell, Self(), shop_buy );
-        //eraseobjproperty(ev.source, "#buy");
-        if (!res)
-          print( "SendBuyWindow failed: " + res.errortext );
+      if((ev.source.cmdlevel > 2) && (text["showinventory"]))
+				SendOpenSpecialContainer(ev.source, shop_sell);
+			elseif((ev.source.cmdlevel > 2) && (text["showrestock"]))
+				SendOpenSpecialContainer(ev.source, shop_resale);
+			else
+        if(text["buy"] )
+          //PrintTextAbove(me, "" + ev.source.name + " one moment please.");
+          //Sleep(2);
+          TurnToward( ev.source );
+          setobjproperty(ev.source, "#buy", 1);
+          var res := SendBuyWindow( ev.source, shop_sell, Self(), shop_buy );
+          eraseobjproperty(ev.source, "#buy");
+          if (!res)
+            print( "SendBuyWindow failed: " + res.errortext );
+          endif
+          //say(process_text(ev.text, "default", 38));
+        elseif (ev.text["sell"])
+          TurnToward( ev.source );
+          if (getobjproperty(ev.source, "#buy")==1)
+            say( "You can't sell while buying." );
+          else
+            sellanimal( ev.source );
+          endif
+        elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
+          TurnToward( ev.source );
+          MerchantTrain( me , ev.source , ev.text );
+        elseif (ev.text["stable"])
+          TurnToward (ev.source);
+          stable(ev.source);
         endif
-        //say(process_text(ev.text, "default", 38));
-      elseif (ev.text["sell"])
-        TurnToward( ev.source );
-        if (getobjproperty(ev.source, "#buy")==1)
-        say( "You can't sell while buying." );
-        else
-        sellanimal( ev.source );
-        endif
-      elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
-        TurnToward( ev.source );
-        MerchantTrain( me , ev.source , ev.text );
-      elseif (ev.text["stable"])
-        TurnToward (ev.source);
-        stable(ev.source);
       endif
-    elseif(ev.type == SYSEVENT_MERCHANT_BOUGHT)
-      TurnToward( ev.source );
-      PrintTextAbovePrivate( self(), "The total of thy sale is " + ev.amount, ev.source );
-      foreach item in EnumerateItemsInContainer( shop_buy )
-        DestroyItem( item );
-      endforeach
+      elseif(ev.type == SYSEVENT_MERCHANT_BOUGHT)
+        TurnToward( ev.source );
+        PrintTextAbovePrivate( self(), "The total of thy sale is " + ev.amount, ev.source );
+        foreach item in EnumerateItemsInContainer( shop_buy )
+          DestroyItem( item );
+        endforeach
     elseif(ev.type == SYSEVENT_MERCHANT_SOLD)
       TurnToward(ev.source);
       eraseobjproperty(ev.source, "#buy");
@@ -815,5 +795,16 @@ function walkhome()
 	endif
 
 	SetAnchor( myhome[1], myhome[2], 3, 80 );
+
+endfunction
+
+function EnableMainEvents()
+
+	EnableEvents( SYSEVENT_ITEM_GIVEN );
+	EnableEvents( SYSEVENT_ENGAGED);
+	EnableEvents( SYSEVENT_DAMAGED );
+	EnableEvents( SYSEVENT_ENTEREDAREA, 6 );
+	EnableEvents( SYSEVENT_LEFTAREA, 40);
+	EnableEvents( SYSEVENT_SPEECH, 1 );
 
 endfunction

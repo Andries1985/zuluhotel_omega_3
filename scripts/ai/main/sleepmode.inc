@@ -1,6 +1,6 @@
+
+include "include/eventid";
 include "include/attributes";
-
-
 include "include/client";
 
 function sleepmode()
@@ -91,3 +91,4 @@ function cleareventque()
 	until (! (ev := os::wait_for_event(0)) );
 
 endfunction
+
