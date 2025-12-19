@@ -133,19 +133,19 @@ program merchantai()
 				TurnToward(ev.source);
 				var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
 				res := res;
-				elseif(txt["sell"])
-					if(GetObjProperty(shop_resale, "MyGold") >= 1000)
-						TurnToward(ev.source);
-						var count := ModifyPCSellList(merchant_type, (ev.source));
-						if(count >= 1)
-							var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
-							res := res;
-						else
-							PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
-						endif
-					else
-						PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
-					endif
+				// elseif(txt["sell"])
+				// 	if(GetObjProperty(shop_resale, "MyGold") >= 1000)
+				// 		TurnToward(ev.source);
+				// 		var count := ModifyPCSellList(merchant_type, (ev.source));
+				// 		if(count >= 1)
+				// 			var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
+				// 			res := res;
+				// 		else
+				// 			PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
+				// 		endif
+				// 	else
+				// 		PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
+				// 	endif
 				elseif (txt ["job"])
 					var parms := { };
 					parms[1] := ev.source;
@@ -159,6 +159,13 @@ program merchantai()
 				elseif((txt["vendor train"]) || (txt["vendor teach"]) || (txt["merchant train"]) || (txt["merchant teach"]))
 					TurnToward(ev.source);
 					MerchantTrain(me, ev.source, ev.text);
+				else
+					TurnToward(ev.source);
+					var tspeech := process_text(ev.text, "default", speech);
+					if (tspeech)
+						say(tspeech);
+					endif
+					check_speech(me, ev.source, ev.text, speech);
 				endif
 			endif
 		elseif( ev.type == SYSEVENT_MERCHANT_BOUGHT)
@@ -197,6 +204,9 @@ program merchantai()
 				Say("Bah, I have no use for this. Be off with ye.");
 				MoveItemToContainer( ev.source.backpack , ev.item );
 				//TrainSkill( me , ev.source , ev.item );
+			else
+				TakeItem( me, ev.source, ev.item, speech );
+				//MoveItemToContainer( ev.source.backpack , ev.item );
 			endif
 		endif
 		if(ReadGameClock() >= next_wander)
@@ -378,11 +388,14 @@ endfunction
 
 function SetSpeechAndType()
 
-	var npccfg := readconfigfile("npcdesc");
+	var npccfg := ReadConfigFile("npcdesc");
 	var elem := npccfg[me.npctemplate];
-	speech := getconfigint(elem, "speech");
+	speech := GetConfigInt(elem, "speech");
+
+	Print("Speech Number: "+speech);
 
 	merchant_type := GetObjProperty( Self(), "MerchantType" );
+	Print("Merchant Type: "+merchant_type);
 
 	if( !merchant_type )
 		SetObjProperty( Self(), "MerchantType", "Mage" );
@@ -441,7 +454,7 @@ function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
 			me.hidden := 0;
 
 		SYSEVENT_ENTEREDAREA:
-			YellToFriend(ev.source);
+			YellToFriend(me, ev.source);
 
 		SYSEVENT_LEFTAREA:
 		SYSEVENT_SPEECH:
@@ -493,7 +506,7 @@ function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
 					Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
 				endif
 			else
-				check_speech(ev.text, ev.source);
+				check_speech(me, ev.source, ev.text, speech);
 			endif
 
 		SYSEVENT_MERCHANT_BOUGHT:
@@ -520,7 +533,7 @@ function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
 			if( ev.item.objtype == 0xEED )
 				TrainSkill( me, ev.source, ev.item );
 			else
-				TakeItem(ev.source, ev.item);
+				TakeItem(me, ev.source, ev.item, speech);
 			endif
 
 		EVID_ALL_FOLLOW_CMD:

@@ -5,7 +5,7 @@ var theammo;
 
 var master;
 var spells := {};
-var me := self();
+//var me := self();
 
 var cast_pct;
 var num_casts;

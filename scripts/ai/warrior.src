@@ -340,7 +340,7 @@ function ProcessMasterlessEvents(byref ev, byref wanders, byref next_wander)
 			TurnToward(ev.source);
 			JoinThem(ev.source);
 		elseif (!AskToJoin(ev.source))
-			check_speech(ev.text, ev.source);
+			check_speech(me, ev.source, ev.text, speech);
 		endif
 	SYSEVENT_ENGAGED:
 	SYSEVENT_DAMAGED:
@@ -355,7 +355,7 @@ function ProcessMasterlessEvents(byref ev, byref wanders, byref next_wander)
 	SYSEVENT_ITEM_GIVEN:
 		wanders := 0;
 		next_wander := readgameclock()+60;
-		TakeItem(ev.source,ev.item);
+		TakeItem(me, ev.source, ev.item, speech);
 	endcase
 
 endfunction
@@ -708,11 +708,11 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 		var evtext := lower(ev.text);
 		if (ev.source.serial == masterserial)
 			if (!ObeyCommand(ev))
-				check_speech(ev.text, ev.source);
+				check_speech(me, ev.source, ev.text, speech);
 			endif
 		else
 			if (!GetObjProperty(me,"squelch"))
-				check_speech(ev.text, ev.source);
+				check_speech(me, ev.source, ev.text, speech);
 			endif
 		endif
 	SYSEVENT_ENGAGED:
@@ -740,7 +740,7 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 			var it := ev.item;
 			MoveItemToContainer( it, me.backpack);
 		else
-			TakeItem(ev.source,ev.item);
+			TakeItem(me, ev.source,ev.item, speech);
 		endif
 	SYSEVENT_DOUBLECLICKED:
 		if (random(20)==1) say("hehe"); endif

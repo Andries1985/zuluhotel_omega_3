@@ -233,14 +233,6 @@ program animaltrainerai()
 
 endprogram
 
-function cleareventque()
-
-var ev;
-repeat
-until (! (ev := os::wait_for_event(0)) );
-
-endfunction
-
 // Used to inform a player if and how much a NPC can train a player
 function MerchantTrain( me , who , text )
 
@@ -320,105 +312,105 @@ function MerchantTrain( me , who , text )
      endif
 endfunction
 
-// This handles the NPC's training of the PC or the PC's donation of gold to the NPC
-// TODO: Reputation bonus if gold donation is greater then a specific amount.
-function TrainSkill( me , who , item )
+// // This handles the NPC's training of the PC or the PC's donation of gold to the NPC
+// // TODO: Reputation bonus if gold donation is greater then a specific amount.
+// function TrainSkill( me , who , item )
 
-  var variance := 0;       // The variance between the players skill and the npc's skill
-  var NPC_level := 0;      // The NPC's level at the skill
-  var PC_level := 0;       // The PC's level at the skill
-  var GoldReceived := 0;   // The amount of gold the PC did give us.
-  var New_Level := 0;      // The PC's new skill level
-  var CurrentNPCCost := 0; // The current NPC's cost for training the Player
+//   var variance := 0;       // The variance between the players skill and the npc's skill
+//   var NPC_level := 0;      // The NPC's level at the skill
+//   var PC_level := 0;       // The PC's level at the skill
+//   var GoldReceived := 0;   // The amount of gold the PC did give us.
+//   var New_Level := 0;      // The PC's new skill level
+//   var CurrentNPCCost := 0; // The current NPC's cost for training the Player
 
-  // if the item handed to the NPC was gold and not zero <Integrity check>
-  if( (item.objtype == UOBJ_GOLD_COIN) and (item.amount != 0)  )
-     // Acquire information on what skill the PC whishes to train in.
-     var TrainMaxCost := GetObjProperty( who , "TrainMaxCost" );
-     var TrainSkillID := GetObjProperty( who , "TrainSkillID" );
+//   // if the item handed to the NPC was gold and not zero <Integrity check>
+//   if( (item.objtype == UOBJ_GOLD_COIN) and (item.amount != 0)  )
+//      // Acquire information on what skill the PC whishes to train in.
+//      var TrainMaxCost := GetObjProperty( who , "TrainMaxCost" );
+//      var TrainSkillID := GetObjProperty( who , "TrainSkillID" );
 
-     // If the pc is not expecting training, then it was a donation.
-     if( (!TrainMaxCost or !TrainSkillID) and TrainSkillID != 0)
-         say( "I don't know what this is for, but thanks!" );
-         DestroyItem( item );
+//      // If the pc is not expecting training, then it was a donation.
+//      if( (!TrainMaxCost or !TrainSkillID) and TrainSkillID != 0)
+//          say( "I don't know what this is for, but thanks!" );
+//          DestroyItem( item );
       
-         return;
-     endif
+//          return;
+//      endif
 
-     // If the NPC does have the skill
-     if( GetEffectiveSkill(me , TrainSkillID) )
-          NPC_level    := GetEffectiveSkill(me,  TrainSkillID) / 3; // Acquire NPC's training level
-          PC_level     := GetEffectiveSkill(who, TrainSkillID);     // Acquire PC's  level
-          GoldReceived := item.amount;                     // How much gold was received
-          variance     := NPC_level - PC_level;            // How many skill points are there between the npc and player.
-          CurrentNPCCost := GoldForSkillGain(NPC_level, PC_level, TrainSkillID);
+//      // If the NPC does have the skill
+//      if( GetEffectiveSkill(me , TrainSkillID) )
+//           NPC_level    := GetEffectiveSkill(me,  TrainSkillID) / 3; // Acquire NPC's training level
+//           PC_level     := GetEffectiveSkill(who, TrainSkillID);     // Acquire PC's  level
+//           GoldReceived := item.amount;                     // How much gold was received
+//           variance     := NPC_level - PC_level;            // How many skill points are there between the npc and player.
+//           CurrentNPCCost := GoldForSkillGain(NPC_level, PC_level, TrainSkillID);
 
-          // Double check to make sure that the pc's skill is lower then the NPC's
-          if (PC_level < NPC_level)
+//           // Double check to make sure that the pc's skill is lower then the NPC's
+//           if (PC_level < NPC_level)
 
-            // If what the NPC can train the player is different from what the player is expecting, adjust accordingly.
-            if (CurrentNPCCost != TrainMaxCost)
+//             // If what the NPC can train the player is different from what the player is expecting, adjust accordingly.
+//             if (CurrentNPCCost != TrainMaxCost)
 
-              if (CurrentNPCCost > TrainMaxCost)
-                // The current NPC is better then the one we received an offer from.
-                NPC_Level := SkillGainForGold(NPC_level, PC_level, TrainSkillID, TrainMaxCost);  // Adjust the NPC's level variable to the lower skill level
-                variance  := NPC_level - PC_level;
-              else
-                // The current NPC is worse then the one we received an offer from.
-                // Determine what the cost would be for this NPC
-                if (GoldReceived > CurrentNPCCost)
-                  // The NPC can't help the player
-                  say("I cannot train thee to that level.");
-                  MoveItemToContainer( who.backpack , item );
-                  return;
-                else
-                  // The NPC can help, but we need to adjust
-                  TrainMaxCost := CurrentNPCCost;
-                endif
-              endif
-            endif
+//               if (CurrentNPCCost > TrainMaxCost)
+//                 // The current NPC is better then the one we received an offer from.
+//                 NPC_Level := SkillGainForGold(NPC_level, PC_level, TrainSkillID, TrainMaxCost);  // Adjust the NPC's level variable to the lower skill level
+//                 variance  := NPC_level - PC_level;
+//               else
+//                 // The current NPC is worse then the one we received an offer from.
+//                 // Determine what the cost would be for this NPC
+//                 if (GoldReceived > CurrentNPCCost)
+//                   // The NPC can't help the player
+//                   say("I cannot train thee to that level.");
+//                   MoveItemToContainer( who.backpack , item );
+//                   return;
+//                 else
+//                   // The NPC can help, but we need to adjust
+//                   TrainMaxCost := CurrentNPCCost;
+//                 endif
+//               endif
+//             endif
 
-            // Determine what level the player will be trained to
-            // if the PC gives the NPC the max cost or more. Train them to the fullest
-            if( TrainMaxCost <= GoldReceived )
-              New_Level := (NPC_level * 10);
-              EraseObjProperty( who , "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
-              EraseObjProperty( who , "TrainSkillID" );  // Clear the skill flag
-              // TODO: If the player gives a lot more then the training cost, grant a Reputation Bonus and/or a mini-quest clue.
-            else
-              // Train the PC to whatever percentage they can afford.
-              New_Level := ((PC_level + CInt((CDbl(variance) * (CDbl(GoldReceived) / CDbl(TrainMaxCost))))) * 10);
-              SetObjProperty( who , "TrainMaxCost" , TrainMaxCost-GoldReceived );
-            endif
+//             // Determine what level the player will be trained to
+//             // if the PC gives the NPC the max cost or more. Train them to the fullest
+//             if( TrainMaxCost <= GoldReceived )
+//               New_Level := (NPC_level * 10);
+//               EraseObjProperty( who , "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
+//               EraseObjProperty( who , "TrainSkillID" );  // Clear the skill flag
+//               // TODO: If the player gives a lot more then the training cost, grant a Reputation Bonus and/or a mini-quest clue.
+//             else
+//               // Train the PC to whatever percentage they can afford.
+//               New_Level := ((PC_level + CInt((CDbl(variance) * (CDbl(GoldReceived) / CDbl(TrainMaxCost))))) * 10);
+//               SetObjProperty( who , "TrainMaxCost" , TrainMaxCost-GoldReceived );
+//             endif
 
-            say("Let me show you how it's done.");  // NPC informs player training was successful
+//             say("Let me show you how it's done.");  // NPC informs player training was successful
 
-            // Set the PC's skill
-            SetBaseSkill( who , TrainSkillID , New_Level);
+//             // Set the PC's skill
+//             SetBaseSkill( who , TrainSkillID , New_Level);
 
-            DestroyItem( item );  // Destroy gold
+//             DestroyItem( item );  // Destroy gold
 
-            SendSysmessage( who , "Your skill increases." ); // Note increase
+//             SendSysmessage( who , "Your skill increases." ); // Note increase
 
-          else
-            // PC just paid NPC to be trained but NPC doesn't have the skill.
-            say("I'm not as good as thee.  Please find another to train thee.");
-            MoveItemToContainer( who.backpack , item );
-          endif
-      else
-          // NPC does not have that skill to train the PC.  Return gold
-          Say("I don't know that skill. Why don't you ask me what i can train you in?");
-          MoveItemToContainer( who.backpack , item );
-      endif
-  else
-     // PC gave NPC something else other then gold.  Return it.
-     say("Bah, I have no use for this. Be off with ye.");
-     MoveItemToContainer( who.backpack , item );
-     // TODO: OSI has a "Desires" property with all npc's.  I think it's used to determine if an NPC
-     //  gives out clues to a minor quest or reputation bonus, depending on the item donated <Type and value>
-  endif
+//           else
+//             // PC just paid NPC to be trained but NPC doesn't have the skill.
+//             say("I'm not as good as thee.  Please find another to train thee.");
+//             MoveItemToContainer( who.backpack , item );
+//           endif
+//       else
+//           // NPC does not have that skill to train the PC.  Return gold
+//           Say("I don't know that skill. Why don't you ask me what i can train you in?");
+//           MoveItemToContainer( who.backpack , item );
+//       endif
+//   else
+//      // PC gave NPC something else other then gold.  Return it.
+//      say("Bah, I have no use for this. Be off with ye.");
+//      MoveItemToContainer( who.backpack , item );
+//      // TODO: OSI has a "Desires" property with all npc's.  I think it's used to determine if an NPC
+//      //  gives out clues to a minor quest or reputation bonus, depending on the item donated <Type and value>
+//   endif
 
-endfunction
+// endfunction
 
 // Used to determine cost for raising the pc's skill to the level of the NPC.
 // Note: This function is designed to handle different skills have different rates at different levels, etc.

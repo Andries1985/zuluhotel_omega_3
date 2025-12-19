@@ -314,7 +314,7 @@ function ProcessEvents(byref ev, byref wanders, byref next_wander)
 		if ( (evtext["guards"]) or (evtext["guards!"]) )
 			look_around();
 		else
-			check_speech(ev.text, ev.source);
+			check_speech(me, ev.source, ev.text, speech);
 		endif
 
 	SYSEVENT_ENGAGED:
@@ -335,7 +335,7 @@ function ProcessEvents(byref ev, byref wanders, byref next_wander)
 	SYSEVENT_ITEM_GIVEN:
 		wanders := 0;
 		next_wander := readgameclock()+60;
-		TakeItem(ev.source,ev.item);
+		TakeItem(me, ev.source,ev.item, speech);
 	endcase
 
 endfunction

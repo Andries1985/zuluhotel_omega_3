@@ -36,9 +36,10 @@ Const ACTION_EFFECT_CAST2 := 0x11;
 Const REACT_THRESHOLD := 2;
 
 var speech := 99;
-var me:= self();
 var summons := 1;
 var saywords := 1;
+var me := self();
+
 if( me.name["<random>"] )
 	SetName ( me , RandomName( me ) );
 	var parms := {};
@@ -79,27 +80,27 @@ program HealerAI()
 
         repeat
             // print( "event type: " + ev.type );
-            case (ev.type)
+        case (ev.type)
             SYSEVENT_SPEECH:
-		next_wander := readgameclock()+60;
-                check_speech(ev.text, ev.source);
-		HealerStuff(ev.source);
+                next_wander := readgameclock()+60;
+                check_speech(me, ev.source, ev.text, speech);
+                HealerStuff(ev.source);
 
-                SYSEVENT_ENGAGED:
-                SYSEVENT_DAMAGED:
-                /*    if (ev.source)
-		 Toadstool - Disable healers fighting
-                     Fight( ev.source );
-                    endif
-		*/
-                SYSEVENT_ENTEREDAREA:
-                    if ( !ev.source.npctemplate && !ev.source.cmdlevel )
-                        HealerStuff(ev.source);
-                    endif
-                SYSEVENT_ITEM_GIVEN:
-		    next_wander := readgameclock()+60;
-		    TakeItem(ev.source,ev.item);
-            endcase
+            SYSEVENT_ENGAGED:
+            SYSEVENT_DAMAGED:
+            /*    if (ev.source)
+                Toadstool - Disable healers fighting
+                    Fight( ev.source );
+                endif
+            */
+            SYSEVENT_ENTEREDAREA:
+                if ( !ev.source.npctemplate && !ev.source.cmdlevel )
+                    HealerStuff(ev.source);
+                endif
+            SYSEVENT_ITEM_GIVEN:
+                next_wander := readgameclock()+60;
+                TakeItem(me, ev.source, ev.item, speech);
+        endcase
 
         until (! (ev := os::wait_for_event(4)) );
         if (ReadGameClock() >= next_wander)
