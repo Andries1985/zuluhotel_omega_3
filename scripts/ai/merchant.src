@@ -54,11 +54,12 @@ include ":containers:storageAreas";
 include "include/managers";
 include "include/all";
 
-const RESPAWN_MINUTES := 30;              // In how many minutes will the NPC respawn if killed.
-const RESTOCK_INVENTORY_MINUTES := 10;    // In how many minutes will the NPC restock its inventory.
-const RESTOCK_GOLD_MINUTES := 120;        // In how many minutes will the NPC restock its gold.
+//const RESPAWN_MINUTES := 30;              // In how many minutes will the NPC respawn if killed.
+const RESTOCK_INVENTORY_MINUTES := 3600;    // In how many minutes will the NPC restock its inventory. (In seconds)
+const RESTOCK_GOLD_MINUTES := 7200;        // In how many minutes will the NPC restock its gold. (In seconds) 
 const MAX_SKILLS      := 48;              // There are currently 48 Skills.
 Const REACT_THRESHOLD := 2;
+const IDENTIFY := 50;
 
 Set_Priority( 50 );
 
@@ -69,17 +70,13 @@ me.hidden := 0;
 //New Storage Area System
 var shop_sell, shop_buy, shop_resale;
 var merchant_type := GetObjProperty( me, "MerchantType" );
-Print("Merchant Type: "+merchant_type);
+//Print("Merchant Type: "+merchant_type);
 var spawnname := Hex(me.serial);
 shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
 shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
 shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
 
 if( me.name["<random>"] )
-	case( Random(2) )
-	0: me.graphic := 400; me.gender := 0;
-	1: me.graphic := 401; me.gender := 1;
-	endcase
 	SetMeUp();
 endif
 
@@ -104,11 +101,6 @@ program merchantai()
  	endif
 	WalkHome();
 	
-	//if ( me.graphic == 401 )
-	//	me.gender := 1;
-	//endif
-	//me.graphic := 400 + me.gender;
-
 	StockInventory( merchant_type, shop_sell );
 
 	var next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
@@ -118,47 +110,90 @@ program merchantai()
 
 	const loops := 0;
 	while (1)
+		if (me.hidden)
+			me.hidden := 0;
+		endif
 
 		var ev;
 		ev := os::wait_for_event(120);
-		if(ev.type == SYSEVENT_SPEECH)
+		if (ev.source.npctemplate)
+			Print("Ignoring event from NPC: " + ev.source.name);
+			return 0;
+		endif
+
+		if(ev.type == SYSEVENT_ENGAGED)
+
+			Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
+
+		elseif(ev.type == SYSEVENT_DAMAGED)
+
+			SetHP(me, GetMaxHP(me));
+			if( me.poisoned ) CurePoison( me ); endif
+			Say("Help guards!!! I'm being attacked!!");
+			SetObjProperty(me, "guardkill", 1);
+			Start_Script( ":areas:callguards", me );
+			sleep(5);
+			say("You scoundrel!!!");
+
+			me.hidden := 1;
+			sleep(30);
+			me.hidden := 0;
+
+		elseif(ev.type == SYSEVENT_ENTEREDAREA)
+
+			YellToFriend(me, ev.source);
+
+		elseif(ev.type == SYSEVENT_LEFTAREA)
+
+			// No action needed yet
+
+		elseif(ev.type == SYSEVENT_SPEECH)
 
 			var txt := lower(ev.text);
+
 			if((ev.source.cmdlevel > 2) && (txt["showinventory"]))
 				SendOpenSpecialContainer(ev.source, shop_sell);
 			elseif((ev.source.cmdlevel > 2) && (txt["showrestock"]))
 				SendOpenSpecialContainer(ev.source, shop_resale);
 			else
-				if(txt["buy"])
-				TurnToward(ev.source);
-				var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
-				res := res;
-				// elseif(txt["sell"])
-				// 	if(GetObjProperty(shop_resale, "MyGold") >= 1000)
-				// 		TurnToward(ev.source);
-				// 		var count := ModifyPCSellList(merchant_type, (ev.source));
-				// 		if(count >= 1)
-				// 			var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
-				// 			res := res;
-				// 		else
-				// 			PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
-				// 		endif
-				// 	else
-				// 		PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
-				// 	endif
-				elseif (txt ["job"])
+				if(Find(txt, "buy", 1))
+					TurnToward(ev.source);
+					var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
+					res := res;
+				elseif (Find(txt, "sell all", 1))
+					//SellAll(ev.source);
+					BuyAll(ev.source);
+				elseif (Find(txt, "sell bag", 1))
+					BuyBag(ev.source);
+					//SellBag(ev.source);
+				elseif(Find(txt, "sell", 1))
+					if(GetObjProperty(shop_resale, "MyGold") >= 1000)
+						TurnToward(ev.source);
+						var count := ModifyPCSellList(merchant_type, (ev.source));
+						if(count >= 1)
+							var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
+							res := res;
+						else
+							PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
+						endif
+					else
+						PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
+					endif
+				elseif(Find(txt, "job", 1))
 					var parms := { };
 					parms[1] := ev.source;
 					parms[2] := me;
 					start_script (":job:job", parms);
-				elseif (txt["sell all"])
-					BuyAll(ev.source);
-				elseif (txt["sell bag"])
-					//BuyBag(ev.source);
-					SellBag(ev.source);
-				elseif((txt["vendor train"]) || (txt["vendor teach"]) || (txt["merchant train"]) || (txt["merchant teach"]))
+				elseif((Find(txt, "vendor train", 1)) || (Find(txt, "vendor teach", 1)) || (Find(txt, "merchant train", 1)) || (Find(txt, "merchant teach", 1)))
 					TurnToward(ev.source);
 					MerchantTrain(me, ev.source, ev.text);
+				elseif ( Find(txt, "identify", 1) && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
+					// Check if player already has id window open
+					if (GetObjProperty(ev.source, "#MerchantID") != 1)
+						TurnToward( ev.source );
+						PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
+						Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
+					endif
 				else
 					TurnToward(ev.source);
 					var tspeech := process_text(ev.text, "default", speech);
@@ -168,7 +203,9 @@ program merchantai()
 					check_speech(me, ev.source, ev.text, speech);
 				endif
 			endif
+
 		elseif( ev.type == SYSEVENT_MERCHANT_BOUGHT)
+
 			TurnToward(ev.source);
 			PrintTextAbovePrivate(me, "The total of thy sale is " + ev.amount, ev.source);
 			if(lower(merchant_type) != "appraiser")
@@ -178,13 +215,18 @@ program merchantai()
 			endif
 			foreach thing in EnumerateItemsInContainer(shop_buy)
 				if(MoveItemToContainer(thing, shop_sell))
-				SetObjProperty(thing,"ClearRestock", (ReadGameClock() + 1800));
+					SetObjProperty(thing,"ClearRestock", (ReadGameClock() + 1800));
 				else
-				DestroyItem(thing);
+					DestroyItem(thing);
 				endif
 			endforeach
+			if (GetObjProperty(me, "MerchantType") == "Barber")
+				EquipAnyHair(ev.source);
+			endif
 			PlaySoundEffect(me, 0x38);
+
 		elseif (ev.type == SYSEVENT_MERCHANT_SOLD)
+
 			TurnToward(ev.source);
 			PrintTextAbovePrivate(me, "The total of thy purchase is " + ev.amount, ev.source);
 			foreach thing in EnumerateItemsInContainer((ev.source).backpack, ENUMERATE_ROOT_ONLY)
@@ -196,7 +238,9 @@ program merchantai()
 				SetObjProperty(shop_resale, "MyGold", mygold);
 			endif
 			PlaySoundEffect(me, 0x38);
+
 		elseif (ev.type == SYSEVENT_ITEM_GIVEN)
+
 			TurnToward (ev.source);
 			if ( GetObjProperty( ev.item, "merchant") )
 				PayForJobCompleted ( ev );
@@ -209,13 +253,11 @@ program merchantai()
 				//MoveItemToContainer( ev.source.backpack , ev.item );
 			endif
 		endif
+
 		if(ReadGameClock() >= next_wander)
 			//begpurse(me);
 			wander();
 			wanders := wanders + 1;
-			//if(CoordinateDistance(me.x, me.y, myanchor[1], myanchor[2]) > 5)
-			//	MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
-			//endif
 			if (wanders > wanderlimit)
 				WalkHome();
 				ev := SleepMode(me);
@@ -225,7 +267,6 @@ program merchantai()
 		endif
 			
 		if(ReadGameClock() > next_inventory_restock)
-			//Print("Animal Trainer: Restocking inventory.");
 			ReStockInventory( merchant_type, spawnname );
 			next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
 		endif
@@ -235,53 +276,7 @@ program merchantai()
 			next_gold_restock := ReadGameClock() + RESTOCK_GOLD_MINUTES;
 		endif
 	endwhile
-	
-	// Old While Loop
-	/*while (1)
-		if (me.hidden)
-			me.hidden := 0;
-		endif
 
-		if(!GetObjProperty(me, "lbc") || GetObjProperty(me, "lbc") < ReadGameClock())
-			SetObjProperty(me, "lbc", ReadGameClock()+5);
-			checkmymod(me);
-		endif
-
-		if (ReadGameClock() > next_wander)
-			if (mydestx != 0)
-				WalkTowardLocation(mydestx, mydesty);
-				if ( (me.x == mydestx and me.y == mydesty) or ( steps > 10 ) )
-					mydestx := 0;
-					SetAnchor( me.x, me.y, 3, 80 );
-				endif
-			else
-				Wander();
-				wanders := wanders + 1;
-			endif
-			next_wander := ReadGameClock() + RandomDice( 2, 25, 10);
-			if (wanders > 10)
-				wanders := 0;
-				WalkHome();
-				ev := sleepmode();
-			endif
-		else
-			ev := os::wait_for_event( 2 );
-		endif
-
-		if (ev)
-			if (ProcessEvent(ev, mydestx, mydesty, steps))
-				next_wander := ReadGameClock() + RandomDice( 2, 25, 10);
-			endif
-		elseif (ReadGameClock() > next_restock)
-			if ( GetObjProperty(me, "restock") )
-				RestockInventory( merchant_type, inv_fs );
-				EraseObjProperty(me, "restock");
-			endif
-			RESPAWN_MINUTES := 25+Random(20);
-			next_restock := ReadGameClock() + RESPAWN_MINUTES*60;
-		endif
-	endwhile
-	*/
 endprogram
 
 //############################################ NPC set-up ###################################################\\
@@ -328,19 +323,6 @@ function setmeup()
 	parms[2]:= style;
 	set_priority( 1 );
 	start_script("::/misc/dressme", parms);
-
-/* Toadstool -  Commented out section to move 'the something' to title_suffix
-	 	To re-enable suffix, just add this code back in
-
-	if (!me.title_suffix)
-		var names := splitwords(me.name);
-		if ( names[2] = "the" )
-			me.title_suffix := " the " + names[3];
-			me.name := names[1];
-		endif
-	endif
-*/
-	//StockInventory( merchant_type, shop_sell );
 
 endfunction
 
@@ -391,11 +373,7 @@ function SetSpeechAndType()
 	var npccfg := ReadConfigFile("npcdesc");
 	var elem := npccfg[me.npctemplate];
 	speech := GetConfigInt(elem, "speech");
-
-	Print("Speech Number: "+speech);
-
 	merchant_type := GetObjProperty( Self(), "MerchantType" );
-	Print("Merchant Type: "+merchant_type);
 
 	if( !merchant_type )
 		SetObjProperty( Self(), "MerchantType", "Mage" );
@@ -430,124 +408,123 @@ endfunction
 // ProcessEvent() - basically the contents page of what to do on player interaction
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
+// function ProcessEvent(byref ev, byref mydestx, byref mydesty, byref steps)
 
-	if (ev.source.npctemplate)
-		return 0;
-	endif
+// 	if (ev.source.npctemplate)
+// 		return 0;
+// 	endif
 
-	case (ev.type)
-		SYSEVENT_ENGAGED:
-			Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
+// 	case (ev.type)
+// 		SYSEVENT_ENGAGED:
+// 			Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
 
-		SYSEVENT_DAMAGED:
-			SetHP(me, GetMaxHP(me));
-			if( me.poisoned ) CurePoison( me ); endif
-			Say("Help guards!!! I'm being attacked!!");
-			SetObjProperty(me, "guardkill", 1);
-			Start_Script( ":areas:callguards", me );
-			sleep(5);
-			say("You scoundrel!!!");
+// 		SYSEVENT_DAMAGED:
+// 			SetHP(me, GetMaxHP(me));
+// 			if( me.poisoned ) CurePoison( me ); endif
+// 			Say("Help guards!!! I'm being attacked!!");
+// 			SetObjProperty(me, "guardkill", 1);
+// 			Start_Script( ":areas:callguards", me );
+// 			sleep(5);
+// 			say("You scoundrel!!!");
 
-			me.hidden := 1;
-			sleep(30);
-			me.hidden := 0;
+// 			me.hidden := 1;
+// 			sleep(30);
+// 			me.hidden := 0;
 
-		SYSEVENT_ENTEREDAREA:
-			YellToFriend(me, ev.source);
+// 		SYSEVENT_ENTEREDAREA:
+// 			YellToFriend(me, ev.source);
 
-		SYSEVENT_LEFTAREA:
-		SYSEVENT_SPEECH:
-			TurnToward(ev.source);
+// 		SYSEVENT_LEFTAREA:
+// 		SYSEVENT_SPEECH:
+// 			TurnToward(ev.source);
 
-		// Sell Bag
-			if (ev.text["sell bag"])
-				SellBag(ev.source);
-		// Sell All
-			elseif (ev.text["sell all"])
-				SellAll(ev.source);
-		// Buy
-			elseif (ev.text["buy"])
-				var res;
-				res := SendBuyWindow( ev.source, inv_fs, me, inv_pb, flags := 1 );
-				if (!res)
-					print( "SendBuyWindow failed: " + res.errortext );
-				endif
-		// Sell
-			elseif (ev.text["sell"])
-				set_priority( 1 );
+// 		// Sell Bag
+// 			if (ev.text["sell bag"])
+// 				SellBag(ev.source);
+// 		// Sell All
+// 			elseif (ev.text["sell all"])
+// 				SellAll(ev.source);
+// 		// Buy
+// 			elseif (ev.text["buy"])
+// 				var res;
+// 				res := SendBuyWindow( ev.source, inv_fs, me, inv_pb, flags := 1 );
+// 				if (!res)
+// 					print( "SendBuyWindow failed: " + res.errortext );
+// 				endif
+// 		// Sell
+// 			elseif (ev.text["sell"])
+// 				set_priority( 1 );
 
-				foreach item in EnumerateItemsInContainer(ev.source.backpack)
-					if (GetObjProperty(item, "LFucker"))
-						item.buyprice := 0;
-					endif
-				endforeach
+// 				foreach item in EnumerateItemsInContainer(ev.source.backpack)
+// 					if (GetObjProperty(item, "LFucker"))
+// 						item.buyprice := 0;
+// 					endif
+// 				endforeach
 				
-				var res := SendSellWindow( ev.source, me, inv_fs, inv_pb, inv_1c, VENDOR_SEND_AOS_TOOLTIP );
-				if (res)
-					PrintTextAbovePrivate( me, "Can I help thee?", ev.source );
-				else
-					print( "SendSellWindow failed: " + res.errortext );
-				endif
-				set_priority( 50 );
+// 				var res := SendSellWindow( ev.source, me, inv_fs, inv_pb, inv_1c, VENDOR_SEND_AOS_TOOLTIP );
+// 				if (res)
+// 					PrintTextAbovePrivate( me, "Can I help thee?", ev.source );
+// 				else
+// 					print( "SendSellWindow failed: " + res.errortext );
+// 				endif
+// 				set_priority( 50 );
 
-		// Vendor Train
-			elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
-				TurnToward( ev.source );
-				MerchantTrain( me, ev.source, ev.text );
+// 		// Vendor Train
+// 			elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
+// 				TurnToward( ev.source );
+// 				MerchantTrain( me, ev.source, ev.text );
 
-		// Toadstool -  Added identifying items for mage/scribe npcs
-		//		Have it start a script so a player can't 'hold' up the merchant
-			elseif ( ev.text["identify"] && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
-				// Check if player already has id window open
-				if (GetObjProperty(ev.source, "#MerchantID") != 1)
-					TurnToward( ev.source );
-					PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
-					Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
-				endif
-			else
-				check_speech(me, ev.source, ev.text, speech);
-			endif
+// 		// Toadstool -  Added identifying items for mage/scribe npcs
+// 		//		Have it start a script so a player can't 'hold' up the merchant
+// 			elseif ( ev.text["identify"] && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
+// 				// Check if player already has id window open
+// 				if (GetObjProperty(ev.source, "#MerchantID") != 1)
+// 					TurnToward( ev.source );
+// 					PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
+// 					Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
+// 				endif
+// 			else
+// 				check_speech(me, ev.source, ev.text, speech);
+// 			endif
 
-		SYSEVENT_MERCHANT_BOUGHT:
-			TurnToward( ev.source );
-			PrintTextAbovePrivate( me, "The total of your sale is " + ev.amount, ev.source );
-			set_priority( 50 );
-			SetObjProperty(me, "restock", 1);
+// 		SYSEVENT_MERCHANT_BOUGHT:
+// 			TurnToward( ev.source );
+// 			PrintTextAbovePrivate( me, "The total of your sale is " + ev.amount, ev.source );
+// 			set_priority( 50 );
+// 			SetObjProperty(me, "restock", 1);
 
-			foreach item in EnumerateItemsInContainer(inv_pb)
-				DestroyItem(item);
-			endforeach
+// 			foreach item in EnumerateItemsInContainer(inv_pb)
+// 				DestroyItem(item);
+// 			endforeach
 
-		SYSEVENT_MERCHANT_SOLD:
-			TurnToward( ev.source );
-			PrintTextAbovePrivate( me, "The total of your purchase is " + ev.amount, ev.source );
-			SetObjProperty(me, "restock", 1);
+// 		SYSEVENT_MERCHANT_SOLD:
+// 			TurnToward( ev.source );
+// 			PrintTextAbovePrivate( me, "The total of your purchase is " + ev.amount, ev.source );
+// 			SetObjProperty(me, "restock", 1);
 			
-			// Barber NPCs - equipping any hair
-			if (GetObjProperty(me, "MerchantType") == "Barber")
-				EquipAnyHair(ev.source);
-			endif
+// 			// Barber NPCs - equipping any hair
+// 			if (GetObjProperty(me, "MerchantType") == "Barber")
+// 				EquipAnyHair(ev.source);
+// 			endif
 
-		SYSEVENT_ITEM_GIVEN:
-			if( ev.item.objtype == 0xEED )
-				TrainSkill( me, ev.source, ev.item );
-			else
-				TakeItem(me, ev.source, ev.item, speech);
-			endif
+// 		SYSEVENT_ITEM_GIVEN:
+// 			if( ev.item.objtype == 0xEED )
+// 				TrainSkill( me, ev.source, ev.item );
+// 			else
+// 				TakeItem(me, ev.source, ev.item, speech);
+// 			endif
 
-		EVID_ALL_FOLLOW_CMD:
-			mydestx := ev.x;
-			mydesty := ev.y;
-			steps := 0;
-			SetAnchor( mydestx, mydesty, 3, 80 );
-			WalkTowardLocation(mydestx, mydesty);
-	endcase
+// 		EVID_ALL_FOLLOW_CMD:
+// 			mydestx := ev.x;
+// 			mydesty := ev.y;
+// 			steps := 0;
+// 			SetAnchor( mydestx, mydesty, 3, 80 );
+// 			WalkTowardLocation(mydestx, mydesty);
+// 	endcase
 
-	return 1;
-endfunction
+// 	return 1;
+// endfunction
 
-/*
 function EquipAnyHair(who)
 
 	foreach item in EnumerateItemsInContainer(who.backpack)
@@ -581,8 +558,6 @@ function EquipAnyHair(who)
 	endforeach
 
 endfunction
-*/
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
@@ -810,7 +785,6 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 function CalculateAndGiveGold(who, items, unused itemdesc, sellfilledcontainers := 0)
 
-
 // Find the element of the type sold
 //var elem;
 var individualsellprice := 0;
@@ -1012,118 +986,10 @@ function MerchantTrain( me, who, text )
 	endif
 endfunction
 
-// This old style left the same, more or less
-
-/*
-function TrainSkill( me, who, item )
-
-	//var skillcfg := ReadConfigFile( "::skills" ); // Link to master skills config file
-	var variance := 0;       // The variance between the players skill and the npc's skill
-	var NPC_level := 0;      // The NPC's level at the skill
-	var PC_level := 0;       // The PC's level at the skill
-	var GoldReceived := 0;   // The amount of gold the PC did give us.
-	var New_Level := 0;      // The PC's new skill level
-	var CurrentNPCCost := 0; // The current NPC's cost for training the Player
-
-	// if the item handed to the NPC was gold and not zero <Integrity check>
-	if( (item.objtype == UOBJ_GOLD_COIN) and (item.amount != 0)  )
-		// Acquire information on what skill the PC whishes to train in.
-		var TrainMaxCost := GetObjProperty( who, "TrainMaxCost" );
-		var TrainSkillID := GetObjProperty( who, "TrainSkillID" );
-
-		// If the pc is not expecting training
-		if( (!TrainMaxCost or !TrainSkillID) and TrainSkillID != 0)
-			say( "Maybe you should be more careful with your gold" );
-			return 0;
-		endif
-
-		// If the NPC does have the skill
-		if( GetBaseSkillBaseValue(me, TrainSkillID) )
-			NPC_level    := GetBaseSkillBaseValue(me,  TrainSkillID) / 3; // Acquire NPC's training level
-			PC_level     := GetBaseSkillBaseValue(who, TrainSkillID);     // Acquire PC's  level
-			GoldReceived := item.amount;                     // How much gold was received
-			variance     := NPC_level - PC_level;            // How many skill points are there between the npc and player.
-			CurrentNPCCost := GoldForSkillGain(NPC_level, PC_level, TrainSkillID);
-
-			// Double check to make sure that the pc's skill is lower then the NPC's
-			if (PC_level < NPC_level)
-
-				// If what the NPC can train the player is different from what the player is expecting, adjust accordingly.
-				if (CurrentNPCCost != TrainMaxCost)
-
-					if (CurrentNPCCost > TrainMaxCost)
-						// The current NPC is better then the one we received an offer from.
-						NPC_Level := SkillGainForGold(NPC_level, PC_level, TrainSkillID, TrainMaxCost);  // Adjust the NPC's level variable to the lower skill level
-						variance  := NPC_level - PC_level;
-					else
-						// The current NPC is worse then the one we received an offer from.
-						// Determine what the cost would be for this NPC
-						if (GoldReceived > CurrentNPCCost)
-							// The NPC can't help the player
-							say("I can not train thee to that level.");
-							MoveItemToContainer( item, who.backpack );
-							return;
-						else
-							// The NPC can help, but we need to adjust
-							TrainMaxCost := CurrentNPCCost;
-						endif
-					endif
-				endif
-
-				// Determine what level the player will be trained to
-				// if the PC gives the NPC the max cost or more. Train them to the fullest
-				if( TrainMaxCost <= GoldReceived )
-					New_Level := NPC_level;
-					EraseObjProperty( who, "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
-					EraseObjProperty( who, "TrainSkillID" );  // Clear the skill flag
-					// TODO: If the player gives a lot more then the training cost, grant a Reputation Bonus and/or a mini-quest clue.
-				else
-					// Train the PC to whatever percentage they can afford.
-					New_Level := ((PC_level + CInt((CDbl(variance) * (CDbl(GoldReceived) / CDbl(TrainMaxCost))))) );
-					EraseObjProperty( who, "TrainMaxCost" );  // Clear the trainmaxcost property on the PC.
-					EraseObjProperty( who, "TrainSkillID" );  // Clear the skill flag
-				endif
-
-				say("Let me show you how it's done.");  // NPC informs player training was successful
-
-				// Set the PC's skill
-				SetBaseSkillBaseValue( who, TrainSkillID, New_Level);
-
-				DestroyItem( item );  // Destroy gold
-
-				SendSysmessage( who, "Your skill increases." ); // Note increase
-
-			else
-				// PC just paid NPC to be trained but NPC doesn't have the skill.
-				say("I'm not as good as thee.  Please find another to train thee.");
-				MoveItemToContainer( item, who.backpack );
-			endif
-		else
-			// NPC does not have that skill to train the PC.  Return gold
-			Say("I don't know that skill. Why don't you ask me what i can train you in?");
-			MoveItemToContainer( item, who.backpack );
-		endif
-	else
-		// PC gave NPC something else other then gold.  Return it.
-		say("Bah, I have no use for this. Be off with ye.");
-		MoveItemToContainer( item, who.backpack );
-		// TODO: OSI has a "Desires" property with all npc's.  I think it's used to determine if an NPC
-		//  gives out clues to a minor quest or reputation bonus, depending on the item donated <Type and value>
-	endif
-
-endfunction
-*/
-
 function GoldForSkillGain( NPC_Skill, PC_Skill, skillid )
 	skillid := skillid;
 	var maxskill := NPC_Skill - PC_Skill;
 	return maxskill; // Cost equals ten times the difference.
-endfunction
-
-function SkillGainForGold(NPC_level, PC_level, TrainSkillID, GoldReceived)
-	NPC_level := NPC_level;
-	TrainSkillID := TrainSkillID;
-	return (GoldReceived) + PC_Level;
 endfunction
 
 ///////////////////////////////////////////////////////////////////////////////////

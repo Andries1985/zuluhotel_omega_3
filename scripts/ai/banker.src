@@ -61,7 +61,7 @@ program banker();
 		ev := os::wait_for_event(1);
 		if(ev.type == SYSEVENT_SPEECH)
 			text := lower(ev.text);
-			splitted := SplitWords(text);
+			//splitted := SplitWords(text);
 			// if(ev.source.criminal == 1)
 			// 	SetObjProperty(me, "OriginalSpeechColor", me.speech_color);
 			// 	me.speech_color := 33;
@@ -70,7 +70,7 @@ program banker();
 			// 	EraseObjProperty(me, "OriginalSpeechColor");
 			// 	return 0;
 			// endif
-			if(text["gold note"] || text["gold draft"] || text["gold check"] )
+			if(Find(text, "gold note", 1) || Find(text, "gold draft", 1) || Find(text, "gold check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EED);
@@ -78,7 +78,7 @@ program banker();
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EF0);
-			elseif(text["copper note"] || text["copper draft"] || text["copper check"] )
+			elseif(Find(text, "copper note", 1) || Find(text, "copper draft", 1) || Find(text, "copper check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EEA);
@@ -103,12 +103,12 @@ program banker();
 					endforeach
 					ShowBalance(ev.source, AddCommas(gamt), AddCommas(samt), AddCommas(camt));
 				//endif
-			elseif(text["bank"])
+			elseif(Find(text, "bank", 1) || Find(text, "safe", 1))
 				OpenBank(ev.source, bank_region);
-			elseif(text["convert copper"])
+			elseif(Find(text, "convert copper", 1))
 				ConvertCopper(ev.source, me);
-			elseif(text["convert silver"])
-				Convertsilver(ev.source, me);
+			elseif(Find(text, "convert silver", 1))
+				ConvertSilver(ev.source, me);
 			endif
 		elseif(SYSEVENT_ITEM_GIVEN)
 		TurnToward (ev.source);

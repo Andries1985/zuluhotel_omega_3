@@ -67,7 +67,7 @@ program Userope( mobile, rope )
 			//Print("Moved to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
 			if (mobile.multi == rope.multi )
 				MoveObjectToLocation( mobile, origx, origy, origz, mobile.realm, MOVEOBJECT_FORCELOCATION );
-				Print("On boat at coord "+i+", returning to orig loc.");
+				//Print("On boat at coord "+i+", returning to orig loc.");
 				continue;
 			else
 				//Print("Breaking:  Off boat at coord "+i+".");

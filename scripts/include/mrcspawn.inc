@@ -433,7 +433,8 @@ function ModifyPCSellList(merchanttype, customer)
                             // then perform standard pricing mods for quality and durability.
                             // Otherwise the price has already undergone mods elsewhere and doesn't
                             // require the standard default mods.
-                            if (normcost == item.buyprice)
+                            
+							if (normcost == item.buyprice)
                                 normcost := normcost * item.quality;
                                 normsell := normsell * item.quality;
                                 percentage := ((item.hp * 10) / item.maxhp);
@@ -449,6 +450,11 @@ function ModifyPCSellList(merchanttype, customer)
                             endif
                             // Here is where we can add price mods for vendor friendlies, city reputation or merchant guilds
                             // or mods based on criminal status or whatever we want.
+							foreach item in EnumerateItemsInContainer(backpackitems)
+							if (GetObjProperty(item, "LFucker"))
+								item.buyprice := 0;
+							endif
+					endforeach
                     endif
             endforeach
 	endif
