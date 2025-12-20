@@ -8,8 +8,8 @@ include ":containers:storageAreas";
 include "include/objtype";
 include "include/findcity";
 include "include/canAccess";
-include "../pkg/multis/house/include/isValidLoc";
-include "../pkg/multis/house/include/multihouse_settings";
+include ":house:isValidLoc";
+include ":house:multihouse_settings";
 
 const UOBJECT_TENT_CHEST:=0xe43;
 

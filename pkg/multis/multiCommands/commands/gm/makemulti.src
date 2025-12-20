@@ -1,7 +1,7 @@
 use uo;
 use cfgfile;
 
-include "../pkg/multis/multiCommands/include/multicommands";
+include ":multiCommands:multicommands";
 
 program textcmd_MakeMulti( mobile, text )
 

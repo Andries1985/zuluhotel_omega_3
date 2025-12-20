@@ -5,7 +5,7 @@ use os;
 use basic;
 use cliloc;
 
-include "../pkg/multis/house/include/multihouse_settings";
+include ":house:multihouse_settings";
 include "include/eventid";
 include "include/attributes";
 include "include/sysevent";

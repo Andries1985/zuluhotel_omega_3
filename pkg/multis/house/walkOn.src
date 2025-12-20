@@ -4,7 +4,7 @@ use os;
 use uo;
 
 
-include "../pkg/multis/house/include/multihouse_settings";
+include ":house:multihouse_settings";
 
 program walk_on_bantile(who, tile)
 	var hsign := GetHSign( who, tile );

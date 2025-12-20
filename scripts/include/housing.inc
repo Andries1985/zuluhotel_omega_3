@@ -2,10 +2,10 @@ use uo;
 use cfgfile;
 
 include "include/findcity";
-
 include ":multicommands:multicommands";
-var settings := SH_GetSettingsCfgElem("settings");
+include ":house:multihouse_settings";
 
+//var settings := SH_GetSettingsCfgElem("settings");
 var footage, sign;
 
 Const HOUSE_LOCKDOWN_ITEM		:= 1;
@@ -112,6 +112,9 @@ endfunction
 //
 ///////////////////////////////////////////////////////
 function DetermineHouseValue(price)
+
+	var settings := SH_GetSettingsCfgElem("settings");
+
 	var divisor := 1;
 	var housevalue := 1;                                      // Defaults to 1. Makes it easy if HouseValuesDeterminedBy == "HousesOwned"
 	price := CInt(price);
@@ -129,6 +132,8 @@ endfunction
 
 // This will eventually return the HousePricePerSquare value in regions.cfg but for now it returns settings.DefaultPricePerSquare.
 function GetCityPrice(house)
+
+	var settings := SH_GetSettingsCfgElem("settings");
 
 	var town := WhatCityAmIIn(house);
 	var squareprice := CInt(GetHousePricePerSquare(town));
@@ -153,6 +158,7 @@ function GetHousePricePerSquare(town)
 	var hpricepersq := 0;
 
 	regions := GetConfigStringKeys( reg_cfg );          // Creates an array of city names
+	var settings := SH_GetSettingsCfgElem("settings");
 
 		foreach place in regions
 			region := FindConfigElem( reg_cfg, place );
@@ -169,6 +175,8 @@ function GetHousePricePerSquare(town)
 endfunction
 
 function GetMarketPrice()
+
+	var settings := SH_GetSettingsCfgElem("settings");
 
 // This will eventually return the current market value of a house based on availability but for now it returns CInt(settings.DefaultPricePerSquare).
 //var town := WhatCityAmIIn(home);

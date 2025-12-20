@@ -3,8 +3,8 @@ use uo;
 use util;
 use cfgfile;
 
-include "../pkg/items/doors/include/doors";
-include "../pkg/items/doors/include/settings";
+include ":doors:doors";
+include ":doors:include/settings";
 
 program door_use_script( mobile, door )
 
