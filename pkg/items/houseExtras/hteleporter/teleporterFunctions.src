@@ -64,6 +64,7 @@ function SetAccess(who, sign, tele)
 
 
 	var options := {"Owner", "Co-Owners", "Friends", "Anyone"};
+	//var options := {"Owner", "Co-Owners", "Friends"};
 	var selection := TeleFunctionsGump( who, "Set Access Restriction:", options, BTN_TYPE_RADIO );
 	if(!selection)
 		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.

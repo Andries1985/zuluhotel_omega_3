@@ -5,6 +5,7 @@ use cliloc;
 include ":keys:key";
 include ":mdgumps:confirmationSizable";
 include ":containers:storageAreas";
+include "../pkg/items/houseExtras/include/settings";
 
 const UOBJECT_DOORS_START := 0x0675;
 const UOBJECT_DOORS_END   := 0x06f4;
@@ -1371,6 +1372,10 @@ function demolish(house, sign, who, bank_region)
 			DestroyItem(SystemFindObjectBySerial(thing));
 		endforeach
 		foreach thing in itemlist
+			if (thing.objtype == 0x15000) // House Teleporter
+					//Print("Demolishing a house teleporter.");
+					DemolishTeleporter(thing, who);
+			endif
 			if((GetObjProperty(thing,"secure") == 1) && (thing.movable == 0))
 				EraseObjProperty(thing,"secure");
 				if(GetObjProperty(thing, "houseserial" ) == house.serial)

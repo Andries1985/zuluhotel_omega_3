@@ -40,7 +40,9 @@ program houseTeleporter(mobile, htele)
 	var toz := GetObjProperty( htele, "DestZ" );
 	var torealm := GetObjProperty( htele, "DestRealm" );
 	if (!torealm)
-		torealm := "britannia";
+		SendSysMessage(mobile, "The teleporter seems to be malfunctioning.", color := 33);
+		return 0;
+		//torealm := "britannia";
 	endif
 
 	set_critical(1);
@@ -89,8 +91,9 @@ function AccessCheck(who, sign, teleporter)
 		return 1;
 	elseif(AccessLevel == "A")
 		return 1;
-	// elseif(who.cmdlevel >= 2)
-		// cantele := 1;
+	elseif(who.cmdlevel >= 2)
+	 	return 1;
+		//cantele := 1;
 	else
 		return 0;
 	endif

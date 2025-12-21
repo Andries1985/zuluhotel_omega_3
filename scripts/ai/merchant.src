@@ -117,7 +117,7 @@ program merchantai()
 		var ev;
 		ev := os::wait_for_event(120);
 		if (ev.source.npctemplate)
-			Print("Ignoring event from NPC: " + ev.source.name);
+			//Print("Ignoring event from NPC: " + ev.source.name);
 			return 0;
 		endif
 
