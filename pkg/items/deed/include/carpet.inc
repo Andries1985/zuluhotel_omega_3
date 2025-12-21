@@ -1,3 +1,5 @@
+use uo;
+
 function CreateCarpet(who, x1, y1, x2, y2, carpet_z, carpet_color, carpet_type, carpet_deed, sign, carpet_tiles)
 
 	if(who.multi)

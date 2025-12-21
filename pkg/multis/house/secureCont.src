@@ -3,7 +3,8 @@ use uo;
 use cliloc;
 
 program use_securecont(who, item)
-  var house := SystemFindObjectBySerial( GetObjProperty( item, "signserial" ));
+
+  var house := SystemFindObjectBySerial( GetObjProperty( item, "houseserial" ));
   var secure := 0;
 
   if ((GetObjProperty( house, "ownerserial" ) == who.serial) || (GetObjProperty( house, "owneracct" ) == who.acctname))
@@ -22,6 +23,7 @@ program use_securecont(who, item)
   if(who.cmdlevel >= 3)
     secure := 1;
   endif
+  Print("Secure access: " + secure);
   if(!secure)
     SendSysMessageCL( who, 500294 ); // You cannot use that.
     return;

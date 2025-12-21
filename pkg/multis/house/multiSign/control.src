@@ -290,6 +290,10 @@ function secure(sign, event)
 		SendSysMessageCL(event.source, 1042023, color := 33); // Cancelled.
 		return;
 	endif
+	if(!sign.IsObjectInsideHouse(itemt))
+		SendSysMessage(event.source, "You can only secure containers inside your house.", color := 33);
+		return 0;
+	endif
 	if(GetObjProperty(itemt, "secure"))
 		SendSysMessageCL(event.source, 501714, color := 33); // This is already secure!
 		return;
@@ -323,10 +327,9 @@ function secure(sign, event)
 			SetObjProperty(itemt, "houseserial", house.serial);
 			SetObjProperty(itemt, "secure", 1);
 			SetObjProperty(itemt,"oldscript", itemt.script);
-			itemt.usescript := ":multihousing:secureCont";
+			itemt.usescript := ":house:secureCont";
 			SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "RemainingSecures") - 1);
 			SendSysMessageCL(event.source, 1010563, color := 66); // This container is secure.
-			SendSysMessage(event.source, "that item is not inside your house.");
 		endif
 	else
 		SendSysMessageCL(event.source, 1061839, color := 33); // This action would exceed the secure storage limit of the house.

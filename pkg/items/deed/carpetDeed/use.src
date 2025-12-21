@@ -1,8 +1,8 @@
 use uo;
 use os;
 
-include ":deed:carpet";
-include ":gumps:gumps";
+include "../pkg/items/deed/include/carpet";
+include ":mdgumps:gumps";
 include "include/housing";
 
 program gump_CarpetSelection(who, carpet_deed)
