@@ -39,24 +39,32 @@ program flip (who)
             targetfurniture.graphic := 0xa9e;
         0xa9e:
             targetfurniture.graphic := 0xa9d;
+			
         0xe3c:
-            targetfurniture.graphic := 0xe3d;   // Large crate
+			// Large crate East
+            targetfurniture.graphic := 0xe3d;
         0xe3d:
+			// Large crate South
             targetfurniture.graphic := 0xe3c;
         0xe3e:
-            targetfurniture.graphic := 0xe3f;   // Medium crate
+			// Medium crate East
+            targetfurniture.graphic := 0xe3f;
         0xe3f:
+			// Medium crate South
             targetfurniture.graphic := 0xe3e;
-        0x9a9:
-            targetfurniture.graphic := 0xe7e;   // Small crate
-        0xe7e:
+		0xe7e:
+			// Small Crate East
             targetfurniture.graphic := 0x9a9;
-		0x9a8:
-			// Strong Box South
-            targetfurniture.graphic := 0xe80;
+        0x9a9:
+			// Small Crate South
+            targetfurniture.graphic := 0xe7e;
         0xe80:
 			// Strong Box East
             targetfurniture.graphic := 0x9a8;
+		0x9a8:
+			// Strong Box South
+            targetfurniture.graphic := 0xe80;
+
         0x9aa:
             targetfurniture.graphic := 0xe7d;   // Wooden box
         0xe7d:
@@ -856,7 +864,7 @@ program flip (who)
   0x3e00:
 	//stone bench
 	 targetfurniture.graphic :=  0x3dff;
-	 
+
 	0x4106:
 		//Pirate chest East
 		targetfurniture.graphic :=  0x4102;

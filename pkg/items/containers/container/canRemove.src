@@ -11,9 +11,9 @@ include ":containers:canRemove";
 include "include/housing";
 
 program canRemove( mobile, container, unused item, move_type )
-	if( !Anti_Fast_Loot( mobile ))
-			return 0;
-	endif
+	// if( !Anti_Fast_Loot( mobile ))
+	// 		return 0;
+	// endif
 
 	if( mobile.cmdlevel >= 2 )
 		return 1;

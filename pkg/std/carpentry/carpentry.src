@@ -659,7 +659,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 	endif
 
 	choice := (id * 10) + choice;
-	Print( "Carpentry choice: " + Cstr(choice) );
+	//Print( "Carpentry choice: " + Cstr(choice) );
 
 	menu := CreateMenu( "What would you like to make?" );
 

@@ -150,7 +150,7 @@ program place_deed( who , deed )
 			y_mod := 0 - y_mod;
 		endif
 
-		var at_loc := ListItemsAtLocation( start.x + x_mod , start.y + y_mod , start.z, start.realm );
+		var at_loc := ListItemsAtLocation( start.x + x_mod, start.y + y_mod, start.z, start.realm );
 		if( len( at_loc ) )
 			SendSysMessage( who , "You don't have enough space to place the item." );
 			SendSysMessage( who , "You must select an area free of any others item." );
