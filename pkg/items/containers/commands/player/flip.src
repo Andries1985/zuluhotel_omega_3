@@ -16,8 +16,10 @@ program flip (who)
           return;
     endif
 
-    case (targetfurniture.graphic)
-        0xa97:
+	Print("Target furniture graphic: " + targetfurniture.graphic);
+
+	case (targetfurniture.graphic)
+		0xa97:
             targetfurniture.graphic := 0xa9a;   // bookshelves
         0xa9a:
             targetfurniture.graphic := 0xa97;
@@ -49,9 +51,11 @@ program flip (who)
             targetfurniture.graphic := 0xe7e;   // Small crate
         0xe7e:
             targetfurniture.graphic := 0x9a9;
-        0x9a8:
-            targetfurniture.graphic := 0xe80;   // Metal box
+		0x9a8:
+			// Strong Box South
+            targetfurniture.graphic := 0xe80;
         0xe80:
+			// Strong Box East
             targetfurniture.graphic := 0x9a8;
         0x9aa:
             targetfurniture.graphic := 0xe7d;   // Wooden box
@@ -149,35 +153,22 @@ program flip (who)
             targetfurniture.graphic := 0x1E5F;  // Dress form
         0x1E5F:
             targetfurniture.graphic := 0x1E5E;
-0x0459:
- targetfurniture.graphic :=  0x045a;
-
-0x045a:
-	 targetfurniture.graphic :=  0x0459;
-
-0x045b:
-	
-	 targetfurniture.graphic :=  0x045c;
-
-  0x045c:
-
-	 targetfurniture.graphic :=  0x045b;
-
-  0x09bd:
-
-	 targetfurniture.graphic :=  0x09d4;
-
-  0x09be:
-
-	 targetfurniture.graphic :=  0x09bd;
-
-  0x09d4:
-
-	 targetfurniture.graphic :=  0x09d5;
-
-  0x09d5:
-
-	 targetfurniture.graphic :=  0x09be;
+		0x0459:
+		targetfurniture.graphic :=  0x045a;
+		0x045a:
+			targetfurniture.graphic :=  0x0459;
+		0x045b:
+			targetfurniture.graphic :=  0x045c;
+		0x045c:
+			targetfurniture.graphic :=  0x045b;
+		0x09bd:
+			targetfurniture.graphic :=  0x09d4;
+		0x09be:
+			targetfurniture.graphic :=  0x09bd;
+		0x09d4:
+			targetfurniture.graphic :=  0x09d5;
+		0x09d5:
+			targetfurniture.graphic :=  0x09be;
 
 // DOES NOT MATCH 0xa97 -> 0xa9a
 //  0x0A97:
@@ -865,7 +856,14 @@ program flip (who)
   0x3e00:
 	//stone bench
 	 targetfurniture.graphic :=  0x3dff;
-		default:
+	 
+	0x4106:
+		//Pirate chest East
+		targetfurniture.graphic :=  0x4102;
+	0x4102:
+		//Pirate chest South
+		targetfurniture.graphic :=  0x4106;
+	default:
             SendSysMessage(who, "That item cannot be reoriented.");
 	endcase
 

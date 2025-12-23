@@ -17,7 +17,7 @@ include ":keys:key";
 include "include/autoloop";
 include "include/attributes";
 include "include/difficulty";
-include "include/chests";
+//include "include/chests";
 
 const CARPENTER_SOUND	:= 0x23e;
 const UOBJECT_CHEST	:= 0x0e42;
@@ -172,10 +172,10 @@ program MakeTinkerItems( character , tool )
 						break;
 
 
-			UOBJ_COPPER_KEY:
-			UOBJ_GOLD_KEY:
-			UOBJ_IRON_KEY:
-			UOBJ_RUSTY_IRON_KEY:	TryToMakeAContainerLockable( character , use_on );
+			//UOBJ_COPPER_KEY:
+			//UOBJ_GOLD_KEY:
+			//UOBJ_IRON_KEY:
+			//UOBJ_RUSTY_IRON_KEY:	TryToMakeAContainerLockable( character , use_on );
 
 
 			default:		if( use_on.isa( POLCLASS_CONTAINER ) and !use_on.isa( POLCLASS_CORPSE ) )
@@ -592,24 +592,25 @@ function TryToMakeItem( character , ressource , to_make_objtype , sfx )
 			SetObjProperty( theitem , "BaseName" , itemname );
 			SetName( theitem , itemname );
 
-			if( theitem.isa(POLCLASS_LOCKABLE) )
-			  if( theitem.objtype <> 0x0EFA )
-					SetObjProperty(theitem, "lockable", 1);
-					var lockid := AllocateLockID();
-					theitem.locked := 1;
-					var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
-					SetObjProperty( thekey ,  "lockid" , lockid );
-					SetObjProperty( theitem , "lockid" , lockid );
-					var tinkering := GetEffectiveSkill( character , SKILLID_TINKERING );
-					var lockdiff := finddiff(theitem);
-					if(lockdiff)
-						Setobjproperty( theitem , "LockDifficulty", lockdiff );
-					else
-						Setobjproperty( theitem , "LockDifficulty", tinkering );
-					endif
-					SendSysmessage( character , "You will find the key in your backpack.");
-			  endif
-			endif
+			//Moved to oncreate for containers
+			// if( theitem.isa(POLCLASS_LOCKABLE) )
+			//   if( theitem.objtype <> 0x0EFA )
+			// 		SetObjProperty(theitem, "lockable", 1);
+			// 		var lockid := AllocateLockID();
+			// 		theitem.locked := 1;
+			// 		var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
+			// 		SetObjProperty( thekey ,  "lockid" , lockid );
+			// 		SetObjProperty( theitem , "lockid" , lockid );
+			// 		var tinkering := GetEffectiveSkill( character , SKILLID_TINKERING );
+			// 		var lockdiff := finddiff(theitem);
+			// 		if(lockdiff)
+			// 			Setobjproperty( theitem , "LockDifficulty", lockdiff );
+			// 		else
+			// 			Setobjproperty( theitem , "LockDifficulty", tinkering );
+			// 		endif
+			// 		SendSysmessage( character , "You will find the key in your backpack.");
+			//   endif
+			// endif
 		endif
 		SubtractAmount( ressource , material );
 	else
@@ -917,7 +918,7 @@ function TryToMakePotionKeg( character , use_on )
 
 		var theitem := CreateItemInBackpack( character , UOBJ_POTION_KEG );
 		if( !theitem )
-			SendSysMessage( character , "Error in creation process please report this bug on the msg board." );
+			SendSysMessage( character , "Error in creation process please report this bug." );
 			return;
 		endif
 
@@ -956,58 +957,58 @@ function GetRessourceName( ressource )
 endfunction
 
 
-function TryToMakeAContainerLockable( character , key )
+// function TryToMakeAContainerLockable( character , key )
 
-	var lock_id := GetObjProperty( key , "lockid" );
-	if( lock_id )
-		SendSysMessage( character , "That key already unlock another lock." );
-		return;
-	endif
+// 	var lock_id := GetObjProperty( key , "lockid" );
+// 	if( lock_id )
+// 		SendSysMessage( character , "That key already unlock another lock." );
+// 		return;
+// 	endif
 
-	var the_chest := Target( character , TGTOPT_CHECK_LOS );
-	if( !the_chest )
-		return;
-	endif
+// 	var the_chest := Target( character , TGTOPT_CHECK_LOS );
+// 	if( !the_chest )
+// 		return;
+// 	endif
 
-	if( !Accessible( character , the_chest ) )
-		SendSysmessage( character , "You can't reach that!" );
-		return;
-	endif
+// 	if( !Accessible( character , the_chest ) )
+// 		SendSysmessage( character , "You can't reach that!" );
+// 		return;
+// 	endif
 
-	if( !the_chest.isa( POLCLASS_LOCKABLE ) )
-		SendSysMessage( character , "You can't make this lockable" );
-		return;
-	endif
+// 	if( !the_chest.isa( POLCLASS_LOCKABLE ) )
+// 		SendSysMessage( character , "You can't make this lockable" );
+// 		return;
+// 	endif
 
-	if( !ReserveItem( the_chest ) )
-		return;
-	endif
+// 	if( !ReserveItem( the_chest ) )
+// 		return;
+// 	endif
 
-	if( !IsInContainer( character.backpack , the_chest ) )
-		SendSysmessage( character, "The chest have to be in your backpack." );
-		return;
-	endif
+// 	if( !IsInContainer( character.backpack , the_chest ) )
+// 		SendSysmessage( character, "The chest have to be in your backpack." );
+// 		return;
+// 	endif
 
-	if( GetObjProperty( the_chest , "lockid" ) or GetObjProperty( the_chest , "lockable" ) )
-		SendSysmessage( character, "This is already lockable." );
-		return;
-	endif
+// 	if( GetObjProperty( the_chest , "lockid" ) or GetObjProperty( the_chest , "lockable" ) )
+// 		SendSysmessage( character, "This is already lockable." );
+// 		return;
+// 	endif
 
-	if( CheckSkill( character , SKILLID_TINKERING , TINKER_LOCKABLE , TINKER_LOCKABLE * POINTS_MULTIPLIER ) )
-		SetObjProperty( the_chest , "lockable" , 1 );
-		var lockid := AllocateLockID();
-		the_chest .locked := 1;
-		SetObjProperty( key ,  "lockid" , lockid );
-		SetObjProperty( the_chest , "lockid" , lockid );
-		var tinkering := GetEffectiveSkill( character , SKILLID_TINKERING ) + 20;
-		if( GetObjProperty( character , CLASSEID_CRAFTER ) )
-			tinkering := Cint( tinkering * ClasseBonus( character , CLASSEID_CRAFTER ) );
-		endif
-		Setobjproperty( the_chest , "LockDifficulty", tinkering );
-		SendSysmessage( character , "You successfully made the item lockable with your key" );
-	else
-		SendSysMessage( character , "You failed to make the item lockable and destroyed your key." );
-		DestroyItem( key );
-	endif
+// 	if( CheckSkill( character , SKILLID_TINKERING , TINKER_LOCKABLE , TINKER_LOCKABLE * POINTS_MULTIPLIER ) )
+// 		SetObjProperty( the_chest , "lockable" , 1 );
+// 		var lockid := AllocateLockID();
+// 		the_chest .locked := 1;
+// 		SetObjProperty( key ,  "lockid" , lockid );
+// 		SetObjProperty( the_chest , "lockid" , lockid );
+// 		var tinkering := GetEffectiveSkill( character , SKILLID_TINKERING ) + 20;
+// 		if( GetObjProperty( character , CLASSEID_CRAFTER ) )
+// 			tinkering := Cint( tinkering * ClasseBonus( character , CLASSEID_CRAFTER ) );
+// 		endif
+// 		Setobjproperty( the_chest , "LockDifficulty", tinkering );
+// 		SendSysmessage( character , "You successfully made the item lockable with your key" );
+// 	else
+// 		SendSysMessage( character , "You failed to make the item lockable and destroyed your key." );
+// 		DestroyItem( key );
+// 	endif
 
-endfunction
+// endfunction

@@ -52,18 +52,15 @@ const PROPID_BURNER_LAST_POTION_MADE		:= "lastmade";
 
 
 // PropIDs for chests
-const PROPID_CHEST_ALWAYS_SPAWN				:= "AlwaysSpawn";
-const PROPID_CHEST_CAN_BE_DESTROYED			:= "CanBeDestroyed";
-const PROPID_CHEST_HOUSE_SERIAL				:= "HouseSerial";
-const PROPID_CHEST_LOCK_DIFFICULTY			:= "LockDifficulty";
-const PROPID_CHEST_NEVER_SPAWN				:= "NeverSpawn";
-const PROPID_CHEST_SPAWN_LEVEL				:= "SpawnChestLevel";
-const PROPID_CHEST_PERMANENTLY_TRAPPED		:= "PermanentlyTrapped";
-const PROPID_CHEST_TRAP_STRENGTH			:= "Trap_Strength";
-const PROPID_CHEST_TRAP_TYPE				:= "Trap_Type";
-const PROPID_CHEST_TRAPPED_BY				:= "Trapped_By";
-const PROPID_CHEST_TREASURE_CHEST			:= "TreasureChest";
-const PROPID_CHEST_SPAWNPOINT_CHEST			:= "SpawnPointChest";
+const PROPID_CHEST_HOUSE_SERIAL				    := "HouseSerial";
+const PROPID_CHEST_LOCK_DIFFICULTY			    := "LockPickDiff";
+const PROPID_CHEST_MAGICLOCK_DIFFICULTY		    := "MLockPickDiff";
+const PROPID_CHEST_TRAP_STRENGTH			    := "Trap_Strength";
+const PROPID_CHEST_TRAP_TYPE				    := "Trap_Type";
+const PROPID_CHEST_TRAPPED_BY				    := "Trapped_By";
+const PROPID_CHEST_TREASURE_CHEST			    := "TreasureChest";
+const PROPID_CHEST_SPAWNPOINT_CHEST			    := "SpawnPointChest";
+const PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY	:= "SPLockPickDiff";
 
 
 // PropIDs for corpses

@@ -28,8 +28,8 @@ include "include/random";
 include "include/autoloop";
 include "include/attributes";
 include "include/difficulty";
-include "include/chests";
-include "../pkg/opt/karmafame/karmafame";
+//include "include/chests";
+include ":karmafame:karmafame";
 
 const GOLD_COLOR	:= 0x0033;
 const CARPENTER_SOUND	:= 0x23e;
@@ -41,6 +41,7 @@ const FAME_BONUS	:= 10;
 const ID_LOGS	:= 1;
 const ID_INGOTS	:= 2;
 const ID_CLOTH	:= 3;
+const ID_BONES	:= 4;
 
 
 var carpenter_cfg := ReadConfigFile( "carpentry" );
@@ -85,6 +86,10 @@ program MakeCarpentryItems( character, tool )
 
 	if( use_on.objtype == UOBJ_BARREL_LID or use_on.objtype == UOBJ_BARREL_STAVE or use_on.objtype == UOBJ_BARREL_HOOPS )
 		TryToCreateKeg( character , use_on );
+
+	elseif( IsBone(use_on) )
+		use_with := use_on;
+		item := MakeAndProcessMenu( character , use_on , ID_BONES );
 
 	elseif( IsLog(use_on))
 		ressource_diff := carpenter_cfg[use_on.objtype].Difficulty;
@@ -232,7 +237,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	var result_qual;
 	var give_deed;
 	var is_excep;
-	var lockable;
+	//var lockable;
 	var undyeable;
 	var CraftedBy;
 
@@ -280,7 +285,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	give_deed := element.MakeDeed;
 	undyeable := element.Undyeable;
 	is_excep := 0;
-	lockable := 0;
+	//lockable := 0;
 
 	PlaySoundEffect( character , sfx );
 	Sleep (2);
@@ -313,7 +318,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	
 	sendDiff( character , skill );
 	if( skill2 )
-	sendSecDiff( character , skill2 );
+		sendSecDiff( character , skill2 );
 	endif
 
 	points	:= Cint( (skill + Cint(element.Material / 3)) * POINTS_MULTIPLIER );
@@ -408,9 +413,9 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 			skill := 90;
 		endif
 
-		if( carpenter_cfg[item].lockable )
-				lockable := 1;
-		endif
+		// if( carpenter_cfg[item].lockable )
+		// 		lockable := 1;
+		// endif
 
 		if( element.Exceptional and (Random(200) < excep_ch) )
 			if( CheckSkill( character , cint(skillid) , cint(skill) , 0 ) )
@@ -448,9 +453,9 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				SetObjProperty( theitem , "ItemBaseName" , itemname );
 				SetObjProperty( theitem , "ItemQuality" , result_qual );
 				itemname := "deed for : " + itemname;
-				if( lockable )
-					SetObjProperty( theitem , "ItemIsLockable" , 1 );
-				endif
+				// if( lockable )
+				// 	SetObjProperty( theitem , "ItemIsLockable" , 1 );
+				// endif
 
 				if( is_excep )
 					SendSysmessage( character , "You place the deed for the exceptional item in your pack." );
@@ -481,19 +486,19 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				theitem.quality := result_qual;
 			endif
 
-			if( lockable )
-				var lockdiff := finddiff(theitem);
-				if(lockdiff)
-					Setobjproperty( theitem , "LockDifficulty", lockdiff );
-				endif
-				SetObjProperty(theitem, "lockable","1");
-				var lockid := AllocateLockID();
-				theitem.locked := 1;
-				var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
-				SetObjProperty( thekey ,  "lockid" , lockid );
-				SetObjProperty( theitem , "lockid" , lockid );
-				SendSysmessage( character , "You will find the key in your backpack.");
-			endif
+			// if( lockable )
+			// 	var lockdiff := finddiff(theitem);
+			// 	if(lockdiff)
+			// 		Setobjproperty( theitem , "LockDifficulty", lockdiff );
+			// 	endif
+			// 	SetObjProperty(theitem, "lockable","1");
+			// 	var lockid := AllocateLockID();
+			// 	theitem.locked := 1;
+			// 	var thekey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
+			// 	SetObjProperty( thekey ,  "lockid" , lockid );
+			// 	SetObjProperty( theitem , "lockid" , lockid );
+			// 	SendSysmessage( character , "You will find the key in your backpack.");
+			// endif
 
 			theitem.hp := theitem.maxhp;
 			SetObjProperty( theitem , "BaseName" , itemname );
@@ -577,7 +582,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 
 	var second_res;
 
-	if( id == ID_INGOTS or id == ID_CLOTH )
+	if( id == ID_INGOTS or id == ID_CLOTH or id == ID_BONES)
 		SendSysmessage( character, "What logs type would you like to use?" );
 		second_res := Target( character , TGTOPT_CHECK_LOS );
 
@@ -608,6 +613,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 			SendSysMessage( character , "You must choose some logs." );
 			return;
 		endif
+
 	endif
 
 	if( carpentry < ressource_diff )
@@ -635,10 +641,14 @@ function MakeAndProcessMenu( character , byref use_on , id )
 				AddMenuItem( menu , 0x0fea , "Mage Furniture" );
 				AddMenuItem( menu , 0x0945 , "Home Decoration" );
 				AddMenuItem( menu , 0x12d9 , "Large Statues" );
+				break;
 
 		ID_CLOTH:	AddMenuItem( menu , 0x0A80 , "House Furniture" );
 				AddMenuItem( menu , 0x0eb2 , "Musical Instruments" );
 				AddMenuItem( menu , 0x1070 , "Tools and Training Items" );
+				break;
+
+		ID_BONES:	AddMenuItem( menu , 0x0F7E , "Bone Furniture" );
 				break;
 
 	endcase
@@ -649,6 +659,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 	endif
 
 	choice := (id * 10) + choice;
+	Print( "Carpentry choice: " + Cstr(choice) );
 
 	menu := CreateMenu( "What would you like to make?" );
 
@@ -767,5 +778,15 @@ function MakeYoungOakStaff( character , oak )
 	else
 		SendSysMessage( character , "You failed in your attemp to create a young oak staff." );
 	endif
+
+endfunction
+
+function IsBone( what )
+
+	case( what.graphic )
+		0xf7e:		return 1;
+
+		default:	return 0;
+	endcase
 
 endfunction

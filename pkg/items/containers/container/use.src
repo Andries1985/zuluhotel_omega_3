@@ -38,7 +38,7 @@ program useContainer( mobile, container )
 		return 0;
 	//elseif( RunTraps( container, mobile ))
 		//RemoveTrap( container );
-		return 0;
+		//return 0;
 	endif
 
 	SendViewContainer( mobile, container );

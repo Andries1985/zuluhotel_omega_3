@@ -42,7 +42,7 @@ endfunction
 
 function finddiff(chest)
 
-	var diff := GetObjProperty(chest, "LockDifficulty");
+	var diff := GetObjProperty(chest, "LockPickDiff");
 	if( diff )
 		return diff;
 	endif

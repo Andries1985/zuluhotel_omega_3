@@ -5,6 +5,30 @@
 */
 use uo;
 
-program canDestroy( unused container )
+include "include/managers";
+include ":ArtifactSystem:artifact";
+
+program canDestroy( container )
+
+	// send artifacts back to their box
+	if (GetObjProperty(container,"Artifact"))
+		toArtifactBox(container);
+		return 0;
+	endif
+
+        WarnSpawnPoint(container);
 	return 1;
+
 endprogram
+
+function WarnSpawnPoint(item)
+
+	var pointserial := GetObjProperty( item, PROPID_MOBILE_SPAWNPOINT_SERIAL );
+	if( !pointserial )
+		return 1;
+	endif
+
+	SendSpawnPointEvent( EVID_SPAWNPOINT_DEATH, pointserial, item.serial );
+	return 1;
+
+endfunction

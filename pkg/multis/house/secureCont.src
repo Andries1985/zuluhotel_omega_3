@@ -23,7 +23,7 @@ program use_securecont(who, item)
   if(who.cmdlevel >= 3)
     secure := 1;
   endif
-  Print("Secure access: " + secure);
+  //Print("Secure access: " + secure);
   if(!secure)
     SendSysMessageCL( who, 500294 ); // You cannot use that.
     return;

@@ -230,7 +230,7 @@ function CreateSpawnPointContainer( byref point, byref pt_data )
 		return 0;
 	endif
 	
-	SetObjProperty( chest, PROPID_CHEST_TREASURE_CHEST, 1 );
+	//SetObjProperty( chest, PROPID_CHEST_TREASURE_CHEST, 1 );
 	SetObjProperty( chest, PROPID_CHEST_SPAWNPOINT_CHEST, 1 );
 	
 	var lootdata	:= SplitWords(pt_data[5]);
@@ -302,7 +302,7 @@ function CreateSpawnPointContainer( byref point, byref pt_data )
 	chest.movable := 0;
 	chest.locked := 1;
 	
-	SetObjProperty( chest, PROPID_CHEST_LOCK_DIFFICULTY, RandomInt(101)+50 );
+	SetObjProperty( chest, PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY, RandomInt(101)+50 );
 
 	if( PROPID_CHEST_SPAWNPOINT_CHEST )
 		SetObjProperty( chest, PROPID_CHEST_TRAP_TYPE, RandomInt(3)+1 );

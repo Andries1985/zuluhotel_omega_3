@@ -7,7 +7,9 @@
 */
 use uo;
 use util;
+use cfgfile;
 
+include "include/constants";
 include ":containers:containers";
 include ":keys:key";
 
@@ -17,8 +19,26 @@ program OnCreateContainer( item )
 		return 1;
 	elseif( KP_IsLockable( item ))
 		Create_ChestKey( item );
-		SetObjProperty( item, "LockPickDiff", RandomIntMinMax( 29, 91 ) );
+		//SetObjProperty( item, "LockPickDiff", RandomIntMinMax( 1, 150 ) );
+		var diff := FindDiff( item );
+		SetObjProperty( item, "LockPickDiff", diff );
 	endif
 
 	return 1;
 endprogram
+
+function FindDiff( item )
+
+	var diff := GetObjProperty(item, "LockPickDiff");
+	if( diff )
+		return diff;
+	endif
+
+	var cfg := ReadConfigFile( CFGFILE_LOCK_DIFFICULTIES );
+	if( !cfg )
+		return 0;
+	endif
+	
+	return (cfg[item.objtype].difficulty);
+
+endfunction

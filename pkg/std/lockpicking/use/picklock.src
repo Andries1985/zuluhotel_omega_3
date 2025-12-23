@@ -1,0 +1,379 @@
+// Locking Spawning Chest system  version .1
+// by Zulu (zulu@zuluhotel.com)   July 5, 2000
+
+use uo;
+use os;
+use cliloc;
+use cfgfile;
+
+//include "include/chests";
+//include "include/starteqp";
+include "include/skillpoints";
+//include "include/difficulty";
+
+program picklock( who, lockpick )
+
+	If (!ReserveItem(lockpick)) return; endif
+
+	SendSysMessageCL( who, 502068, color := 4 ); // What do you want to pick?
+	SendSysMessageCL( who, 502067 ); // Remember!  Locked chests may also be trapped!
+	var victim := Target(who);
+	if(!victim)
+		SendSysMessageCL( who, 1042023, color := 33 ); // Cancelled.
+		return;
+	endif
+
+	If (!ReserveItem(victim)) return; endif
+
+	if ( (not Accessible(who,victim)) or (not Accessible(who,lockpick)) )
+		SendSysMessage(who, "Can't reach it!", FONT_NORMAL, 43);
+		return;
+	endif
+	if(Distance(victim, who) > 2)
+		SendSysMessageCL( who, 502070, color := 33 ); // I am too far away to do that.
+		return;
+	endif
+	if(!victim.locked)
+		SendSysMessageCL( who, 502069, color := 44 ); // This does not appear to be locked.
+		return;
+	endif
+	if( GetObjProperty( victim, "secure" ) )
+		SendSysMessageCL( who, 502071, color := 44 ); // That is secure.
+		return 0;
+	endif
+
+	if ((GetObjProperty( victim, "houseserial" )) or ( victim.multi ))
+		SendSysMessage(who,"The Gods frown on picking this!", FONT_NORMAL, 43);
+		PlayLightningBoltEffect(who);
+		return;
+	endif
+
+	if(GetObjProperty( victim, PROPID_CHEST_SPAWNPOINT_CHEST ))
+		PickTreasureChest(who, lockpick, victim);
+		return;
+	else
+		var diffi := CInt(GetObjProperty(victim, PROPID_CHEST_MAGICLOCK_DIFFICULTY));
+		if(diffi)
+			PickMLockedItem(who, lockpick, victim, diffi);
+			return;
+		else
+			var diff := CInt(GetObjProperty(victim, PROPID_CHEST_LOCK_DIFFICULTY));
+			if(diff)
+				PickLockedItem(who, lockpick, victim, diff);
+				return;
+			else
+				SendSysMessageCL( who, 502073 ); // This lock cannot be picked by normal means...
+				return;
+			endif
+		endif
+	endif
+
+endprogram
+
+
+function PickTreasureChest(who, lockpick, chest)
+
+//PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY
+
+	if( !GetObjProperty(who, CLASSEID_THIEF) )
+		SendSysMessage(who, "You are not a thief!", FONT_NORMAL, 43);
+		return;
+	endif
+
+	if(!chest.locked)
+		SendSysMessageCL( who, 502069, color := 33 ); // This does not appear to be locked.
+		return;
+	endif
+
+	var lvl := GetObjProperty(chest, PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY);
+	if(!lvl)
+		SendSysMessageCL( who, 502073, color := 44 ); // This lock cannot be picked by normal means...
+		return;
+	endif
+	if( lvl > 150 )
+		lvl := 150;
+	else
+		lvl := CInt( lvl );
+	endif
+
+	var mobs := ListHostiles( who, 4 );
+	if (len(mobs))
+		SendSysMessage( who, mobs[1].name+" breaks your concentration!", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	PlaySoundEffect(who, SFX_242);
+	sleep(1);
+
+	var skillpoints := get_default_points(SKILLID_LOCKPICKING);
+
+	if ( Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints))
+		PlaySoundEffect( chest, SFX_200);
+		SendSysMessageCL( who, 502076, color := 66 ); // The lock quickly yields to your skill.
+		PrintTextAbovePrivateCL( who, chest, 3005143, 66 ); // Unlocked
+		SetObjProperty( chest, "LastPickedBySerial", who.serial );
+		chest.locked := 0;
+		SubtractAmount( lockpick, 1 );
+		SendSysMessage( who, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43 );
+		Start_Script( "::misc/deleter", {chest, 30} );
+		return;
+	else
+		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+			PlaySoundEffect( who, 0xef );
+			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
+			SubtractAmount( lockpick, 1 );
+		else
+			PlaySoundEffect( chest, SFX_11F );
+		endif
+		return 0;
+	endif
+
+endfunction
+
+function PickMLockedItem(who, lockpick, chest, diff)
+
+//PROPID_CHEST_MAGICLOCK_DIFFICULTY
+
+	if(!chest.locked)
+		SendSysMessageCL( who, 502069, color := 33 ); // This does not appear to be locked.
+		return;
+	endif
+
+	var lvl := diff;
+
+	if( lvl > 150 )
+		lvl := 150;
+	else
+		lvl := CInt( lvl );
+	endif
+
+	var mobs := ListHostiles( who, 4 );
+	if (len(mobs))
+		SendSysMessage( who, mobs[1].name+" breaks your concentration!", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	PlaySoundEffect(who, SFX_242);
+	sleep(1);
+
+	var skillpoints := get_default_points(SKILLID_LOCKPICKING);
+
+	if ( Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints ))
+		PlaySoundEffect( chest, SFX_200);
+		SendSysMessageCL( who, 502076, color := 66 ); // The lock quickly yields to your skill.
+		PrintTextAbovePrivateCL( who, chest, 3005143, 66 ); // Unlocked
+		EraseObjProperty( chest, PROPID_CHEST_MAGICLOCK_DIFFICULTY );
+		EraseObjProperty( chest, "LockID" );
+		EraseObjProperty( chest, "MagicLock" );
+		SetObjProperty( chest, "LastPickedBySerial", who.serial );
+		chest.locked := 0;
+		SubtractAmount( lockpick, 1 );
+		return;
+	else
+		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+			PlaySoundEffect( who, 0xef );
+			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
+			SubtractAmount( lockpick, 1 );
+		else
+			PlaySoundEffect( chest, SFX_11F );
+		endif
+		return;
+	endif
+endfunction
+
+function PickLockedItem(who, lockpick, chest, diff)
+
+//PROPID_CHEST_LOCK_DIFFICULTY
+
+	if(!chest.locked)
+		SendSysMessageCL( who, 502069, color := 33 ); // This does not appear to be locked.
+		return;
+	endif
+
+	var lvl := diff;
+
+	if( lvl > 150 )
+		lvl := 150;
+	else
+		lvl := CInt( lvl );
+	endif
+
+	var mobs := ListHostiles( who, 4 );
+	if (len(mobs))
+		SendSysMessage( who, mobs[1].name+" breaks your concentration!", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	PlaySoundEffect(who, SFX_242);
+	sleep(1);
+
+	var skillpoints := get_default_points(SKILLID_LOCKPICKING);
+
+	if ( Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints ))
+		PlaySoundEffect( chest, SFX_200);
+		SendSysMessageCL( who, 502076, color := 66 ); // The lock quickly yields to your skill.
+		PrintTextAbovePrivateCL( who, chest, 3005143, 66 ); // Unlocked
+		SetObjProperty( chest, "LastPickedBySerial", who.serial );
+		chest.locked := 0;
+		SubtractAmount( lockpick, 1 );
+		return;
+	else
+		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+			PlaySoundEffect( who, 0xef );
+			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
+			SubtractAmount( lockpick, 1 );
+		else
+			PlaySoundEffect( chest, SFX_11F );
+		endif
+		return;
+	endif
+endfunction
+
+
+//Old Lockpicking System Below
+// Locking Spawning Chest system  version .1
+// by Zulu (zulu@zuluhotel.com)   July 5, 2000
+
+// use uo;
+// use os;
+// use cfgfile;
+
+// include "include/chests";
+// include "include/starteqp";
+// include "include/skillpoints";
+// include "include/difficulty";
+
+// program pick( me, lockpick )
+
+// 	If (!ReserveItem(lockpick)) return; endif
+
+// 	SendSysMessage(me, "Pick what?", FONT_NORMAL, 43);
+// 	var chest := Target(me);
+// 	if (!chest) return; endif
+
+// 	If (!ReserveItem(chest)) return; endif
+
+// 	if ( (not Accessible(me,chest)) or (not Accessible(me,lockpick)) )
+// 		SendSysMessage(me, "Can't reach it!", FONT_NORMAL, 43);
+// 		return;
+// 	endif
+
+// 	if (!chest.locked)
+// 		SendSysMessage(me,"That doesn't appear to be locked.", FONT_NORMAL, 43);
+// 		return;
+// 	endif
+
+// 	if ( Distance(me, chest) > 2 )
+// 		SendSysMessage(me, "Can't reach it!", FONT_NORMAL, 43);
+// 		return;
+// 	endif
+// 	if( PROPID_CHEST_SPAWNPOINT_CHEST && !GetObjProperty(me, CLASSEID_THIEF) )
+// 		SendSysMessage(me, "You are not a thief!", FONT_NORMAL, 43);
+// 		return;
+// 	endif
+
+// 	if (getobjproperty(chest, "#U"))
+//         	if (getobjproperty(chest, "#U") > readgameclock())
+//                 	sendsysmessage(me,"You must wait to pick this lock!", FONT_NORMAL, 43);
+//                 	return;
+//         	endif
+// 	endif
+
+// 	if (!canpick(chest))
+//         	Sendsysmessage(me,"The Gods frown on picking this door!", FONT_NORMAL, 43);
+//         	playlightningbolteffect(me);
+//         	return;
+// 	endif
+
+// 	var lvl:=finddiff(chest);
+
+//  	if(lvl)
+// 		var tester:=cint(lvl);
+// 		if(tester > 150)
+// 			tester := 150;
+// 		endif
+// 		sendDiff( me , tester );
+// 	endif
+
+// 	if(!lvl)
+// 		SendSysMessage(me,"You have no chance of picking that lock!", FONT_NORMAL, 43);
+// 		return;
+// 	endif
+
+// 	if (LockPickTheThing(me,chest,lvl,lockpick))
+
+// 		// if (TypeOf(GetObjProperty(chest,"spawnchest"))=="Integer")
+// 		// 	SpawnTheChest(chest);
+// 		// endif
+// 		//DestroyChest(chest);
+// 	endif
+
+// endprogram
+
+// //function SpawnTheChest(chest)
+
+// //	var level:=Cint(GetObjProperty(chest,"spawnchest"));
+
+// //	if(level)
+// //		MakeLoot(chest,level+108);
+// //		addchest(chest);
+// //	endif
+
+// //endfunction
+
+// function LockPickTheThing(me,chest,lvl,lockpick)
+
+// 	PlaySoundEffect(chest,SFX_242);
+
+// 	sleep(2);
+// 	if(lvl > 150)
+// 		lvl := 150;
+// 	else
+// 		lvl:=cint(lvl);
+// 	endif
+
+// 	var mobs:=ListHostiles(me,4);
+// 	if (len(mobs))
+// 		SendSysMessage(me,mobs[1].name+" breaks your concentration!", FONT_NORMAL, 43);
+// 		return 0;
+// 	endif
+
+// 	var skillpoints := get_default_points(SKILLID_LOCKPICKING);
+
+// 	if ( Checkskill(me,SKILLID_LOCKPICKING,lvl,skillpoints) )
+// 		PlaySoundEffect(chest,SFX_200);
+// 		PrintTextAbovePrivate( chest, "*Unlocked!*", me, FONT_NORMAL, 43, 1);
+// 		setobjproperty(chest, "L", me.name);
+// 		chest.locked := 0;
+// 		if( PROPID_CHEST_SPAWNPOINT_CHEST )
+// 			SubtractAmount(lockpick,1);
+// 			SendSysMessage(me, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43);
+// 			Start_Script("::misc/deleter", {chest, 30});
+// 		endif
+// 		return 1;
+// 	else
+// 		PrintTextAbovePrivate(chest,"You fail to pick the lock.",me, FONT_NORMAL, 43, 1);
+// 		setobjproperty(me, "#U", readgameclock() + 10);
+// 		if (!Checkskill(me,SKILLID_LOCKPICKING,lvl,skillpoints) )
+// 			if(!GetObjProperty(me, CLASSEID_THIEF ) )
+// 			PlaySoundEffect(me,0xef);
+// 			SendSysMessage(me,"Your pick breaks!");
+// 			SubtractAmount(lockpick,1);
+// 			endif
+// 		else
+// 			PlaySoundEffect(chest,SFX_11F);
+// 		endif
+// 		return 0;
+// 	endif
+
+// endfunction
+
+// function DestroyChest(chest)
+
+// 	Sleep(30);
+// 	DestroyItem(chest);
+
+// endfunction
