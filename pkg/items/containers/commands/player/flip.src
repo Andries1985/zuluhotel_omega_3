@@ -39,7 +39,7 @@ program flip (who)
             targetfurniture.graphic := 0xa9e;
         0xa9e:
             targetfurniture.graphic := 0xa9d;
-			
+
         0xe3c:
 			// Large crate East
             targetfurniture.graphic := 0xe3d;
@@ -871,6 +871,24 @@ program flip (who)
 	0x4102:
 		//Pirate chest South
 		targetfurniture.graphic :=  0x4106;
+	0x232B:
+		//Gift Box East
+		targetfurniture.graphic :=  0x232A;
+	0x232A:
+		//Gift Box South
+		targetfurniture.graphic :=  0x232B;
+	0x24DA:
+		//Small Square Basket East
+		targetfurniture.graphic :=  0x24D9;
+	0x24D9:
+		//Small Square Basket South
+		targetfurniture.graphic :=  0x24DA;
+	0x24D6:
+		//Square Basket East
+		targetfurniture.graphic :=  0x24D5;
+	0x24D5:
+		//Square Basket South
+		targetfurniture.graphic :=  0x24D6;
 	default:
             SendSysMessage(who, "That item cannot be reoriented.");
 	endcase

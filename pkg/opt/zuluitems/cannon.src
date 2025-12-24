@@ -7,11 +7,13 @@ use vitals;
 include "include/client";
 include "include/random";
 include "include/damages";
+
 program shootcannon(who, item)
 
-	if (!getobjproperty(item, "working"))
-		return 0; 
-	endif
+	// if (!getobjproperty(item, "working"))
+	// 	SendSysMessage( who, "This cannon is broken.");
+	// 	return 0; 
+	// endif
 
 	if (getobjproperty(item, "#inuse"))
 		SendSysMessage( who, "Cannon is already being used.");

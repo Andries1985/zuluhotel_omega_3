@@ -634,6 +634,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 				AddMenuItem( menu , 0x0b7c , "Tables" );
 				AddMenuItem( menu , 0x0e81 , "Staffs, Poles & Clubs" );
 				AddMenuItem( menu , 0x1B7A , "Shields and Other Items" );
+				AddMenuItem( menu , 0x9AC , "Straw Items" );
 				break;
 
 		ID_INGOTS:	AddMenuItem( menu , 0x0fb1 , "Smith Furniture" );

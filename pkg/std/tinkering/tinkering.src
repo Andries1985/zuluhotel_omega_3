@@ -230,7 +230,7 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 
 		var theitem := CreateItemInBackpack( character , to_be_done_objtype );
 		if( !theitem )
-			SendSysMessage( character , "Error in creation process please report this bug on the msg board." );
+			SendSysMessage( character , "Error in creation process please report this bug to staff." );
 			DestroyItem( use_on );
 			if( have_it )
 				DestroyItem( have_it );
