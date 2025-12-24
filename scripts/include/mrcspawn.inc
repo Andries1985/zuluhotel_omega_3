@@ -2,7 +2,7 @@ use uo;
 use os;
 use cfgfile;
 
-var mrcspawn_cfg := ReadConfigFile( "mrcspawn" );
+//var mrcspawn_cfg := ReadConfigFile( "mrcspawn" );
 /*
 
 function RestockInventory( merchanttype, inventory )
@@ -114,7 +114,7 @@ include ":itemutils:itemdesc";
 include ":itemutils:itemInfo";
 //include "include/utility";
 
-//var mrcspawn_cfg := ReadConfigFile("::mrcspawn");
+var mrcspawn_cfg := ReadConfigFile("::mrcspawn");
 var itemconfig := ReadConfigFile(":*:itemdesc");
 var storage := CP_GetStorageArea( CP_MERCHANT_AREA, CP_CREATE );
 var initialgold := 5000;

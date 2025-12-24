@@ -22,7 +22,7 @@ include "../pkg/items/sysbook/include/settings";
 include "../pkg/items/sysbook/include/spawnShelf";
 include "../pkg/items/sysbook/include/sysBook";
 
-var sysbook_settings := SB_GetSettingsCfgElem( "Settings" );
+var sysbook_settings := SB_GetSettingsCfgElem( "settings" );
 var DefaultMaxBooks := sysbook_settings.DefaultMaxBooks;
 
 program addspawnshelf(who, text)
