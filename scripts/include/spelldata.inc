@@ -27,6 +27,7 @@ include "include/damages";
 include "include/skillpoints";
 include "include/attributes";
 include "include/difficulty";
+include "include/report";
 
 
 ////////////////////////////////
@@ -1445,3 +1446,41 @@ function SmartBoost(caster, affected)
 
 endfunction
 
+function MS_GetSpellsCfgFile()
+	// var cfg := ReadConfigFile(":magery:spells");
+	var cfg := ReadConfigFile(":*:spells");
+
+	if ( cfg.errortext )
+		MS_ReportText("Error::MS_GetSpellsCfgFile() - Unable to open [:*:spells.cfg] ->"+cfg.errortext, MS_REPORT_SYSLOG);
+	endif
+
+	return cfg;
+endfunction
+
+/*
+ * MS_GetSpellsCfgElem(elem_name, cfg_file)
+ *
+ * Purpose
+ * Retrieves an elem from a config file.
+ *
+ * Parameters
+ * elem_name:	A string matching the elem name to be retrieved.
+ * cfg_file:	Optional parameter - reference to a config already read in by MS_GetSpellsCfgFile()
+ *
+ * Return value
+ * A config file elem reference.
+ *
+ */
+function MS_GetSpellsCfgElem(elem_name, byref cfg_file:=0)
+	if ( !cfg_file )
+		cfg_file := MS_GetSpellsCfgFile();
+	endif
+
+	var elem := cfg_file[elem_name];
+
+	if ( elem.errortext )
+		MS_ReportText("Error::MS_GetSpellsCfgElem() - Unable to find elem ["+elem_name+"] ->"+elem.errortext, MS_REPORT_SYSLOG);
+	endif
+
+	return elem;
+endfunction
