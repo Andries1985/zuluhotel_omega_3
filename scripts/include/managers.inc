@@ -255,7 +255,6 @@ endfunction
 
 function WarnManagerOfNpcDeath( corpse )
 
-	
 	var pointserial := GetObjProperty( corpse, PROPID_MOBILE_SPAWNPOINT_SERIAL );
 	if( !pointserial )
 		return 0;
@@ -270,7 +269,7 @@ function WarnManagerOfNpcDeath( corpse )
 	if( !mobile_serial )
 		return 0;
 	endif
-
+	//Print("In WarnManagerOfNpcDeath for serial: "+Hex(mobile_serial));
 	Destroy_Node_Merc( Hex(mobile_serial) );
 
 	return Start_Script( ":spawnpoint:spawndeath", {point,mobile_serial} );

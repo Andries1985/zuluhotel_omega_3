@@ -8,7 +8,7 @@ include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/npccast";
 include "include/randname";
 include "include/string";
-include "include/rituals";
+//include "include/rituals";
 include "include/client";
 include "include/spelldata";
 include "ai/setup/modsetup";

@@ -139,6 +139,10 @@ endfunction
 
 function Create_Node_Merc( merchanttype, name, point )
 
+	Print("Creating Merchant Storage for NPC serial: "+name);
+	Print("Merchant Type: "+merchanttype);
+	Print("Location: "+point.x+ ", " + point.y + ", " + point.z + ", " + point.realm );
+
 	var shop_sell := CP_GetStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA, CP_CREATE );
 	var shop_resale := CP_GetStorageAreaContainer( name+" ShopResale", CP_MERCHANT_AREA, CP_CREATE );
 	var shop_buy := CP_GetStorageAreaContainer( name+" ShopBuy", CP_MERCHANT_AREA, CP_CREATE );
@@ -150,21 +154,29 @@ function Create_Node_Merc( merchanttype, name, point )
 	SetObjProperty( shop_resale, "MerchantType", merchanttype );
     SetObjProperty( shop_resale, "Location", point.x+ ", " + point.y + ", " + point.z + ", " + point.realm );
 	SetObjProperty( shop_resale, "MyGold", initialgold );
+	StockInventory( merchanttype, shop_sell );
+	//RestockInitialInventory( shop_sell, shop_resale );
 
 endfunction
 
 function Destroy_Node_Merc(name)
+
+	Print("In Destroy_Node_Merc: Removing Merchant Storage for NPC serial: "+name+" ShopSell");
 	CP_RemoveStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA );
 	CP_RemoveStorageAreaContainer( name+" ShopResale", CP_MERCHANT_AREA );
 	CP_RemoveStorageAreaContainer( name+" ShopBuy", CP_MERCHANT_AREA );
+
 endfunction
 
 function RestockInventory( merchanttype, name )
 
+	Print("In RestockInventory:");
+	Print("Restocking inventory for NPC serial: "+name +" of type: "+merchanttype);
+
 	var container := CP_GetStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA, CP_CREATE );
 	foreach item in ( EnumerateItemsInContainer( container, ENUMERATE_ROOT_ONLY ) )
 		DestroyItem( item );
-		SleepMS( 5 );
+		SleepMS(1);
 	endforeach
 
 	var mtype := FindConfigElem( mrcspawn_cfg, merchanttype );
@@ -172,11 +184,13 @@ function RestockInventory( merchanttype, name )
 		foreach productgroup in GetConfigStringArray(mtype, "Sells");
 			var pg_elem := FindConfigElem(mrcspawn_cfg, productgroup);
 			foreach itemstr in GetConfigStringArray(pg_elem, "Item")
+				//Print("Restock Inventory: Spawning item: "+itemstr+" into inventory.");
 				SpawnItem( container, itemstr );
-				sleepms(10);
+				SleepMS(1);
 			endforeach
 		endforeach
 	endif
+	Print("Exiting RestockInventory:");
 endfunction
 
 function StockInventory( merchanttype, inventory )
@@ -186,6 +200,7 @@ function StockInventory( merchanttype, inventory )
 		foreach productgroup in GetConfigStringArray(mtype, "Sells");
 			var pg_elem := FindConfigElem(mrcspawn_cfg, productgroup);
 			foreach itemstr in GetConfigStringArray(pg_elem, "Item")
+				//Print("In Stock Inventory: Spawning item: "+itemstr+" into inventory.");
 				SpawnItem(inventory, itemstr);
 				sleepms(10);
 			endforeach
@@ -227,6 +242,7 @@ function CheckStock(rs, pak)
 endfunction
 
 function RestockInitialInventory(source, destination)
+	Print("In RestockInitialInventory:");
 // When vendors start up, they need a slightly different script.
 	var merchanttype := GetObjProperty(source, "MerchantType");
 	merchanttype := merchanttype;
@@ -282,6 +298,7 @@ function RestockInitialInventory(source, destination)
 			DestroyItem(thing);
 		endif
 	endforeach
+	Print("Exiting RestockInitialInventory:");
 endfunction
 
 function RestockMyGold(source)
@@ -293,11 +310,13 @@ function RestockMyGold(source)
 endfunction
 
 function RestockMyInventory(source, destination)
+	Print("In RestockMyInventory:");
 	var merchanttype := GetObjProperty(source, "MerchantType");
 	var multiplier, amount_of_things, mlt, items, mygold;
 	var newarray := {}; // Array of what's for sale
 	// cycle through everything that's for sale
 	foreach thing in EnumerateItemsInContainer(source)// this is the "ideal" stock.
+		Print("Restocking item objtype: "+thing.objtype);
 		newarray.append(thing.objtype);
 		amount_of_things := 0;
 		mygold := GetObjProperty(source, "MyGold");
@@ -359,6 +378,7 @@ function RestockMyInventory(source, destination)
 		endif
 	endforeach
 	SetObjProperty(source, "MyGold", mygold);
+	Print("Exiting RestockMyInventory:");
 endfunction
 
 function CountExisting(container, objtype)

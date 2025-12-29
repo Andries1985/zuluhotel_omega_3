@@ -367,6 +367,7 @@ function MakeAndProcessMenu( who , ressource , id )
 				AddMenuItem( menu , 0x0a22 , "Lights" );
 				AddMenuItem( menu , 0x1089 , "Jewelry" );
 				AddMenuItem( menu , 0x1640 , "Miscellaneous" );
+				AddMenuItem( menu , 0x0e80 , "Containers" );
 				break;
 
 		GLASS_ID:	AddMenuItem( menu , 0x185b , "Alchemical Tools" );

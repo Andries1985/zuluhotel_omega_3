@@ -91,7 +91,7 @@ program redeed( mobile )
 		endif
 		SleepMS(5);
 	endforeach
-	
+
 	if( !len(created) )
 		SendSysmessage( mobile , "Error in the process please page a staff to report." );
 		return;
@@ -153,13 +153,17 @@ program redeed( mobile )
 			endforeach
 		endif
 
+		item.movable := 1;
+		MoveItemToContainer(item, mobile.backpack);
+		DestroyItem( item );
+		SleepMS(5);
 	endforeach
 	
 	
-	targ.movable := 1;
-	MoveItemToContainer(targ, mobile.backpack);
-	DestroyItem( targ );
-	SleepMS(5);
+	// targ.movable := 1;
+	// MoveItemToContainer(targ, mobile.backpack);
+	// DestroyItem( targ );
+	// SleepMS(5);
 
 	var the_deed := CreateItemInBackpack( mobile , deed_onjtype );
 	SetObjProperty( the_deed , "ItemBaseName" , itemname );

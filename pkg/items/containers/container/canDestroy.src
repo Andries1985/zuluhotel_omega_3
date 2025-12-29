@@ -16,7 +16,7 @@ program canDestroy( container )
 		return 0;
 	endif
 
-        WarnSpawnPoint(container);
+    WarnSpawnPoint(container);
 	return 1;
 
 endprogram

@@ -1,6 +1,6 @@
 use uo;
 
-// include ":security:itemReport";
+include ":security:itemReport";
 
 function Anti_Fast_Loot( mobile )
 
@@ -23,7 +23,7 @@ function AddLooter( mobile, corpse, item )
         var last_loot := { serial, time, itemdesc, itemserial, corpseserial };
 	SetObjProperty( corpse, "LastLoot", last_loot );
  
-//        ITEM_ReportText( mobile, last_loot, ITEM_REPORT_SYSLOG );
+        ITEM_ReportText( mobile, last_loot, ITEM_REPORT_SYSLOG );
 
 	return last_loot;
 endfunction

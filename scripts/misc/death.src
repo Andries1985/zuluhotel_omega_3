@@ -18,7 +18,6 @@ include ":lootlottery:lootlottery";
 
 program npcdeath(corpse)
 
-
 	if((GetObjProperty(corpse, "SpawnPoint")))
 		var spawnpoint := SystemFindObjectBySerial(GetObjProperty(corpse, "SpawnPoint"));
 		if (GetObjProperty(corpse, "GateOnDeath") || GetObjProperty(spawnpoint, "GateOnDeath"))
@@ -235,14 +234,18 @@ function zapstorageareas(me)
 
 	var myserial:=getobjproperty(me,"serial");
 	if (!myserial) return; endif
+	Print("In zapstorageareas for NPC serial: "+myserial);
 
-	var storage := FindStorageArea( "Merchant Storage" );
-	if (DestroyRootItemInStorageArea( storage, myserial + " FS"))
-		DestroyRootItemInStorageArea( storage, myserial + " PB");
-		DestroyRootItemInStorageArea( storage, myserial + " 1C");
-	endif
+	Print("In zapstorageareas Hex of serial: "+Hex(myserial));
+	var name := Hex(myserial);
+	//var storage := FindStorageArea( "Merchant Storage" );
+	Destroy_Node_Merc(name);
+	// if (DestroyRootItemInStorageArea( storage, myserial + " FS"))
+	// 	DestroyRootItemInStorageArea( storage, myserial + " PB");
+	// 	DestroyRootItemInStorageArea( storage, myserial + " 1C");
+	// endif
 
-	storage := FindStorageArea( "Tamed Storage" );
+	var storage := FindStorageArea( "Tamed Storage" );
 	DestroyRootItemInStorageArea( storage, "Bankbox  " + HEX(myserial));
 
 endfunction

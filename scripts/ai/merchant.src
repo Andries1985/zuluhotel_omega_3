@@ -55,8 +55,10 @@ include "include/managers";
 include "include/all";
 
 //const RESPAWN_MINUTES := 30;              // In how many minutes will the NPC respawn if killed.
-const RESTOCK_INVENTORY_MINUTES := 3600;    // In how many minutes will the NPC restock its inventory. (In seconds)
+const RESTOCK_INVENTORY_MINUTES := 3600; 
+//const RESTOCK_INVENTORY_MINUTES := 60;    // In how many minutes will the NPC restock its inventory. (In seconds)
 const RESTOCK_GOLD_MINUTES := 7200;        // In how many minutes will the NPC restock its gold. (In seconds) 
+//const RESTOCK_GOLD_MINUTES := 60;
 const MAX_SKILLS      := 48;              // There are currently 48 Skills.
 Const REACT_THRESHOLD := 2;
 const IDENTIFY := 50;
@@ -72,15 +74,16 @@ var shop_sell, shop_buy, shop_resale;
 var merchant_type := GetObjProperty( me, "MerchantType" );
 //Print("Merchant Type: "+merchant_type);
 var spawnname := Hex(me.serial);
-shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
-shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
-shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
+// shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
+// shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
+// shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
 
 if( me.name["<random>"] )
 	SetMeUp();
 endif
 
 var speech;
+//RestockInitialInventory( merchant_type, spawnname );
 SetSpeechAndType();
 
 var wanders := 0;
@@ -90,6 +93,7 @@ EnableEvents( REACT_THRESHOLD );
 
 program merchantai()
 
+	Print("Starting Merchant AI for NPC serial: "+me.serial);
 	var next_wander := ReadGameClock() + 30;
 	var myanchor := GetObjProperty(me, "Anchor");
 	if(myanchor)
@@ -100,8 +104,19 @@ program merchantai()
 		myanchor[5] := me.z;
  	endif
 	WalkHome();
+
+	shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
+	shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
+	shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
+	while((!shop_sell) || (!shop_resale) || (!shop_buy))
+		sleep(5);
+		shop_sell := CP_GetStorageAreaContainer( spawnname+" ShopSell", CP_MERCHANT_AREA, CP_NOCREATE );
+		shop_resale := CP_GetStorageAreaContainer( spawnname+" ShopResale", CP_MERCHANT_AREA, CP_NOCREATE );
+		shop_buy := CP_GetStorageAreaContainer( spawnname+" ShopBuy", CP_MERCHANT_AREA, CP_NOCREATE );
+		Print("Stuck in While Loop: Waiting for storage areas to be created for NPC serial: "+me.serial);
+	endwhile
 	
-	StockInventory( merchant_type, shop_sell );
+	//StockInventory( merchant_type, shop_sell );
 
 	var next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
 	var next_gold_restock := ReadGameClock() + RESTOCK_GOLD_MINUTES;
@@ -110,150 +125,183 @@ program merchantai()
 
 	const loops := 0;
 	while (1)
+		Print("Merchant AI Loop Start for NPC serial: "+me.serial);
+			//Infinite loop
 		if (me.hidden)
 			me.hidden := 0;
 		endif
 
 		var ev;
 		ev := os::wait_for_event(120);
-		if (ev.source.npctemplate)
-			//Print("Ignoring event from NPC: " + ev.source.name);
-			return 0;
-		endif
+		// if (ev.source.npctemplate)
+		// 	Print("Ignoring event from NPC: " + ev.source.name);
+		// 	return 0;
+		// endif
 
-		if(ev.type == SYSEVENT_ENGAGED)
+		if(ev)
+			case (ev.type)
+			
+			SYSEVENT_ENGAGED:
+				Print("Merchant AI: SYSEVENT_ENGAGED for NPC serial: "+me.serial);
 
-			Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
+				Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
 
-		elseif(ev.type == SYSEVENT_DAMAGED)
+				Print("Merchant AI: Finished SYSEVENT_ENGAGED for NPC serial: "+me.serial);
 
-			SetHP(me, GetMaxHP(me));
-			if( me.poisoned ) CurePoison( me ); endif
-			Say("Help guards!!! I'm being attacked!!");
-			SetObjProperty(me, "guardkill", 1);
-			Start_Script( ":areas:callguards", me );
-			sleep(5);
-			say("You scoundrel!!!");
+			SYSEVENT_DAMAGED:
+				Print("Merchant AI: SYSEVENT_DAMAGED for NPC serial: "+me.serial);
 
-			me.hidden := 1;
-			sleep(30);
-			me.hidden := 0;
+				SetHP(me, GetMaxHP(me));
+				if( me.poisoned ) CurePoison( me ); endif
+				Say("Help guards!!! I'm being attacked!!");
+				SetObjProperty(me, "guardkill", 1);
+				Start_Script( ":areas:callguards", me );
+				sleep(5);
+				say("You scoundrel!!!");
 
-		elseif(ev.type == SYSEVENT_ENTEREDAREA)
+				me.hidden := 1;
+				sleep(30);
+				me.hidden := 0;
 
-			YellToFriend(me, ev.source);
+				Print("Merchant AI: Finished SYSEVENT_DAMAGED for NPC serial: "+me.serial);
 
-		elseif(ev.type == SYSEVENT_LEFTAREA)
+			SYSEVENT_ENTEREDAREA:
 
-			// No action needed yet
+				Print("Merchant AI: SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
 
-		elseif(ev.type == SYSEVENT_SPEECH)
+				YellToFriend(me, ev.source);
 
-			var txt := lower(ev.text);
+				Print("Merchant AI: Finished SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
 
-			if((ev.source.cmdlevel > 2) && (txt["showinventory"]))
-				SendOpenSpecialContainer(ev.source, shop_sell);
-			elseif((ev.source.cmdlevel > 2) && (txt["showrestock"]))
-				SendOpenSpecialContainer(ev.source, shop_resale);
-			else
-				if(Find(txt, "buy", 1))
-					TurnToward(ev.source);
-					var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
-					res := res;
-				elseif (Find(txt, "sell all", 1))
-					//SellAll(ev.source);
-					BuyAll(ev.source);
-				elseif (Find(txt, "sell bag", 1))
-					BuyBag(ev.source);
-					//SellBag(ev.source);
-				elseif(Find(txt, "sell", 1))
-					if(GetObjProperty(shop_resale, "MyGold") >= 1000)
+			SYSEVENT_LEFTAREA:
+				// No action needed yet
+
+			SYSEVENT_SPEECH:
+				Print("Merchant AI: SYSEVENT_SPEECH for NPC serial: "+me.serial);
+
+				var txt := lower(ev.text);
+
+				if((ev.source.cmdlevel > 2) && (txt["showinventory"]))
+					SendOpenSpecialContainer(ev.source, shop_sell);
+				elseif((ev.source.cmdlevel > 2) && (txt["showrestock"]))
+					SendOpenSpecialContainer(ev.source, shop_resale);
+				else
+					if(Find(txt, "buy", 1))
 						TurnToward(ev.source);
-						var count := ModifyPCSellList(merchant_type, (ev.source));
-						if(count >= 1)
-							var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
-							res := res;
+						var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
+						res := res;
+					elseif (Find(txt, "sell all", 1))
+						//SellAll(ev.source);
+						BuyAll(ev.source);
+					elseif (Find(txt, "sell bag", 1))
+						BuyBag(ev.source);
+						//SellBag(ev.source);
+					elseif(Find(txt, "sell", 1))
+						if(GetObjProperty(shop_resale, "MyGold") >= 1000)
+							TurnToward(ev.source);
+							var count := ModifyPCSellList(merchant_type, (ev.source));
+							if(count >= 1)
+								var res := SendSellWindow( ev.source, Self(), shop_sell, shop_buy, shop_resale, VENDOR_SEND_AOS_TOOLTIP );
+								res := res;
+							else
+								PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
+							endif
 						else
-							PrintTextAbovePrivate(me, "You dont have anything I would be interested in.", ev.source);
+							PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
+						endif
+					elseif(Find(txt, "job", 1))
+						var parms := { };
+						parms[1] := ev.source;
+						parms[2] := me;
+						start_script (":job:job", parms);
+					elseif((Find(txt, "vendor train", 1)) || (Find(txt, "vendor teach", 1)) || (Find(txt, "merchant train", 1)) || (Find(txt, "merchant teach", 1)))
+						TurnToward(ev.source);
+						MerchantTrain(me, ev.source, ev.text);
+					elseif ( Find(txt, "identify", 1) && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
+						// Check if player already has id window open
+						if (GetObjProperty(ev.source, "#MerchantID") != 1)
+							TurnToward( ev.source );
+							PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
+							Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
 						endif
 					else
-						PrintTextAbovePrivate(me, "I cannot afford any more of that", ev.source );
+						TurnToward(ev.source);
+						var tspeech := process_text(ev.text, "default", speech);
+						if (tspeech)
+							say(tspeech);
+						endif
+						check_speech(me, ev.source, ev.text, speech);
 					endif
-				elseif(Find(txt, "job", 1))
-					var parms := { };
-					parms[1] := ev.source;
-					parms[2] := me;
-					start_script (":job:job", parms);
-				elseif((Find(txt, "vendor train", 1)) || (Find(txt, "vendor teach", 1)) || (Find(txt, "merchant train", 1)) || (Find(txt, "merchant teach", 1)))
-					TurnToward(ev.source);
-					MerchantTrain(me, ev.source, ev.text);
-				elseif ( Find(txt, "identify", 1) && (me.npctemplate == "mage" || me.npctemplate == "scribe") )
-					// Check if player already has id window open
-					if (GetObjProperty(ev.source, "#MerchantID") != 1)
-						TurnToward( ev.source );
-						PrintTextAbovePrivate( me, "What do you want me to identify?", ev.source );
-						Start_Script("::misc/merchantidentify", {ev.source, me, IDENTIFY});
-					endif
-				else
-					TurnToward(ev.source);
-					var tspeech := process_text(ev.text, "default", speech);
-					if (tspeech)
-						say(tspeech);
-					endif
-					check_speech(me, ev.source, ev.text, speech);
 				endif
-			endif
 
-		elseif( ev.type == SYSEVENT_MERCHANT_BOUGHT)
+				Print("Merchant AI: Finished SYSEVENT_SPEECH for NPC serial: "+me.serial);
 
-			TurnToward(ev.source);
-			PrintTextAbovePrivate(me, "The total of thy sale is " + ev.amount, ev.source);
-			if(lower(merchant_type) != "appraiser")
-				var mygold := GetObjProperty(shop_resale, "MyGold");
-				mygold := mygold - ev.amount;
-				SetObjProperty(shop_resale, "MyGold", mygold);
-			endif
-			foreach thing in EnumerateItemsInContainer(shop_buy)
-				if(MoveItemToContainer(thing, shop_sell))
-					SetObjProperty(thing,"ClearRestock", (ReadGameClock() + 1800));
-				else
-					DestroyItem(thing);
+			SYSEVENT_MERCHANT_BOUGHT:
+
+				Print("Merchant AI: SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
+
+				TurnToward(ev.source);
+				PrintTextAbovePrivate(me, "The total of thy sale is " + ev.amount, ev.source);
+				if(lower(merchant_type) != "appraiser")
+					var mygold := GetObjProperty(shop_resale, "MyGold");
+					mygold := mygold - ev.amount;
+					SetObjProperty(shop_resale, "MyGold", mygold);
 				endif
-			endforeach
-			if (GetObjProperty(me, "MerchantType") == "Barber")
-				EquipAnyHair(ev.source);
-			endif
-			PlaySoundEffect(me, 0x38);
+				foreach thing in EnumerateItemsInContainer(shop_buy)
+					//if(MoveItemToContainer(thing, shop_sell))
+					//	SetObjProperty(thing,"ClearRestock", (ReadGameClock() + 1800));
+					//else
+						DestroyItem(thing);
+					//endif
+				endforeach
+				if (GetObjProperty(me, "MerchantType") == "Barber")
+					EquipAnyHair(ev.source);
+				endif
+				PlaySoundEffect(me, 0x38);
 
-		elseif (ev.type == SYSEVENT_MERCHANT_SOLD)
+				Print("Merchant AI: Finished SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
 
-			TurnToward(ev.source);
-			PrintTextAbovePrivate(me, "The total of thy purchase is " + ev.amount, ev.source);
-			foreach thing in EnumerateItemsInContainer((ev.source).backpack, ENUMERATE_ROOT_ONLY)
-				EraseObjProperty(thing, "ClearRestock");
-			endforeach
-			if( Lower( merchant_type ) != "appraiser" )
-				var mygold := GetObjProperty(shop_resale, "MyGold");
-				mygold := mygold + ev.amount;
-				SetObjProperty(shop_resale, "MyGold", mygold);
-			endif
-			PlaySoundEffect(me, 0x38);
+			SYSEVENT_MERCHANT_SOLD:
 
-		elseif (ev.type == SYSEVENT_ITEM_GIVEN)
+				Print("Merchant AI: SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
 
-			TurnToward (ev.source);
-			if ( GetObjProperty( ev.item, "merchant") )
-				PayForJobCompleted ( ev );
-      		elseif (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN);
-				Say("Bah, I have no use for this. Be off with ye.");
-				MoveItemToContainer( ev.source.backpack , ev.item );
-				//TrainSkill( me , ev.source , ev.item );
-			else
-				TakeItem( me, ev.source, ev.item, speech );
-				//MoveItemToContainer( ev.source.backpack , ev.item );
-			endif
+				TurnToward(ev.source);
+				PrintTextAbovePrivate(me, "The total of thy purchase is " + ev.amount, ev.source);
+				//foreach thing in EnumerateItemsInContainer((ev.source).backpack, ENUMERATE_ROOT_ONLY)
+				//	EraseObjProperty(thing, "ClearRestock");
+				//endforeach
+				if( Lower( merchant_type ) != "appraiser" )
+					var mygold := GetObjProperty(shop_resale, "MyGold");
+					mygold := mygold + ev.amount;
+					SetObjProperty(shop_resale, "MyGold", mygold);
+				endif
+				PlaySoundEffect(me, 0x38);
+
+				Print("Merchant AI: Finished SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
+
+			SYSEVENT_ITEM_GIVEN:
+			
+				Print("Merchant AI: SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
+
+				TurnToward (ev.source);
+				if ( GetObjProperty( ev.item, "merchant") )
+					PayForJobCompleted ( ev );
+				elseif (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN);
+					Say("Bah, I have no use for this. Be off with ye.");
+					MoveItemToContainer( ev.source.backpack , ev.item );
+					//TrainSkill( me , ev.source , ev.item );
+				else
+					TakeItem( me, ev.source, ev.item, speech );
+					//MoveItemToContainer( ev.source.backpack , ev.item );
+				endif
+
+				Print("Merchant AI: Finished SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
+
+			endcase
 		endif
 
+		Print("Merchant AI: Checking wander for NPC serial: "+me.serial);
+			//Wandering
 		if(ReadGameClock() >= next_wander)
 			//begpurse(me);
 			wander();
@@ -263,20 +311,26 @@ program merchantai()
 				ev := SleepMode(me);
 				wanders := 0;
 			endif
-			next_wander := ReadGameClock() + RandomDice( 2, 25, 10 );
+			next_wander := ReadGameClock() + RandomDice( 2, 25, 120 );
 		endif
-			
+		
+		Print("Merchant AI: Checking restock for NPC serial: "+me.serial);
+			//Restocking
+
 		if(ReadGameClock() > next_inventory_restock)
-			ReStockInventory( merchant_type, spawnname );
+			RestockInventory( merchant_type, spawnname );
 			next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
 		endif
+
+		Print("Merchant AI: Checking gold restock for NPC serial: "+me.serial);
 
 		if(ReadGameClock() > next_gold_restock)
 			RestockMyGold(shop_resale);
 			next_gold_restock := ReadGameClock() + RESTOCK_GOLD_MINUTES;
 		endif
+		Print("Merchant AI Looping for NPC serial: "+me.serial);
 	endwhile
-
+	Print("Exiting Merchant AI for NPC serial: "+me.serial);
 endprogram
 
 //############################################ NPC set-up ###################################################\\
@@ -1465,7 +1519,7 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function SleepMode(me)
-
+	Print("Entering sleep mode for " + spawnname);
 	foreach critter in ListMobilesNearLocation( me.x, me.y, me.z, 20, me.realm );
 		if (!critter.npctemplate)
 			return 0;
