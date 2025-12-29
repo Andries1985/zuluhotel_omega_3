@@ -139,9 +139,9 @@ endfunction
 
 function Create_Node_Merc( merchanttype, name, point )
 
-	Print("Creating Merchant Storage for NPC serial: "+name);
-	Print("Merchant Type: "+merchanttype);
-	Print("Location: "+point.x+ ", " + point.y + ", " + point.z + ", " + point.realm );
+	//Print("Creating Merchant Storage for NPC serial: "+name);
+	//Print("Merchant Type: "+merchanttype);
+	//Print("Location: "+point.x+ ", " + point.y + ", " + point.z + ", " + point.realm );
 
 	var shop_sell := CP_GetStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA, CP_CREATE );
 	var shop_resale := CP_GetStorageAreaContainer( name+" ShopResale", CP_MERCHANT_AREA, CP_CREATE );
@@ -161,7 +161,7 @@ endfunction
 
 function Destroy_Node_Merc(name)
 
-	Print("In Destroy_Node_Merc: Removing Merchant Storage for NPC serial: "+name+" ShopSell");
+	//Print("In Destroy_Node_Merc: Removing Merchant Storage for NPC serial: "+name+" ShopSell");
 	CP_RemoveStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA );
 	CP_RemoveStorageAreaContainer( name+" ShopResale", CP_MERCHANT_AREA );
 	CP_RemoveStorageAreaContainer( name+" ShopBuy", CP_MERCHANT_AREA );
@@ -170,8 +170,8 @@ endfunction
 
 function RestockInventory( merchanttype, name )
 
-	Print("In RestockInventory:");
-	Print("Restocking inventory for NPC serial: "+name +" of type: "+merchanttype);
+	//Print("In RestockInventory:");
+	//Print("Restocking inventory for NPC serial: "+name +" of type: "+merchanttype);
 
 	var container := CP_GetStorageAreaContainer( name+" ShopSell", CP_MERCHANT_AREA, CP_CREATE );
 	foreach item in ( EnumerateItemsInContainer( container, ENUMERATE_ROOT_ONLY ) )
@@ -190,7 +190,7 @@ function RestockInventory( merchanttype, name )
 			endforeach
 		endforeach
 	endif
-	Print("Exiting RestockInventory:");
+	//Print("Exiting RestockInventory:");
 endfunction
 
 function StockInventory( merchanttype, inventory )
@@ -242,7 +242,7 @@ function CheckStock(rs, pak)
 endfunction
 
 function RestockInitialInventory(source, destination)
-	Print("In RestockInitialInventory:");
+	//Print("In RestockInitialInventory:");
 // When vendors start up, they need a slightly different script.
 	var merchanttype := GetObjProperty(source, "MerchantType");
 	merchanttype := merchanttype;
@@ -298,7 +298,7 @@ function RestockInitialInventory(source, destination)
 			DestroyItem(thing);
 		endif
 	endforeach
-	Print("Exiting RestockInitialInventory:");
+	//Print("Exiting RestockInitialInventory:");
 endfunction
 
 function RestockMyGold(source)
@@ -310,13 +310,13 @@ function RestockMyGold(source)
 endfunction
 
 function RestockMyInventory(source, destination)
-	Print("In RestockMyInventory:");
+	//Print("In RestockMyInventory:");
 	var merchanttype := GetObjProperty(source, "MerchantType");
 	var multiplier, amount_of_things, mlt, items, mygold;
 	var newarray := {}; // Array of what's for sale
 	// cycle through everything that's for sale
 	foreach thing in EnumerateItemsInContainer(source)// this is the "ideal" stock.
-		Print("Restocking item objtype: "+thing.objtype);
+		//Print("Restocking item objtype: "+thing.objtype);
 		newarray.append(thing.objtype);
 		amount_of_things := 0;
 		mygold := GetObjProperty(source, "MyGold");
@@ -378,7 +378,7 @@ function RestockMyInventory(source, destination)
 		endif
 	endforeach
 	SetObjProperty(source, "MyGold", mygold);
-	Print("Exiting RestockMyInventory:");
+	//Print("Exiting RestockMyInventory:");
 endfunction
 
 function CountExisting(container, objtype)

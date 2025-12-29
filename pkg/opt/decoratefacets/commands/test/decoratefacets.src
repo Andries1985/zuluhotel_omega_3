@@ -56,14 +56,15 @@ program DecorateFacets(who, text)
 	selected_facets := DecorateFacetsGump ( who, decorate_all );
 	foreach facet in selected_facets
 		case(facet)
-			"britannia":		PlaceDecorations(facet);
-								if(Post_SA == 1)
-									facet := facet + "/newMagincia";
-									PlaceDecorations(facet);
-								else
-									facet := facet + "/oldMagincia";
-									PlaceDecorations(facet);
-								endif
+			"britannia":		
+								PlaceDecorations(facet);
+								// if(Post_SA == 1)
+								// 	facet := facet + "/newMagincia";
+								// 	PlaceDecorations(facet);
+								// else
+								// 	facet := facet + "/oldMagincia";
+								// 	PlaceDecorations(facet);
+								// endif
 								SetGlobalProperty("britannia_Decorated", 1);
 			"britannia_alt":	//if(Post_SA == 1)
 								//	facet := facet + "/postSA";

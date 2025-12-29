@@ -93,7 +93,7 @@ EnableEvents( REACT_THRESHOLD );
 
 program merchantai()
 
-	Print("Starting Merchant AI for NPC serial: "+me.serial);
+	//Print("Starting Merchant AI for NPC serial: "+me.serial);
 	var next_wander := ReadGameClock() + 30;
 	var myanchor := GetObjProperty(me, "Anchor");
 	if(myanchor)
@@ -125,14 +125,14 @@ program merchantai()
 
 	const loops := 0;
 	while (1)
-		Print("Merchant AI Loop Start for NPC serial: "+me.serial);
+		//Print("Merchant AI Loop Start for NPC serial: "+me.serial);
 			//Infinite loop
 		if (me.hidden)
 			me.hidden := 0;
 		endif
-
+		var waittime := Random( 60 ) + 120;
 		var ev;
-		ev := os::wait_for_event(120);
+		ev := os::wait_for_event(waittime);
 		// if (ev.source.npctemplate)
 		// 	Print("Ignoring event from NPC: " + ev.source.name);
 		// 	return 0;
@@ -142,14 +142,14 @@ program merchantai()
 			case (ev.type)
 			
 			SYSEVENT_ENGAGED:
-				Print("Merchant AI: SYSEVENT_ENGAGED for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_ENGAGED for NPC serial: "+me.serial);
 
 				Say ( ev.source.name + ", I'll call a guard, if you don't stop that!");
 
-				Print("Merchant AI: Finished SYSEVENT_ENGAGED for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_ENGAGED for NPC serial: "+me.serial);
 
 			SYSEVENT_DAMAGED:
-				Print("Merchant AI: SYSEVENT_DAMAGED for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_DAMAGED for NPC serial: "+me.serial);
 
 				SetHP(me, GetMaxHP(me));
 				if( me.poisoned ) CurePoison( me ); endif
@@ -163,21 +163,22 @@ program merchantai()
 				sleep(30);
 				me.hidden := 0;
 
-				Print("Merchant AI: Finished SYSEVENT_DAMAGED for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_DAMAGED for NPC serial: "+me.serial);
 
 			SYSEVENT_ENTEREDAREA:
 
-				Print("Merchant AI: SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
 
 				YellToFriend(me, ev.source);
 
-				Print("Merchant AI: Finished SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_ENTEREDAREA for NPC serial: "+me.serial);
 
 			SYSEVENT_LEFTAREA:
 				// No action needed yet
 
 			SYSEVENT_SPEECH:
-				Print("Merchant AI: SYSEVENT_SPEECH for NPC serial: "+me.serial);
+
+				//Print("Merchant AI: SYSEVENT_SPEECH for NPC serial: "+me.serial);
 
 				var txt := lower(ev.text);
 
@@ -234,11 +235,11 @@ program merchantai()
 					endif
 				endif
 
-				Print("Merchant AI: Finished SYSEVENT_SPEECH for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_SPEECH for NPC serial: "+me.serial);
 
 			SYSEVENT_MERCHANT_BOUGHT:
 
-				Print("Merchant AI: SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
 
 				TurnToward(ev.source);
 				PrintTextAbovePrivate(me, "The total of thy sale is " + ev.amount, ev.source);
@@ -259,11 +260,11 @@ program merchantai()
 				endif
 				PlaySoundEffect(me, 0x38);
 
-				Print("Merchant AI: Finished SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
 
 			SYSEVENT_MERCHANT_SOLD:
 
-				Print("Merchant AI: SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
 
 				TurnToward(ev.source);
 				PrintTextAbovePrivate(me, "The total of thy purchase is " + ev.amount, ev.source);
@@ -277,11 +278,11 @@ program merchantai()
 				endif
 				PlaySoundEffect(me, 0x38);
 
-				Print("Merchant AI: Finished SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
 
 			SYSEVENT_ITEM_GIVEN:
 			
-				Print("Merchant AI: SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
+				//Print("Merchant AI: SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
 
 				TurnToward (ev.source);
 				if ( GetObjProperty( ev.item, "merchant") )
@@ -295,12 +296,12 @@ program merchantai()
 					//MoveItemToContainer( ev.source.backpack , ev.item );
 				endif
 
-				Print("Merchant AI: Finished SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
+				//Print("Merchant AI: Finished SYSEVENT_ITEM_GIVEN for NPC serial: "+me.serial);
 
 			endcase
 		endif
 
-		Print("Merchant AI: Checking wander for NPC serial: "+me.serial);
+		//Print("Merchant AI: Checking wander for NPC serial: "+me.serial);
 			//Wandering
 		if(ReadGameClock() >= next_wander)
 			//begpurse(me);
@@ -314,15 +315,14 @@ program merchantai()
 			next_wander := ReadGameClock() + RandomDice( 2, 25, 120 );
 		endif
 		
-		Print("Merchant AI: Checking restock for NPC serial: "+me.serial);
-			//Restocking
+		//Print("Merchant AI: Checking restock for NPC serial: "+me.serial);
 
 		if(ReadGameClock() > next_inventory_restock)
 			RestockInventory( merchant_type, spawnname );
 			next_inventory_restock := ReadGameClock() + RESTOCK_INVENTORY_MINUTES;
 		endif
 
-		Print("Merchant AI: Checking gold restock for NPC serial: "+me.serial);
+		//Print("Merchant AI: Checking gold restock for NPC serial: "+me.serial);
 
 		if(ReadGameClock() > next_gold_restock)
 			RestockMyGold(shop_resale);
@@ -330,7 +330,7 @@ program merchantai()
 		endif
 		Print("Merchant AI Looping for NPC serial: "+me.serial);
 	endwhile
-	Print("Exiting Merchant AI for NPC serial: "+me.serial);
+	//Print("Exiting Merchant AI for NPC serial: "+me.serial);
 endprogram
 
 //############################################ NPC set-up ###################################################\\
