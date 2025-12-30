@@ -951,7 +951,7 @@ EndFunction
 // Returns the X-Value (Left-Alignment)
 //
 Function XGFTextLeft(gumptext, x, width)
-  gumptest := gumptest;
+  gumptext := gumptext;
   width := width;
   Return (x);
 EndFunction

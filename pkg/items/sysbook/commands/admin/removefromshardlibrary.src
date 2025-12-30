@@ -15,7 +15,8 @@ use cfgfile;
 use datafile;
 
 include "../pkg/items/sysbook/include/sysBook";
-include ":mdgumps:gumps";
+include ":mdgumps:selectionGump";
+
 
 program removefromshardlibrary(who)
 

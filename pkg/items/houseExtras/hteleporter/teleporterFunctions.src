@@ -1,11 +1,13 @@
 use uo;
 use cliloc;
 
-include "../pkg/items/houseExtras/include/settings";
+include ":houseExtras:settings";
 include ":mdgumps:selectionGump";
 include ":mdgumps:confirmationSizable";
 include "include/canAccess";
 include "include/housing";
+include ":mdgumps:requestGump";
+
 
 var settings := HE_GetSettingsCfgElem("settings");
 

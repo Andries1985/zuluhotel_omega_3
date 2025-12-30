@@ -4,6 +4,7 @@ use file;
 use storage;
  
 include ":mdgumps:gumps";
+include ":mdgumps:yesNo";
 
 program wipe_storage_area( mobile )
 

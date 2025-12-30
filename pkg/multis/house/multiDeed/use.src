@@ -1,7 +1,8 @@
-use cfgfile;
-use cliloc;
 use uo;
 use os;
+use util;
+use cfgfile;
+use cliloc;
 
 include ":keys:key";
 include ":containers:storageAreas";
@@ -133,31 +134,13 @@ function Buildhouse(who, deed)
       return;
   endif
 
-
-
-
-
 //Back to new housing stuff
-
-
-
-
-
 
   if((WhatCityAmIIn(who) != "notincity") || (WhatCityAmIIn(where) != "notincity"))
 	SendSysMessageCL(who, 500269, color := 33); // You cannot build that there.
     PrintTextAbovePrivate(deed, "You can't build in cities.", who, color := 33);
     return;
   endif
-
-
-
-
-
-
-
-
-
 
   if (Distance(who,where) > 50)
     PrintTextAbovePrivate(deed, "You are too far from where you are trying to build.", who);
@@ -167,6 +150,8 @@ function Buildhouse(who, deed)
     PrintTextAbovePrivate(deed, "You may not build in Green Acres.", who);
     return;
   endif
+
+
   set_critical(1);
   var created:=CreatehouseKeysAndBuiltDeed2(who, housetype, where, deed);
   if(!created)
@@ -175,6 +160,7 @@ function Buildhouse(who, deed)
 
   var lock := GetObjProperty(deed, "numlockdowns");
   var sec  := GetObjProperty(deed, "numsecure");
+  
   if(DestroyItem(deed))
     var LockID := AllocateLockID();
 	// CProps for deed in bank box.

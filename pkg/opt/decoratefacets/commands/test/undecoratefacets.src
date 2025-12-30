@@ -22,8 +22,9 @@ use file;
 use polsys;
 use cliloc;
 
-include "../pkg/opt/decoratefacets/include/decorate";
-include "../pkg/utils/mdgumps/include/yesNo";
+include ":decoratefacets:decorate";
+include ":mdgumps:yesNo";
+include ":mdgumps:gumps_ex";
 
 
 program UndecorateFacets( who )

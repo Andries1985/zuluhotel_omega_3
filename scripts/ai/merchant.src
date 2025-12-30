@@ -328,7 +328,7 @@ program merchantai()
 			RestockMyGold(shop_resale);
 			next_gold_restock := ReadGameClock() + RESTOCK_GOLD_MINUTES;
 		endif
-		Print("Merchant AI Looping for NPC serial: "+me.serial);
+		//Print("Merchant AI Looping for NPC serial: "+me.serial);
 	endwhile
 	//Print("Exiting Merchant AI for NPC serial: "+me.serial);
 endprogram
@@ -1519,7 +1519,7 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function SleepMode(me)
-	Print("Entering sleep mode for " + spawnname);
+	//Print("Entering sleep mode for " + spawnname);
 	foreach critter in ListMobilesNearLocation( me.x, me.y, me.z, 20, me.realm );
 		if (!critter.npctemplate)
 			return 0;

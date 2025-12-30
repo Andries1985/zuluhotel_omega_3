@@ -39,15 +39,15 @@ use os;
 use basic;
 use cfgfile;
 
-include "../pkg/utils/mdgumps/include/autoClose";
-include "../pkg/utils/mdgumps/include/gumpPrompt";
-include "../pkg/utils/mdgumps/include/gumps_ex";
-include "../pkg/utils/mdgumps/include/htmlGump";
-include "../pkg/utils/mdgumps/include/playerSelectionGump";
-include "../pkg/utils/mdgumps/include/requestGump";
-include "../pkg/utils/mdgumps/include/selectionGump";
-include "../pkg/utils/mdgumps/include/textConsts";
-include "../pkg/utils/mdgumps/include/yesNo";
+// include ":mdgumps:autoClose";
+// include ":mdgumps:gumpPrompt";
+// include ":mdgumps:gumps_ex";
+// include ":mdgumps:htmlGump";
+// include ":mdgumps:playerSelectionGump";
+// include ":mdgumps:requestGump";
+// include ":mdgumps:selectionGump";
+// include ":mdgumps:textConsts";
+// include ":mdgumps:yesNo";
 
 // CONSTants for the GFAddButton() function
 CONST GF_PAGE_BTN	:= 0x0;

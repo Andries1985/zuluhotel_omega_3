@@ -1,6 +1,8 @@
 use uo;
 
 include ":mdgumps:gumps";
+include ":mdgumps:htmlGump";
+
 
 program UseScript( parms )
 

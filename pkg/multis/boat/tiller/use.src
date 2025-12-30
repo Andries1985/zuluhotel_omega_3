@@ -1,7 +1,7 @@
 use uo;
 use os;
 
-include ":mdgumps:gumps";
+include ":mdgumps:yesNo";
 
 program UseScript( mobile, tillerman )
 

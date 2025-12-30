@@ -32,6 +32,8 @@ use cliloc;
 
 include ":decoratefacets:decorate";
 include ":mdgumps:yesNo";
+include ":mdgumps:gumps_ex";
+
 
 
 program DecorateFacets(who, text)
