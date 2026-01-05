@@ -9,7 +9,7 @@ include "include/random";
 
 program redeed( mobile )
 	var bank_region := CP_DEFAULT_AREA;
-	var des;
+	//var des;
 	
 	var house := GetStandingHeight( mobile.x, mobile.y, mobile.z, mobile.realm ).multi;
 	var oserial := GetObjProperty(house, "ownerserial");
@@ -76,9 +76,9 @@ program redeed( mobile )
 	endif
 	
 	var the_serials  := GetObjProperty( targ , "ItemsCreatedSerials" );
-	var deed_onjtype := GetObjProperty( targ , "FromDeed" );
+	var deed_objtype := GetObjProperty( targ , "DeedObjType" );
 
-	if( !the_serials or !deed_onjtype )
+	if( !the_serials or !deed_objtype )
 		SendSysmessage( mobile , "Error in the process please page a staff to report." );
 		return;
 	endif
@@ -97,11 +97,11 @@ program redeed( mobile )
 		return;
 	endif
 	
-	var itemname := GetObjProperty( targ , "BaseName" );;
+	var itemname := GetObjProperty( targ , "BaseName" );
 	var itemqual := targ.quality;
-	var is_excep := GetObjProperty( targ , "IsExceptional" );;
+	var is_excep := GetObjProperty( targ , "IsExceptional" );
 	var the_color := targ.color;
-	var CraftedBy := GetObjProperty( targ , "CraftedBy");;
+	var CraftedBy := GetObjProperty( targ , "CraftedBy");
 	
 	foreach item in created
 		if( item.isA( POLCLASS_CONTAINER ) )
@@ -165,8 +165,8 @@ program redeed( mobile )
 	// DestroyItem( targ );
 	// SleepMS(5);
 
-	var the_deed := CreateItemInBackpack( mobile , deed_onjtype );
-	SetObjProperty( the_deed , "ItemBaseName" , itemname );
+	var the_deed := CreateItemInBackpack( mobile , deed_objtype );
+	SetObjProperty( the_deed , "BaseName" , itemname );
 	SetObjProperty( the_deed , "ItemQuality"  , itemqual );
 	
 	if( itemname )
@@ -174,7 +174,7 @@ program redeed( mobile )
 	endif
 			
 	if( is_excep )
-		SetObjProperty( the_deed , "ItemIsExceptional" , 1 );
+		SetObjProperty( the_deed , "IsExceptional" , 1 );
 		if (CraftedBy)
 			SetObjProperty( the_deed , "CraftedBy" , CraftedBy);
 		endif

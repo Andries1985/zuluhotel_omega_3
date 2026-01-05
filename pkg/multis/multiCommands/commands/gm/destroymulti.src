@@ -1,6 +1,6 @@
 use uo;
 
-include "../pkg/multis/multiCommands/include/multicommands";
+include ":multiCommands:multicommands";
 
 program textcmd_DestroyMulti( mobile, serial )
 

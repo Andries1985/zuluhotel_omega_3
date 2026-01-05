@@ -116,9 +116,28 @@ const UOBJ_HIDE2	:= 0x1079;
 const UOBJ_HIDES_START	:= 0x7020;
 const UOBJ_HIDES_END	:= 0x7030; // Missing Orc, Terathan, Angel and Silverdragon
 
+//Human Crafting
 const UOBJ_ANVIL1       := 0x0FAF;
 const UOBJ_ANVIL2       := 0x0FB0;
 const UOBJ_SMALL_FORGE  := 0x0FB1;  // see also UOBJ_FORGE_START..UOBJ_FORGE_END
+const UOBJ_FORGE_START  := 0x197A;  // see also UOBJ_SMALL_FORGE          
+const UOBJ_FORGE_END    := 0x19A9;
+
+//Elven Crafting
+const UOBJ_ELVEN_ANVIL1 := 0x2DD5;
+const UOBJ_ELVEN_ANVIL2 := 0x2DD6;
+const UOBJ_ELVEN_FORGE  := 0x2DD8;
+
+//Gargoyle Crafting
+const UOBJ_SOULFORGE_ANVIL_START 	:= 0x4254; // Small Sized Soulforged Anvil
+const UOBJ_SOULFORGE_ANVIL_END 		:= 0x4257; // Small Sized Soulforged Anvil
+
+const UOBJ_MINISOULFORGE_START	:= 0x44C7; // Mini Soulforge
+const UOBJ_MINISOULFORGE_END		:= 0x44CA; // Mini Soulforge
+
+const UOBJ_LARGESOULFORGE_START := 0x4263; //Soulforge and Anvil
+const UOBJ_LARGESOULFORGE_END   := 0x4272; //Soulforge and Anvil
+
 
 const UOBJ_COPPER_KEY   := 0x100E;
 const UOBJ_GOLD_KEY     := 0x100F;
@@ -170,9 +189,6 @@ const UOBJ_SHIP_DEED1   := 0x14F1;
 const UOBJ_SHIP_DEED2   := 0x14F2;
 
 const UOBJ_CHEST        := 0x0E40;
-
-const UOBJ_FORGE_START  := 0x197A;  // see also UOBJ_SMALL_FORGE          
-const UOBJ_FORGE_END    := 0x19A9;
 
 const UOBJ_FEATHER      := 0x1BD1;
 const UOBJ_SHAFTS       := 0x1BD4;

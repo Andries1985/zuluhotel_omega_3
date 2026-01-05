@@ -29,7 +29,7 @@ endprogram
 function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc ),
-            excep := GetObjProperty( item, "Exceptional" ),
+            excep := GetObjProperty( item, "IsExceptional" ),
             quality := item.quality;
             
 	if( excep || !quality )

@@ -6,11 +6,12 @@ include ":mdgumps:gumps";
 include "include/housing";
 
 program gump_CarpetSelection(who, carpet_deed)
-//Check house junk such as "is in house" and "lockdowns"
+
+	//Check house junk such as "is in house" and "lockdowns"
 	var lockdowns;
 	sign := GetHouseSign(who);
 
-//	sign := IsInsieMultiHouseSign(who);
+	//sign := IsInsieMultiHouseSign(who);
 	if (!sign.IsObjectInsideHouse(who))
 		SendSysMessage (who, "You must be in a house to use this deed.", color := 33);
 		return;
@@ -34,8 +35,9 @@ program gump_CarpetSelection(who, carpet_deed)
 	return;
 	endif
 	ReserveItem(carpet_deed);
-//if deed is dyable, this will color the carpets with the color in the gump,
-//changeable in the itemdesc file that defines the deed as an item.
+	
+	//if deed is dyable, this will color the carpets with the color in the gump,
+	//changeable in the itemdesc file that defines the deed as an item.
 	var hue := carpet_deed.color;
 
 	var gump := GFCreateGump();

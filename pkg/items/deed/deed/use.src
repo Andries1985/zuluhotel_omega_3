@@ -124,6 +124,14 @@ function BuildandSendOrientGump ( who, deed, sign, targ )
 endfunction
 
 function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
+
+	var itemname := GetObjProperty( deed , "BaseName" );
+	var deedname := GetObjProperty( deed , "DeedName" );
+	var is_excep := GetObjProperty( deed , "IsExceptional" );
+	var CraftedBy := GetObjProperty( deed , "CraftedBy");
+	var CraftedWith := GetObjProperty( deed , "CraftedWith");
+	var ided := GetObjProperty( deed , "IDed" );
+
 	var created := {},
 	    the_serials	:= {};
 	var cfg	:= ReadConfigFile ( buildCFG );
@@ -218,6 +226,14 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 			SetObjProperty( part, "signserial", sign.serial);
 			//SetObjProperty( sign, "RemainingLockdowns", GetObjProperty(sign, "RemainingLockdowns") - 1);
 			SendSysMessage( who, "Locked Down.", 3, 66);
+			//From Carpentry Deed
+			SetObjProperty( part , "BaseName" , itemname );
+			SetObjProperty( part , "DeedName" , deedname );
+			SetObjProperty( part , "CraftedBy" , CraftedBy);
+			SetObjProperty( part , "CraftedWith" , CraftedWith);
+			SetObjProperty( part , "IsExceptional" , is_excep );
+			SetObjProperty( part , "IDed" , 1 );
+			part.name := itemname;
 
 	//	Let's place the lockdown property on only the last item placed by the deed
 	//	which is a "cheat" to only have deeded items take up one lockdown.

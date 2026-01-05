@@ -116,10 +116,10 @@ program place_deed( who , deed )
 	var mult_ori	 := element.MultOrientation;
 	var created	 := {};
 	var objtypemod := 0;
-	var itemname	 := GetObjProperty( deed , "ItemBaseName" );
+	var itemname	 := GetObjProperty( deed , "BaseName" );
 	var itemqual	 := GetObjProperty( deed , "ItemQuality"  );
 	//var lockable	 := GetObjProperty( deed , "ItemIsLockable" );
-	var is_except	 := GetObjProperty( deed , "ItemIsExceptional" );
+	var is_except	 := GetObjProperty( deed , "IsExceptional" );
 	var CraftedBy 	 := GetObjProperty( deed , "CraftedBy");
 	var i;
 
@@ -237,7 +237,7 @@ program place_deed( who , deed )
 			if( part.objtype != UOBJ_COPPER_KEY )
 				SetObjProperty( part , "DeedOwnerSerial" , who.serial );
 				SetObjProperty( part , "ItemsCreatedSerials" , the_serials );
-				SetObjProperty( part , "FromDeed" , deed_objtype );
+				SetObjProperty( part , "DeedObjType" , deed_objtype );
 			endif
 		endforeach
 	else
@@ -253,7 +253,7 @@ program place_deed( who , deed )
 		endif
 
 		var give_back := CreateItemInBackpack( who , deed_objtype );
-		SetObjProperty( give_back , "ItemBaseName" , itemname );
+		SetObjProperty( give_back , "BaseName" , itemname );
 		SetObjProperty( give_back , "ItemQuality" , itemqual );
 		SetName( give_back , "deed for : " + itemname );
 		if( deed_color )
@@ -265,7 +265,7 @@ program place_deed( who , deed )
 		// endif
 		
 		if( is_except )
-			SetObjProperty( give_back , "ItemIsExceptional" , 1 );
+			SetObjProperty( give_back , "IsExceptional" , 1 );
 			if (CraftedBy)
 				SetObjProperty( give_back , "CraftedBy" , CraftedBy);
 			endif

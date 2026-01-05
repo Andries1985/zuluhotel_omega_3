@@ -267,7 +267,7 @@ var the_serials	:= {};
 	SetObjProperty(piece, "lockeddown", 1);
 	SetObjProperty(piece, "lockdownsused", carpet_tiles);
 
-	// Add multi part CProps.
+	//Add multi part CProps.
 	var carpet_pieces := {};
 	for( i := x1+1; i <= x2-1; i := i + 1 )
 		for( j := y1+1; j <= y2-1; j := j + 1 )

@@ -112,10 +112,10 @@ function Create_ChestKey( chest )
 		return 0;
 	endif
 
-        var ided := GetObjProperty( chest, "IDed" );
-        if( ided )
-                SetObjProperty( the_key, "IDed", ided );
-        endif
+	var ided := GetObjProperty( chest, "IDed" );
+	if( ided )
+			SetObjProperty( the_key, "IDed", ided );
+	endif
 
 	var lock_id := CreateLockID();
 

@@ -80,8 +80,8 @@ const PROPID_DATASTORE_BOOK_CONTENTS		:= "contents";
 const PROPID_DATASTORE_BOOK_TITLE		    := "title";
 
 // PropIDs for carpentry deeds
-const PROPID_DEED_BASE_NAME			    	:= "ItemBaseName";
-const PROPID_DEED_EXCEPTIONAL				:= "ItemIsExceptional";
+const PROPID_DEED_BASE_NAME			    	:= "BaseName";
+const PROPID_DEED_EXCEPTIONAL				:= "IsExceptional";
 const PROPID_DEED_LOCKABLE				    := "ItemIsLockable";
 const PROPID_DEED_QUALITY				    := "ItemQuality";
 
