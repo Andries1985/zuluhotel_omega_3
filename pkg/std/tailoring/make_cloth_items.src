@@ -137,7 +137,7 @@ function MakeAndProcessMenu( character, use_on, id )
 			AddMenuItem( menu, 0x1539, "Pants" );
 			AddMenuItem( menu, 0x1713, "Caps" );
 			AddMenuItem( menu, 0x153D, "Misc" );
-			AddMenuItem( menu, 0x0AD1, "Carpet" );
+			AddMenuItem( menu, 0x0AD1, "House Decorations" );
 			break;
 
 	endcase

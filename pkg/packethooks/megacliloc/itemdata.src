@@ -72,6 +72,18 @@ program itemdata(parms)
 					allprops.append(prop);
 				endif
 			elseif(xObject.IsA(POLCLASS_WEAPON))
+				var BE := GetObjProperty(xObject, "BardicEfficiency");
+				if(BE && (IsBard(who) || IsBladesinger(who) || IsPowerPlayer(who)))
+					prop.clilocid := 1070722; // Nothing
+					prop.values := array {"Bardic Efficency: " + BE};
+					allprops.append(prop);
+				endif
+				var MP := GetObjProperty(xObject, "MagicPenalty");
+				if(MP && (IsMage(who) || IsPaladin(who) || IsMysticArcher(who) || IsPowerPlayer(who)))
+					prop.clilocid := 1070722; // Nothing
+					prop.values := array {"Magic Efficency: " + MP};
+					allprops.append(prop);
+				endif
 				var weapondesc := GetItemDescriptor(xObject.objtype);
 				//Damage
 				prop.clilocid := 1061168; // weapon damage ~1_val~ - ~2_val~
@@ -167,7 +179,7 @@ program itemdata(parms)
 				allprops.append(prop);
 			endif
 			var spellcast := GetObjProperty(xObject, "HitWithSpell");
-			if (spellcast && (IsMage(who) || IsCrafter(who) || IsPaladin(who)) || IsPowerPlayer(who) || IsMysticArcher(who) )
+			if (spellcast && (IsMage(who) || IsCrafter(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who) ))
 				var spell_cfg := ReadConfigFile(":*:spells");
 				var elem := FindConfigElem(spell_cfg, spellcast);
 				if(elem)
