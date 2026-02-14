@@ -2,7 +2,7 @@
 *
 *	Sysbook Package - Start.src
 *	The purpose of this start script is to start the
-*	bookShelfMonitor programme.
+*	bookShelfMonitor program.
 *
 \**********************************************************/
 use datafile;
@@ -15,7 +15,7 @@ include "../pkg/items/sysbook/include/sysBook";
 include "../pkg/items/sysbook/include/spawnShelf";
 
 program InitBookDatastore()
-	print("Sysbook: Starting bookShelfMonitor programme.");
+	print("Sysbook: Starting bookShelfMonitor program.");
 	Start_Script(":sysbook:bookShelfMonitor");
 endprogram
 
