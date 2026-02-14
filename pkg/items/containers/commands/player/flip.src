@@ -901,6 +901,16 @@ program flip (who)
 			//Beltpouch South
 			targetfurniture.graphic := 0xe79;
 
+		//////////////////////////////////////////////////////////
+		//					New Flipables						 //
+		//////////////////////////////////////////////////////////
+		0x2DD3:
+			//Beltpouch East
+			targetfurniture.graphic := 0x2DD4;
+		0x2DD4:
+			//Beltpouch South
+			targetfurniture.graphic := 0x2DD3;
+
 	default:
             SendSysMessage(who, "That item cannot be reoriented.");
 	endcase

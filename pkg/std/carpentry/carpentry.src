@@ -759,6 +759,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 				AddMenuItem( menu , 0x1C42 , "Miscellaneous Items" );
 				AddMenuItem( menu , 0x9AC , "Straw Items" );
 				AddMenuItem( menu , 0x35EE , "Crystal Items" );
+				AddMenuItem( menu , 0x3084 , "Elven Items" );
 				break;
 
 		ID_INGOTS:	AddMenuItem( menu , 0x0fb1 , "Smith Furniture" );
