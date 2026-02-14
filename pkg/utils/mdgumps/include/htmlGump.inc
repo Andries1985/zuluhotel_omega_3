@@ -11,7 +11,8 @@
 use uo;
 use os;
 
-include "../pkg/utils/mdgumps/include/gumps";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 /*
  * SendHTMLMessage(who, text)

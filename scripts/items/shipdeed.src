@@ -25,9 +25,11 @@
 use uo;
 use os;
 
-include "util/key";
-include "util/bank";
+//include "util/key";
+include ":keys:key";
+//include "util/bank";
 include "include/objtype";
+include ":containers:storageAreas";
 
 program useshipdeed( character, deed )
     if (DeedAlreadyBuiltFrom( deed ))
@@ -86,7 +88,7 @@ function BuildShip( character, deed )
     created.ship.portplank.locked := 1;
     created.ship.hold.locked := 1;
 
-    var lockid := AllocLockId();
+    var lockid := AllocateLockID();
     SetObjProperty( created.ship.starboardplank,    "lockid", lockid );
     SetObjProperty( created.ship.portplank,         "lockid", lockid );
     SetObjProperty( created.ship.hold,              "lockid", lockid );
@@ -130,7 +132,9 @@ endfunction
 //
 
 function CreateShipKeysAndBuiltDeed( character, shiptype, x, y, z, realm )
-    var bankbox := FindBankBox( character );
+    //var bankbox := FindBankBox( character );
+    var bank_region := CP_DEFAULT_AREA;
+	var bankbox := CP_GetStorageContainerForMobile( character, bank_region, CP_CREATE );
 
     var packkey := CreateItemInBackpack( character, UOBJ_COPPER_KEY );
     if (!packkey)

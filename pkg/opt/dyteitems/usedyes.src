@@ -2,7 +2,8 @@ use uo;
 use vitals;
 
 include "include/attributes";
-include "util/bank";
+//include "util/bank";
+include ":containers:storageAreas";
 
 program use_dyes( who, dyes )
 
@@ -38,7 +39,10 @@ program use_dyes( who, dyes )
 		who.setDex(1);
 		PlayLightningBoltEffect(who);
 		EraseObjProperty( who, "StatsState" );
-		var bankbox := FindBankBox(who);
+
+		var bank_region := CP_DEFAULT_AREA;
+		var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+		//var bankbox := FindBankBox(who);
 		if( bankbox )
 			foreach item in EnumerateItemsInContainer(bankbox)
 				DestroyItem(item);

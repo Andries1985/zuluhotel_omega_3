@@ -4,8 +4,9 @@ include "include/objtype";
 include "include/spelldata";
 include "include/areas";
 include "include/client";
-include ":housing:utility";
-include ":statichousing:recallgatehelp";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
+//include ":statichousing:recallgatehelp";
 
 program cast_mark( caster, spell_id )
 
@@ -38,16 +39,16 @@ program cast_mark( caster, spell_id )
 		endif
 	endif
 	// Same check as above for static houses
-	var serialstatichouse := StaticHouseSerial( caster );
-	if(serialstatichouse)
-		var sign := SystemFindObjectBySerial(serialstatichouse);
-		if( !Iscowner( caster, sign )  )
-			if( !IsFriend( caster, sign, GATE_TO ));
-				SendSysMessage( caster, "You can't mark there!" );
-				return;
-			endif
-		endif
-	endif
+	// var serialstatichouse := StaticHouseSerial( caster );
+	// if(serialstatichouse)
+	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
+	// 	if( !Iscowner( caster, sign )  )
+	// 		if( !IsFriend( caster, sign, GATE_TO ));
+	// 			SendSysMessage( caster, "You can't mark there!" );
+	// 			return;
+	// 		endif
+	// 	endif
+	// endif
 	
 	if (TryToCast( caster, spell_id ) != SUCCESS);
 		EraseObjProperty(caster, "#Casting");

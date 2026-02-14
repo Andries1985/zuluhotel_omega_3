@@ -1,6 +1,6 @@
 use uo;
 
-include "../pkg/utils/mdgumps/include/gumps";
+include ":mdgumps:gumpPrompt";
 
 program PromptDemo(who, text)
 	if ( !text )

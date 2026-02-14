@@ -21,7 +21,7 @@ use os;
 use uo;
 
 include "include/myutil";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/eventid";
 include "include/randname";
 include "include/npcutil";

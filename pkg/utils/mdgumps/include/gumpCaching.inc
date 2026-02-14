@@ -220,8 +220,8 @@ endfunction
  */
 function GFListCachedGumps( datafile:=":mdgumps:include/gumps" )
 
-	var datafile := GFOpenCacheDatafile( datafile ),
-		 info := Dictionary;
+	datafile := GFOpenCacheDatafile( datafile );
+	var info := Dictionary;
 	foreach key in ( datafile.Keys() )
 		info.Insert( key, datafile.FindElement( key ).PropNames() );
 	endforeach

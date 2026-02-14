@@ -8,7 +8,7 @@
 
 const USESCRIPTID_DRINK			:= ":cooking:drink";
 const USESCRIPTID_EAT			:= ":cooking:eat";
-const USESCRIPTID_SECURE_CONTAINER	:= ":housing:securecont";
+//const USESCRIPTID_SECURE_CONTAINER	:= ":housing:securecont";
 const USESCRIPTID_SHRUNK_DOLLY_AREA	:= ":shrunk:shrunkarea";
 const USESCRIPTID_SHRUNK_DOLLY_ITEM	:= ":shrunk:shrunkitem";
 const USESCRIPTID_SHRUNK_DOLLY_NPC	:= ":shrunk:shrunknpc";

@@ -30,8 +30,10 @@ use file;
 use polsys;
 use cliloc;
 
-include "../pkg/opt/decoratefacets/include/decorate";
-include "../pkg/utils/mdgumps/include/yesNo";
+include ":decoratefacets:decorate";
+include ":mdgumps:yesNo";
+include ":mdgumps:gumps_ex";
+
 
 
 program DecorateFacets(who, text)
@@ -50,19 +52,21 @@ program DecorateFacets(who, text)
 	if(CStr(text) == "ALL")
 		decorate_all := 1;
 	endif
-	var Post_SA := YesNo( who, "Are you are using Post Stygian Abyss Maps?", "Yes", "No", 0, NOT_LOCALIZED );
+	//var Post_SA := YesNo( who, "Are you are using Post Stygian Abyss Maps?", "Yes", "No", 0, NOT_LOCALIZED );
+	var Post_SA := 1;
 
 	selected_facets := DecorateFacetsGump ( who, decorate_all );
 	foreach facet in selected_facets
 		case(facet)
-			"britannia":		PlaceDecorations(facet);
-								if(Post_SA == 1)
-									facet := facet + "/newMagincia";
-									PlaceDecorations(facet);
-								else
-									facet := facet + "/oldMagincia";
-									PlaceDecorations(facet);
-								endif
+			"britannia":		
+								PlaceDecorations(facet);
+								// if(Post_SA == 1)
+								// 	facet := facet + "/newMagincia";
+								// 	PlaceDecorations(facet);
+								// else
+								// 	facet := facet + "/oldMagincia";
+								// 	PlaceDecorations(facet);
+								// endif
 								SetGlobalProperty("britannia_Decorated", 1);
 			"britannia_alt":	//if(Post_SA == 1)
 								//	facet := facet + "/postSA";

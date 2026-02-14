@@ -5,7 +5,8 @@ use os;
 use boat;
 
 include ":gumps:yesno";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 include "include/dotempmods";
 include "include/constants/gumpids";
 include "include/constants/cmdlevels";

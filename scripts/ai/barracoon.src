@@ -15,7 +15,7 @@ include "ai/setup/killpcssetup";
 include "ai/main/loot";
 include "ai/main/sleepmode";
 include "include/client";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "main/barracoon";
 
 const HALT_THRESHOLD := 14; // how close before he attacks?

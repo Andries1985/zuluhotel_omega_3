@@ -56,7 +56,7 @@ function main_AI_loop(next_wander := 0)
 		    if (!ev.source.npctemplate)
 		    	wanders :=0;
 		    	next_wander := readgameclock()+30;
-		    	check_speech(ev.text, ev.source);
+		    	check_speech(me, ev.source, ev.text, speech);
 		    endif
                 SYSEVENT_ENGAGED:
                 SYSEVENT_DAMAGED:
@@ -65,7 +65,7 @@ function main_AI_loop(next_wander := 0)
                     Fight( ev.source );
 		SYSEVENT_ITEM_GIVEN:
 		    next_wander := readgameclock()+60;
-		    TakeItem(ev.source,ev.item);
+		    TakeItem(me, ev.source,ev.item,speech);
 		EVID_ALL_FOLLOW_CMD:
 			mydestx := ev.x;
 			mydesty := ev.y;

@@ -19,7 +19,7 @@ use os;
 use polsys;
 use cfgfile;
 
-include "../pkg/utils/mdgumps/include/gumps";
+include ":mdgumps:gumps";
 
 // CONSTants for GFTextCoords()
 CONST ALIGN_CENTER	:= 0x1;

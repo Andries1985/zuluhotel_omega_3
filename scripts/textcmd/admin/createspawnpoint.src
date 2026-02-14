@@ -1,6 +1,6 @@
 use uo;
 
-include "include/constants/objtypes";
+include "include/objtype";
 
 program textcmd_createspawnpoint( who )
 

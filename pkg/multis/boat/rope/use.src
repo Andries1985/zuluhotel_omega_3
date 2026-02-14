@@ -1,0 +1,103 @@
+use uo;
+use os;
+use math;
+
+include "include/facings";
+include ":keys:key";
+
+program Userope( mobile, rope )
+
+	Detach();
+	var LockId := GetObjProperty(rope, "LockID");
+	if(rope.locked)
+		if(!KP_HasKeyForLock(mobile, LockId))
+			SendSysMessage(mobile, "That is locked.", color := 33);
+			return;
+		endif
+	endif
+
+	var ldist, rdist := 0;
+	var shiptype := GetObjProperty( rope, "ShipType" );
+	//Print(shiptype);
+
+	if (shiptype == "0x16058") //Orc Ship
+		ldist := 7;
+		rdist := 5;
+		//Print("Orc Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x16059") //Gargoyle Ship	
+		ldist := 8;
+		rdist := 6;
+		//Print("Gargoyle Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x1605A") //Tokuno Ship
+		ldist := 5;
+		rdist := 4;
+		//Print("Tokuno Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x1605C") //Britannia Ship
+		ldist := 9;
+		rdist := 6;
+		//Print("Britannia Ship detected. " + ldist + ", " + rdist);
+	else
+		ldist := 2;
+		rdist := 2;
+		//Print("Regular Ship detected. " + ldist + ", " + rdist);
+	endif
+
+	if( mobile.multi != rope.multi )
+		if( Distance( mobile, rope ) <= rdist )
+			MoveObjectToLocation( mobile, rope.x, rope.y, rope.z+1, rope.realm, MOVEOBJECT_FORCELOCATION );
+		endif
+	else
+		var i := 0;
+		var z := 0;
+		
+
+		var coords := GetCoordsInFrontOf( mobile, ldist ),
+			origx := mobile.x,
+			origy := mobile.y,
+			origz := mobile.z;
+
+		for( i:=1; i<=coords.Size(); i+=1 )
+			//Print("Checking coord "+i+": "+coords[i].x+", "+coords[i].y);
+			z := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm ).z;
+			if( !CheckLosBetween( mobile.x, mobile.y, mobile.z+5, coords[i].x, coords[i].y, z, mobile.realm ) )
+				//Print("No LOS to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
+				continue;
+			endif
+			MoveObjectToLocation( mobile, coords[i].x, coords[i].y, z, mobile.realm, MOVEOBJECT_FORCELOCATION );
+			//Print("Moved to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
+			if (mobile.multi == rope.multi )
+				MoveObjectToLocation( mobile, origx, origy, origz, mobile.realm, MOVEOBJECT_FORCELOCATION );
+				//Print("On boat at coord "+i+", returning to orig loc.");
+				continue;
+			else
+				//Print("Breaking:  Off boat at coord "+i+".");
+				break;
+			endif
+		endfor
+	endif
+	return 1;
+endprogram
+
+function GetCoordsInFrontOf( byref mobile, byref dist )
+
+	var x := mobile.x+ConvertDirectionToLocX( mobile.facing ),
+		y := mobile.y+ConvertDirectionToLocY( mobile.facing ),
+		xmod := 0,
+		ymod := 0;
+
+	case( mobile.facing )
+		0: xmod := 0;  ymod := -dist; break;
+		1: xmod := +dist; ymod := -dist; break;
+		2: xmod := +dist; ymod := 0;  break;
+		3: xmod := +dist; ymod := +dist; break;
+		4: xmod := 0;  ymod := +dist; break;
+		5: xmod := -dist; ymod := +dist; break;
+		6: xmod := -dist; ymod := 0;  break;
+		7: xmod := -dist; ymod := -dist; break;
+		default:
+			return error{"errortext":="Invalid facing."};
+			break;
+	endcase
+
+	return GetCoordsInLine( x, y, x+xmod, y+ymod );
+endfunction

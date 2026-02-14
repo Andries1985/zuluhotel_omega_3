@@ -22,8 +22,9 @@ include "include/objtype";
 include "include/spelldata";
 include "include/areas";
 include "include/client";
-include ":housing:utility";
-include ":statichousing:recallgatehelp";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
+//include ":statichousing:recallgatehelp";
 
 const RECALL_DELAY_MS	:= 5000;
 const GATE_DELAY_MS	:= 8000;
@@ -182,6 +183,7 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
 		endif
 	endif
 	// Same check as above for static houses
+	/*
 	var serialstatichouse := StaticHouseSerial( caster );
 	if(serialstatichouse)
 		var sign := SystemFindObjectBySerial(serialstatichouse);
@@ -206,6 +208,7 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
 			endif
 		endif
 	endif
+	*/
 	PlaySoundEffect( caster, SFX_SPELL_RECALL1 );
 	sleepms(250);
 
@@ -376,6 +379,7 @@ function CustomGate( caster, x, y, z, realm )
 		endif
 	endif
 	// Same check as above for static houses
+	/*
 	var serialstatichouse := StaticHouseSerial( caster );
 	if(serialstatichouse)
 		var sign := SystemFindObjectBySerial(serialstatichouse);
@@ -400,7 +404,7 @@ function CustomGate( caster, x, y, z, realm )
 			endif
 		endif
 	endif
-
+	*/
 	var gate1 := CreateItemAtLocation( caster.x, caster.y, caster.z, 0x99b1, 1, caster.realm );
 	gate1.facing := 1;
 

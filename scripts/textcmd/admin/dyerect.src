@@ -24,12 +24,15 @@ use uo;
 use cfgfile;
 use os;
 use math;
+
 include ":staff:include/staff";
-include "util/key";
+//include "util/key";
 include "include/objtype";
 include ":gumps:yesno";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 include "include/attributes";
+
 program textcmd_tile( who, input )
 
     if ( ! input )

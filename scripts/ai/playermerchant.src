@@ -3,12 +3,14 @@ use uo;
 use npc;
 use util;
 use cfgfile;
+use storage;
 
 include "include/attributes";
 include "include/client";
 include "include/objtype";
 include "include/eventid";
-include "include/utility";
+//include "include/utility";
+include ":containers:storageAreas";
 include ":gumps:yesno";
 include "include/myutil";
 include "include/randname";
@@ -17,7 +19,7 @@ include "include/npcboosts";
 const STARTHAIR		:= 0x2006;
 const ENDHAIR		:= 0x2079;
 
-var storage, inv_fs, inv_pb;
+var storage, inv_fs, inv_pb, inv_1c;
 var me := Self();
 var master := CINT(GetObjProperty(me, "master"));
 var mastername := getobjproperty(me, "mn");
@@ -41,10 +43,11 @@ program merchant()
 		exit;
 	endif
 
-	inv_fs := find_or_create_item(storage, me.serial + " FS", 0xE7C);
-	inv_pb := find_or_create_item(storage, me.serial + " PB", 0xE7C);
-	inv_fs := find_or_create_item(storage, me.serial + " 1C", 0xE7C);
-	if(!inv_pb or !inv_fs) exit; endif
+	inv_fs := find_or_create_in_pack(storage, me.serial + " FS");
+	inv_pb := find_or_create_in_pack(storage, me.serial + " PB");
+	inv_1c := find_or_create_in_pack(storage, me.serial + " 1C");
+
+	if(!inv_pb or !inv_fs or !inv_1c) exit; endif
 
 	setobjproperty(me, "serial", me.serial);
 
@@ -1125,3 +1128,21 @@ function LogMyStuff(byref me)
 	endif
 	set_critical(0);
 endfunction*/
+
+
+//From Modern Distro
+function find_or_create_in_pack(name, objtype);
+  var mypack := me.backpack;
+  var check := 0;
+  foreach thing in EnumerateItemsInContainer(mypack, ENUMERATE_ROOT_ONLY)
+    if(thing.name == name)
+      check := thing;
+      break;
+    endif
+  endforeach
+  if(check == 0)
+    check := CreateItemInContainer(mypack, objtype, 1);
+    SetName(check, name);
+  endif
+  return check;
+endfunction

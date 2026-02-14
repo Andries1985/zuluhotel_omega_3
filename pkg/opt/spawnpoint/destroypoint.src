@@ -39,7 +39,12 @@ program DestroySpawnPoint(point)
 				spawned_object := SystemFindObjectBySerial(spawned_serial);
 				case( pt_data[1] )
 					"NPC":
-					"Group":	
+						WarnManagerOfNpcDeath( spawned_object );
+						RevokePrivilege(spawned_object,"invul");
+						SetObjProperty(spawned_object, "guardkill", 1);
+						ApplyRawDamage(spawned_object, GetMaxHP(spawned_object)+3);
+					"Group":
+						WarnManagerOfNpcDeath( spawned_object );
 						RevokePrivilege(spawned_object,"invul");
 						SetObjProperty(spawned_object, "guardkill", 1);
 						ApplyRawDamage(spawned_object, GetMaxHP(spawned_object)+3);

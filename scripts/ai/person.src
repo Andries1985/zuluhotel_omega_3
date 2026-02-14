@@ -22,7 +22,7 @@ include "include/objtype";
 include "include/anchors";
 
 include "ai/main/loot";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "ai/setup/modsetup";
 include "include/random";
 include "include/attributes";

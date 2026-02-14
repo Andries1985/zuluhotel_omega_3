@@ -5,7 +5,7 @@ use uo;
 use cfgfile;
 
 include "include/myutil";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/attributes";
 
 include "include/eventid";

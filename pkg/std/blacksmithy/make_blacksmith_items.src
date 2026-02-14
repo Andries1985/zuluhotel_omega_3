@@ -40,7 +40,7 @@ include "include/autoloop";
 include "include/attributes";
 include "include/difficulty";
 include ":crafting:craftingfunctions";
-include "../pkg/opt/karmafame/karmafame";
+include ":karmafame:karmafame";
 
 const DIVIDER		:= 3;
 const APPEAR_AT		:= -10;
@@ -119,7 +119,8 @@ program use_hammer( character, hammer )
 		SendSysMessage( character, "You must select ingots!" );
 		return;
 	endif
-		var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
+	
+	var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
  	foreach item in Near_Items
 	  	if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2))
 	   		MakeBoneItems( character , use_on , bone );

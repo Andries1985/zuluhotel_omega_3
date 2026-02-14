@@ -8,7 +8,7 @@ include "include/namingbyenchant";
 include "itemid";
 
 // how many seconds between ID
-var BASE_DELAY := 10;
+var BASE_DELAY := 0;
 var START_MOD := 65; 
 
 program do_itemid( who )
