@@ -709,11 +709,11 @@ function OpenMyPack();
 		0x4E6:	mounttype := 0x3EC7;	// Tiger
 		0x4E7:	mounttype := 0x3EC8;	// Ethereal Tiger
 		0x42D:	mounttype := 0x3EC9;	// Hell Hound
-		//0x579:	mounttype := 0x3ECA;	// Tarantula				- No Corresponding Mount in NPCDESC.cfg (No Graphic)
+		0x579:	mounttype := 0x3ECA;	// Tarantula				- No Corresponding Mount in NPCDESC.cfg (No Graphic)
 		0x57F:	mounttype := 0x3ECB;	// Lasher - a rainbow highlighted unicorn.
 		0x580:	mounttype := 0x3ECD;	// Palomino
 		0x582:	mounttype := 0x3ECC;	// Windrunner
-		//0x59A:	mounttype := 0x3ECE;	// Serpentine Dragon		- No Corresponding Mount in NPCDESC.cfg (No Graphic)
+		0x59A:	mounttype := 0x3ECE;	// Serpentine Dragon		- No Corresponding Mount in NPCDESC.cfg (No Graphic)
 		0x5A0:	mounttype := 0x3ECF;	// Peacock
 		0x5A1:	mounttype := 0x3ED0;	// Skeletal Hound
 		0x5E6:	mounttype := 0x3ED1;	// Coconut Crab
@@ -725,7 +725,7 @@ function OpenMyPack();
 		0x60D:	mounttype := 0x3ED7;	// Saint Bernard
 		0x60F:	mounttype := 0x3ED8;	// Russian Terrier
 		0x610:	mounttype := 0x3ED9;	// Rottweiler
-		//0x590:	mounttype := 0x3EDA;	// Frost Mite				- No Corresponding Mount in NPCDESC.cfg (Converts to horse when ridden)
+		0x590:	mounttype := 0x3EDA;	// Frost Mite				- No Corresponding Mount in NPCDESC.cfg (Converts to horse when ridden)
 	
 		//0x9:	mounttype := 0x3f6f;	// Demon (looks awful)			- No idea where this comes from
 		//0x3E9B	- Set as mounts, but no corresponding graphics
