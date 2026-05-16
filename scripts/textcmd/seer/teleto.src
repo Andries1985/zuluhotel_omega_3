@@ -1,7 +1,8 @@
 use uo;
 
 include ":staff:include/staff";
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 
 program teleto(who)
 

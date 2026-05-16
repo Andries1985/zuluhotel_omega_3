@@ -8,12 +8,12 @@ include "include/mrcspawn";
 include "include/speech";
 include "include/client";
 include "include/vetement";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "ai/setup/modsetup";
 include "include/anchors";
 include "ai/main/loot";
 
-const HALT_THRESHOLD := 1; // how close before he barks?
+const HALT_THRESHOLD := 4; // how close before he barks?
 
 var me := Self();
 
@@ -49,7 +49,7 @@ program noble ()
     var looter := GetObjProperty( me, "looter" );
 	var next_wander := ReadGameClock() + 60;
     while (1)
-        wander();
+        //wander();
         ev := os::wait_for_event( 120 );
         // print( "event type: " + ev.type );
         case (ev.type)
@@ -71,7 +71,7 @@ program noble ()
                 else
                     say( "What sinister force is this!" );
                 endif
-           default: wander();
+           default: //wander();
 
         endcase
         if (ReadGameClock() >= next_wander)
@@ -79,7 +79,7 @@ program noble ()
 			if (looter)
 				grabloot();
 			endif
-            next_wander := ReadGameClock() + 60;
+			next_wander := ReadGameClock() + RandomDice( 2, 25, 10 );
         endif
         
         // TODO: ReturnToPost();

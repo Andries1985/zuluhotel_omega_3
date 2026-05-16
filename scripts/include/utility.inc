@@ -2,31 +2,31 @@ use storage;
 use uo;
 use os;
 
-function find_or_create_storage ( areaname )
+// function find_or_create_storage ( areaname )
 
-	var area := FindStorageArea ( areaname );
-	if (!area)
-		area := CreateStorageArea ( areaname );
-		if (area)
-			print ( "Storage Area '" + areaname + "' created." );
-		endif
-	endif
-	return area;
+// 	var area := FindStorageArea ( areaname );
+// 	if (!area)
+// 		area := CreateStorageArea ( areaname );
+// 		if (area)
+// 			print ( "Storage Area '" + areaname + "' created." );
+// 		endif
+// 	endif
+// 	return area;
 
-endfunction
+// endfunction
 
-function find_or_create_item ( storage, name, objtype )
+// function find_or_create_item ( storage, name, objtype )
 
-	var item := FindRootItemInStorageArea ( storage, name );
-	if (item)
-		return item;
-	endif
+// 	var item := FindRootItemInStorageArea ( storage, name );
+// 	if (item)
+// 		return item;
+// 	endif
 
-	//didn't find, so create
-	item := CreateRootItemInStorageArea ( storage, name, objtype );
-	return item;
+// 	//didn't find, so create
+// 	item := CreateRootItemInStorageArea ( storage, name, objtype );
+// 	return item;
 
-endfunction
+// endfunction
 
 // function IsLocationAccessible ( character, x, y, z )
 //     var xd, yd, zd;
@@ -66,20 +66,6 @@ function coordist ( x1 , y1 , x2 , y2 )
 		return yd;
 	endif
 
-endfunction
-
-function AllocLockId()
-
-	set_critical (1);
-	var lockid := GetGlobalProperty( "nextlockid" );
-	if (!lockid)
-		lockid := 1;
-	endif
-	SetGlobalProperty ( "nextlockid", lockid+1 );
-
-	set_critical (0);
-
-	return lockid;
 endfunction
 
 function GetDirection (character, x, y)

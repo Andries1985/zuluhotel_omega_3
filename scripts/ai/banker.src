@@ -9,11 +9,14 @@ include "include/eventid";
 include "include/findcity";
 include ":mdgumps:gumps";
 include ":mdgumps:confirmationSizable";
-include "../pkg/items/currency/include/currency";
-include "../pkg/items/currency/include/itemdesc";
+include ":currency:currency";
+include ":itemUtils:itemdesc";
 include ":accounts:accounts";
-include "../pkg/items/containers/include/storageAreas";
+include ":containers:storageAreas";
 include "include/randname";
+include "include/npcboosts";
+include ":mdgumps:requestGump";
+
 
 	var bank;
 	const REACT_THRESHOLD := 8;
@@ -40,9 +43,9 @@ program banker();
 	var next_wander := ReadGameClock() + 30;
 	var myanchor := GetObjProperty(me, "Anchor");
 	if(myanchor)
-		//MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
-		WalkHome();
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
 	endif
+	WalkHome();
 	
 	EnableEvents(SYSEVENT_ITEM_GIVEN);
 	EnableEvents(SYSEVENT_SPEECH, REACT_THRESHOLD);
@@ -50,11 +53,17 @@ program banker();
 	var text;
 	var splitted := {};
 	while(1)
+
+		if(!GetObjProperty(me, "lbc") || GetObjProperty(me, "lbc") < ReadGameClock())
+			SetObjProperty(me, "lbc", ReadGameClock()+5);
+			checkmymod(me);
+		endif
+
 		var ev;
 		ev := os::wait_for_event(1);
 		if(ev.type == SYSEVENT_SPEECH)
 			text := lower(ev.text);
-			splitted := SplitWords(text);
+			//splitted := SplitWords(text);
 			// if(ev.source.criminal == 1)
 			// 	SetObjProperty(me, "OriginalSpeechColor", me.speech_color);
 			// 	me.speech_color := 33;
@@ -63,7 +72,7 @@ program banker();
 			// 	EraseObjProperty(me, "OriginalSpeechColor");
 			// 	return 0;
 			// endif
-			if(text["gold note"] || text["gold draft"] || text["gold check"] )
+			if(Find(text, "gold note", 1) || Find(text, "gold draft", 1) || Find(text, "gold check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EED);
@@ -71,7 +80,7 @@ program banker();
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EF0);
-			elseif(text["copper note"] || text["copper draft"] || text["copper check"] )
+			elseif(Find(text, "copper note", 1) || Find(text, "copper draft", 1) || Find(text, "copper check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
 				BuyBankersNote(ev.source, me, 0x0EEA);
@@ -96,12 +105,12 @@ program banker();
 					endforeach
 					ShowBalance(ev.source, AddCommas(gamt), AddCommas(samt), AddCommas(camt));
 				//endif
-			elseif(text["bank"])
+			elseif(Find(text, "bank", 1) || Find(text, "safe", 1))
 				OpenBank(ev.source, bank_region);
-			elseif(text["convert copper"])
+			elseif(Find(text, "convert copper", 1))
 				ConvertCopper(ev.source, me);
-			elseif(text["convert silver"])
-				Convertsilver(ev.source, me);
+			elseif(Find(text, "convert silver", 1))
+				ConvertSilver(ev.source, me);
 			endif
 		elseif(SYSEVENT_ITEM_GIVEN)
 		TurnToward (ev.source);
@@ -284,7 +293,7 @@ function BuyBankersNote(who, me, currency)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
 	
 	if (currency == 0x0EEA)
 		created.color := 0x5DE;
@@ -452,7 +461,7 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
 	created.color := 1154;
 
 endfunction
@@ -460,7 +469,8 @@ endfunction
 function ConvertSilver(who, me, currency := 0x0EF0)
 
 	//var box := FindBankBox( who );  
-	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );var stuff := EnumerateItemsInContainer(box);
+	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	var stuff := EnumerateItemsInContainer(box);
 	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EED;
@@ -518,7 +528,7 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
 	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
 	created.color := 0x501;
 
 endfunction
@@ -529,6 +539,7 @@ function walkhome()
 	if (!getobjproperty(me, "myhome"))
 		myhome[1] := me.x;
 		myhome[2] := me.y;
+		myhome[3] := me.z;
 		setobjproperty(me, "myhome", myhome);
 	else
 		myhome := getobjproperty(me, "myhome");
@@ -539,6 +550,8 @@ function walkhome()
 		return;
 	endif
 
+	var myanchor := GetObjProperty(me, "Anchor");
+
 	var i;
 	for (i := 1; i < 11; i := i + 1)
 		WalkTowardLocation(myhome[1], myhome[2]);
@@ -548,6 +561,11 @@ function walkhome()
 	endfor
 
 	var Anchor := GetObjProperty(me, "Anchor");
+
+	if (me.z != myhome[3])
+		MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
+		Wander();
+	endif
 
 	if (me.x != myhome[1] and me.y != myhome[2] )
 		MoveObjectToLocation(me, Anchor[1], Anchor[2], Anchor[5], me.realm, MOVEOBJECT_FORCELOCATION);

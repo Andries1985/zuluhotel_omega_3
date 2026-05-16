@@ -2,7 +2,7 @@ use uo;
 
 include "include/client";
 include "include/spelldata";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 
 program use_sunderingsword(who, sword)
 

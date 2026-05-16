@@ -684,8 +684,8 @@ function IsWater( theobj )
 	elseif( tile == 0x0136 or tile == 0x0137 )
 		return 1;
 	elseif( tile >= 0x3ff0 and tile <= 0x3ff3 )
-    		return 1;
-    	endif
+		return 1;
+	endif
     	
 	return 0;
 

@@ -1,0 +1,192 @@
+use uo;
+use os;
+
+include "include/objtype";
+//include ":housing:utility";
+include ":house:utility";
+include ":containers:storageAreas";
+include "include/random";
+
+program redeed( mobile )
+	var bank_region := CP_DEFAULT_AREA;
+	//var des;
+	
+	var house := GetStandingHeight( mobile.x, mobile.y, mobile.z, mobile.realm ).multi;
+	var oserial := GetObjProperty(house, "ownerserial");
+
+	if( house )
+		if( mobile.serial != oserial)
+			SendSysMessage( mobile, "You cannot redeed anything in this house!" );
+			return 0;
+		endif
+	else
+		if( mobile.cmdlevel < 3 )
+			SendSysMessage( mobile, "You must be in a house!" );
+			return 0;
+		endif
+	endif
+
+	var targ := Target( mobile );
+	if( !targ )
+		SendSysMessage( mobile, "Cancelled." );
+		return 0;
+	elseif( !targ.IsA( POLCLASS_ITEM ))
+		SendSysMessage( mobile, "You must select an item!" );
+		return 0;
+	endif
+
+	//Trash Can Redeed
+	if(targ.objtype == 0x7007)
+		if (!IsCowner( mobile, house ))
+	    	SendSysMessage( mobile , "You need to be the owner or co-owner to do that!" );
+			return;
+		else
+			DestroyItem( targ );
+			var trash := CreateItemInBackpack( mobile , 0x7009 );
+			return;
+		endif
+	endif 
+
+	// Yucca Tree Redeed
+	// if( the_item.objtype == 0x0d37 )
+	//     if( GetObjProperty(the_item, "YuccaTimer") )
+	// 	if( GetObjProperty(the_item, "YuccaTimer") < ReadGameClock() )
+	// 	the_item.movable := 1;
+	// 	printtextabove(the_item,"*unlocked*");
+	// 	else
+	// 	SendSysMessage( who, "You have to wait " + (GetObjProperty(the_item, "YuccaTimer") - ReadGameClock()) + " seconds before you can do that!");
+	// 	endif
+	//     else
+	// 	SendSysMessage( who, "That isn't unmovable!");
+ 	//     endif
+	//     return;
+	// endif
+	
+	if(mobile.cmdlevel < 2)
+		var owner_serial := GetObjProperty( targ , "DeedOwnerSerial" );
+		if( !owner_serial )
+			SendSysmessage( mobile , "You can't redeed that!" );
+			return;
+		endif
+
+		if( mobile.serial != owner_serial )
+			SendSysmessage( mobile , "You don't own this." );
+			return;
+		endif
+	endif
+	
+	var the_serials  := GetObjProperty( targ , "ItemsCreatedSerials" );
+	var deed_objtype := GetObjProperty( targ , "DeedObjType" );
+
+	if( !the_serials or !deed_objtype )
+		SendSysmessage( mobile , "Error in the process please page a staff to report." );
+		return;
+	endif
+	
+	var created := {};
+	foreach serial in the_serials
+		var part := SystemFindObjectBySerial( serial );
+		if( part )
+			created.append( part );
+		endif
+		SleepMS(5);
+	endforeach
+
+	if( !len(created) )
+		SendSysmessage( mobile , "Error in the process please page a staff to report." );
+		return;
+	endif
+	
+	var itemname := GetObjProperty( targ , "BaseName" );
+	var itemqual := targ.quality;
+	var is_excep := GetObjProperty( targ , "IsExceptional" );
+	var the_color := targ.color;
+	var CraftedBy := GetObjProperty( targ , "CraftedBy");
+	
+	foreach item in created
+		if( item.isA( POLCLASS_CONTAINER ) )
+			var content := EnumerateItemsInContainer( item );
+			var LockIDs := {}, id;
+			if( len( content ) )
+				SendSysmessage( mobile , "All the items from the " + item.desc + " as been moved in your pack." );
+			endif
+			
+			id := GetObjProperty(item, "LockID");
+			if(id)
+				LockIDs.append(id);
+			endif
+			foreach thing in EnumerateItemsInContainer(mobile.backpack)
+				id := GetObjProperty(thing, "LockID");
+				if(id)
+					if(id in LockIDs)
+						DestroyItem(thing);
+					endif
+				endif
+			endforeach
+			var bankbox	:= CP_GetStorageContainerForMobile( mobile, bank_region, CP_NOCREATE );
+			if(bankbox)
+				foreach thing in EnumerateItemsInContainer(bankbox)
+					id := GetObjProperty(thing, "LockID");
+					if(id)
+						if(id in LockIDs)
+							DestroyItem(thing);
+						endif
+					endif
+				endforeach
+			endif
+			foreach thing in content
+				id := GetObjProperty(thing, "LockID");
+				if(id)
+					if(id in LockIDs)
+						//Print("In Redeed Function: Destroying Locked Thing " + thing.desc );
+						DestroyItem(thing);
+						SleepMS(5);
+					endif
+				else
+					thing.movable := 1;			
+					//Print("In Redeed Function: Moved Thing to Backpack " + thing.desc );
+					var result := MoveItemToContainer( thing , mobile.backpack, -1, -1, 2 );
+					//Print("MoveItemToContainer Result: " + result );
+					SleepMS(5);
+				endif
+				
+			endforeach
+		endif
+
+		item.movable := 1;
+		MoveItemToContainer(item, mobile.backpack);
+		DestroyItem( item );
+		SleepMS(5);
+	endforeach
+	
+	
+	// targ.movable := 1;
+	// MoveItemToContainer(targ, mobile.backpack);
+	// DestroyItem( targ );
+	// SleepMS(5);
+
+	var the_deed := CreateItemInBackpack( mobile , deed_objtype );
+	SetObjProperty( the_deed , "BaseName" , itemname );
+	SetObjProperty( the_deed , "ItemQuality"  , itemqual );
+	
+	if( itemname )
+		SetName( the_deed , "deed for : " + itemname );
+	endif
+			
+	if( is_excep )
+		SetObjProperty( the_deed , "IsExceptional" , 1 );
+		if (CraftedBy)
+			SetObjProperty( the_deed , "CraftedBy" , CraftedBy);
+		endif
+	endif
+	
+	if( the_color )
+		the_deed.color := the_color;
+	endif
+	
+	SendSysmessage( mobile , "You place the deed in your pack." );
+
+	return 1;
+
+endprogram
+

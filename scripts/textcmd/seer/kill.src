@@ -27,8 +27,8 @@ program textcmd_kill( who )
 			LogCommand(who, GetProcess(GetPid()).name, mob.name+"/"+mob.serial);
 			RevokePrivilege( mob, "invul" );
 			setobjproperty( mob, "guardkill", 1);	
-			ApplyRawDamage( mob, GetMaxHP(mob)+3 );
 			WarnManagerOfNpcDeath(mob);
+			ApplyRawDamage( mob, GetMaxHP(mob)+3 );
 		else
 			SendSysMessage( who, "That Tickles!" );
 		endif

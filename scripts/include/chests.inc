@@ -3,7 +3,8 @@
 use cfgfile;
 
 
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "include/random";
 include "include/constants";
 
@@ -25,7 +26,7 @@ function lockem(chest)
 		var diff  := level * 15;
 		SetObjProperty( chest, "spawnchest", level );
 		SetObjProperty( chest, "LockDifficulty", diff );
-		SetObjProperty( chest, "lockid" , AllocLockId());
+		SetObjProperty( chest, "lockid" , AllocateLockID());
 		chest.locked := 1;
 	
 		if( RandomDiceStr("1d100") <= (level * 5) )
@@ -41,7 +42,7 @@ endfunction
 
 function finddiff(chest)
 
-	var diff := GetObjProperty(chest, "LockDifficulty");
+	var diff := GetObjProperty(chest, "LockPickDiff");
 	if( diff )
 		return diff;
 	endif

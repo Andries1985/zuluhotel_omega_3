@@ -6,7 +6,7 @@ use cfgfile;
 const HALT_THRESHOLD := 5;
 
 include "include/myutil";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/attributes";
 
 include "include/eventid";

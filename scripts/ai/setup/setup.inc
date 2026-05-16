@@ -1,4 +1,8 @@
 // include "include/starteqp";
+use uo;
+use os;
+use npc;
+
 
 set_critical(0);
 var speech;

@@ -8,7 +8,7 @@ include "include/classes";
 include "include/autoloop";
 include ":gumps:yesno";
 include "include/math";
-include "../pkg/opt/karmafame/karmafame";
+include ":karmafame:karmafame";
 
 const TEXT_COLOR		:= 319;
 const MAT_DIVIDER		:= 3;
@@ -69,10 +69,10 @@ function MakeUpgrade(character, start_material, smithyretort)
 			skilltype := SKILLID_BLACKSMITHY;
 		elseif(IsLog(material2))
 			material_cfg := ReadConfigFile( ":carpentry:carpentry" );
-			skilltype := SKILLID_TAILORING;
+			skilltype := SKILLID_CARPENTRY;
 		elseif(IsHide(material2.objtype))
 			material_cfg := ReadConfigFile( ":tailoring:tailoring" );
-			skilltype := SKILLID_CARPENTRY;
+			skilltype := SKILLID_TAILORING;
 		else	
 			SendSysMessage( character , "You can't make anything with that." );
 			return 0;

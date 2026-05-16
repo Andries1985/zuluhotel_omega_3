@@ -25,7 +25,7 @@
  * Returns error on failure.
  *
  */
- include "../pkg/utils/mdgumps/include/gumps_ex";
+include ":mdgumps:gumps_ex";
 
 function GFCloseGump( mobile, pid, ret_val:=0 )
 
@@ -93,7 +93,7 @@ endfunction
  *
  */
 function GFCloseGumpOnMovedDistance( mobile, object, pid, variance:=1, ret_val:=0 )
-	return Start_Script( ":mdgumps:scripts/autoClose/autoCloseOnMovedDistance", array{mobile, object, pid, dist_traveled, ret_val} );
+	return Start_Script( ":mdgumps:scripts/autoClose/autoCloseOnMovedDistance", array{mobile, object, pid, variance, ret_val} );
 endfunction
 
 /*
@@ -117,5 +117,5 @@ endfunction
  *
  */
 function GFCloseGumpOnLeaveArea( mobile, x_1, y_1, x_2, y_2, pid, variance:=1, ret_val:=0 )
-	return Start_Script( ":mdgumps:scripts/autoClose/autoCloseOnLeaveArea", array{mobile, x_1, y_1, x_2, y_2, pid, ret_val} );
+	return Start_Script( ":mdgumps:scripts/autoClose/autoCloseOnLeaveArea", array{mobile, x_1, y_1, x_2, y_2, pid, variance,ret_val} );
 endfunction

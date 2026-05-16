@@ -3,8 +3,8 @@ use os;
 use cfgfile;
 use polsys;
 
-include "../pkg/items/containers/include/containers";
-include "../pkg/items/currency/include/itemdesc";
+include ":containers:containers";
+include ":itemUtils:itemdesc";
 
 program Install()
 	return 1;

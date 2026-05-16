@@ -4,12 +4,12 @@ use util;
 use basic;
 use cfgfile;
 
-//include "include/all";
+include "include/all";
 //include "include/starteqp";
 //include "include/time";
 //include "include/objtype"; // add start & end hair
 //include "include/itemutil"; // added for getcursedlevel()
-include "include/spawnpoint";
+//include "include/spawnpoint";
 
 program DeSpawner( point )
 	
@@ -40,14 +40,14 @@ program DeSpawner( point )
 	foreach spawnsr in GetObjProperty(point, PROPID_SPAWNPOINT_SPAWNED_OBJECTS)
 		spawno := SystemFindObjectBySerial(spawnsr);
 		case( pt_data[1] )
-			"NPC":
-			"Group":	KillMobile( spawno, 1 );
+			"NPC":			KillMobile( spawno, 1 );
+			"Group":		KillMobile( spawno, 1 );
 			"Container":	DestroyItem( spawno );
-			"Item":		if( spawno )
-						if( !spawno.container )
-							DestroyItem( spawno );
-						endif
-					endif
+			"Item":			if( spawno )
+								if( !spawno.container )
+									DestroyItem( spawno );
+								endif
+							endif
 		endcase
 	endforeach
 	set_critical(0);

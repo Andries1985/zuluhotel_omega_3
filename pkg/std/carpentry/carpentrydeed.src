@@ -2,12 +2,14 @@ use uo;
 use os;
 use cfgfile;
 
-include "util/key";
+//include "util/key";
+include ":keys:key";
 include "include/objtype";
 include ":gumps:yesno";
-include ":housing:utility";
+//include ":housing:utility";
+include ":house:utility";
 include "include/attributes";
-include "include/chests";
+//include "include/chests";
 
 const UOBJECT_DOORS_START	:= 0x0675;
 const UOBJECT_DOORS_END		:= 0x06f4;
@@ -114,10 +116,10 @@ program place_deed( who , deed )
 	var mult_ori	 := element.MultOrientation;
 	var created	 := {};
 	var objtypemod := 0;
-	var itemname	 := GetObjProperty( deed , "ItemBaseName" );
+	var itemname	 := GetObjProperty( deed , "BaseName" );
 	var itemqual	 := GetObjProperty( deed , "ItemQuality"  );
-	var lockable	 := GetObjProperty( deed , "ItemIsLockable" );
-	var is_except	 := GetObjProperty( deed , "ItemIsExceptional" );
+	//var lockable	 := GetObjProperty( deed , "ItemIsLockable" );
+	var is_except	 := GetObjProperty( deed , "IsExceptional" );
 	var CraftedBy 	 := GetObjProperty( deed , "CraftedBy");
 	var i;
 
@@ -148,7 +150,7 @@ program place_deed( who , deed )
 			y_mod := 0 - y_mod;
 		endif
 
-		var at_loc := ListItemsAtLocation( start.x + x_mod , start.y + y_mod , start.z, start.realm );
+		var at_loc := ListItemsAtLocation( start.x + x_mod, start.y + y_mod, start.z, start.realm );
 		if( len( at_loc ) )
 			SendSysMessage( who , "You don't have enough space to place the item." );
 			SendSysMessage( who , "You must select an area free of any others item." );
@@ -189,20 +191,27 @@ program place_deed( who , deed )
 			the_item.movable := 1;
 		endif
 		
-		if( lockable )
-			var lockdiff := finddiff(the_item);
-			if(lockdiff)
-				Setobjproperty( the_item , "LockDifficulty", lockdiff );
-			endif
-			SetObjProperty( the_item , "lockable" , "1" );
-			var lockid := AllocLockId();
-			the_item.locked := 1;
-			var thekey := CreateItemInBackpack( who , UOBJ_COPPER_KEY ); 
-			SetObjProperty( thekey ,  "lockid" , lockid );
-			SetObjProperty( the_item , "lockid" , lockid );
-			SendSysmessage( who , "You will find the key in your backpack.");
-			created.append( thekey );
-		endif
+		//if( lockable )
+		// if( KP_IsLockable( the_item ))
+		// 	var lockdiff := finddiff(the_item);
+		// 	if(lockdiff)
+		// 		Setobjproperty( the_item , "LockPickDiff", lockdiff );
+		// 	else
+		// 		SetObjProperty( the_item, "LockPickDiff", RandomIntMinMax( 29, 91 ) );
+		// 	endif
+		// 	//SetObjProperty( the_item , "lockable" , "1" );
+		// 	var lockid := AllocateLockID();
+		// 	//the_item.locked := 1;
+		// 	//var thekey := CreateItemInBackpack( who , UOBJ_COPPER_KEY ); 
+
+		// 	Create_ChestKey( the_item );
+			
+		// 	//endif
+		// 	//SetObjProperty( thekey ,  "lockid" , lockid );
+		// 	//SetObjProperty( the_item , "lockid" , lockid );
+		// 	//SendSysmessage( who , "You will find the key in your backpack.");
+		// 	//created.append( thekey );
+		// endif
 			
 		the_item.hp := the_item.maxhp;
 		created.append( the_item );
@@ -228,7 +237,7 @@ program place_deed( who , deed )
 			if( part.objtype != UOBJ_COPPER_KEY )
 				SetObjProperty( part , "DeedOwnerSerial" , who.serial );
 				SetObjProperty( part , "ItemsCreatedSerials" , the_serials );
-				SetObjProperty( part , "FromDeed" , deed_objtype );
+				SetObjProperty( part , "DeedObjType" , deed_objtype );
 			endif
 		endforeach
 	else
@@ -244,19 +253,19 @@ program place_deed( who , deed )
 		endif
 
 		var give_back := CreateItemInBackpack( who , deed_objtype );
-		SetObjProperty( give_back , "ItemBaseName" , itemname );
+		SetObjProperty( give_back , "BaseName" , itemname );
 		SetObjProperty( give_back , "ItemQuality" , itemqual );
 		SetName( give_back , "deed for : " + itemname );
 		if( deed_color )
 			give_back.color := deed_color;
 		endif
 		
-		if( lockable )
-			SetObjProperty( give_back , "ItemIsLockable" , 1 );
-		endif
+		// if( lockable )
+		// 	SetObjProperty( give_back , "ItemIsLockable" , 1 );
+		// endif
 		
 		if( is_except )
-			SetObjProperty( give_back , "ItemIsExceptional" , 1 );
+			SetObjProperty( give_back , "IsExceptional" , 1 );
 			if (CraftedBy)
 				SetObjProperty( give_back , "CraftedBy" , CraftedBy);
 			endif

@@ -74,7 +74,8 @@ program cast_darkness( parms )
 	var dmg := CalcSpellDamage( caster ,cast_on , circle );		
 		ApplyElementalDamage( caster , cast_on , circle , (dmg/1.5) / 2 , element );
 		ApplyElementalDamage( caster , cast_on , circle , (dmg/1.5) / 2 , element2 );
-	EraseObjProperty( caster , "#Casting" );
+		cast_on.setlightlevel( 30 , 60 );
+		EraseObjProperty( caster , "#Casting" );
 
 
 endprogram

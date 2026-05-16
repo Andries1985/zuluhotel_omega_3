@@ -5,7 +5,8 @@ use uo;
 include "include/client";
 include "include/objtype";
 include "include/doors";
-include ":boat:plankutil";
+//include ":boat:plankutil";
+
 /*
 Const KEYSTART := 0x100E;
 Const KEYEND := 0x1013;
@@ -42,13 +43,13 @@ program textcmd_door(me)
 				if (door.graphic == door.objtype)
 					SetObjProperty( door, "#WhenOpened", whenopened );
 					PlaySoundEffect( door, opensound );
-					start_script(":doors:open_door", door);
+					start_script(":doors:items/doors/use", door);
 					OpenDoors[ len(OpenDoors)+1 ] := door;
 				endif
 			endif
 		endif
 		if ( door.objtype == 61458 || door.objtype == 61457 || door.objtype == 0x3e85 || door.objtype == 0x3e8a )
-			TogglePlank(door);
+			door.Toggle();
 		endif
 	endforeach
 
@@ -71,7 +72,7 @@ program textcmd_door(me)
 
 			if (GetObjProperty( door, "#WhenOpened" ) == whenopened)
 				PlaySoundEffect( door, closesound );
-				start_script(":doors:close_door", door);
+				start_script(":doors:items/doors/use", door);
 				EraseObjProperty( door, "#WhenOpened" );
 			endif
         	endif

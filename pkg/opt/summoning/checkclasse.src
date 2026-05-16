@@ -13,9 +13,13 @@ program show_classe()
                 if(!breaker)
                     EraseObjProperty( player , classe );
                     if(classe == "IsRanger")
-                        level := IsFromThatClasse( player , GetClasseSkills(classe), 1 );
+                        level := IsFromThatClasse( player , GetClasseSkills(classe), 1, 0, 0 );
+                    elseif(classe == "IsCrafter")
+                        level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 1, 0 );
+                    elseif(classe == "IsThief")
+                        level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 0, 1 );
                     else
-                        level := IsFromThatClasse( player , GetClasseSkills(classe) );
+                        level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 0, 0 );
                     endif
                     if( level )
                         AssignClasse( player );

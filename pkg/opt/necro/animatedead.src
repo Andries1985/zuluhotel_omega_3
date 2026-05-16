@@ -3,7 +3,7 @@ use os;
 use basic;
 
 include "include/spelldata";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/client";
 include "include/attributes";
 

@@ -10,7 +10,8 @@
 use os;
 use uo;
 
-include ":housing:utility";
+//include ":housing:utility";
+include "../pkg/multis/house/include/utility";
 const TRASH_BARREL := 0x7007;
 
 program maketrash( who, deed )

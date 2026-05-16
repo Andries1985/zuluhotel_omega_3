@@ -1,6 +1,6 @@
 use uo;
 
-include "../pkg/utils/mdgumps/include/gumps";
+include ":mdgumps:selectionGump";
 
 unload_scripts("selectiongump");
 

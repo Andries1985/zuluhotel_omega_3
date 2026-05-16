@@ -29,16 +29,16 @@ program maindestroy( item )
 
 	if( item.IsA(POLCLASS_MULTI) )
 		return 1;
-	elseif( GetObjProperty( item, PROPID_ITEM_DESTROY_IT ) )
-		WarnSpawnPoint(item);
-		return 1;
-	elseif( GetObjProperty( item, PROPID_ITEM_OWNER ) )
-		Start_Script( SCRIPTID_ITEM_RETURNER, item );
-		item.decayat	:= 0;
-		item.buyprice	:= -1;
-		return 0;
-	elseif( GetObjProperty(item,PROPID_ITEM_INDESTRUCTIBLE) )
-		return 0;
+	// elseif( GetObjProperty( item, PROPID_ITEM_DESTROY_IT ) )
+	// 	WarnSpawnPoint(item);
+	// 	return 1;
+	// elseif( GetObjProperty( item, PROPID_ITEM_OWNER ) )
+	// 	Start_Script( SCRIPTID_ITEM_RETURNER, item );
+	// 	item.decayat	:= 0;
+	// 	item.buyprice	:= -1;
+	// 	return 0;
+	// elseif( GetObjProperty(item, PROPID_ITEM_INDESTRUCTIBLE) )
+	// 	return 0;
 	else
 		WarnSpawnPoint(item);
 		return 1;

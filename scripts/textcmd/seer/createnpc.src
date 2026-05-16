@@ -1,6 +1,7 @@
 use uo;
 
 include ":staff:include/staff";
+include "include/mrcspawn";
 
 program textcmd_createnpc( who, template )
 
@@ -31,5 +32,11 @@ program textcmd_createnpc( who, template )
 	else
 		setobjproperty(result,"LFucker",who.serial + " - " + who.name);
 		LogCommand(who, GetProcess(GetPid()).name, result.x+","+result.y+","+result.z+","+result.realm, template+"/"+result.serial);
+		if(result.script == "merchant" || result.script == "vanityvendor" || result.script == "animaltrainer")
+			var merctype := FindMerchantType( template );
+			Create_Node_Merc( merctype, Hex(result.serial), loc );
+			return;
+		endif
 	endif
+	who.hidden := 0;
 endprogram

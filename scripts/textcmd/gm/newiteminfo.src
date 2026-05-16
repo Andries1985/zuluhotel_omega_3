@@ -6,7 +6,7 @@ use basic;
 use polsys;
 
 include ":staff:include/staff";
-include "util/bank";
+//include "util/bank";
 include "include/namingbyenchant";
 include "include/spelldata";
 include "include/itemutil";

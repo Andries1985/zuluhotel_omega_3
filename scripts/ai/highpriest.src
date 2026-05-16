@@ -11,7 +11,7 @@ include "include/constants/locations";
 include "include/spelldata";
 include "include/dotempmods";
 include "include/speech";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/res";
 include "ai/setup/modsetup";
 include "include/attributes";

@@ -12,12 +12,13 @@ use attributes;
 use guilds;
 
 include "include/attributes";
-include "util/bank";
+//include "util/bank";
 include ":gumps:yesno";
 include ":gumps:gumps_ex";
 include "include/math";
 include ":staff:include/staff";
 include "include/constants/locations";
+include ":containers:storageAreas";
 
 const TEXTSTARTLOCY :=  70;
 
@@ -738,7 +739,9 @@ program textcmd_info( character , whom )
   if (result[0]==21)
     if( !who.npctemplate )
       if( character.cmdlevel > 1 )
-        var bankbox := FindBankBox( who );
+        //var bankbox := FindBankBox( who );
+        var bank_region := CP_DEFAULT_AREA;
+        var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
         SendOpenSpecialContainer( character, bankbox );
   LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Open Bank");
       endif

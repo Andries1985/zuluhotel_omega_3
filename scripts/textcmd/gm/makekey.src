@@ -1,7 +1,8 @@
 use uo;
 
 include ":staff:include/staff";
-include "util/key";
+//include "util/key";
+include ":keys:key";
 
 program makekey ( who )
 
@@ -16,7 +17,7 @@ program makekey ( who )
     var lockid := GetObjProperty(LockedItem, "lockid");
 
     if(!lockid)
-        lockid := AllocLockId();
+        lockid := AllocateLockID();
         SetObjProperty( LockedItem , "lockid" , lockid );
 	    SendSysmessage( who , "There's no lock on that. Making a new one!" );
     endif

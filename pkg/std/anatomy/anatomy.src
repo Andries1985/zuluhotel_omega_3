@@ -31,7 +31,7 @@ program anatomy( character )
 	endif		
 	
 	var strength := GetStrength(subject);
-	if( strength > 150 )
+	if( strength >= 150 )
 		SendSysMessage(	character , "Superhumanly strong." );
 					
 	elseif( strength > 135 )
@@ -67,7 +67,7 @@ program anatomy( character )
 	
 	
 	var dexterity := GetDexterity(subject);
-	if( dexterity > 150 )
+	if( dexterity >= 150 )
 		SendSysMessage(	character , "Superhumanly agile." );
 					
 	elseif( dexterity > 135 )

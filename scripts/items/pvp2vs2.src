@@ -6,7 +6,8 @@ include "include/constants/propids";
 include ":gumps:yesno";
 include "include/areas";
 include ":areas:include/areafunctions";
-include "util/bank";
+//include "util/bank";
+include ":containers:storageAreas";
 
 program pvp (who)
 	var ref;
@@ -1055,7 +1056,9 @@ endfunction
 
 function CountGold(who, betsize)
 	var count := 0;
-	var bankbox := FindBankBox(who);
+	var bank_region := CP_DEFAULT_AREA;
+	var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	//var bankbox := FindBankBox(who);
 
 	foreach thing in EnumerateItemsInContainer( who.backpack )
 		if(0xeed == thing.objtype)
@@ -1079,7 +1082,9 @@ endfunction
 function TakeGold(who, betsize)
 	var count := 0;
 	var betleft := betsize - count;
-	var bankbox := FindBankBox(who);
+	//var bankbox := FindBankBox(who);
+	var bank_region := CP_DEFAULT_AREA;
+	var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var OK := 1;
 	var preAmt := 0;
 

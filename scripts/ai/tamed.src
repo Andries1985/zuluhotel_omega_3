@@ -1,23 +1,22 @@
-//Edited on September 10, 2024
-
 use npc;
 use os;
 use uo;
 
 include "include/eventid";
 include "include/classes";
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/npccast";
 include "include/randname";
 include "include/string";
 include ":gumps:yesno";
-include "include/rituals";
+//include "include/rituals";
 include "include/client";
 include "include/spelldata";
 include "ai/setup/modsetup";
 include "include/random";
 include "include/attributes";
-include ":housing:utility";
+//include ":housing:utility";
+include ":house:utility";
 
 const HALT_THRESHOLD := 10;
 Const MOVING_EFFECT_FIREBALL	:= 0x36D4;

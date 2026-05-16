@@ -153,7 +153,7 @@ program use_axe( character , axe )
 endprogram
 
 
-function ChopTree( character , use_on , info , tool )
+function ChopTree( character , use_on , unused info , tool )
 	
 	var initial_x	:= character.x;
 	var initial_y	:= character.y;

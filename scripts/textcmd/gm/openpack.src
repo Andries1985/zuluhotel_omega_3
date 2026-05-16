@@ -1,6 +1,6 @@
 use uo;
 use storage;
-include "include/npcbackpacks";
+include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include ":staff:include/staff";
 program textcmd_pack( who, template )
 

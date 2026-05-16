@@ -574,7 +574,7 @@ function IsBladesinger( who )
 endfunction
 
 function IsCrafter( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_CRAFTER ) );
+	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_CRAFTER ), 0, 1, 0 );
 endfunction
 
 function IsMage( who )
@@ -590,11 +590,11 @@ function IsPaladin( who )
 endfunction
 
 function IsRanger( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_RANGER ) );
+	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_RANGER ), 1, 0, 0 );
 endfunction
 
 function IsThief( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ) );
+	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ), 0, 0, 1 );
 endfunction
 
 function IsWarrior( who )
@@ -606,7 +606,7 @@ function IsPowerplayer( who )
 endfunction
 
 
-function IsFromThatClasse( who , classe_skills , forensicsallowed := 0)
+function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryallowed := 0, alchemyallowed := 0 )
 
 	var classe	:= 0;
 	var total	:= 0;
@@ -616,6 +616,16 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0)
 	for i := 0 to SKILLID__HIGHEST
 		if(forensicsallowed)
 			if(i != SKILLID_FORENSICS)	//Ignores forensics from spec calculation
+				amount := GetEffectiveSkill( who , i );
+				total := total + amount;
+			endif
+		elseif(mageryallowed)
+			if(i != SKILLID_MAGERY)		//Ignores magery from spec calculation
+				amount := GetEffectiveSkill( who , i );
+				total := total + amount;
+			endif
+		elseif(alchemyallowed)
+			if(i != SKILLID_ALCHEMY)	//Ignores alchemy from spec calculation
 				amount := GetEffectiveSkill( who , i );
 				total := total + amount;
 			endif
@@ -720,6 +730,8 @@ function IsProhibitedByClasse( who , item )
 	elseif( GetObjProperty( who , CLASSEID_RANGER ) )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_RANGER ) )
 			ret := 1;
+		elseif( GetObjProperty( item , "str" ) )
+			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )
 			ret := 1;
 		endif
@@ -755,9 +767,13 @@ function AssignClasse( character )
 	foreach classe in GetClasseIds()
 		EraseObjProperty( character , classe );
 		if(classe == "IsRanger")
-			t := IsFromThatClasse( character , GetClasseSkills(classe), 1 );
+			t := IsFromThatClasse( character , GetClasseSkills(classe), 1, 0, 0 );
+		elseif(classe == "IsCrafter")
+			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 1, 0 );
+		elseif(classe == "IsThief")
+			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 0, 1 );
 		else
-			t := IsFromThatClasse( character , GetClasseSkills( classe ) );
+			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 0, 0 );
 		endif
 		if( t )
 			SetObjProperty( character , classe , t );

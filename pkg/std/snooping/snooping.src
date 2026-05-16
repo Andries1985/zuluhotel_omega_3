@@ -8,7 +8,8 @@ use storage;
 
 include "include/client";
 include "include/skillpoints";
-include "include/utility";
+//include "include/utility";
+include ":containers:storageAreas";
 include "include/eventid";
 include "include/classes";
 include "include/attributes";
@@ -24,19 +25,16 @@ program snoop(who)
 	freehands(who);
 	needgloves(who);
 
-	var storage:= FindStorageArea("Merchant Storage");
+	//var storage:= FindStorageArea("Merchant Storage");
 
-	var newpack:=find_or_create_item(storage, "temp "+who.serial,0xE75);
+	//var newpack:=find_or_create_item(storage, "temp "+who.serial, 0xE75);
 
-	if (!storage)
-		sendsysmessage(who,"unable to find merchant storage");
-		return;
-	endif
 
-	if (!newpack)
-		sendsysmessage(who,"unable to create temporary backpack");
-		return;
-	endif
+	//if (!storage)
+	//	sendsysmessage(who,"unable to find merchant storage");
+	//	return;
+	//endif
+
 
 	SendSysmessage(who, "Who would you like to snoop?");
 
@@ -46,6 +44,21 @@ program snoop(who)
 		sendsysmessage(who, "canceled");
 		return;
 	endif
+
+	//var snoopstorage := CP_GetStorageArea( CP_SNOOPING_AREA, CP_CREATE );
+	//var snoopingcontainer := CP_CreateStorageAreaContainer( )
+	//var container_id := CP_GetMobileContainerID( who, snoopstorage );
+	CP_RemoveStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA );
+	var snoop_container := CP_GetStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA, CP_CREATE );
+
+	var newpack := snoop_container;
+
+	if (!newpack)
+		sendsysmessage(who,"Unable to create backpack!");
+		return;
+	endif
+
+
 	if(GetObjProperty(victim, "Boss") || GetObjProperty(victim, "SuperBoss"))
 		SendSysMessage(who, "You can't snoop bosses.");
 		return;
@@ -218,11 +231,14 @@ program snoop(who)
 		sleep(60);
 
 		if (getobjproperty(who, "snooping")+60 < snooptime)
+			//CloseWindow( who, CLOSE_CONTAINER, newpack);
+
 			foreach item in EnumerateItemsInContainer(newpack)
 				destroyitem(item);
 			endforeach
 
-			DestroyRootItemInStorageArea(storage, "temp " + who.serial);
+			//DestroyRootItemInStorageArea(storage, "temp " + who.serial);
+			CP_RemoveStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA );
 
 			eraseobjproperty(who, "snooping");
 			MoveObjectToLocation(who, who.x, who.y, who.z, who.realm);
@@ -271,7 +287,7 @@ function freehands(who)
 		sendsysmessage(who, "You need empty hands to perform this action!");
 	exit;
 	endif
-
+	//Print("Snooping: freehands check passed");
 	return 1;
 
 endfunction

@@ -11,8 +11,8 @@
 use uo;
 use os;
 
-include "../pkg/utils/mdgumps/include/gumps";
-include "../pkg/utils/mdgumps/include/gumps_ex";
+//include "../pkg/utils/mdgumps/include/gumps";
+//include "../pkg/utils/mdgumps/include/gumps_ex";
 
 const LOCALIZED := 1;
 const NOT_LOCALIZED := 0;

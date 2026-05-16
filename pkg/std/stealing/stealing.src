@@ -32,10 +32,12 @@ program stealing(who)
 	endif
 
 	if(!getobjproperty(itemtaken,"cansteal"))
-	sendsysmessage(who, "this item can not be stolen.");
+	sendsysmessage(who, "You might need some thief gloves to steal that.");
+	//Print("Stealing Package: Item cannot be stolen - no cansteal property.");
 	return;
 	endif;
 
+	//Print("Stealing Package: Moving on to Near victim.");
 	nearvictim(who);
 
 	var difficulty:= getobjproperty(itemtaken,"stealdiff");

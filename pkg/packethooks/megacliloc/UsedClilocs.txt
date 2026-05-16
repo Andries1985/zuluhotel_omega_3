@@ -1,0 +1,52 @@
+1061113;
+1038021;
+1060741; //Charges: ~1_VAL~
+1038000; // Unidentified
+1063494; // AR Mod: ~1_VAL~
+1063495; // AR: ~1_VAL~
+1061168; // weapon damage ~1_val~ - ~2_val~
+1061167; // weapon speed ~1_val~
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1070722; ; // Nothing
+1062413; // poison charges: ~1_val~
+1063498; // Poison level: ~1_VAL~
+1063499; // Spell: ~1_VAL~
+1063500; // Chance of Effect: ~1_VAL~
+1063501; // Circle:
+1060451; // ~1_skillname~ +~2_val~
+1060485; // strength bonus ~1_val~
+1060409; // dexterity bonus ~1_val~
+1060432; // intelligence bonus ~1_val~
+1063490; // Earth Protection: ~1_PERCENT~%
+1063491; // Water Protection: ~1_PERCENT~%
+1063492; // Fire Protection: ~1_PERCENT~%
+1063493; // Air Protection: ~1_PERCENT~%
+1063502; // Necro Protection:
+1063503; // Holy Protection:
+1063504; // Physical Protection: ~1_PERCENT~%
+1063505; //Poison Immunity:
+1063506; // Free Action
+1063507; //Healing Increase: 
+1063508; // "Magic Reflection: "+
+1063509; // "Magic Absorption:
+1063510; // "Poison Immunity Charges:
+1063511; // "Magic Absorption Charges: 
+1063512; // Magic Reflection Charges: 
+1060639; // durability ~1_val~ / ~2_val~
+1041602; // Owner: ~1_val~
+1063513; // Crafted by:
+1063514; // "Artifact"
+1063515; // Item Quality:
+1063516; //Max Charges: 
+1073839; // Contents: ~1_COUNT~ items, ~2_WEIGHT~ stones

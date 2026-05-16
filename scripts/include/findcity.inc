@@ -45,7 +45,7 @@ function IsInsideCity(thing)
       boundary := GetConfigString( region, "Range" );
       boundary := SplitWords(boundary);
       isCity := Lower(GetConfigString( region, "Type" ));
-      if(IsInsideRectangle(thing, boundaries) && isCity == "city")
+      if(IsInsideRectangle(thing, boundary) && isCity == "city")
         answer := 1;
         city := place;
         break;
@@ -151,11 +151,11 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 function IsInsideRectangle (object, boundary)
-    if ((object.x >= CInt(boundary[1]) && object.x <= CInt(boundary[3])) && (object.y >= CInt(boundary[2]) && object.y <= CInt(boundary[4])))
-        return 1;
-    else
-        return 0;
-    endif
+  if ((object.x >= CInt(boundary[1]) && object.x <= CInt(boundary[3])) && (object.y >= CInt(boundary[2]) && object.y <= CInt(boundary[4])))
+    return 1;
+  else
+    return 0;
+  endif
 endfunction
 
  ////////////////////////////////////////////////////////////////////

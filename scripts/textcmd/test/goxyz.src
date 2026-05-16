@@ -86,7 +86,7 @@ program textcmd_goxyz( who, text )
 		facet := Lower(params[3]);
 	endif
 */
-	 SendSysMessage(who, CStr(params[1]) + " " +  CStr(params[1]) + " " +  CStr(ZCoord) + " "/* +  params[4]*/, color := 88);
+	 SendSysMessage(who, CStr(params[1]) + " " +  CStr(params[2]) + " " +  CStr(ZCoord) + " "/* +  params[4]*/, color := 88);
 	var res := MoveObjectToLocation( who, CInt(params[1]), CInt(params[2]), CInt(ZCoord), facet, MOVEOBJECT_FORCELOCATION );
 
     if (!res)

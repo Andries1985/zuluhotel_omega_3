@@ -25,11 +25,12 @@ use storage;
 CONST CP_NOCREATE               := 0x0;
 CONST CP_CREATE                 := 0x1;
 
-CONST CP_AUCTION_AREA           := "Auction Storage";
+//CONST CP_AUCTION_AREA           := "Auction Storage";
 CONST CP_BANK_AREA              := "World Bank";
 CONST CP_DEFAULT_AREA           := "World Bank";
-CONST CP_KEYRING_AREA           := "Keyring Storage";
+//CONST CP_KEYRING_AREA           := "Keyring Storage";
 CONST CP_MERCHANT_AREA          := "Merchant Storage";
+CONST CP_SNOOPING_AREA          := "Snooping Storage";
 
 CONST CP_DEFAULT_PREFIX         := "[Root Container] ";
 
@@ -52,7 +53,8 @@ var STORAGE_DEBUG	:= 1;
 
 function CP_ListStorageAreas()
 
-    return { CP_AUCTION_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_MERCHANT_AREA };
+    //return { CP_AUCTION_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_MERCHANT_AREA, CP_SNOOPING_AREA };
+	return { CP_SNOOPING_AREA, CP_BANK_AREA, CP_MERCHANT_AREA };
 endfunction
 
 /*
@@ -199,7 +201,8 @@ function CP_CreateStorageAreaContainer( container_id, storage_area_name:=0 )
 		storage_area := CreateStorageArea( storage_area_name );
 	endif
 
-    if( storage_area_name == CP_MERCHANT_AREA || storage_area_name == CP_AUCTION_AREA )
+    //if( storage_area_name == CP_MERCHANT_AREA || storage_area_name == CP_AUCTION_AREA )
+	if( storage_area_name == CP_MERCHANT_AREA )
         container_type := "vendorbag";
 	endif
 
@@ -229,12 +232,16 @@ endfunction
  */
 function CP_RemoveStorageAreaContainer( container_id, storage_area_name:=0 )
 
+	//Print(("Removing Storage Area Container: "+container_id+" from area: "+storage_area_name));
+
 	if(( !storage_area_name ) || ( storage_area_name == error ))
 		storage_area_name := CP_DEFAULT_AREA;
 	endif
 
 	var storage_area := FindStorageArea( storage_area_name );
 	var container_name := CP_DEFAULT_PREFIX + container_id;
+
+	//Print("Storage Area found: "+storage_area+" attempting to remove container: "+container_name);
 
 	return DestroyRootItemInStorageArea( storage_area, container_name );
 endfunction

@@ -3,8 +3,9 @@ use uo;
 use cfgfile;
 
 include "include/constants";
-include "include/constants/eventids";
+include "include/eventid";
 include "include/constants/propids";
+include "include/mrcspawn";
 
 function ManagerAnswer( process, answer )
 
@@ -268,6 +269,8 @@ function WarnManagerOfNpcDeath( corpse )
 	if( !mobile_serial )
 		return 0;
 	endif
+	//Print("In WarnManagerOfNpcDeath for serial: "+Hex(mobile_serial));
+	Destroy_Node_Merc( Hex(mobile_serial) );
 
 	return Start_Script( ":spawnpoint:spawndeath", {point,mobile_serial} );
 	//return SendSpawnPointEvent( EVID_SPAWNPOINT_DEATH, pointserial, mobile_serial );

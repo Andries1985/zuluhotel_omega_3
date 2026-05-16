@@ -79,14 +79,14 @@ function main_AI_loop()
 				next_offer := ReadGameClock()+45;
 				TurnToward(ev.source);
 				if (!OfferQuest())
-		    			check_speech(ev.text, ev.source);
+		    			check_speech(me, ev.source, ev.text, speech);
 				endif
 			else
-		    		check_speech(ev.text, ev.source);
+		    		check_speech(me, ev.source, ev.text, speech);
 			endif
 		SYSEVENT_ENTEREDAREA:
 		    if (!ev.source.npctemplate)
-		    	YellToFriend(ev.source);
+		    	YellToFriend(me, ev.source);
 		    endif
                 SYSEVENT_ENGAGED:
                 SYSEVENT_DAMAGED:
@@ -98,7 +98,7 @@ function main_AI_loop()
 			TakeQuestItem(ev.source,ev.item);
 			ResetQuest := 1;
 		    else
-			TakeItem(ev.source,ev.item);
+			TakeItem(me, ev.source, ev.item, speech);
 		   endif
 		EVID_ALL_FOLLOW_CMD:
 			mydestx := ev.x;

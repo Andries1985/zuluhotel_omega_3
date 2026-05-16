@@ -3,16 +3,17 @@
 
 use os;
 use uo;
+use cliloc;
 
 include "include/spelldata";
-include "include/skillpoints";
-include "include/classes";
-include "include/starteqp";
+//include "include/skillpoints";
+//include "include/classes";
+//include "include/starteqp";
 include "include/client";
-include "include/chests";
-include "include/attributes";
+//include "include/chests";
+//include "include/attributes";
 
-program cast_strength( parms, spell_id )
+program cast_unlock( parms, spell_id )
 
 	var circle := 3;
 	var caster;
@@ -42,63 +43,90 @@ program cast_strength( parms, spell_id )
 		endif
 		cast_on := CanTargetThing(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
 		if (!cast_on)
-			return;
+			SendSysMessageCL( caster, 1042023, color := 33 ); // Cancelled.
+			return 0;
 		endif
 	endif
 
-	if( PROPID_CHEST_SPAWNPOINT_CHEST )
-		SendSysMessage(caster,"You are not a thief!");
-		return;
+	if ( !cast_on.IsA(POLCLASS_CONTAINER) )
+		SendSysMessageCL( caster, 501682, color := 33 ); // not a container
+		return 0;
 	endif
-	
 	if (!cast_on.locked)
-		SendSysMessage(caster,"That is not locked!");
-		return;
+		SendSysMessageCL( caster, 502069, color := 44 ); // This does not appear to be locked.
+		return 0;
+	endif
+	if( GetObjProperty( cast_on, PROPID_CHEST_SPAWNPOINT_CHEST ) )
+		SendSysMessage(caster,"That cannot be unlocked with this spell!");
+		return 0;
+	endif
+	if( GetObjProperty( cast_on, "secure" ) )
+		SendSysMessageCL( caster, 502071, color := 44 ); // That is secure.
+		return 0;
 	endif
 
-	if (!canpick(cast_on))
-        	SendSysMessage(caster, "The Gods frown on picking this door!");
-        	PlayLightningBoltEffect( caster );
-        	return;
-	endif
-
-	if (GetObjProperty(cast_on, "#U"))
-        	if (GetObjProperty(cast_on, "#U") > readgameclock())
-                	SendSysMessage(caster, "You must wait to pick this lock!");
-                	return;
-        	endif
-	endif
-
-	var lvl := finddiff( cast_on );
-
-	if( !lvl )
-		SendSysMessage(caster, "You have no chance of picking that lock!");
-		return;
-	endif
-
-	if ( LockPickTheThing( caster , cast_on , lvl ) )
-		//Doesnt seem to ever get past here
-		if (TypeOf(GetObjProperty(cast_on,"spawnchest"))=="Integer")
-			SpawnTheChest(cast_on);
+	if( cast_on.locked )
+		var diffi := CInt(GetObjProperty(cast_on, PROPID_CHEST_MAGICLOCK_DIFFICULTY));
+		//Print("Diffi :" + diffi);
+		if(diffi)
+			MLockPickTheThing(caster, cast_on, diffi);
+			EraseObjProperty(caster, "#Casting");
+			return 1;
+		else
+			var diff := CInt(GetObjProperty(cast_on, PROPID_CHEST_LOCK_DIFFICULTY));
+			//Print("Diff :" + diff);
+			if(diff)
+				LockPickTheThing(caster, cast_on, diff);
+				EraseObjProperty(caster, "#Casting");
+				return 1;
+			else
+				SendSysMessage( caster, "You do not have the skill to unlock this." );
+				return 1;
+			endif
 		endif
 	endif
 
+	return 1;
 endprogram
 
 
-function SpawnTheChest(chest)
+function MLockPickTheThing( caster , cast_on , lvl )
 
-	var level:=Cint(GetObjProperty(chest,"spawnchest"));
+	var orig_lock_id;
 
-	if(level)
-		MakeLoot(chest,level+108);
-		addchest(chest);
+	var mobs := ListHostiles( caster , 4 );
+	if( len(mobs) )
+		SendSysMessage( caster , mobs[1].name + " broke your concentration!" );
+		return 0;
+	endif
+
+	// if( GetObjProperty( caster , CLASSEID_MAGE ) )
+	// 	lvl := Cint( lvl / CLASSE_BONUS );
+	// endif
+	
+	if( CheckSkill( caster , SKILLID_MAGERY , lvl , 0 ) )
+		orig_lock_id := GetObjProperty( cast_on, "OrigLockID" );
+		EraseObjProperty(cast_on, "LockID");
+		EraseObjProperty(cast_on, "MagicLock");
+		EraseObjProperty(cast_on, "MLockPickDiff");
+		PlaySoundEffect(caster, SFX_SPELL_UNLOCK1 );
+		SendSysMessageCL( caster, 502076, color := 66 ); // The lock quickly yields to your skill.
+		PrintTextAbovePrivateCL(caster, cast_on, 3005143, color := 66); // // Unlocked
+		if( orig_lock_id )
+			SetObjProperty( cast_on, "LockID", orig_lock_id );
+		endif
+		cast_on.locked := 0;
+		SetObjProperty( cast_on, "MagUnlockedBySerial", caster.serial );
+		return 1;
+	else
+		PrintTextAbovePrivate( cast_on , "You fail to unlock the lock." , caster );
+		PlaySoundEffect( cast_on, SFX_SPELL_UNLOCK2 );
+		return 1;
 	endif
 
 endfunction
 
-
-function LockPickTheThing( caster , chest , lvl )
+function LockPickTheThing( caster , cast_on , lvl )
 
 	var mobs := ListHostiles( caster , 4 );
 	if( len(mobs) )
@@ -108,22 +136,19 @@ function LockPickTheThing( caster , chest , lvl )
 
 	if( GetObjProperty( caster , CLASSEID_MAGE ) )
 		lvl := Cint( lvl / CLASSE_BONUS );
-	elseif( GetObjProperty( caster , CLASSEID_PALADIN ) )
-		lvl := Cint( lvl / CLASSE_BONUS );
 	endif
 	
 	if( CheckSkill( caster , SKILLID_MAGERY , lvl , 0 ) )
-		PlaySoundEffect( chest , SFX_SPELL_UNLOCK1 );
-		PrintTextAbovePrivate( chest , "*Unlocked!*" , caster );
-		SetObjProperty( chest , "L" , caster.name );
-		chest.locked := 0;
+			PlaySoundEffect(caster, SFX_SPELL_UNLOCK1 );
+			SendSysMessageCL( caster, 502076, color := 66 ); // The lock quickly yields to your skill.
+		    PrintTextAbovePrivateCL(caster, cast_on, 3005143, color := 66); // // Unlocked
+			cast_on.locked := 0;
+			SetObjProperty( cast_on, "MagUnlockedBySerial", caster.serial );
 		return 1;
-		
 	else
-		PrintTextAbovePrivate( chest , "You fail to pick the lock." , caster );
-		SetObjProperty( caster , "#U" , ReadGameClock() + 30 );
-		PlaySoundEffect( chest ,SFX_SPELL_UNLOCK2 );
-		return 0;
+		PrintTextAbovePrivate( cast_on , "You fail to unlock the lock." , caster );
+		PlaySoundEffect( cast_on, SFX_SPELL_UNLOCK2 );
+		return 1;
 	endif
 
 endfunction

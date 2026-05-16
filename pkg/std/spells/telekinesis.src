@@ -6,21 +6,21 @@ use uo;
 
 include "include/spelldata";
 include "include/client";
-include "util/bank";
+//include "util/bank";
 
 program telekinesis ( caster, spell_id )
 
-		// For scrolls, StartSpellScript isn't working >:(
-		if (TypeOf(caster) == "Array")
-					spell_id := caster[2];
-			caster := caster[1];
-		endif
+	// For scrolls, StartSpellScript isn't working >:(
+	if (TypeOf(caster) == "Array")
+				spell_id := caster[2];
+		caster := caster[1];
+	endif
 	var circle := 3;
 
-		if (TryToCast( caster, spell_id ) != SUCCESS);
-			EraseObjProperty(caster, "#Casting");
-			return 0;
-		endif
+	if (TryToCast( caster, spell_id ) != SUCCESS);
+		EraseObjProperty(caster, "#Casting");
+		return 0;
+	endif
 	var cast_on := CanTargetThing(caster, circle, TGTOPT_CHECK_LOS );
 
 	if (getobjproperty(cast_on, "cansteal"))

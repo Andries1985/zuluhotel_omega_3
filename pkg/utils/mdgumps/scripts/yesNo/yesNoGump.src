@@ -34,7 +34,7 @@
 use uo;
 use os;
 
-include "../pkg/utils/mdgumps/include/gumps";
+include ":mdgumps:autoClose";
 
 program Gump_YesNo( params )
 

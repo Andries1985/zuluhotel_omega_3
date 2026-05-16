@@ -21,7 +21,7 @@ endprogram
 exported function ReceiveSpeechPacket( character, byref packet )
 
 if (character.cmdlevel)
-   var speech := "";
+   var speech;
    var speechstart := 12;
  if (packet.GetInt8(3) == 0xC0)
       var triggers := packet.GetInt16(12)/16;

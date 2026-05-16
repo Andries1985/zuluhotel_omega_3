@@ -1,0 +1,62 @@
+use uo;
+use os;
+use cfgfile;
+
+program Install()
+
+	return 1;
+endprogram
+
+//Public functions
+// exported function Extend( rope )
+// 	if( !Extended( rope ))
+// 		rope.graphic := ConfigInfo( rope ).ChangeTo;
+// 	else
+// 		return 0;
+// 	endif
+// endfunction
+
+// exported function Retract( rope )
+
+// 	if( Extended( rope ))
+// 		if( CInt( Occupied( rope ).Size() ) < 1 )
+// 			rope.graphic := ConfigInfo( rope ).ChangeTo;
+// 			return 1;
+// 		else
+// 			return 0;
+// 		endif
+// 	else
+// 		return 0;
+// 	endif
+// endfunction
+
+// exported function Toggle( rope )
+
+// 	if( Extended( rope ))
+// 		Retract( rope );
+// 	else
+// 		Extend( rope );
+// 	endif
+// endfunction
+
+// exported function Extended( rope )
+
+// 	return ConfigInfo( rope ).Extended;
+// endfunction
+
+// exported function Occupied( rope )
+
+// 	return ListMobilesNearLocationEX( rope.x, rope.y, rope.z, 0, LISTEX_FLAG_NORMAL+LISTEX_FLAG_HIDDEN+LISTEX_FLAG_GHOST, rope.realm );
+// endfunction
+
+// exported function MoveOnto( rope, mobile )
+
+// 	MoveObjectToLocation( mobile, rope.x, rope.y, rope.z+1, rope.realm, MOVEOBJECT_FORCELOCATION );
+// endfunction
+
+// //Private function
+// function ConfigInfo( rope )
+
+// 	var config := ReadConfigFile( ":boat:ropes" );
+// 	return config[rope.graphic];
+// endfunction

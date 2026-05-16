@@ -8,7 +8,7 @@ include "include/classes";
 include "include/client";
 include ":karmafame:karmafame";
 include "include/dotempmods";
-include "util/bank";
+//include "util/bank";
 include "include/constants/locations";
 
 program logon( who )
