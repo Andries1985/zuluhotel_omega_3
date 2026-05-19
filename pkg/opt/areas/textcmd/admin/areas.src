@@ -14,23 +14,13 @@ use cfgfile;
 
 include ":staff:staff";
 include ":gumps:gumps";
+include ":areas:include/areapolicy";
 include "include/areas";
 include "include/constants/cfgfiles";
 include "include/constants/propids";
 
 var areas_cfg	:= ReadConfigfile(CFGFILE_AREAS);
-
-// Global properties stored as bits
-var guarded := GetGlobalProperty(PROPID_GLOBAL_AREAS_GUARDED);
-var norecallto := GetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALL);
-var norecallfrom := GetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALLFROM);
-var disabledmarking := GetGlobalProperty(PROPID_GLOBAL_AREAS_NOMARKING);
-var disablemagic := GetGlobalProperty(PROPID_GLOBAL_AREAS_ANTIMAGIC);
-var forbiddenarea := GetGlobalProperty(PROPID_GLOBAL_AREAS_FORBIDDEN);
-var nolooting := GetGlobalProperty(PROPID_GLOBAL_AREAS_NOLOOTING);
-var safearea := GetGlobalProperty(PROPID_GLOBAL_AREAS_SAFEAREA);
-var nopk := GetGlobalProperty(PROPID_GLOBAL_AREAS_NOPK);
-var rparea := GetGlobalProperty(PROPID_GLOBAL_AREAS_RPAREA);
+const AREAS_DEBUG := 0;
 
 set_script_option(SCRIPTOPT_NO_RUNAWAY,1);
 
@@ -48,22 +38,50 @@ Program areas(who, text)
 		page := CInt(text[2]);
 	endif
 
+	var realm_cfg := areas_cfg[realm];
+	if (!realm_cfg)
+		SendSysMessage(who, "Unknown realm '"+realm+"'. Usage: .areas <facet> [page]");
+		return 0;
+	endif
+
 	var areas := GetConfigStringArray( areas_cfg[realm], "Area" );
-	guarded := EnsureAreaArray(guarded, areas);
-	norecallto := EnsureAreaArray(norecallto, areas);
-	norecallfrom := EnsureAreaArray(norecallfrom, areas);
-	disabledmarking := EnsureAreaArray(disabledmarking, areas);
-	disablemagic := EnsureAreaArray(disablemagic, areas);
-	forbiddenarea := EnsureAreaArray(forbiddenarea, areas);
-	nolooting := EnsureAreaArray(nolooting, areas);
-	safearea := EnsureAreaArray(safearea, areas);
-	nopk := EnsureAreaArray(nopk, areas);
-	rparea := EnsureAreaArray(rparea, areas);
+	if (!areas || !areas.size())
+		SendSysMessage(who, "No areas configured for realm '"+realm+"'.");
+		return 0;
+	endif
+
+	var prune_result := PruneStaleRealmPolicyEntries(realm);
+	if (prune_result == error)
+		SendSysMessage(who, prune_result.errortext);
+		return 0;
+	endif
+	if (prune_result > 0)
+		SendSysMessage(who, "Pruned "+CStr(prune_result)+" stale area policy entries for "+realm+".");
+	endif
+
+	var policy_arrays := LoadPolicyArrays(realm, areas);
+	if (policy_arrays == error)
+		SendSysMessage(who, policy_arrays.errortext);
+		return 0;
+	endif
+
+	var guarded := policy_arrays.guarded;
+	var norecallto := policy_arrays.norecallto;
+	var norecallfrom := policy_arrays.norecallfrom;
+	var disabledmarking := policy_arrays.disabledmarking;
+	var disablemagic := policy_arrays.disablemagic;
+	var forbiddenarea := policy_arrays.forbiddenarea;
+	var nolooting := policy_arrays.nolooting;
+	var safearea := policy_arrays.safearea;
+	var nopk := policy_arrays.nopk;
+	var rparea := policy_arrays.rparea;
 
 	// don't log changes, too big!
 	LogCommand(who, GetProcess(GetPid()).name);
 
 	var perpage := 11;
+	DebugPrint("OPEN realm="+realm+" page="+CStr(page)+" totalareas="+CStr(areas.size()));
+	DebugLogPageMasksFromArrays(realm, areas, page, perpage, "OPEN", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
 	var totalpages := CInt((areas.size()+perpage-1)/perpage);
 	if (totalpages < 1)
 		totalpages := 1;
@@ -74,6 +92,8 @@ Program areas(who, text)
 	elseif (page > totalpages)
 		page := totalpages;
 	endif
+
+	var did_save := 0;
 
 	while (1)
 		var gump := GFCreateGump(20, 20, 860, 520);
@@ -161,7 +181,36 @@ Program areas(who, text)
 		endif
 
 		var result := GFSendGump(who, gump);
-		SetPageValues(result.keys, areas, page, perpage);
+		DebugPrint("CLOSE realm="+realm+" page="+CStr(page)+" button="+CStr(result[0])+" keycount="+CStr(result.keys.size())+" keys="+DebugSummarizeData(result.keys));
+		DebugLogPageMasksFromArrays(realm, areas, page, perpage, "BEFORE_SAVE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+		var should_save := HasCurrentPageCheckboxInput(result.keys, page, perpage);
+		DebugPrint("SAVE_DECISION realm="+realm+" page="+CStr(page)+" should_save="+CStr(should_save));
+		if (should_save)
+			var save_result := SetPageValues(who, result.keys, realm, areas, page, perpage);
+			if (save_result == error)
+				SendSysMessage(who, save_result.errortext);
+				return 0;
+			endif
+
+			policy_arrays := LoadPolicyArrays(realm, areas);
+			if (policy_arrays == error)
+				SendSysMessage(who, policy_arrays.errortext);
+				return 0;
+			endif
+
+			guarded := policy_arrays.guarded;
+			norecallto := policy_arrays.norecallto;
+			norecallfrom := policy_arrays.norecallfrom;
+			disabledmarking := policy_arrays.disabledmarking;
+			disablemagic := policy_arrays.disablemagic;
+			forbiddenarea := policy_arrays.forbiddenarea;
+			nolooting := policy_arrays.nolooting;
+			safearea := policy_arrays.safearea;
+			nopk := policy_arrays.nopk;
+			rparea := policy_arrays.rparea;
+			DebugLogPageMasksFromArrays(realm, areas, page, perpage, "AFTER_SAVE_RELOAD", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+			did_save := 1;
+		endif
 
 		if (result[0] == 9001 && page > 1)
 			page := page - 1;
@@ -174,7 +223,11 @@ Program areas(who, text)
 		break;
 	endwhile
 
-	SendSysMessage(who, "Data saved.");
+	if (did_save)
+		SendSysMessage(who, "Data saved.");
+	else
+		SendSysMessage(who, "No changes saved.");
+	endif
 
 endprogram
 
@@ -184,22 +237,31 @@ endprogram
 // SetPageValues() - Updates only the currently visible page and preserves other pages
 //
 ////////////////////////////////////////////////////////////////////////////////////
-function SetPageValues(data, areas, page, perpage)
+function SetPageValues(who, data, realm, areas, page, perpage)
 
 	var mine := 0;
 	var min_index := (page-1)*perpage;
 	var max_index := min_index+perpage-1;
 
-	guarded := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_GUARDED), areas);
-	norecallto := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALL), areas);
-	norecallfrom := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALLFROM), areas);
-	disabledmarking := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_NOMARKING), areas);
-	disablemagic := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_ANTIMAGIC), areas);
-	forbiddenarea := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_FORBIDDEN), areas);
-	nolooting := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_NOLOOTING), areas);
-	safearea := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_SAFEAREA), areas);
-	nopk := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_NOPK), areas);
-	rparea := EnsureAreaArray(GetGlobalProperty(PROPID_GLOBAL_AREAS_RPAREA), areas);
+	var policy_arrays := LoadPolicyArrays(realm, areas);
+	if (policy_arrays == error)
+		return policy_arrays;
+	endif
+
+	var guarded := policy_arrays.guarded;
+	var norecallto := policy_arrays.norecallto;
+	var norecallfrom := policy_arrays.norecallfrom;
+	var disabledmarking := policy_arrays.disabledmarking;
+	var disablemagic := policy_arrays.disablemagic;
+	var forbiddenarea := policy_arrays.forbiddenarea;
+	var nolooting := policy_arrays.nolooting;
+	var safearea := policy_arrays.safearea;
+	var nopk := policy_arrays.nopk;
+	var rparea := policy_arrays.rparea;
+	DebugPrint("SetPageValues realm="+realm+" page="+CStr(page)+" keycount="+CStr(data.size())+" keys="+DebugSummarizeData(data));
+	if (!data.size())
+		DebugPrint("SetPageValues WARNING: empty key payload; visible page entries will be zeroed by current logic.");
+	endif
 
 	foreach area in areas
 		if (_area_iter < min_index || _area_iter > max_index)
@@ -235,17 +297,178 @@ function SetPageValues(data, areas, page, perpage)
 
 	endforeach
 
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_GUARDED, guarded);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALL, norecallto);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_NORECALLFROM, norecallfrom);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_NOMARKING, disabledmarking);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_ANTIMAGIC, disablemagic);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_FORBIDDEN, forbiddenarea);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_NOLOOTING, nolooting);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_SAFEAREA, safearea);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_NOPK, nopk);
-	SetGlobalProperty(PROPID_GLOBAL_AREAS_RPAREA, rparea);
+	DebugLogPageMasksFromArrays(realm, areas, page, perpage, "PRE_WRITE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
 
+	foreach area in areas
+		if (_area_iter < min_index || _area_iter > max_index)
+			continue;
+		endif
+
+		var area_key := BuildAreaKey(area);
+		if (area_key == error)
+			return area_key;
+		endif
+
+		var mask := BuildPolicyMaskForArea(_area_iter, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+		var set_result := SetPolicyMask(realm, area_key, mask, who.name);
+		if (set_result == error)
+			return set_result;
+		endif
+	endforeach
+
+	return 1;
+
+endfunction
+
+function LoadPolicyArrays(realm, areas)
+	var policies := LoadRealmPolicies(realm);
+	if (policies == error)
+		return policies;
+	endif
+
+	var arrays := struct;
+	arrays.+guarded := {};
+	arrays.+norecallto := {};
+	arrays.+norecallfrom := {};
+	arrays.+disabledmarking := {};
+	arrays.+disablemagic := {};
+	arrays.+forbiddenarea := {};
+	arrays.+nolooting := {};
+	arrays.+safearea := {};
+	arrays.+nopk := {};
+	arrays.+rparea := {};
+
+	foreach area in areas
+		var area_key := BuildAreaKey(area);
+		if (area_key == error)
+			return area_key;
+		endif
+
+		var mask := 0;
+		if (area_key in policies.entries.Keys())
+			mask := CInt(policies.entries[area_key]);
+		endif
+
+		arrays.guarded.append(HasPolicy(mask, AREA_POLICY_GUARDED));
+		arrays.norecallto.append(HasPolicy(mask, AREA_POLICY_NO_RECALL_TO));
+		arrays.norecallfrom.append(HasPolicy(mask, AREA_POLICY_NO_RECALL_FROM));
+		arrays.disabledmarking.append(HasPolicy(mask, AREA_POLICY_NO_MARKING));
+		arrays.disablemagic.append(HasPolicy(mask, AREA_POLICY_ANTI_MAGIC));
+		arrays.forbiddenarea.append(HasPolicy(mask, AREA_POLICY_FORBIDDEN));
+		arrays.nolooting.append(HasPolicy(mask, AREA_POLICY_NO_LOOTING));
+		arrays.safearea.append(HasPolicy(mask, AREA_POLICY_SAFE_AREA));
+		arrays.nopk.append(HasPolicy(mask, AREA_POLICY_NO_PK));
+		arrays.rparea.append(HasPolicy(mask, AREA_POLICY_RP_AREA));
+	endforeach
+
+	return arrays;
+endfunction
+
+function BuildPolicyMaskForArea(index, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea)
+	var mask := 0;
+
+	if (guarded[index])
+		mask := mask + AREA_POLICY_GUARDED;
+	endif
+	if (norecallto[index])
+		mask := mask + AREA_POLICY_NO_RECALL_TO;
+	endif
+	if (norecallfrom[index])
+		mask := mask + AREA_POLICY_NO_RECALL_FROM;
+	endif
+	if (disabledmarking[index])
+		mask := mask + AREA_POLICY_NO_MARKING;
+	endif
+	if (disablemagic[index])
+		mask := mask + AREA_POLICY_ANTI_MAGIC;
+	endif
+	if (forbiddenarea[index])
+		mask := mask + AREA_POLICY_FORBIDDEN;
+	endif
+	if (nolooting[index])
+		mask := mask + AREA_POLICY_NO_LOOTING;
+	endif
+	if (safearea[index])
+		mask := mask + AREA_POLICY_SAFE_AREA;
+	endif
+	if (nopk[index])
+		mask := mask + AREA_POLICY_NO_PK;
+	endif
+	if (rparea[index])
+		mask := mask + AREA_POLICY_RP_AREA;
+	endif
+
+	return mask;
+endfunction
+
+function DebugPrint(msg)
+	if (!AREAS_DEBUG)
+		return 0;
+	endif
+
+	Print("[areas-debug] "+msg);
+	return 1;
+endfunction
+
+function DebugSummarizeData(data)
+	if (!data || !data.size())
+		return "<none>";
+	endif
+
+	var summary := "";
+	foreach val in data
+		if (_val_iter > 20)
+			summary := summary+",...";
+			break;
+		endif
+
+		if (summary)
+			summary := summary+",";
+		endif
+		summary := summary+CStr(val);
+	endforeach
+
+	return summary;
+endfunction
+
+function DebugLogPageMasksFromArrays(realm, areas, page, perpage, tag, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea)
+	if (!AREAS_DEBUG)
+		return 0;
+	endif
+
+	var min_index := (page-1)*perpage;
+	var max_index := min_index+perpage-1;
+
+	foreach area in areas
+		if (_area_iter < min_index || _area_iter > max_index)
+			continue;
+		endif
+
+		var mask := BuildPolicyMaskForArea(_area_iter, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+		DebugPrint(tag+" realm="+realm+" page="+CStr(page)+" idx="+CStr(_area_iter)+" mask="+CStr(mask)+" area="+GetAreaName(area));
+	endforeach
+
+	return 1;
+endfunction
+
+function HasCurrentPageCheckboxInput(data, page, perpage)
+	if (!data || !data.size())
+		return 0;
+	endif
+
+	var min_index := (page-1)*perpage;
+	var max_index := min_index+perpage-1;
+	var min_key := min_index*10+1;
+	var max_key := max_index*10+10;
+
+	foreach key in data
+		var key_val := CInt(key);
+		if (key_val >= min_key && key_val <= max_key)
+			return 1;
+		endif
+	endforeach
+
+	return 0;
 endfunction
 
 function EnsureAreaArray(data, areas)
@@ -268,17 +491,12 @@ endfunction
 //
 ////////////////////////////////////////////////////////////////////////////////////
 function GetAreaName(area)
+	var area_info := ParseAreaLine(area);
+	if (area_info == error)
+		return CStr(area);
+	endif
 
-	var areaname := "";
-	area := SplitWords(area);
-	area.reverse();
-	area.shrink(area.size()-4);
-	area.reverse();
-	foreach word in area
-		areaname := areaname+" "+word;
-	endforeach
-
-	return areaname;
+	return area_info.name;
 
 endfunction
 

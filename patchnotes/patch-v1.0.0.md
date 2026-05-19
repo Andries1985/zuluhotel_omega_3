@@ -10,6 +10,16 @@ Patch 1.0.0 is a major foundation update. It expands combat, crafting, skills, i
 
 Players should notice deeper combat interactions, more scripted items and world objects, more skill content, more utility systems, and broader support for shard events, housing, and special gameplay features.
 
+## Areas and Region Policy Reliability
+
+- The Areas admin gump was stabilized and now opens and saves consistently.
+- Area policy settings are now stored per realm with persistent datafiles, preventing cross-realm overwrite behavior.
+- Area rules now persist correctly after reboot.
+- Area identity now uses explicit id=<value> tokens in areas definitions, improving save/load stability when names or ordering change.
+- Area labels in the gump now display clean names (without id= prefixes).
+- Internal stale-policy cleanup now removes policy records for areas no longer present in areas definitions.
+- Runtime area checks now use the new datafile-backed policy path consistently.
+
 ---
 
 ## Combat & Weapons

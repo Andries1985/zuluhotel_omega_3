@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+0. [Areas Policy System Stabilization (May 2026)](#0-areas-policy-system-stabilization-may-2026)
 1. [Combat System](#1-combat-system)
 2. [Crafting System](#2-crafting-system)
 3. [Optional Gameplay Packages](#3-optional-gameplay-packages)
@@ -22,6 +23,36 @@
 12. [Root Config, Builds, and Tooling](#12-root-config-builds-and-tooling)
 
 ---
+
+## 0. Areas Policy System Stabilization (May 2026)
+
+Summary:
+Area policy storage and resolution were fully migrated to a persistent, realm-scoped datafile model. Legacy global-property fallback paths were removed from active runtime checks. The staff areas gump now writes policy state by stable AreaId and persistence across reboot is verified.
+
+Details:
+- Added persistent per-realm policy storage in areas package datafiles using descriptor format :areas:area_policies_<realm>.
+- Adopted per-area element keys based on strict AreaId tokens from areas.cfg.
+- Enforced strict area syntax: every Area line must include id=<value> in token position after coordinates.
+- Normalized area ids to short lowercase alphanumeric values and migrated areas.cfg entries accordingly.
+- Removed runtime legacy fallback branches from scripts/include/areas.inc (global arrays/properties are no longer used in active area-policy checks).
+- Updated admin areas command to:
+	- prune stale datastore elements against current areas.cfg,
+	- save only current-page changes by AreaId keys,
+	- reload after save, and
+	- display clean area names without id= prefix in the gump.
+- Added robust realm/area input validation for .areas command to prevent silent failures.
+- Completed debug hardening and removed temporary parser traces after validation.
+
+Key Files Changed:
+- pkg/opt/areas/include/areapolicy.inc
+- pkg/opt/areas/textcmd/admin/areas.src
+- scripts/include/areas.inc
+- pkg/opt/areas/areas.cfg
+
+Validation Notes:
+- ecompile clean for all affected files.
+- .areas gump open/save flow verified.
+- persistence after reboot verified.
 
 ## 1. Combat System
 
