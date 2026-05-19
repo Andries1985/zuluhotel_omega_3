@@ -1,3 +1,4 @@
+// Synopsis: Open a gump to view and manage keys on a targeted keyring.
 use uo;
 use os;
 

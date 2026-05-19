@@ -1,3 +1,4 @@
+// Synopsis: Rebuild a targeted keyring and copy all valid keys into a new ring.
 use uo;
 use os;
 use util;
