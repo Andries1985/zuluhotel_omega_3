@@ -1,4 +1,194 @@
+-- POL100.3.0 --
+05-10-2026 Turley:
+    Fixed: Healthbar updates of other mobs if the hp is greater then 0xffff
+05-10-2026 AsYlum:
+    Fixed: NPCs with intrinsic AR had their ColdResistCap silently overwritten
+           with EnergyResistCap whenever any resist/damage/cap mod was changed.
+04-22-2026 Turley:
+    Fixed: Statmsg pkt (0x11) was send way to often
+    Fixed: In case of a load error print the starting line number of the element
+03-29-2026 Turley:
+  Changed: for sql connection mariadb connector is now used, since its compatible nothing changes except that the core nolonger needs mysql as external dependency.
+03-15-2026 Turley:
+    Added: uo::DisplayDialogGump(chr_or_array, layout, textlines, x:=0, y:=0, flags:=0, gumpid:=0 )
+           non-blocking version of uo::SendDialogGump(), instead of blocking the script until the client interacts with the gump it returns immediately.
+           Sends event SYSEVENT_GUMP_RESPONSE{type=0x20000, source=chrref, response=0/IntHash} once the client reacted.
+           Where the response member has the same structure/logic as the return value of uo::SendDialogGump().
+           First param can be a single character reference or an array of character references to send the same gump to multiple clients.
+  Changed: uo::CloseGump(chr_or_array, gumpid, response:=0)
+           First param can now be a single character reference or an array of character references to close the same gump for multiple clients.
+03-09-2026 Kevin:
+    Fixed: Passing a boat item descriptor struct which contains an `AlternateMultiID` member to
+           `CreateMultiAtLocation` now works correctly.
+03-07-2026 Turley:
+    Fixed: configuration file reading failed in very rare cases due to missing thread-safety
+02-22-2026 Turley:
+    Fixed: uoconvert showed wrong coordinates in the error msgs when too many static items exist in a block
 -- POL100.2.0 --
+02-16-2026 Turley:
+     Note: Pol 100.2.0 is now officially released
+01-18-2026 Turley:
+    Fixed: ClassInstance memory estimate
+01-17-2026 Kukkino:
+  Changed: FunctionReference no longer includes full program in its memory estimate.
+01-10-2026 Turley:
+    Fixed: class method calls which have a known name, name of an existing obj method, now work
+    Fixed: now also if the method has parameters
+01-10-2026 Turley:
+    Fixed: dynamic floor-like objects (height of 0) now block LOS like they do if they where static
+01-07-2026 Turley:
+    Fixed: Since the switch to the new compiler .lst files had no sourcefile/sourceline infos, these are now again produced
+01-04-2026 Turley:
+    Fixed: cfgmod::GetConfigInt overflow issue, now returns Error("Integer overflow error")
+12-31-2025 Kukkino:
+    Fixed: Changing warmode no longer sends 0x77 packet (Update Player) packet to clients in range who cannot see the mobile (ex. when the character changing warmode is hidden).
+12-15-2025 Kevin:
+    Fixed: Parsing issue introduced with regular expressions when using floating-point dividends
+12-14-2025 Reloecc:
+    Added: uoconvert.cfg element StaticOptions extended by DiscardedWaterTiles.
+           Lists the tiles that will be discarded during the processing of solid statics,
+           where the map is at or below the same Z level as the static, allowing boats to bump into shores.
+           Defaults to tiles in the range from 0x1796 to 0x17B2 if not present in the config file.
+                StaticOptions
+                {
+                    DiscardedWaterTiles 0x1796 0x1797 0x1798 ...
+                }
+12-14-2025 Turley:
+    Fixed: With newer clients boat travellers and observers didnt get all objects send
+11-18-2025 Kevin:
+    Added: Character script member logged_in, returning 1 if the character is present in the game world.
+           Will return 1 on NPC, and 1 for player characters that are either connected or disconnected
+           but waiting for the logoff timeout.
+  Changed: EquipScript/UnequipScript will now be given an OfflineCharacterRef
+           for the equip_on/equip_by and unequip_on/unequip_by parameters, allowing
+           scripts to access the mobile if the mobile is offline.
+11-16-2025 Kevin:
+    Added: Support for creating regular expressions via `basic::RegExp( pattern, flags )` module
+           function and `/pattern/flags` language syntax.
+    Added: String methods `replace`, `find`, and `match` that accept a regular expression object.
+    Added: String method `find` now also accepts a regular expression object.
+    Fixed: `basic::SplitWords` module function with an empty-string delimiter will no longer hang
+           the process, and instead split the string into individual characters.
+11-02-2025 Nando:
+  Changed: Config files now returns an error if a property name contains '{' or '}'. This
+           prevents mistakes when closing a config element, which could lead to the closing bracket
+           to be ignored.
+09-28-2025 Kevin:
+  Changed: The `TypeOf()` and `TypeOfInt()` for a class instance has been changed from "Class" and 102 to "ClassInstanceRef" and 42.
+           The basic.em constant for class instance references was missing, and has been added as:
+
+             const OT_CLASSINSTANCEREF := 42;
+09-06-2025 Kevin:
+    Fixed: Uninitialized functions now properly check for parameters for byref and rest parameters.
+    Added: Uninitialized function parameters can be marked as `default`, requiring constructed descendant classes to provide
+           a default value.
+09-05-2025 Kevin:
+    Added: Escript now supports declaring class methods as uninitialized using the `uninit` keyword, requiring any constructed
+           descendant class to define the functions' implementation. This is a similar concept to "abstract methods" in other
+           programming languages like Java or C#:
+
+             class Shape()
+               uninit function area( this );
+               uninit function scale( this, factor );
+             endclass
+
+             class Circle( Shape )
+               function Circle( this, radius )
+                 this.radius := radius;
+               endfunction
+
+               function area( this )
+                 return 3.14159 * this.radius * this.radius;
+               endfunction
+
+               function scale( this, factor )
+                 this.radius *= factor;
+               endfunction
+             endclass
+
+           See the Racalac Escript Guide for additional details.
+09-04-2025 Kevin:
+    Fixed: Compiler bug when generating an inherited constructor for a child class when the base class' constructor doesn't exist.
+09-02-2025 Turley:
+    Added: pol.cfg DefaultPriority to change the default priority of scripts without having to call os::Set_Priority()
+     Note: Be very carefull when changing this value since as long as scripts runs eg no client pkt can be handled.
+  Changed: the new default value of the script priority is now 10 (before it was 1)
+  Changed: pol.cfg WatchSysLoad output added units and show cpu time also on linux
+  Changed: pol.cfg WatchRPM output replaced cryptic entries and added more lines. These new lines show the statistics of the last minute about the runtime of the scriptscheduler and active scripts.
+08-24-2025 Kevin:
+    Fixed: Under certain situations, the compiler would not find a parent class' static (ie. non-member) when used inside a child class.
+08-19-2025 Kevin:
+    Fixed: Enum class constants can be used unscoped within their own enum class.
+    Fixed: Enum class constants can be used in case statement labels.
+    Fixed: Enum classes without an initializer now compile correctly.
+08-17-2025 Kevin:
+    Added: Escript now supports declaring an enumeration as an "enum class", which scopes the enum's entries to the enum's name:
+
+             enum class Races
+               HUMAN := "Human",
+               ORC := "Orc",
+               ELF := "Elf"
+             endenum
+
+             print( Races::HUMAN ); // Prints: "Human"
+08-16-2025 Kevin:
+    Added: New module function util::RandomUUID()
+    Added: util.em constants UUID_NIL and UUID_MAX
+08-06-2025 Turley:
+  Changed: optimized generated instructions when using ShortCircuits
+08-02-2025 Turley:
+    Fixed:  when the client view range is changed the client gets first informed about the new range before potentially sending new objects
+07-28-2025 Turley:
+    Added: ecompile.cfg setting ShortCircuitEvaluation (0/1) default 0 and ShortCircuitEvaluationWarning (0/1) default 1
+           if activated: in || and && expressions the second argument get only evaluated if the first operand is false for || and true for &&
+           Since it could be a breaking change the Warning setting was introduced to find all expressions which could break.
+           The warning will not be triggered for functions which are known to have no sideeffect eg Len.
+           Its no complete list just the most common ones.
+           Due to the fact that variable types are not known at compile time and methods can be overwritten it will warn if any method calls are performed.
+    Added: ecompile switch -S to activate ShortCircuitEvaluation independend of the cfg setting
+07-22-2025 Kevin:
+    Added: ecompile switch -Z, ecompile.cfg setting GenerateAbstractSyntaxTree to write abstract syntax tree (AST) to file
+07-10-2025 Turley:
+    Added: Compiler is now able to optimize:
+           - more (all?) constant operations. Eg 2*2.1 is now calculated at compiletime instead of runtime.
+             Before only a small subset of integer operations where calculated at compile time.
+           - ternary and elvis operator if its a constant expression. If statement where already optimized.
+           - while/dowhile/repeat loops if constant, eg by removing them completly "while(false)" or eg endless loop without runtime checks "while(true)"
+07-03-2025 Kevin:
+    Added: New module function os::SendEmail and config file email.cfg
+    Fixed: Module function polsys::ReloadConfiguration will now return an error if there is an issue in a configuration file instead of
+           terminating the script
+06-30-2025 Kevin:
+    Fixed: When a player unequips an item from another mobile and the movement of the item fails (eg. dropping item too far away), the item will
+           now be re-equipped on the same mobile and not the player.
+06-28-2025 Kevin:
+    Added: os::Wait_For_Event now supports doubles for fractional seconds, eg. wait_for_event( 0.25 ) to wait 0.25 seconds, with a resolution
+           of 10ms (ie. 0.01).
+06-28-2025 Kevin:
+    Fixed: Players can now drop an item directly onto an NPC's backpack from the NPC's paperdoll or directly onto a container within the backpack
+           when servspecopt.cfg MasterCanAccessNPCsBackpack is enabled.
+06-25-2025 Kevin:
+    Added: servspecopt.cfg MasterCanAccessNPCsBackpack 0/1 default 0
+           If enabled, the core will allow a master to access (ie. use, move, target) his followers' backpack and the items within it.
+06-23-2025 Kevin:
+    Added: Packet script method `assign( Packet other )`
+    Fixed: `packet.SetInt8()` will now correctly return an error if setting a value at an index outside the length of a fixed-length packet
+06-22-2025 Kevin:
+    Fixed: Memory leak caused by equipped_by/unequipped_by parameter addition
+06-20-2025 Kevin:
+    Added: servspecopt.cfg MasterCanClotheNPCs 0/1 default 0
+           If enabled, an NPC can be clothed by its master (via paperdoll)
+    Added: Characters that can clothe other characters -- either by being the NPC's master with servspecopt.cfg MasterCanClotheNPCs enabled
+           _or_ with clotheany privilege enabled -- can now modify equipment via paperdoll.
+    Added: Program parameter equipped_by to EquipScript/EquipTestScript and unequipped_by to UnEquipScript/UnEquipTestScript to reference
+           the player performing the (un)equip action. If there is no player performing the action (eg. equipping via uo module function
+           EquipItem, unequipping via DestroyItem, ...), then this program parameter will be the same.
+  Changed: Updated Script Types documentation for EquipScript/EquipTestScript and UnEquipScript/UnEquipTestScript to clarify that the first
+           character program parameter is the character having their equipment changed, ie. equipped_on or unequipped_from.
+05-24-2025 Kevin:
+    Fixed: Array method `findIndex` no longer modifies the first element in the array.
+05-16-2025 Kevin:
+    Fixed: Incorrect handling of realms causing crash in (a) character gotten item and (b) undo failed item move.
 04-13-2025 Kevin:
     Added: uoconvert now supports reading MultiCollection.uop
     Added: uoconvert.cfg now allows multiple entries for the Boats properties in the MultiTypes element
