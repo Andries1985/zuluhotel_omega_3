@@ -1,3 +1,4 @@
+// Synopsis: Toggle or set your run speed modifier from 0 to 4.
 use uo;
 use os;
 use polsys;

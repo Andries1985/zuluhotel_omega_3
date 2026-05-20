@@ -1,3 +1,4 @@
+// Synopsis: Reset a targeted player's Powerhour usage and tracking properties.
 //Reset Powerhour on a Player
 
 use os;
