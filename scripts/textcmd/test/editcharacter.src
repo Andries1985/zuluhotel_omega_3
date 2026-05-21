@@ -5,6 +5,7 @@ use vitals;
 
 include "include/attributes";
 include ":gumps:include/gumps";
+include ":gumps:include/gumps_ex";
 
 const BTN_CANCEL := 9000;
 const BTN_APPLY  := 9001;
