@@ -4,7 +4,6 @@ use npc;
 use util;
 use cfgfile;
 use datafile;
-use cliloc;
 
 include "include/attributes";
 include "include/client";
@@ -13,10 +12,10 @@ include "include/eventid";
 include "include/utility";
 include "include/randname";
 include ":gumps:yesno";
-include ":containers:storageAreas";
 include "include/myutil";
 include "include/npcboosts";
 include "include/escrow";
+include ":containers:storageAreas";
 
 const STARTHAIR		:= 0x2006;
 const ENDHAIR		:= 0x2079;
@@ -54,19 +53,30 @@ program merchant()
 		DoMerchantOnCreationSetup(me);
 	endif
 
-	storage := FindStorageArea( "Merchant Storage" );
+	storage := CP_GetStorageArea(CP_MERCHANT_AREA, CP_CREATE);
 	if(!storage)
 		exit;
 	endif
 
-	inv_fs := find_or_create_item(storage, me.serial + " FS", 0xE75);
-	inv_pb := find_or_create_item(storage, me.serial + " PB", 0xE75);
-	inv_1c := find_or_create_item(storage, me.serial + " 1C", 0xE75);
+	inv_fs := FindRootItemInStorageArea(storage, me.serial + " FS");
+	if(!inv_fs)
+		inv_fs := CreateRootItemInStorageArea(storage, me.serial + " FS", 0xE7C);
+	endif
+
+	inv_pb := FindRootItemInStorageArea(storage, me.serial + " PB");
+	if(!inv_pb)
+		inv_pb := CreateRootItemInStorageArea(storage, me.serial + " PB", 0xE7C);
+	endif
+
+	inv_1c := FindRootItemInStorageArea(storage, me.serial + " 1C");
+	if(!inv_1c)
+		inv_1c := CreateRootItemInStorageArea(storage, me.serial + " 1C", 0xE7C);
+	endif
 	if(!inv_pb or !inv_fs or !inv_1c) exit; endif
 
 	SetObjProperty(me, "serial", me.serial);
 
-	EnableEvents( SYSEVENT_ITEM_GIVEN + SYSEVENT_MERCHANT_SOLD + SYSEVENT_DOUBLECLICKED );
+	EnableEvents( SYSEVENT_ITEM_GIVEN + SYSEVENT_MERCHANT_SOLD  );
 	EnableEvents( SYSEVENT_DAMAGED + SYSEVENT_ENGAGED  );
 	EnableEvents( SYSEVENT_ENTEREDAREA, 6 );
 	EnableEvents( SYSEVENT_SPEECH, 1 );
@@ -119,12 +129,6 @@ program merchant()
 					me.hidden := 1;
 					sleep(90);
 					me.hidden := 0;
-				SYSEVENT_DOUBLECLICKED:
-					if(CheckLineOfSight(me, ev.source))
-						SendOpenSpecialContainer(ev.source, inv_fs);
-					else
-						SendSysMessageCL(ev.source, 501816, color := 33);
-					endif
 				SYSEVENT_SPEECH:
 					ProcessSpeech(ev);
 				SYSEVENT_MERCHANT_SOLD:
@@ -151,15 +155,6 @@ program merchant()
 
 endprogram
 
-function find_or_create_item(storage_area, name, objtype)
-	var item := FindRootItemInStorageArea(storage_area, name);
-	if(item)
-		return item;
-	endif
-
-	return CreateRootItemInStorageArea(storage_area, name, objtype);
-endfunction
-
 function RecordNewStock()
 	SetObjProperty(me, "laststocktime", ReadGameClock());
 endfunction
@@ -170,7 +165,7 @@ function HasRecentStock()
 		return 0;
 	endif
 
-	if((ReadGameClock() - laststocktime) <= ONE_WEEK_SECONDS)
+	if((ReadGameClock() - laststocktime) <= TWO_MONTHS_SECONDS)
 		return 1;
 	endif
 
@@ -193,6 +188,14 @@ function RecentStockTimeText()
 		return "about a day ago";
 	elseif(secondsago < ONE_WEEK_SECONDS)
 		return "about " + CInt(secondsago / 86400) + " days ago";
+	elseif(secondsago < (2 * ONE_WEEK_SECONDS))
+		return "about 2 weeks ago";
+	elseif(secondsago < (3 * ONE_WEEK_SECONDS))
+		return "about 3 weeks ago";
+	elseif(secondsago < (4 * ONE_WEEK_SECONDS))
+		return "about 4 weeks ago";
+	elseif(secondsago < TWO_MONTHS_SECONDS)
+		return "over a month ago";
 	endif
 
 	return 0;
@@ -336,7 +339,7 @@ function DoMerchantOnCreationSetup(byref me)
 
 	Sleep(2);
 	if(!me.backpack)
-		var newbackpack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y , DEFAULT_LOCATION_ITEM_CREATION_Z, UOBJ_BACKPACK, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
+		var newbackpack := CreateItemAtLocation(5288 , 1176 , 0, UOBJ_BACKPACK, 1);
 		EquipItem(me, newbackpack);
 	endif
 	SetObjProperty(me, "pm_initialized", 1);
@@ -361,11 +364,7 @@ function ProcessSpeech(byref ev);
 	if(ev.text["buy"]) 
 		TurnToward( ev.source );
 		if(CanSellAtThisLocation() )
-			if(CheckLineOfSight(me, ev.source))
-				SendOpenSpecialContainer(ev.source, inv_fs);
-			else
-				Say("I cannot see you to show you my wares.");
-			endif
+			SendBuyWindow( ev.source, inv_fs, self(), inv_pb, VENDOR_SEND_AOS_TOOLTIP );
 		else
 			Say("I wish I could help you, but the queen has forbidden commerce at this location.");
 		endif
@@ -489,7 +488,7 @@ function Follow(byref mmaster)
 		d:= distance(mmaster, me);
 		if(d > 20)
 			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, speed:=0xA, loop:=0xA );
-			MoveObjectToLocation( me, mmaster.x, mmaster.y, mmaster.z, mmaster.realm );
+			MoveObjectToLocation( me, mmaster.x, mmaster.y, mmaster.z );
 			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, speed:=0xA, loop:=0xA );
 			PlaySoundEffect( mmaster, SFX_SPELL_TELEPORT );
 		elseif(d > 1)
@@ -557,7 +556,7 @@ function StockItem(byref item, byref seller)
 		var stocked_any := 0;
 		Say("I'll just sell this at the same price as the others.");
 		if(newAmount <= 60000)
-			theItem := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, itemType, newAmount, DEFAULT_LOCATION_ITEM_CREATION_R );
+			theItem := CreateItemAtLocation( 5427, 1082, 38, itemType, newAmount );
 			theItem.sellprice := sellPrice;
 			if(!theItem.movable)
 				theItem.movable := 1;
@@ -570,7 +569,7 @@ function StockItem(byref item, byref seller)
 			endif
 		else
 			while(newAmount > 60000)
-				theItem := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, itemType, 60000, DEFAULT_LOCATION_ITEM_CREATION_R );
+				theItem := CreateItemAtLocation( 5427, 1082, 38, itemType, 60000 );
 				theItem.sellprice := sellPrice;
 				if(!theItem.movable)
 					theItem.movable := 1;
@@ -583,7 +582,7 @@ function StockItem(byref item, byref seller)
 				endif
 				newAmount := newAmount - 60000;
 			endwhile
-			theItem := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, itemType, newAmount, DEFAULT_LOCATION_ITEM_CREATION_R );
+			theItem := CreateItemAtLocation( 5427, 1082, 38, itemType, newAmount );
 			theItem.sellprice := sellPrice;
 			if(!theItem.movable)
 				theItem.movable := 1;
@@ -929,7 +928,7 @@ endfunction
 
 function DeliverPackToOwnerOrEscrow(payout_pack, byref owner, ownerserial, vendor_name, force_escrow := 0)
 	if(owner and !force_escrow)
-		var bankbox := CP_GetStorageContainerForMobile(owner, CP_BANK_AREA, CP_CREATE);
+		var bankbox := CP_GetStorageContainerForMobile(owner, CP_DEFAULT_AREA, CP_CREATE);
 		if(bankbox and MoveItemToContainer(payout_pack, bankbox))
 			return 1;
 		endif
@@ -1083,7 +1082,7 @@ function HandleMerchantClosure(reason, force_escrow := 0)
 	PerformAction(me, ANIM_CAST_DIR);
 	Say("Kal Ort Por");
 	sleep(2);
-	MoveObjectToLocation(me, 5288, 1176, 0, me.realm, MOVEOBJECT_FORCELOCATION);
+	MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 	RevokePrivilege(me, "invul");
 	SetObjProperty(me, "guardkill", 1);
 
@@ -1117,7 +1116,7 @@ function HandleMasterlessMerchantCleanup()
 	PerformAction(me, ANIM_CAST_DIR);
 	Say("Kal Ort Por");
 	sleep(2);
-	MoveObjectToLocation(me, 5288, 1176, 0, me.realm, MOVEOBJECT_FORCELOCATION);
+	MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 	RevokePrivilege(me, "invul");
 	SetObjProperty(me, "guardkill", 1);
 
@@ -1176,21 +1175,21 @@ function WearItem(byref item)
 			if(GetObjProperty(thingie, "mine"))
 				DestroyItem(thingie);
 			else
-					MoveObjectToLocation(thingie, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION );
+				MoveObjectToLocation(thingie, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION );
 			endif
 		endif
 	endforeach
 
 endfunction
 
-	function StripItems(byref mmaster)
+function StripItems(byref mmaster)
 
 	if(!mmaster)
 		return;
 	endif
 
 	if(!me.backpack)
-		var newbackpack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y , DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, me.realm);
+		var newbackpack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, UOBJ_BACKPACK, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
 		EquipItem(me, newbackpack);
 	endif
 
@@ -1562,7 +1561,7 @@ endfunction
 ///////////////////
 
 function CanSellAtThisLocation()
-	var signs := ListItemsNearLocationOfType(me.x, me.y, me.z, 20, 0x1E5E);
+	var signs := ListItemsNearLocationOfType(me.x, me.y, me.z, 20, 0x1E5E, me.realm);
 	if(len(signs) )
 		return 0;
 	endif

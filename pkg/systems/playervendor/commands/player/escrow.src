@@ -7,6 +7,7 @@ use datafile;
 use polsys;
 
 include "include/objtype";
+include ":containers:storageAreas";
 include ":playervendor:include/escrow";
 
 const ESCROW_STORAGE_NAME := "Merchant Escrow";
@@ -22,7 +23,11 @@ const ENTRY_OWNERNAME_IDX := 7;
 
 function EscrowDebugMsg(who, msg)
 	if(DEBUG_MODE)
-		Print("[ESCROW s=" + who.serial + "] " + msg);
+		var source_serial := 0;
+		if(who and who.serial)
+			source_serial := who.serial;
+		endif
+		Print("[ESCROW s=" + source_serial + "] " + msg);
 	endif
 endfunction
 
@@ -298,7 +303,7 @@ function ClaimEscrowEntry(who, entry, to_bank)
 
 	var dest;
 	if(to_bank)
-		dest := FindBankBox(who);
+		dest := CP_GetStorageContainerForMobile(who, CP_DEFAULT_AREA, CP_CREATE);
 		if(!dest)
 			EscrowDebugMsg(who, "ClaimEscrowEntry: bank box unavailable for entry_id=" + entry_id);
 			SendSysMessage(who, "Your bank box is unavailable.");
@@ -422,18 +427,4 @@ function RemoveEscrowEntryById(who, entry_id)
 	if(!found)
 		EscrowDebugMsg(who, "RemoveEscrowEntryById: entry_id " + entry_id + " not found in any merchant element");
 	endif
-endfunction
-
-function FindBankBox(character)
-	var worldbank := OpenWorldBank();
-	var bank_obj_name := "Bankbox of " + character.serial;
-	return FindRootItemInStorageArea(worldbank, bank_obj_name);
-endfunction
-
-function OpenWorldBank()
-	var bank := FindStorageArea("World Bank");
-	if(!bank)
-		bank := CreateStorageArea("World Bank");
-	endif
-	return bank;
 endfunction
