@@ -257,7 +257,8 @@ function SpawnDebug(message)
 endfunction
 
 function IsInCityRegion()
-	return CInt(GetRegionString("regions", me.x, me.y, "City", me.realm)) == 1;
+	var region_type := Lower(CStr(GetRegionString("regions", me.x, me.y, "Type", me.realm)));
+	return region_type == "city";
 endfunction
 
 function CalculateDailyWage()
@@ -415,7 +416,9 @@ endfunction
 ///////////////////
 
 function ProcessSpeech(byref ev);
-	if(ev.text["buy"]) 
+	var cmdtext := Lower(CStr(ev.text));
+
+	if(cmdtext["buy"]) 
 		TurnToward( ev.source );
 		if(CanSellAtThisLocation() )
 			SendBuyWindow( ev.source, inv_fs, self(), inv_pb, VENDOR_SEND_AOS_TOOLTIP );
@@ -423,12 +426,12 @@ function ProcessSpeech(byref ev);
 			Say("I wish I could help you, but the queen has forbidden commerce at this location.");
 		endif
 
-	elseif(ev.text["purchase"])
+	elseif(cmdtext["purchase"])
 		if(ev.source.serial == master)
 			AddThingsToBuy();
 		endif
 
-	elseif(ev.text["release"])
+	elseif(cmdtext["release"])
 		TurnToward( ev.source );
 		if(ev.source.serial == master)
 			FireMe(ev);
@@ -436,11 +439,11 @@ function ProcessSpeech(byref ev);
 			Say("I don't even work for you.");
 		endif
 
-	elseif(ev.text["sell"])
+	elseif(cmdtext["sell"])
 		TurnToward( ev.source );
 		SpoutBuyList(ev.source);
 
-	elseif(ev.text["contact"])
+	elseif(cmdtext["contact"])
 		TurnToward( ev.source );
 		if(ev.source.serial == master)
 			cont := ReContact(ev.source);
@@ -449,19 +452,19 @@ function ProcessSpeech(byref ev);
 			Say("You may contact my employer " + cont);
 		endif
 
-	elseif((ev.text["collect"]) and (ev.source.serial == master))
+	elseif((cmdtext["collect"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		CashCheque(ev.source);
 
-	elseif((ev.text["cheque"]) and (ev.source.serial == master))
+	elseif((cmdtext["cheque"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		CashCheque(ev.source);
 
-	elseif((ev.text["status"]) and (ev.source.serial == master))
+	elseif((cmdtext["status"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		StatusCheck();
 
-	elseif((ev.text["wear"]) and (ev.source.serial == master))
+	elseif((cmdtext["wear"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		Say("What shall I wear?");
 
@@ -482,21 +485,25 @@ function ProcessSpeech(byref ev);
 
 		WearItem(this);
 
-	elseif((ev.text["strip"]) and (ev.source.serial == master))
+	elseif((cmdtext["strip"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		Say("Ooh, I think I feel a draft!");
 		StripItems(ev.source);
 
-	elseif((ev.text["undress"]) and (ev.source.serial == master))
+	elseif((cmdtext["undress"]) and (ev.source.serial == master))
 		TurnToward( ev.source );
 		Say("This is so humiliating.");
 		UndressItems(ev.source);
 
-	elseif((ev.text["follow"]) and (ev.source.serial == master))
+	elseif((cmdtext["follow"]) and (ev.source.serial == master))
 		var myfullname := Lower(me.name);
-		var myname := myfullname [1, find(myfullname, ",", 2)];
+		var comma_idx := find(myfullname, ",", 2);
+		var myname := myfullname;
+		if(comma_idx)
+			myname := myfullname [1, comma_idx];
+		endif
 		myname [","] := "";
-		var evtext := Lower(ev.text);
+		var evtext := cmdtext;
 
 		if(myname and evtext [myname])
 			Say("Lead the way!");
@@ -505,11 +512,11 @@ function ProcessSpeech(byref ev);
 			Say("If you're talking to me, say " + myname + " follow me.");
 		endif
 
-	elseif(ev.text["log"])
+	elseif(cmdtext["log"])
 		TurnToward( ev.source );
 		ViewMessageLog(ev.source);
 
-	elseif(ev.text["help"])
+	elseif(cmdtext["help"])
 		TurnToward( ev.source );
 		Say("I will obey the following orders:");
 		sleep(1);
@@ -929,8 +936,15 @@ function MoveItemToPayoutPacks(byref packs, byref item, vendor_name)
 endfunction
 
 function CollectContainerToPayoutPacks(byref source, byref packs, vendor_name)
+	if(!source)
+		return;
+	endif
+
 	foreach item in ListRootItemsInContainer(source)
-		MoveItemToPayoutPacks(packs, item, vendor_name);
+		if(!MoveItemToPayoutPacks(packs, item, vendor_name))
+			QueueGMPageReport("CashOut item move failed. Vendor=" + me.name + "(" + me.serial + ") Item=" + item.objtype + "(" + item.serial + ")");
+			MoveObjectToLocation(item, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION);
+		endif
 	endforeach
 endfunction
 
@@ -945,20 +959,49 @@ endfunction
 function BuildAssetPacks(vendor_name)
 	var packs := {};
 
-	CollectContainerToPayoutPacks(inv_fs, packs, vendor_name);
-	CollectContainerToPayoutPacks(inv_pb, packs, vendor_name);
-	CollectContainerToPayoutPacks(me.backpack, packs, vendor_name);
+	if(inv_fs)
+		CollectContainerToPayoutPacks(inv_fs, packs, vendor_name);
+	endif
+	if(inv_pb)
+		CollectContainerToPayoutPacks(inv_pb, packs, vendor_name);
+	endif
+	if(me.backpack)
+		CollectContainerToPayoutPacks(me.backpack, packs, vendor_name);
+	endif
 
 	foreach equipped in ListEquippedItems(me)
 		if(!IsHairOrBeardItem(equipped) and equipped != me.backpack)
-			MoveItemToPayoutPacks(packs, equipped, vendor_name);
+			if(!MoveItemToPayoutPacks(packs, equipped, vendor_name))
+				QueueGMPageReport("CashOut equipped item move failed. Vendor=" + me.name + "(" + me.serial + ") Item=" + equipped.objtype + "(" + equipped.serial + ")");
+				MoveObjectToLocation(equipped, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION);
+			endif
 		endif
 	endforeach
 
 	return packs;
 endfunction
 
-function AddGoldChequePacks(byref packs, amount, vendor_name)
+function CreateMerchantGoldCheque(byref container, cheque_amount, payee_serial, payee_name)
+	var itemcheck := CreateItemInContainer(container, CInt(0x14000), 1);
+	if(!itemcheck)
+		return 0;
+	endif
+
+	SetObjProperty(itemcheck, "Payee", payee_name);
+	SetObjProperty(itemcheck, "PayeeSerial", CInt(payee_serial));
+	SetObjProperty(itemcheck, "Currency", UOBJ_GOLD_COIN);
+	SetObjProperty(itemcheck, "Amount", cheque_amount);
+	SetObjProperty(itemcheck, "checkamount", cheque_amount);
+	SetObjProperty(itemcheck, "IssuingBank", "Player Merchant");
+	SetObjProperty(itemcheck, "PurchaserSerial", CInt(payee_serial));
+	SetObjProperty(itemcheck, "CreatedBy", me.name);
+	itemcheck.color := 0x501;
+	itemcheck.name := "A Cheque for " + cheque_amount + " Gold by " + me.name + ".";
+
+	return itemcheck;
+endfunction
+
+function AddGoldChequePacks(byref packs, amount, vendor_name, payee_serial, payee_name)
 	var remaining := CInt(amount);
 	while(remaining > 0)
 		var cheque_amount := remaining;
@@ -968,24 +1011,20 @@ function AddGoldChequePacks(byref packs, amount, vendor_name)
 
 		var payout_pack := CreatePayoutPack(vendor_name);
 		if(!payout_pack)
-			return;
+			return remaining;
 		endif
 
-		var itemcheck := CreateItemInContainer(payout_pack, CInt(0x14000), 1);
+		var itemcheck := CreateMerchantGoldCheque(payout_pack, cheque_amount, payee_serial, payee_name);
 		if(!itemcheck)
 			DestroyItem(payout_pack);
-			return;
+			return remaining;
 		endif
-
-		SetObjProperty(itemcheck, "Amount", cheque_amount);
-		SetObjProperty(itemcheck, "checkamount", cheque_amount);
-		SetObjProperty(itemcheck, "CreatedBy", me.name);
-		itemcheck.color := 51;
-		itemcheck.name := "A Cheque for " + cheque_amount + " Gold by " + me.name + ".";
 
 		packs.append(payout_pack);
 		remaining := remaining - cheque_amount;
 	endwhile
+
+	return 0;
 endfunction
 
 function DeliverPackToOwnerOrEscrow(payout_pack, byref owner, ownerserial, vendor_name, force_escrow := 0)
@@ -1017,13 +1056,22 @@ function CashOut(force_escrow := 0)
 	if(!vendor_name)
 		vendor_name := "Player Merchant";
 	endif
+	var owner_name := CStr(GetObjProperty(me, "mn"));
+	if(owner and owner.name)
+		owner_name := owner.name;
+	elseif(!owner_name)
+		owner_name := "Unknown";
+	endif
 
 	var packs := BuildAssetPacks(vendor_name);
 
 	var mygold := CurrentGoldPool();
 	if(mygold > 0)
-		AddGoldChequePacks(packs, mygold, vendor_name);
-		SetObjProperty(me, "g", 0);
+		var remaining_gold := AddGoldChequePacks(packs, mygold, vendor_name, ownerserial, owner_name);
+		SetObjProperty(me, "g", remaining_gold);
+		if(remaining_gold > 0)
+			QueueGMPageReport("CashOut cheque generation partial. Vendor=" + me.name + "(" + me.serial + ") RemainingGold=" + remaining_gold + " Owner=" + ownerserial);
+		endif
 	endif
 
 	for i := 1 to len(packs)
@@ -1052,8 +1100,8 @@ function CashCheque(byref who)
 	endif
 
 	var packs := {};
-	AddGoldChequePacks(packs, mygold, vendor_name);
-	SetObjProperty(me, "g", 0);
+	var remaining_gold := AddGoldChequePacks(packs, mygold, vendor_name, who.serial, who.name);
+	SetObjProperty(me, "g", remaining_gold);
 
 	for i := 1 to len(packs)
 		DeliverPackToOwnerOrEscrow(packs[i], who, who.serial, vendor_name, 0);
@@ -1061,7 +1109,13 @@ function CashCheque(byref who)
 	endfor
 	packs := 0;
 
-	Say("I converted all available gold to cheque payout.");
+	if(remaining_gold > 0)
+		var issued_gold := mygold - remaining_gold;
+		Say("I converted " + issued_gold + " gold to cheque payout. " + remaining_gold + " gold remains pending.");
+		QueueGMPageReport("CashCheque partial. Vendor=" + me.name + "(" + me.serial + ") Issued=" + issued_gold + " Remaining=" + remaining_gold + " Owner=" + who.serial);
+	else
+		Say("I converted all available gold to cheque payout.");
+	endif
 	WarnOwnerIfOutOfGold(who);
 endfunction
 
@@ -1492,6 +1546,7 @@ function BuyItem(byref you, byref it)
 			return;
 		else
 			Say("I'm sorry, but that belongs to someone else.");
+			MoveItemToContainer(it, you.backpack);
 			return;
 		endif
 	endif

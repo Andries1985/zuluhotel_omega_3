@@ -38,7 +38,7 @@ function hairOptions(race, sex)
 		return {0, 999, 60916, 60917, 60918, 60919, 60890, 60891, 60892, 60893, 60894, 60895, 60889, 61463, 61464, 61465, 61466};
 	elseif(race == "gargoyle")
 		if(sex == 0)
-			return {0, 999, 50483, 50484, 50485, 50499, 50696, 50697, 50698, 50699, 51467, 51468, 51469, 51470};
+			return {0, 999, 50483, 50485, 50843, 50499, 50696, 50697, 50698, 50699, 51467, 51468, 51469, 51470};
 		endif
 		return {0, 999, 60769, 60541, 60795, 60707, 60708, 60475, 60632, 61475, 61476, 61477, 61478};
 	endif
@@ -165,9 +165,9 @@ function normalizeHairChoice(race, sex, hairChoice)
 		if(sex == 0)
 			if(hairChoice == 50483)
 				return 0x4258;
-			elseif(hairChoice == 50484)
-				return 0x4259;
 			elseif(hairChoice == 50485)
+				return 0x4259;
+			elseif(hairChoice == 50843)
 				return 0x425a;
 			elseif(hairChoice == 50499)
 				return 0x425b;
