@@ -1321,6 +1321,10 @@ function StripItems(byref mmaster)
 		MoveItemToContainer(item, inv_pb);
 	endforeach
 
+	foreach item in ListRootItemsInContainer(me.backpack)
+		MoveItemToContainer(item, inv_pb);
+	endforeach
+
 	foreach thingie in ListRootItemsInContainer(inv_pb)
 		MoveItemToContainer(thingie, mmaster.backpack);
 	endforeach
