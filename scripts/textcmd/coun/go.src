@@ -117,21 +117,6 @@ program textcmd_go( who )
   else
     DebugGo("MoveObjectToLocation succeeded.");
   endif
-  /*
-  else
-	var params := SplitWords( text );
-    if (len(params) < 3) // didn't pass Z
-        params[3] := GetMapInfo( CInt(params[1]), CInt(params[2]) ,CInt(params[3]));
-    endif
-
-	var res := MoveObjectToLocation( who, CInt(params[1]), CInt(params[2]), CInt(params[3]), params[4],MOVEOBJECT_FORCELOCATION );
-
-    if (!res)
-        SendSysMessage( who, "Unable to go there: " + res.errortext );
-    endif
-  
-  endif
-  */
 
 endprogram
 
