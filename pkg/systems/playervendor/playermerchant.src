@@ -17,8 +17,11 @@ include "include/npcboosts";
 include "include/escrow";
 include ":containers:storageAreas";
 
-const STARTHAIR		:= 0x2006;
-const ENDHAIR		:= 0x2079;
+const CID_ELF_MALE := 0x025d;
+const CID_ELF_FEMALE := 0x025e;
+const CID_GARGOYLE_MALE := 0x029a;
+const CID_GARGOYLE_FEMALE := 0x029b;
+const PM_DEBUG_SPAWN := 1;
 
 var storage, inv_fs, inv_pb, inv_1c;
 var me := Self();
@@ -105,12 +108,16 @@ program merchant()
 		if(ev)
 			if(ev.type == "pm_force_fire")
 				var srcserial := 0;
+				var is_staff_force := 0;
 				var force_escrow := CInt(ev.force_escrow);
 				if(ev.source)
 					srcserial := ev.source.serial;
+					if(CInt(ev.source.cmdlevel) >= 4)
+						is_staff_force := 1;
+					endif
 				endif
 				Print("[PLAYERMERCHANT] Force fire event for " + me.serial + " from " + srcserial + ", master=" + master + " force_escrow=" + force_escrow);
-				if(srcserial == master)
+				if(srcserial == master or is_staff_force)
 					HandleMerchantClosure("forced_by_pmfireme_event", force_escrow);
 					break;
 				else
@@ -243,6 +250,12 @@ function RefreshMaster()
 	return master;
 endfunction
 
+function SpawnDebug(message)
+	if(PM_DEBUG_SPAWN)
+		Print("[PLAYERMERCHANT][SPAWNDBG] " + message);
+	endif
+endfunction
+
 function IsInCityRegion()
 	return CInt(GetRegionString("regions", me.x, me.y, "City", me.realm)) == 1;
 endfunction
@@ -327,14 +340,34 @@ function DoMerchantOnCreationSetup(byref me)
 
 	var owner_name := CStr(GetObjProperty(me, "mn"));
 	mastername := GetObjProperty(me, "mn");
+	var race := "human";
+	var deed_objtype := CInt(GetObjProperty(me, "pm_deed_objtype"));
+	var deed_template := CStr(GetObjProperty(me, "pm_deed_template"));
+
+	if ((me.graphic == CID_GARGOYLE_MALE) || (me.graphic == CID_GARGOYLE_FEMALE))
+		race := "gargoyle";
+	elseif ((me.graphic == CID_ELF_MALE) || (me.graphic == CID_ELF_FEMALE))
+		race := "elf";
+	endif
+
+	SpawnDebug("begin serial=" + me.serial + " deed_objtype=" + deed_objtype + " template='" + deed_template + "' initial_graphic=0x" + Hex(CInt(me.graphic)) + " initial_gender=" + CInt(me.gender) + " race='" + race + "'");
 
 	if( me.name["<random>"] )
+		SpawnDebug("random-name branch entered serial=" + me.serial + " race='" + race + "' graphic=0x" + Hex(CInt(me.graphic)) + " gender=" + CInt(me.gender));
 		me.gender := Random(2);
-		me.graphic := 400 + me.gender;
+		if (race == "gargoyle")
+			me.graphic := CID_GARGOYLE_MALE + me.gender;
+		elseif (race == "elf")
+			me.graphic := CID_ELF_MALE + me.gender;
+		else
+			me.graphic := CID_HUMAN_MALE + me.gender;
+		endif
 		if(!owner_name)
 			owner_name := "Unknown";
 		endif
+		SpawnDebug("before RandomName serial=" + me.serial + " race='" + race + "' graphic=0x" + Hex(CInt(me.graphic)) + " gender=" + CInt(me.gender) + " owner='" + owner_name + "'");
 		me.name := RandomName(me) + ", " + owner_name + "'s Merchant";
+		SpawnDebug("randomized serial=" + me.serial + " race='" + race + "' gender=" + CInt(me.gender) + " graphic=0x" + Hex(CInt(me.graphic)) + " name='" + me.name + "'");
 	endif
 
 	Sleep(2);
@@ -346,10 +379,31 @@ function DoMerchantOnCreationSetup(byref me)
 
 	var parms := {};
 	parms[1]:= me;
-	parms[2]:= "rich";
+	parms[2]:= "playermerchant";
+	SpawnDebug("launching dress script serial=" + me.serial + " race='" + race + "' gender=" + CInt(me.gender) + " graphic=0x" + Hex(CInt(me.graphic)) + " backpack=" + CInt(!!me.backpack));
 	Say("Ooh, I better get dressed!");
-	start_script("::/misc/dressme", parms);
+	var dress_proc := start_script("::/misc/dressme", parms);
+	if(dress_proc)
+		SpawnDebug("dress script started serial=" + me.serial + " pid=" + dress_proc.pid);
+	else
+		SpawnDebug("dress script failed to start serial=" + me.serial);
+	endif
 	Sleep(2);
+	var hair_item := GetEquipmentByLayer(me, 0x0B);
+	var beard_item := GetEquipmentByLayer(me, 0x10);
+	var hair_objtype := 0;
+	var beard_objtype := 0;
+	var equip_count := 0;
+	foreach equipped in ListEquippedItems(me)
+		equip_count := equip_count + 1;
+	endforeach
+	if(hair_item)
+		hair_objtype := hair_item.objtype;
+	endif
+	if(beard_item)
+		beard_objtype := beard_item.objtype;
+	endif
+	SpawnDebug("dressed serial=" + me.serial + " race='" + race + "' gender=" + CInt(me.gender) + " hair=0x" + Hex(CInt(hair_objtype)) + " beard=0x" + Hex(CInt(beard_objtype)) + " equipped_count=" + equip_count + " backpack=" + CInt(!!me.backpack));
 	foreach item in ListEquippedItems(me)
 		SetObjProperty(item, "mine", 1);
 	endforeach
@@ -880,6 +934,14 @@ function CollectContainerToPayoutPacks(byref source, byref packs, vendor_name)
 	endforeach
 endfunction
 
+function IsHairOrBeardItem(byref item)
+	if(!item)
+		return 0;
+	endif
+
+	return (item.layer == 0x0B or item.layer == 0x10);
+endfunction
+
 function BuildAssetPacks(vendor_name)
 	var packs := {};
 
@@ -888,7 +950,7 @@ function BuildAssetPacks(vendor_name)
 	CollectContainerToPayoutPacks(me.backpack, packs, vendor_name);
 
 	foreach equipped in ListEquippedItems(me)
-		if((equipped.objtype < STARTHAIR or equipped.objtype > ENDHAIR) and equipped != me.backpack)
+		if(!IsHairOrBeardItem(equipped) and equipped != me.backpack)
 			MoveItemToPayoutPacks(packs, equipped, vendor_name);
 		endif
 	endforeach
@@ -1194,7 +1256,7 @@ function StripItems(byref mmaster)
 	endif
 
 	foreach thing in ListEquippedItems(me)
-		if((thing.objtype < STARTHAIR or thing.objtype > ENDHAIR) and thing != me.backpack )
+		if(!IsHairOrBeardItem(thing) and thing != me.backpack )
 			if(!GetObjProperty(thing, "mine"))
 				MoveItemToContainer(thing, inv_pb);
 			endif
@@ -1543,7 +1605,7 @@ function UndressItems(byref you)
 	endif
 
 	foreach thing in ListEquippedItems(me)
-		if((thing.objtype < STARTHAIR or thing.objtype > ENDHAIR) and thing != me.backpack)
+		if(!IsHairOrBeardItem(thing) and thing != me.backpack)
 			if(GetObjProperty(thing, "mine"))
 				DestroyItem(thing);
 			else

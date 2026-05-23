@@ -5,6 +5,337 @@ include ":gumps:include/gumps";
 include ":gumps:include/gumps_ex";
 include "include/areas";
 
+const CID_HUMAN_MALE := 0x190;
+const CID_HUMAN_FEMALE := 0x191;
+const CID_ELF_MALE := 0x025d;
+const CID_ELF_FEMALE := 0x025e;
+const CID_GARGOYLE_MALE := 0x029a;
+const CID_GARGOYLE_FEMALE := 0x029b;
+
+function raceProfile(who)
+	if((who.graphic == CID_GARGOYLE_MALE) || (who.graphic == CID_GARGOYLE_FEMALE))
+		return "gargoyle";
+	elseif((who.graphic == CID_ELF_MALE) || (who.graphic == CID_ELF_FEMALE))
+		return "elf";
+	endif
+	return "human";
+endfunction
+
+function hasValue(arr, needle)
+	foreach value in arr
+		if(value == needle)
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function hairOptions(race, sex)
+	if(race == "elf")
+		if(sex == 0)
+			return {0, 999, 50916, 50917, 50918, 50919, 50890, 50891, 50892, 50893, 50894, 50895, 50889, 51459, 51460, 51461, 51462};
+		endif
+		return {0, 999, 60916, 60917, 60918, 60919, 60890, 60891, 60892, 60893, 60894, 60895, 60889, 61463, 61464, 61465, 61466};
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			return {0, 999, 50483, 50484, 50485, 50499, 50696, 50697, 50698, 50699, 51467, 51468, 51469, 51470};
+		endif
+		return {0, 999, 60769, 60541, 60795, 60707, 60708, 60475, 60632, 61475, 61476, 61477, 61478};
+	endif
+
+	if(sex == 0)
+		return {0, 999, 50700, 50701, 50702, 50703, 50710, 50900, 50901, 50903, 51447, 51448, 51449, 51450};
+	endif
+	return {0, 999, 60700, 60701, 60702, 60703, 60710, 60712, 60900, 60902, 60903, 61455, 61456, 61457, 61458};
+endfunction
+
+function hairNames(race, sex)
+	if(race == "elf")
+		if(sex == 0)
+			return {"Current", "Shaved", "Elf Hair 1", "Elf Hair 2", "Elf Hair 3", "Elf Hair 4", "Elf Hair 5", "Elf Hair 6", "Elf Hair 7", "Elf Hair 8", "Elf Hair 9", "Elf Hair 10", "Elf Hair 11", "Elf Modern 1", "Elf Modern 2", "Elf Modern 3", "Elf Modern 4"};
+		endif
+		return {"Current", "Shaved", "Elf Hair 1", "Elf Hair 2", "Elf Hair 3", "Elf Hair 4", "Elf Hair 5", "Elf Hair 6", "Elf Hair 7", "Elf Hair 8", "Elf Hair 9", "Elf Hair 10", "Elf Hair 11", "Elf Modern 1", "Elf Modern 2", "Elf Modern 3", "Elf Modern 4"};
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			return {"Current", "Shaved", "Horns 1", "Horns 2", "Horns 3", "Horns 4", "Horns 5", "Horns 6", "Horns 7", "Horns 8", "Modern Horns 1", "Modern Horns 2", "Modern Horns 3", "Modern Horns 4"};
+		endif
+		return {"Current", "Shaved", "Horns 1", "Horns 2", "Horns 3", "Horns 4", "Horns 5", "Horns 6", "Horns 7", "Modern Horns 1", "Modern Horns 2", "Modern Horns 3", "Modern Horns 4"};
+	endif
+
+	if(sex == 0)
+		return {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Curly", "Receding", "Topknot", "Modern 1", "Modern 2", "Modern 3", "Modern 4"};
+	endif
+	return {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Buns", "Curly", "2 Tails", "Topknot", "Modern 1", "Modern 2", "Modern 3", "Modern 4"};
+endfunction
+
+function beardOptions(race, sex)
+	if(race == "elf")
+		return {0, 999};
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			return {0, 999, 50665, 50652, 50650, 50647, 50534, 51471, 51472, 51473, 51474};
+		endif
+		return {0, 999};
+	endif
+
+	if(sex == 0)
+		return {0, 999, 50800, 50801, 50802, 50803, 50806, 50805, 50804, 51451, 51452, 51453, 51454};
+	endif
+	return {0, 999};
+endfunction
+
+function beardNames(race, sex)
+	if(race == "elf")
+		return {"Current", "Shaved"};
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			return {"Current", "Shaved", "Facial Horns 1", "Facial Horns 2", "Facial Horns 3", "Facial Horns 4", "Facial Horns 5", "Modern Facial Horns 1", "Modern Facial Horns 2", "Modern Facial Horns 3", "Modern Facial Horns 4"};
+		endif
+		return {"Current", "Shaved"};
+	endif
+
+	if(sex == 0)
+		return {"Current", "Shaved", "Goatee", "Long", "Short", "Moustache", "Short/Moustache", "Long/Moustache", "Vandyke", "Modern 1", "Modern 2", "Modern 3", "Modern 4"};
+	endif
+	return {"Current", "Shaved"};
+endfunction
+
+function normalizeHairChoice(race, sex, hairChoice)
+	if((hairChoice == 0) || (hairChoice == 999))
+		return hairChoice;
+	endif
+
+	if(race == "human")
+		if(sex == 0)
+			if(hairChoice == 50700)
+				return 0x203b;
+			elseif(hairChoice == 50701)
+				return 0x203c;
+			elseif(hairChoice == 50702)
+				return 0x203d;
+			elseif(hairChoice == 50703)
+				return 0x2044;
+			elseif(hairChoice == 50710)
+				return 0x2045;
+			elseif(hairChoice == 50900)
+				return 0x2047;
+			elseif(hairChoice == 50901)
+				return 0x2048;
+			elseif(hairChoice == 50903)
+				return 0x204a;
+			elseif(hairChoice == 51447)
+				return 0xa1a4;
+			elseif(hairChoice == 51448)
+				return 0xa1a5;
+			elseif(hairChoice == 51449)
+				return 0xa1a6;
+			elseif(hairChoice == 51450)
+				return 0xa1a7;
+			endif
+		else
+			if(hairChoice == 60700)
+				return 0x203b;
+			elseif(hairChoice == 60701)
+				return 0x203c;
+			elseif(hairChoice == 60702)
+				return 0x203d;
+			elseif(hairChoice == 60703)
+				return 0x2044;
+			elseif(hairChoice == 60710)
+				return 0x2045;
+			elseif(hairChoice == 60712)
+				return 0x2046;
+			elseif(hairChoice == 60900)
+				return 0x2047;
+			elseif(hairChoice == 60902)
+				return 0x2049;
+			elseif(hairChoice == 60903)
+				return 0x204a;
+			elseif(hairChoice == 61455)
+				return 0xa1ac;
+			elseif(hairChoice == 61456)
+				return 0xa1ad;
+			elseif(hairChoice == 61457)
+				return 0xa1ae;
+			elseif(hairChoice == 61458)
+				return 0xa1af;
+			endif
+		endif
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			if(hairChoice == 50483)
+				return 0x4258;
+			elseif(hairChoice == 50484)
+				return 0x4259;
+			elseif(hairChoice == 50485)
+				return 0x425a;
+			elseif(hairChoice == 50499)
+				return 0x425b;
+			elseif(hairChoice == 50696)
+				return 0x425c;
+			elseif(hairChoice == 50697)
+				return 0x425d;
+			elseif(hairChoice == 50698)
+				return 0x425e;
+			elseif(hairChoice == 50699)
+				return 0x425f;
+			elseif(hairChoice == 51467)
+				return 0xa1b8;
+			elseif(hairChoice == 51468)
+				return 0xa1b9;
+			elseif(hairChoice == 51469)
+				return 0xa1ba;
+			elseif(hairChoice == 51470)
+				return 0xa1bb;
+			endif
+		else
+			if(hairChoice == 60769)
+				return 0x4261;
+			elseif(hairChoice == 60541)
+				return 0x4262;
+			elseif(hairChoice == 60795)
+				return 0x4273;
+			elseif(hairChoice == 60707)
+				return 0x4274;
+			elseif(hairChoice == 60708)
+				return 0x4275;
+			elseif(hairChoice == 60475)
+				return 0x42aa;
+			elseif(hairChoice == 60632)
+				return 0x42ab;
+			elseif(hairChoice == 61475)
+				return 0xa1c0;
+			elseif(hairChoice == 61476)
+				return 0xa1c1;
+			elseif(hairChoice == 61477)
+				return 0xa1c2;
+			elseif(hairChoice == 61478)
+				return 0xa1c3;
+			endif
+		endif
+	elseif(race == "elf")
+		if(sex == 0)
+			if(hairChoice == 50916)
+				return 0x2fbf;
+			elseif(hairChoice == 50917)
+				return 0x2fc0;
+			elseif(hairChoice == 50918)
+				return 0x2fc1;
+			elseif(hairChoice == 50919)
+				return 0x2fc2;
+			elseif(hairChoice == 50890)
+				return 0x2fcc;
+			elseif(hairChoice == 50891)
+				return 0x2fcd;
+			elseif(hairChoice == 50892)
+				return 0x2fce;
+			elseif(hairChoice == 50893)
+				return 0x2fcf;
+			elseif(hairChoice == 50894)
+				return 0x2fd0;
+			elseif(hairChoice == 50895)
+				return 0x2fd1;
+			elseif(hairChoice == 50889)
+				return 0x2fd2;
+			elseif(hairChoice == 51459)
+				return 0xa1b0;
+			elseif(hairChoice == 51460)
+				return 0xa1b1;
+			elseif(hairChoice == 51461)
+				return 0xa1b2;
+			elseif(hairChoice == 51462)
+				return 0xa1b3;
+			endif
+		else
+			if(hairChoice == 60916)
+				return 0x2fbf;
+			elseif(hairChoice == 60917)
+				return 0x2fc0;
+			elseif(hairChoice == 60918)
+				return 0x2fc1;
+			elseif(hairChoice == 60919)
+				return 0x2fc2;
+			elseif(hairChoice == 60890)
+				return 0x2fcc;
+			elseif(hairChoice == 60891)
+				return 0x2fcd;
+			elseif(hairChoice == 60892)
+				return 0x2fce;
+			elseif(hairChoice == 60893)
+				return 0x2fcf;
+			elseif(hairChoice == 60894)
+				return 0x2fd0;
+			elseif(hairChoice == 60895)
+				return 0x2fd1;
+			elseif(hairChoice == 60889)
+				return 0x2fd2;
+			elseif(hairChoice == 61463)
+				return 0xa1b4;
+			elseif(hairChoice == 61464)
+				return 0xa1b5;
+			elseif(hairChoice == 61465)
+				return 0xa1b6;
+			elseif(hairChoice == 61466)
+				return 0xa1b7;
+			endif
+		endif
+	endif
+
+	return hairChoice;
+endfunction
+
+function normalizeBeardChoice(race, unused sex, beardChoice)
+	if((beardChoice == 0) || (beardChoice == 999))
+		return beardChoice;
+	endif
+
+	if(race == "human")
+		if(beardChoice == 50800)
+			return 0x2040;
+		elseif(beardChoice == 50803)
+			return 0x2041;
+		elseif(beardChoice == 50806)
+			return 0x204B;
+		elseif(beardChoice == 50805)
+			return 0x204C;
+		elseif(beardChoice == 50804)
+			return 0x204D;
+		elseif(beardChoice == 51451)
+			return 0xa1a8;
+		elseif(beardChoice == 51452)
+			return 0xa1a9;
+		elseif(beardChoice == 51453)
+			return 0xa1aa;
+		elseif(beardChoice == 51454)
+			return 0xa1ab;
+		elseif(beardChoice < 0x4000)
+			return beardChoice-42547;
+		endif
+	elseif(race == "gargoyle")
+		if(beardChoice == 50665)
+			return 0x42ad;
+		elseif(beardChoice == 50652)
+			return 0x42ae;
+		elseif(beardChoice == 50650)
+			return 0x42af;
+		elseif(beardChoice == 50647)
+			return 0x42b0;
+		elseif(beardChoice == 50534)
+			return 0x42b1;
+		elseif(beardChoice == 51471)
+			return 0xa1bc;
+		elseif(beardChoice == 51472)
+			return 0xa1bd;
+		elseif(beardChoice == 51473)
+			return 0xa1be;
+		elseif(beardChoice == 51474)
+			return 0xa1bf;
+		endif
+	endif
+
+	return beardChoice;
+endfunction
+
 program hairdyestart(who)
 	hairdye(who);
 endprogram
@@ -12,60 +343,84 @@ endprogram
 function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, backpackColor := 0)
 	
 	var hairChoice := hair, beardChoice := beard, hairColorChoice := hairColor, beardColorChoice := beardColor, backpackColorChoice := backpackColor, sex;
-	var x := 550, y := 350;
+	var race := raceProfile(who);
+	var x := 640, y := 390;
 	var gump := GFCreateGump(0, 0, x, y);
 	GFResizePic(gump, 50, 30, 9250, x, y);
+	var previewX := 50 + x - 20 - 180;
 
 	// title bar
 	GFResizePic(gump, (x/2)-35, 35, 9200, 170, 25);
 	GFTextLine(gump, (x/2), 35, 67, "Hair Color Menu");
 	var cost := calcCost(hair, beard, hairColor, beardColor, backpackColor);
-	GFTextLine(gump, (x/2)-38, 320, 53, "Current Cost: "+cost);
-	GFTextLine(gump, (x/2)-38, 340, 67, "Buy the selected hair/color?");
+	GFTextLine(gump, (x/2)-38, 350, 53, "Current Cost: "+cost);
+	GFTextLine(gump, (x/2)-38, 368, 67, "Buy the selected hair/color?");
 	
 	if( who.gender == 0)
 		sex := 0;
 	else
 		sex := 1;
 	endif
-	if (sex == 0)
-		// Male background box 
-		GFResizePic(gump, (x/2)+117, 70, 2620, 180, 200);
-		GFGumpPic(gump, (x/2)+117, 35, 12, 1002);
+	var bodyGumpId;
+	if(race == "elf")
+		if(sex == 0)
+			bodyGumpId := 14;
+		else
+			bodyGumpId := 15;
+		endif
+	elseif(race == "gargoyle")
+		if(sex == 0)
+			bodyGumpId := 666;
+		else
+			bodyGumpId := 665;
+		endif
 	else
-		// Female background box
-		GFResizePic(gump, (x/2)+117, 70, 2620, 180, 200);
-		GFGumpPic(gump, (x/2)+117, 35, 13, 1002);
+		if(sex == 0)
+			bodyGumpId := 12;
+		else
+			bodyGumpId := 13;
+		endif
 	endif
+
+	// Character preview background and race/gender base body
+	GFResizePic(gump, previewX, 70, 2620, 180, 200);
+	GFGumpPic(gump, previewX, 35, bodyGumpId, 1002);
 	if(hairColor == 0)
 		var currHairColor := GetEquipmentByLayer(who, 0x0b);
-		hairColor := currHairColor.color;
+		if(currHairColor)
+			hairColor := currHairColor.color;
+		endif
 	endif
 	if(beardColor == 0)
 		var currBeardColor := GetEquipmentByLayer(who, 0x10);
-		beardColor := currBeardColor.color;
+		if(currBeardColor)
+			beardColor := currBeardColor.color;
+		endif
 	endif
 	if(backpackColor == 0)
 		var currBackpackColor := GetEquipmentByLayer(who, 0x15);
-		backpackColor := currBackpackColor.color;
-	endif
-	
-	var hairLayer := GetEquipmentByLayer(who, 0x0b);
-	if(hair == 0)
-		if(sex == 0)
-			hair := hairLayer.objtype+42449;
-		else
-			hair := hairLayer.objtype+52449;
+		if(currBackpackColor)
+			backpackColor := currBackpackColor.color;
 		endif
 	endif
-	
+
+	var hairLayer := GetEquipmentByLayer(who, 0x0b);
+	if(hair == 0 && hairLayer)
+		hair := hairLayer.objtype;
+	endif
+
 	if(beard == 0)
-		beard := GetEquipmentByLayer(who, 0x10);
-		beard := beard.objtype+42547;
+		var beardLayer := GetEquipmentByLayer(who, 0x10);
+		if(beardLayer)
+			beard := beardLayer.objtype;
+		endif
 	endif
 
 	GFPage(gump, 1);
-	var hairName;
+	var hairName := hairNames(race, sex);
+	var hairStyles := hairOptions(race, sex);
+	var beardStyles := beardOptions(race, sex);
+	var beardName := beardNames(race, sex);
 
 	if(beard)
 		if(beard == 50803 && beardChoice != 50803)
@@ -79,11 +434,16 @@ function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, ba
 		elseif(beard == 50816)
 			beard := 50804;
 		endif
-		GFGumpPic(gump, (x/2)+117, 35, beard, beardColor); 
+		if((race != "human") && (beardChoice == 999))
+			beard := 0;
+		elseif((race != "human") && beardChoice)
+			beard := beardChoice;
+		endif
+		GFGumpPic(gump, previewX, 35, beard, beardColor); 
 	endif
-	GFGumpPic(gump, (x/2)+117, 35, 50422, backpackColor);
+	GFGumpPic(gump, previewX, 35, 50422, backpackColor);
 
-	if (sex == 0)
+	if ((sex == 0) && (race == "human"))
 		// Male
 		if(hair)
 			if(hair == 50709)
@@ -97,11 +457,9 @@ function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, ba
 					hair := 50714;
 				endif
 			endif
-			GFGumpPic(gump, (x/2)+117, 35, hair, hairColor); 
+			GFGumpPic(gump, previewX, 35, hair, hairColor); 
 		endif
-		hair := {0, 999, 50700, 50701, 50702, 50703, 50710, 50715, 50712, 50714, 50706};
-		hairName := {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Topknot", "Curly", "Receding", "2 Tails"};
-	else
+	elseif ((sex == 1) && (race == "human"))
 		// Female
 		if(hair)
 			if(hair == 60709 && hairChoice != 60709)
@@ -113,40 +471,40 @@ function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, ba
 			elseif(hair == 60711)
 				hair := 60712;
 			endif
-		GFGumpPic(gump, (x/2)+117, 35, hair, hairColor); 
+			GFGumpPic(gump, previewX, 35, hair, hairColor); 
 		endif
-		hair := {0, 999, 60700, 60701, 60702, 60703, 60710, 60715, 60709, 60707, 60712 };
-		hairName := {"Current", "Shaved", "Short", "Long", "Pony Tail", "Mohawk", "Pageboy", "Topknot", "Curly", "2 Tails", "Buns"};
+	elseif(hairChoice && hairChoice != 999)
+		GFGumpPic(gump, previewX, 35, hairChoice, hairColor);
+	elseif(hair)
+		GFGumpPic(gump, previewX, 35, hair, hairColor);
 	endif
 
-	beard := {0, 999, 50800, 50801, 50802, 50803, 50806, 50805, 50804};
-	var beardName := {"Current", "Shaved", "Goatee", "Long", "Short", "Moustache", "Short/Moustache", "Long/Moustache", "Vandyke"};
-
-	var hY := 90, hX := 88, choiceColor := 999, headlineColor := 67;
+	var hY := 90, hX := 78, choiceColor := 999, headlineColor := 67;
+	var listRowStep := 16;
 	GFTextLine(gump, hX-15, hY-20, headlineColor, "Hair Style:");
-	foreach hairtype in hair
+	foreach hairtype in hairStyles
 		if(hairtype == hairChoice)
 			GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 1000+_hairtype_iter);
 		else
 			GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 1000+_hairtype_iter);
 		endif
 		GFTextLine(gump, hX, hY, choiceColor, hairName[_hairtype_iter]);
-		hY := hY + 20;
+		hY := hY + listRowStep;
 	endforeach
 	
-	hY := 90; hX := 180;
+	hY := 90; hX := 240;
 	GFTextLine(gump, hX-15, hY-20, headlineColor, "Beard Style:");
-	foreach hairtype in beard
+	foreach hairtype in beardStyles
 		if(hairtype == beardChoice)
 			GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 2000+_hairtype_iter);
 		else
 			GFAddButton(gump, hX-15, hY+5, 2362, 2361, 1, 2000+_hairtype_iter);
 		endif
 		GFTextLine(gump, hX, hY, choiceColor, beardName[_hairtype_iter]);
-		hY := hY + 20;
+		hY := hY + listRowStep;
 	endforeach
 
-	hY := 90; hX := 280;
+	hY := 90; hX := 390;
 	GFTextLine(gump, hX-15, hY-20, headlineColor, "Color options:");
 	if(hairColorChoice)
 		GFAddButton(gump, hX-15, hY+5, 2361, 2361, 1, 7777);
@@ -170,9 +528,9 @@ function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, ba
 	GFTextLine(gump, hX, hY, choiceColor, "Backpack");
 
 	//OKAY
-	GFAddButton(gump, (x/2)-110, 340, 2128, 2129, 1, 1212);
+	GFAddButton(gump, (x/2)-110, 372, 2128, 2129, 1, 1212);
 	//Cancel
-	GFAddButton(gump, (x/2)+140, 340, 2121, 2120, 1, 1313);
+	GFAddButton(gump, (x/2)+140, 372, 2121, 2120, 1, 1313);
 	
 	var data := GFSEndGump(who, gump);
 	var color;
@@ -196,9 +554,9 @@ function hairdye(who, hair := 0, beard := 0, hairColor := 0, beardColor := 0, ba
 		color := findcolor(who);
 		hairdye(who, hairChoice, beardChoice, hairColorChoice, beardColorChoice, color);
 	elseif(data[0] > 2000)
-		hairdye(who, hairChoice, beard[data[0]-2000], hairColorChoice, beardColorChoice, backpackColorChoice);
+		hairdye(who, hairChoice, beardStyles[data[0]-2000], hairColorChoice, beardColorChoice, backpackColorChoice);
 	elseif(data[0] > 1000)
-		hairdye(who, hair[data[0]-1000], beardChoice, hairColorChoice, beardColorChoice, backpackColorChoice);
+		hairdye(who, hairStyles[data[0]-1000], beardChoice, hairColorChoice, beardColorChoice, backpackColorChoice);
 	endif
 
 endfunction
@@ -298,32 +656,35 @@ endfunction
 
 function setupOptions(who, hairChoice, beardChoice, hairColor, beardColor, backpackColor)
 	var item, hair, beard, backpack, oldHairColor, oldBeardColor, oldBackpackColor;
+	var sex := who.gender;
+	var race := raceProfile(who);
+	var allowedHair := hairOptions(race, sex);
+	var allowedBeard := beardOptions(race, sex);
+
+	if(!hasValue(allowedHair, hairChoice))
+		hairChoice := 0;
+	endif
+	if(!hasValue(allowedBeard, beardChoice))
+		beardChoice := 0;
+	endif
+
+	hairChoice := normalizeHairChoice(race, sex, hairChoice);
+	beardChoice := normalizeBeardChoice(race, sex, beardChoice);
+
+	if(hairChoice == 999)
+		DestroyItem(GetEquipmentByLayer(who, 0x0b));
+		hairChoice := 0;
+	endif
+	if(beardChoice == 999)
+		DestroyItem(GetEquipmentByLayer(who, 0x10));
+		beardChoice := 0;
+	endif
+
 	if(hairChoice)
 		if(!hairColor)
 			hair := GetEquipmentByLayer(who, 0x0b);
-			oldHairColor := hair.color;
-		endif
-		if(who.gender == 0)
-			if(hairChoice == 50703)
-				hairChoice := 0x2044;
-			elseif(hairChoice == 50714)
-				hairChoice := 0x2048;
-			elseif(hairChoice == 50706)
-				hairChoice := 0x2049;
-			else
-				hairChoice := hairChoice-42449;
-			endif
-		else
-			if(hairChoice == 60703)
-				hairChoice := 0x2044;
-			elseif(hairChoice == 60709)
-				hairChoice := 0x2047;
-			elseif(hairChoice == 60707)
-				hairChoice := 0x2049;
-			elseif(hairChoice == 60712)
-				hairChoice := 0x2046;
-			else
-				hairChoice := hairChoice-52449;
+			if(hair)
+				oldHairColor := hair.color;
 			endif
 		endif
 		DestroyItem(GetEquipmentByLayer(who, 0x0b));
@@ -338,20 +699,9 @@ function setupOptions(who, hairChoice, beardChoice, hairColor, beardColor, backp
 	if(beardChoice)
 		if(!beardColor)
 			beard := GetEquipmentByLayer(who, 0x10);
-			oldBeardColor := beard.color;
-		endif
-		if(beardChoice == 50800)
-			beardChoice := 0x2040;
-		elseif(beardChoice == 50803)
-			beardChoice := 0x2041;
-		elseif(beardChoice == 50806)
-			beardChoice := 0x204B;
-		elseif(beardChoice == 50805)
-			beardChoice := 0x204C;
-		elseif(beardChoice == 50804)
-			beardChoice := 0x204D;
-		else
-			beardChoice := beardChoice-42547;
+			if(beard)
+				oldBeardColor := beard.color;
+			endif
 		endif
 		DestroyItem(GetEquipmentByLayer(who, 0x10));
 		item := CreateItemInBackpack( who, beardChoice, 1 );

@@ -8,6 +8,9 @@ use os;
 use uo;
 
 const SEARCH_RANGE := 1;
+const DEED_VENDOR_HUMAN := 0x7008;
+const DEED_VENDOR_ELF := 0x700a;
+const DEED_VENDOR_GARGOYLE := 0x700b;
 
 
 program makevendor(who, deed)
@@ -34,8 +37,20 @@ program makevendor(who, deed)
 		SendSysMessage(who, "You cannot place your vendor here");
 		return;
 	endif
-
-	place := CreateNpcFromTemplate("playervendor", where.x, where.y, where.z, 0, where.realm);
+	var template_name := "";
+	if(deed.objtype == DEED_VENDOR_HUMAN)
+		template_name := "playervendor";
+		place := CreateNpcFromTemplate("playervendor", where.x, where.y, where.z, 0, where.realm);
+	elseif(deed.objtype == DEED_VENDOR_ELF)
+		template_name := "playervendorelf";
+		place := CreateNpcFromTemplate("playervendorelf", where.x, where.y, where.z, 0, where.realm);
+	elseif(deed.objtype == DEED_VENDOR_GARGOYLE)
+		template_name := "playervendorgargoyle";
+		place := CreateNpcFromTemplate("playervendorgargoyle", where.x, where.y, where.z, 0, where.realm);
+	else
+		SendSysMessage(who, "This vendor deed type is not supported.");
+		return;
+	endif
 	if(!place)
 		SendSysMessage(who, "Your vendor has not been created");
 		return;
@@ -46,6 +61,8 @@ program makevendor(who, deed)
 	SetObjProperty(place, "master", who.serial);
 	SetObjProperty(place, "mn", who.name);
 	SetObjProperty(place, "pm_initialized", 0);
+	SetObjProperty(place, "pm_deed_objtype", deed.objtype);
+	SetObjProperty(place, "pm_deed_template", template_name);
 
 	DestroyItem(deed);
 	SendSysMessage(who, "You have successfully created a vendor. Dont forget to drop money on him so he wont run off!");

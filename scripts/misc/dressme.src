@@ -7,6 +7,11 @@ include "include/client";
 include "include/random";
 include "include/constants/locations";
 
+const CID_ELF_MALE := 0x025d;
+const CID_ELF_FEMALE := 0x025e;
+const CID_GARGOYLE_MALE := 0x029a;
+const CID_GARGOYLE_FEMALE := 0x029b;
+
 program Dress (parms)
 
 	set_critical(0);
@@ -37,6 +42,9 @@ program Dress (parms)
 		return;
 	elseif (text=="rich")
 		DressRich(me,gender);
+		return;
+	elseif (text=="playermerchant")
+		DressPlayerMerchant(me,gender);
 		return;
 	elseif (text=="warrior")
 		DressWar(me,gender);
@@ -71,34 +79,24 @@ function PlaceHair(me,gender)
 
 	var haircolor := MakeHairColor();
 	var hair := 0;
+	var race := raceProfile(me);
 	if (!gender)
 		PlaceBeard(me, haircolor);
-		case (Random(11))
-			0:	Hair := 0x203b;
-			1:	Hair := 0x203b;
-			2:	Hair := 0x203C;
-			3:	Hair := 0x203d;
-			4:	Hair := 0x2044;
-			5:	Hair := 0x2045;
-			6:	Hair := 0x2047;
-			7:	Hair := 0x2048;
-			8:	Hair := 0x204a;
-			9:	Hair := 0x203b;
-			10:	Hair := 0;
-		endcase
+		if (race == "elf")
+			hair := pickFrom({0x2fbf, 0x2fc0, 0x2fc1, 0x2fc2, 0x2fcc, 0x2fcd, 0x2fce, 0x2fcf, 0x2fd0, 0x2fd1, 0x2fd2, 0xa1b0, 0xa1b1, 0xa1b2, 0xa1b3});
+		elseif (race == "gargoyle")
+			hair := pickFrom({0x4258, 0x4259, 0x425a, 0x425b, 0x425c, 0x425d, 0x425e, 0x425f, 0xa1b8, 0xa1b9, 0xa1ba, 0xa1bb});
+		else
+			hair := pickFrom({0, 0x203b, 0x203b, 0x203c, 0x203d, 0x2044, 0x2045, 0x2047, 0x2048, 0x204a, 0xa1a4, 0xa1a5, 0xa1a6, 0xa1a7});
+		endif
 	else
-		case (Random(10))
-			0:	Hair := 0x203b;
-			1:	Hair := 0x203C;
-			2:	Hair := 0x203C;
-			3:	Hair := 0x203d;
-			4:	Hair := 0x2045;
-			5:	Hair := 0x2046;
-			6:	Hair := 0x2047;
-			7:	Hair := 0x2049;
-			8:	Hair := 0x204a;
-			9:	Hair := 0x203C;
-		endcase
+		if (race == "elf")
+			hair := pickFrom({0x2fbf, 0x2fc0, 0x2fc1, 0x2fc2, 0x2fcc, 0x2fcd, 0x2fce, 0x2fcf, 0x2fd0, 0x2fd1, 0x2fd2, 0xa1b4, 0xa1b5, 0xa1b6, 0xa1b7});
+		elseif (race == "gargoyle")
+			hair := pickFrom({0x4261, 0x4262, 0x4273, 0x4274, 0x4275, 0x42aa, 0x42ab, 0xa1c0, 0xa1c1, 0xa1c2, 0xa1c3});
+		else
+			hair := pickFrom({0x203b, 0x203c, 0x203c, 0x203d, 0x2045, 0x2046, 0x2047, 0x2049, 0x204a, 0xa1ac, 0xa1ad, 0xa1ae, 0xa1af});
+		endif
 	endif
 
 	var thehair;
@@ -110,18 +108,12 @@ function PlaceBeard(me,haircolor)
 
 	var hair;
 	var Beard := 0;
-	case (Random(18))
-	0:	Beard := 0x203e;//longbeard
-	1:	Beard := 0x203f;//shorbeard
-	2:	Beard := 0x2040;//goatee
-	3:	Beard := 0x2041;//mustache
-	4:	Beard := 0x204b;//shortbeardnstache
-	5:	Beard := 0x204c;//longbeardnstache
-	6:	Beard := 0x204d;//vandyke
-	7:	Beard := 0x2041;//mustache
-	8:	Beard := 0x204b;//shortbeardnstache
-	9:	Beard := 0x204d;//vandyke
-	endcase
+	var race := raceProfile(me);
+	if (race == "gargoyle")
+		Beard := pickFrom({0x42ad, 0x42ae, 0x42af, 0x42b0, 0x42b1, 0xa1bc, 0xa1bd, 0xa1be, 0xa1bf});
+	elseif (race == "human")
+		Beard := pickFrom({0x203e, 0x203f, 0x2040, 0x2041, 0x204b, 0x204c, 0x204d, 0x2041, 0x204b, 0x204d, 0xa1a8, 0xa1a9, 0xa1aa, 0xa1ab});
+	endif
 
 	CreateAndEquip(me,Beard,haircolor);
 		
@@ -295,6 +287,11 @@ function DressRich(me,gender)
 	endcase
 	CreateAndEquip(me,item,makeclothcolor());
 
+endfunction
+
+function DressPlayerMerchant(me,gender)
+	gender := gender;
+	CreateAndEquip(me,0x1F03,Random(3000));
 endfunction
 
 function DressWar(me,gender)
@@ -632,7 +629,7 @@ function DressWar(me,gender)
 
 endfunction
 
-function DressMage(me, gender)
+function DressMage(me, unused gender)
 
 	var theitem;
 
@@ -796,4 +793,20 @@ function DressLeather(me,gender)
 
 	CreateAndEquip(me,item,makeclothcolor());
 
+endfunction
+
+function raceProfile(mob)
+	if ((mob.graphic == CID_GARGOYLE_MALE) || (mob.graphic == CID_GARGOYLE_FEMALE))
+		return "gargoyle";
+	elseif ((mob.graphic == CID_ELF_MALE) || (mob.graphic == CID_ELF_FEMALE))
+		return "elf";
+	endif
+	return "human";
+endfunction
+
+function pickFrom(choices)
+	if (!choices || !Len(choices))
+		return 0;
+	endif
+	return choices[Random(Len(choices))];
 endfunction
