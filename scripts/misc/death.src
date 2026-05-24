@@ -234,9 +234,9 @@ function zapstorageareas(me)
 
 	var myserial:=getobjproperty(me,"serial");
 	if (!myserial) return; endif
-	Print("In zapstorageareas for NPC serial: "+myserial);
+	//Print("In zapstorageareas for NPC serial: "+myserial);
 
-	Print("In zapstorageareas Hex of serial: "+Hex(myserial));
+	//Print("In zapstorageareas Hex of serial: "+Hex(myserial));
 	var name := Hex(myserial);
 	//var storage := FindStorageArea( "Merchant Storage" );
 	Destroy_Node_Merc(name);
