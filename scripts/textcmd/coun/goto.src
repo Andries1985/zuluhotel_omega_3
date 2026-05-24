@@ -1,13 +1,15 @@
+// Synopsis: Teleport to an online player's location by name
 
 use uo;
 use os;
 
+include ":gumps:gumps";
 include ":staff:include/staff";
 
 program textcmd_goto( character , whom )
 
 	whom := Upper( whom );
-	var chr := MakeAndProcessGump( character,whom);
+	var chr := MakeAndProcessGump( character, whom );
 	if( chr )
 		LogCommand(character, GetProcess(GetPid()).name, chr.name+"/"+chr.serial, "XYZ - "+chr.x+","+chr.y+","+chr.z);
 		MoveObjecttoLocation( character , chr.x , chr.y , chr.z , chr.realm, MOVEOBJECT_FORCELOCATION );
@@ -17,95 +19,89 @@ program textcmd_goto( character , whom )
 endprogram
 
 
-function MakeAndProcessGump( who ,Whom)
+function MakeAndProcessGump( who , Whom )
 
-/* 	var gCmd := GetObjProperty(who, ".goto");
-	if(!gCmd)
-		SendSysMessage( who , "You havn't been granted this command." );
-		LogCommand(who, GetProcess(GetPid()).name, who.name+" is trying to use .goto without permission!");
-		return;
-	endif
-	if(who.cmdlevel < 4 && ReadGameClock() > gCmd)
-		SendSysMessage( who , "You can't use this command anymore." );
-		EraseObjProperty(who, ".goto");
-		return;
-	endif */
-
-	var layout	:= array( "page 0",
-				  "resizepic 50  0   2600 300 525",
-				  "resizepic 100 480 5100 200  25",
-				  "text 155 30 5 0");
-				
-	var data	:= array( "Goto Menu");
-
-	var playername;
-	var LastIndex:=0;
-	var MaxLen:=len(Whom);
-	var players	:= EnumerateOnlineCharacters();
-
-	var start	:= 1;
-	var count	:= 0;
-	var done	:= 0;
-	var page	:= 1;
-	var perpage	:= 20;
-	var y 	:= 70;
+	var players := EnumerateOnlineCharacters();
+	var maxlen := len(Whom);
+	var count := 0;
+	var lastindex := 0;
 	var i;
-	var j;
-	var UHunter;
-	
-	layout.append( "page 1" );
-	
-	for( i := start ; i <= len(players) ; i := i + 1 )
-	if ( players[i].concealed <= who.cmdlevel)
-		UHunter:=CInt(GetObjProperty(players[i],"UHunter"));
-		playername:=Upper(players[i].name);
 
+	var gump := GFCreateGump(20, 20, 740, 720);
+	GFDisposable(gump, 0);
+	GFResizePic(gump, 20, 20, 9250, 740, 725);
+	GFResizePic(gump, 38, 60, 9200, 704, 40);
+	GFResizePic(gump, 38, 100, 9200, 704, 605);
 
-		if ((playername[1,MaxLen]==Whom) AND ( (UHunter==0)OR ( who.cmdlevel>3 ) ))
-			if( done == perpage )
-				done 	:= 0;
-				page 	:= page + 1;
-				y 	:= 70;
-			
-				layout.append( "button 250 481 5540 5541 0 " + (page ) ); // Next button for prev page
-				layout.append( "page " + page );
-				layout.append( "button 125 481 5537 5538 0 " + (page - 1) ); // Prev button for current page
+	GFResizePic(gump, 300, 35, 9200, 140, 20);
+	GFTextLine(gump, 340, 35, 67, "Goto Menu");
+
+	GFTextLine(gump, 55, 74, 900, "Character");
+	GFTextLine(gump, 315, 74, 900, "Location");
+	GFTextLine(gump, 665, 74, 900, "Goto");
+
+	var y := 110;
+	var page := 1;
+	var perpage := 20;
+
+	GFTextLine(gump, 360, 708, 1000, "Page 1");
+	GFPage(gump, 1);
+
+	for( i := 1 ; i <= len(players) ; i := i + 1 )
+		if (players[i].concealed <= who.cmdlevel)
+			var uhunter := CInt(GetObjProperty(players[i], "UHunter"));
+			var playername := Upper(players[i].name);
+
+			if ((playername[1,maxlen] == Whom) AND ((uhunter == 0) OR (who.cmdlevel > 3)))
+				if (perpage <= 0)
+					GFAddButton(gump, 580, 705, 4005, 4006, 0, page + 1); // next page
+					GFPage(gump, page + 1);
+					GFAddButton(gump, 60, 705, 4014, 4015, 0, page); // previous page
+					page := page + 1;
+					GFTextLine(gump, 360, 708, 1000, "Page " + page);
+					y := 110;
+					perpage := 20;
+				endif
+
+				var namecolor := 0;
+				if (players[i].cmdlevel > 0)
+					namecolor := 51;
+				endif
+
+				var location := GetRegionName(players[i]);
+				if(!location)
+					location := players[i].realm;
+				endif
+
+				GFTextLine(gump, 55, y, namecolor, players[i].name);
+				GFTextLine(gump, 315, y, 0, location);
+				GFAddButton(gump, 665, y - 3, 5540, 5541, GF_CLOSE_BTN, i);
+
+				perpage := perpage - 1;
+				y := y + 25;
+				count := count + 1;
+				lastindex := i;
 			endif
-		
-			if (players[i].cmdlevel > 0)
-			  layout.append( "text 85 " + y + " 51 " + len(data) );
-			else
-			  layout.append( "text 85 " + y + " 0 " + len(data) );
-			endif
- 
-			layout.append( "button 300 " + (y+5) + " 2118 2117 1 0 " + i );
-			data.append( players[i].name );
-
-			y 	:= y + 20;
-			done 	:= done + 1;
-			count := count + 1;
-			LastIndex:=i;
 		endif
-	endif
 	endfor
 
-	if (count>0)
-		var result;
-		if (count==1)
-			result:=LastIndex;	
-		else
-			result := SendDialogGump( who , layout , data );
-			if( !result[0] )
-				return;
-			endif
-			result := Cint( result[0] );
+	if (count > 0)
+		if (count == 1)
+			return players[lastindex];
 		endif
 
+		var result := GFSendGump(who, gump);
+		if(!result[0])
+			return;
+		endif
+
+		result := CInt(result[0]);
 		return players[result];
-	else
-		SendSysMessage(who, "No player with name '"+ whom +"*' was found.");
-		return ;
-	endif 
+	endif
+
+	SendSysMessage(who, "No player with name '"+Whom+"*' was found.");
+	return;
+
 endfunction
 
 
