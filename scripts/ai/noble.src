@@ -30,7 +30,6 @@ program noble()
 	SetObjProperty(me, "noloot", 1);
 
 	EnableEvents(SYSEVENT_SPEECH + SYSEVENT_ENGAGED + SYSEVENT_DISENGAGED + SYSEVENT_DAMAGED, HALT_THRESHOLD);
-	EnableEvents(SYSEVENT_ENTEREDAREA + SYSEVENT_LEFTAREA, HALT_THRESHOLD);
 	EnableEvents(SYSEVENT_OPPONENT_MOVED);
 
 	if (getobjproperty(me, "frozen"))
@@ -43,7 +42,6 @@ program noble()
 	var ev;
 	var next_wander := ReadGameClock() + RandomDice(2, 50, 120);
 	while (1)
-		WanderWithinTown();
 		ev := os::wait_for_event(120);
 		case (ev.type)
 			SYSEVENT_SPEECH:
