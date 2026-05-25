@@ -121,7 +121,7 @@ program banker();
 			endif
 		elseif(SYSEVENT_ITEM_GIVEN)
 		TurnToward (ev.source);
-			if ( GetObjProperty ( ev.item, "Payee") )
+			if ( GetObjProperty ( ev.item, "PurchaserSerial") )
 				CashBankersOrder( me, ev );
 			endif
 		endif
@@ -324,9 +324,7 @@ function BuyBankersNote(who, me, currency)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
-	var amt := 0;		// This is so the 'while' loop will get executed.
-	
+	var amt := 0;
 
 	amt := RequestGump(who,"For what amount shall I make the Banker's Order? The coins must be in your bank box.", "The maximum is 1 million coins.");
 	amt := CInt(amt);
@@ -367,18 +365,6 @@ function BuyBankersNote(who, me, currency)
 		endif
 	endif
 
-	var payee := RequestGump(who,"Whom shall I list as the payee?", "Please make sure the name is spelled correctly.");
-	if(!payee)
-		PrintTextAbove(me, "Very well then. I see you've changed your mind.", 1, 39);
-		return 0;
-	endif
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
-		return 0;
-	endif
-
 	var agree := confirmationSizable(who, "There is a nominal fee of 10 coins additional charge for the Note. Do you accept?");
 	if(!agree)
 		PrintTextAbove(me, "Very well then. Perhaps later.", 1, 39);
@@ -398,14 +384,11 @@ function BuyBankersNote(who, me, currency)
 		return 0;
 	endif
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
 	SetObjProperty(created, "Currency", currency);				// The ObjType of the coins being used
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
-	
+	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser (used to offer cancel/refund)
+
 	if (currency == 0x0EEA)
 		created.color := 0x5DE;
 	elseif (currency == 0x0EF0)
@@ -422,8 +405,6 @@ function CashBankersOrder(me, event)
 	var amnt := 0;
 	var refund := 0;
 	var bankbox := 0;
-	var payee := GetObjProperty(event.item, "Payee");
-	var payeeserial := CInt(GetObjProperty(event.item, "PayeeSerial"));
 	if(event.source.serial == CInt(GetObjProperty(event.item, "PurchaserSerial")))
 		var accept := confirmationSizable(event.source, "Do you wish to cancel this Banker's Order and get a refund?");
 		if(!accept)
@@ -509,7 +490,6 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EF0;
 
@@ -528,14 +508,6 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	if(copperamt < (amt + 10))
 		PrintTextAbove(me, "I'm sorry. You don't have the funds available in your bank box.", 1, 39);
 		PrintTextAbove(me, "You need 60,000 copper coins to convert to silver.", 1, 39);
-		return 0;
-	endif
-
-	var payee := who.name;
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
 		return 0;
 	endif
 
@@ -560,13 +532,10 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 
 	amt := amt / 100;  // Convert copper to silver
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
-	SetObjProperty(created, "Currency", currency2);		// The ObjType of the coins being used
-	SetObjProperty(created, "Amount", amt);						// The amount of coins
-	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	SetObjProperty(created, "Currency", currency2);			// The ObjType of the coins being used
+	SetObjProperty(created, "Amount", amt);					// The amount of coins
+	SetObjProperty(created, "IssuingBank", bankcity);		// The city name in which the bank is located
+	SetObjProperty(created, "PurchaserSerial", who.serial);	// The serial number of the purchaser
 	created.color := 1154;
 
 endfunction
@@ -576,7 +545,6 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EED;
 
@@ -595,14 +563,6 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	if(silveramt < (amt + 10))
 		PrintTextAbove(me, "I'm sorry. You don't have the funds available in your bank box.", 1, 39);
 		PrintTextAbove(me, "You need 60,000 silver coins to convert to gold.", 1, 39);
-		return 0;
-	endif
-
-	var payee := who.name;
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
 		return 0;
 	endif
 
@@ -627,13 +587,10 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 
 	amt := amt / 100;  // Convert silver to gold
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
-	SetObjProperty(created, "Currency", currency2);		// The ObjType of the coins being used
-	SetObjProperty(created, "Amount", amt);						// The amount of coins
-	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	SetObjProperty(created, "Currency", currency2);			// The ObjType of the coins being used
+	SetObjProperty(created, "Amount", amt);					// The amount of coins
+	SetObjProperty(created, "IssuingBank", bankcity);		// The city name in which the bank is located
+	SetObjProperty(created, "PurchaserSerial", who.serial);	// The serial number of the purchaser
 	created.color := 0x501;
 
 endfunction
