@@ -13,16 +13,15 @@ program bankersorder(who, bankersorder)
 	var city := GetObjProperty(bankersorder, "IssuingBank");
 	var coinamount := CInt(GetObjProperty(bankersorder, "Amount"));
 	var currencytype := CInt(GetObjProperty(bankersorder, "Currency"));
-	var payee := GetObjProperty(bankersorder, "Payee");
-	
+
 	var strnum := AddCommas(coinamount);
-	
-	gump_bankersorder(who, strnum, city, currencytype, payee);
+
+	gump_bankersorder(who, strnum, city, currencytype);
 
 endprogram
 
 
-function gump_bankersorder(who, stramt, bankcity, cointype, payee)
+function gump_bankersorder(who, stramt, bankcity, cointype)
 
 	var coins := "";
 	case(cointype)
@@ -58,16 +57,22 @@ function gump_bankersorder(who, stramt, bankcity, cointype, payee)
 	GFTextLine(bankersorder, 294, 132, 801, "Banker's Order");
 	
 	//Label 7
-	GFTextLine(bankersorder, 250, 156, 804, "Drawn on the Bank of " + bankcity);
+	var bankLine;
+	if (bankcity == "notincity" || !bankcity)
+		bankLine := "Drawn on the Wandering Bank of Zulu";
+	else
+		bankLine := "Drawn on the Bank of " + bankcity;
+	endif
+	GFTextLine(bankersorder, 250, 156, 804, bankLine);
 	
 	//Label 8
-	GFTextLine(bankersorder, 254, 344, 803, "Payee:");
+	GFTextLine(bankersorder, 254, 344, 803, "Bearer:");
 	
 	//Label 9
-	GFTextLine(bankersorder, 258, 370, 907, payee);
+	GFTextLine(bankersorder, 258, 370, 907, "Payable to any bearer");
 	
 	//HTML 2
-	GFHTMLArea(bankersorder, 248, 203, 210, 128, "<BASEFONT size=7>The person named below is to be paid in the amount of " + stramt + " " + coins + " Coins when this Note is presented to a legal bank representative.</BASEFONT>");
+	GFHTMLArea(bankersorder, 248, 203, 210, 128, "<BASEFONT size=7>The bearer of this Note shall be paid the sum of " + stramt + " " + coins + " Coins upon presentation to a legal bank representative.</BASEFONT>");
 
 	GFSendGump(who, bankersorder);
 /*	var bankersorder := GFCreateGump();
