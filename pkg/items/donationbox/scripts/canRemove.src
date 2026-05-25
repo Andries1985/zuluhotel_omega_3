@@ -1,0 +1,18 @@
+/*
+        Donation box: CanRemove hook.
+
+        Block players from looting the box. GMs and core moves are allowed.
+        Adjust as needed if you want owners or representatives to retrieve.
+*/
+use uo;
+
+program canRemove( mobile, unused container, unused item, move_type )
+	if (move_type == MOVETYPE_COREMOVE)
+		return 1;
+	endif
+	if (mobile.cmdlevel >= 2)
+		return 1;
+	endif
+	SendSysMessage(mobile, "You cannot remove items from a donation box.", color := 33);
+	return 0;
+endprogram

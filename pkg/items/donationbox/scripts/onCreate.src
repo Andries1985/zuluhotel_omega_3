@@ -1,0 +1,18 @@
+/*
+        Donation box: CreateScript.
+
+        Registers the box's serial in a global registry the sweeper iterates.
+*/
+use uo;
+use os;
+
+include ":donationbox:include/donationbox";
+
+program OnCreateDonationBox( item )
+	if (!item)
+		return 1;
+	endif
+	DonationBoxRegister(item.serial);
+	DonationDebug("onCreate registered box 0x" + Hex(item.serial) + " objtype=0x" + Hex(item.objtype));
+	return 1;
+endprogram

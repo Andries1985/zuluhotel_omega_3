@@ -1,0 +1,19 @@
+/*
+        Donation box: OnRemove hook.
+
+        Clears the donation flag so an item that leaves the box is no longer
+        treated as a donation (won't be swept the next time it ends up in one).
+*/
+use uo;
+use os;
+
+include ":donationbox:include/donationbox";
+
+program onRemove( mobile, container, item, unused item_amount, unused movetype )
+	DonationDebug("onRemove mobile=0x" + Hex(mobile ? mobile.serial : 0) + " container=0x" + Hex(container ? container.serial : 0) + " item=0x" + Hex(item ? item.serial : 0));
+	if (item)
+		EraseObjProperty(item, DONATED_AT_PROP);
+		EraseObjProperty(item, DONATED_BY_PROP);
+	endif
+	return 1;
+endprogram

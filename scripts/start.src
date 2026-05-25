@@ -39,3 +39,6 @@ SetGlobalProperty( "#NoNpcLooting" , 1 );
 start_script("EquipTemplateValidation");
 
 start_script("CustomHpFix");
+
+start_script(":donationbox:scripts/sweeper");
+Print( "Donation box sweeper started." );
