@@ -1,4 +1,7 @@
 include "include/myutil";
+include "include/constants/locations";
+include "include/client";
+include "include/attributes";
 
 function possess( me, npc )
 
@@ -50,7 +53,7 @@ function MoveMyPack(me)
 		endif
 	endforeach
 
-	MoveItemToLocation(mypack,5123, 1779, 0, MOVEITEM_FORCELOCATION);
+	MoveObjectToLocation(mypack, DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, DEFAULT_LOCATION_ITEM_CREATION_R, MOVEOBJECT_FORCELOCATION);
 
 	return mypack;
 
@@ -85,7 +88,7 @@ function clone(npc, me)
 
 	var i;
 	for (i := 0; i <= SKILLID__HIGHEST; i := i + 1)
-		SetRawSkill( me, i, GetRawSkill(npc,i) );
+		SetAttributeBaseValue( me, GetAttributeIdBySkillId(i), GetAttributeBaseValue(npc, GetAttributeIdBySkillId(i)) );
 	endfor
 
 	MoveObjectToLocation( me, npc.x, npc.y, npc.z, npc.realm, MOVEOBJECT_FORCELOCATION );	
@@ -141,7 +144,7 @@ function unpossess( me )
 
 	var i;
 	for (i := 0; i <= SKILLID__HIGHEST; i := i + 1)
-		SetRawSkill( me, i, 1000000 );
+		SetAttributeBaseValue( me, GetAttributeIdBySkillId(i), 1000000 );
 	endfor
 
 	me.setstr( 100 );
@@ -185,7 +188,7 @@ function SwapClothes(me, npc)
 	var mypack := me.backpack;
 
 	if (hispack)
-		MoveItemToLocation(hispack, DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, MOVEITEM_FORCELOCATION);
+		MoveObjectToLocation(hispack, DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, DEFAULT_LOCATION_ITEM_CREATION_R, MOVEOBJECT_FORCELOCATION);
 	else
 		hispack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
 	endif
@@ -236,13 +239,11 @@ function unpossesscorpse( me, corpse )
 	eraseobjproperty(me,"oldsuffix");
 
 	MoveObjectToLocation( npc, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-	setobjproperty(npc, "guardkill", 1);
-	RevokePrivilege( npc, "invul" );
-	Damage( npc, npc.hp );
+	npc.kill();
 
 	var i;
 	for (i := 0; i <= SKILLID__HIGHEST; i := i + 1)
-		SetRawSkill( me, i, 1000000 );
+		SetAttributeBaseValue( me, GetAttributeIdBySkillId(i), 1000000 );
 	endfor
 
 	me.setstr( 100 );

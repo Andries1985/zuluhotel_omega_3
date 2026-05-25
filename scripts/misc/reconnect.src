@@ -2,6 +2,7 @@ use uo;
 use datafile;
 
 include "include/NameChecker";
+include ":accounts:accounts";
 
 // Toadstool ADD
 const BANNED_IPS := ":ipban:bannedips";
@@ -24,11 +25,38 @@ program reconnect( who )
 		EraseObjProperty(who, "#ViewingBeast");
 	endif
 
+	// Beastal Bond cleanup mirrors logoff.src: ensure no orphaned bond
+	// state leaves the bard permanently concealed/frozen after a
+	// disconnect/reconnect cycle.
+	if (GetObjProperty(who, "BeastalBond") || GetObjProperty(who, "BeastalBondTimer") || GetObjProperty(who, "#StopPlaying"))
+		who.frozen := 0;
+		who.concealed := 0;
+		EraseObjProperty(who, "BeastalBond");
+		EraseObjProperty(who, "BeastalBondTimer");
+		EraseObjProperty(who, "#StopPlaying");
+		EraseObjProperty(who, "#ViewingBeast");
+	endif
+
 	if (getobjproperty(who,"starttime"))
 		Eraseobjproperty(who,"starttime");
 	endif
 
+	// #20: destroy the shrink mobile placed by DisplayLogoff() so the
+	// pink marker doesn't linger in the world after a reconnect. Mirrors
+	// RemoveLogoff() in logon.src.
+	var shrink_serial := GetObjProperty( who, "ShrinkLogoff" );
+	if (shrink_serial && !shrink_serial.errortext)
+		var shrink_mobile := SystemFindObjectBySerial( shrink_serial );
+		if (shrink_mobile)
+			DestroyItem( shrink_mobile );
+		endif
+		EraseObjProperty( who, "ShrinkLogoff" );
+	endif
+
 	SendSysMessage( who, "Reconnected." );
+
+	// Successful reconnect satisfies any pending policy login reservation.
+	ACCT_ClearPendingLoginReservation( who );
 
 endprogram
 

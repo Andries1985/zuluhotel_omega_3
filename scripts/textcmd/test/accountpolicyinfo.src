@@ -1,0 +1,40 @@
+// Synopsis: Show account policy fields for a targeted account
+use uo;
+
+include ":accounts:accounts";
+
+program textcmd_accountpolicyinfo( who )
+
+	SendSysMessage( who, "Target a player to inspect account policy data." );
+	var targ := Target( who );
+	if( !targ || !targ.acctname )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		SendSysMessage( who, "Unable to resolve account Discord info." );
+		return 0;
+	endif
+
+	SendSysMessage( who, "Account: " + info["AccountName"], 3, 53 );
+	SendSysMessage( who, "DiscordIDRaw: " + CStr( info["DiscordIDRaw"] ));
+	SendSysMessage( who, "DiscordIDNorm: " + CStr( info["DiscordIDNorm"] ));
+	SendSysMessage( who, "HouseholdId: " + CStr( info["HouseholdId"] ));
+
+	if( info["HouseholdId"] )
+		var household := ACCT_GetHouseholdById( info["HouseholdId"], 0 );
+		if( !household.errortext )
+			SendSysMessage( who, "Effective HouseholdCap: " + CStr( CInt( household.GetProp( "HouseholdCap" ))));
+		endif
+	endif
+
+	return 1;
+endprogram
