@@ -40,7 +40,6 @@ program Person()
 	SetObjProperty(me, "noloot", 1);
 
 	EnableEvents(SYSEVENT_SPEECH + SYSEVENT_ENGAGED + SYSEVENT_DISENGAGED + SYSEVENT_DAMAGED, HALT_THRESHOLD);
-	EnableEvents(SYSEVENT_ENTEREDAREA + SYSEVENT_LEFTAREA, HALT_THRESHOLD);
 	EnableEvents(SYSEVENT_OPPONENT_MOVED);
 
 	if (getobjproperty(me, "frozen"))
@@ -53,7 +52,6 @@ program Person()
 	var ev;
 	var next_wander := ReadGameClock() + RandomDice(2, 50, 120);
 	while (1)
-		WanderWithinTown();
 		ev := os::wait_for_event(120);
 		case (ev.type)
 			SYSEVENT_SPEECH:
@@ -113,8 +111,8 @@ function DressMe(me)
 	var style := Random(20);
 	case (style)
 		0: style := "mage";
-		1: style := "warrior";
-		2: style := "rich";
+		1: style := "poor";   // was "warrior" -- no such template in equip.cfg, NPC ended up naked
+		2: style := "Clothes"; // was "rich"    -- no such template in equip.cfg, NPC ended up naked
 		3: style := "poor";
 		4: style := "poor";
 		5: style := "zulu2";
