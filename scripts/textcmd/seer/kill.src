@@ -7,6 +7,32 @@ include ":staff:include/staff";
 include "include/attributes";
 include "include/managers";
 
+function IsPlayerVendor(byref mob)
+	if(!mob or !mob.npctemplate)
+		return 0;
+	endif
+
+	return (mob.npctemplate == "playervendor" or mob.npctemplate == "playervendorelf" or mob.npctemplate == "playervendorgargoyle");
+endfunction
+
+function TryForceClosePlayerVendor(byref who, byref mob)
+	if(!IsPlayerVendor(mob) or !mob.process)
+		return 0;
+	endif
+
+	var ev := struct;
+	ev.type := "pm_force_fire";
+	ev.source := who;
+	ev.reason := "killcmd";
+	ev.force_escrow := 0;
+
+	var sent := mob.process.SendEvent(ev);
+	if(sent)
+		SendSysMessage(who, "Player vendor closure event sent for " + mob.name + ".");
+	endif
+	return sent;
+endfunction
+
 program textcmd_kill( who )
 
 	var tgt := TargetCoordinates( who );
@@ -28,6 +54,9 @@ program textcmd_kill( who )
 			LogCommand(who, GetProcess(GetPid()).name, mob.name+"/"+mob.serial);
 			RevokePrivilege( mob, "invul" );
 			setobjproperty( mob, "guardkill", 1);	
+			if(TryForceClosePlayerVendor(who, mob))
+				return;
+			endif
 			WarnManagerOfNpcDeath(mob);
 			ApplyRawDamage( mob, GetMaxHP(mob)+3 );
 		else

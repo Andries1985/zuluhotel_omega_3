@@ -8,6 +8,32 @@ include "include/attributes";
 include ":staff:include/staff";
 include "include/managers";
 
+function IsPlayerVendor(byref mob)
+	if(!mob or !mob.npctemplate)
+		return 0;
+	endif
+
+	return (mob.npctemplate == "playervendor" or mob.npctemplate == "playervendorelf" or mob.npctemplate == "playervendorgargoyle");
+endfunction
+
+function TryForceClosePlayerVendor(byref who, byref mob)
+	if(!IsPlayerVendor(mob) or !mob.process)
+		return 0;
+	endif
+
+	var ev := struct;
+	ev.type := "pm_force_fire";
+	ev.source := who;
+	ev.reason := "akillcmd";
+	ev.force_escrow := 0;
+
+	var sent := mob.process.SendEvent(ev);
+	if(sent)
+		SendSysMessage(who, "Player vendor closure event sent for " + mob.name + " (" + mob.serial + ").");
+	endif
+	return sent;
+endfunction
+
 program akill( who, dist )
 	
 	dist := CInt(dist);
@@ -27,6 +53,9 @@ program akill( who, dist )
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
+			if(TryForceClosePlayerVendor(who, mob))
+				continue;
+			endif
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
 		endif
@@ -46,6 +75,9 @@ program akill( who, dist )
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
+			if(TryForceClosePlayerVendor(who, mob))
+				continue;
+			endif
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
 		endif
@@ -65,6 +97,9 @@ program akill( who, dist )
 		if (mob != who)
 			RevokePrivilege( mob, "invul" );
 			SetObjProperty( mob, "guardkill", 1);	
+			if(TryForceClosePlayerVendor(who, mob))
+				continue;
+			endif
 			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
 		endif

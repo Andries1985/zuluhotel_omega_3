@@ -6,6 +6,7 @@ use uo;
 use os;
 use basic;
 use util;
+use cfgfile;
 
 include "include/randname_util";
 include "include/random";
@@ -29,6 +30,10 @@ function RandomName( me )
 	    OBJ_ORC_CLUB:	newname := AssignName( me , ORC_IDX );
 	    OBJ_ORC_CAPT:	newname := AssignName( me , ORC_IDX );
 	    OBJ_OGRE:		newname := AssignName( me , OGRE_IDX );
+	    0x25d:
+	    0x29a:		newname := AssignName( me , MALE_IDX );
+	    0x25e:
+	    0x29b:		newname := AssignName( me , FEMALE_IDX );
 	    OBJ_RATMAN:		newname := AssignName( me , RATMAN_IDX );
 	    OBJ_RATMAN_SWORD:	newname := AssignName( me , RATMAN_IDX );
 	    OBJ_RATMAN_AXE:	newname := AssignName( me , RATMAN_IDX );
@@ -47,7 +52,7 @@ endfunction
 
 function AssignName( me , index )
 
-    var cfg := ReadConfigFile( "names" );
+    var cfg := ReadConfigFile( "::names" );
     var elem := FindConfigElem( cfg , index );
     var number := GetConfigInt( elem , "Count" ); 
 

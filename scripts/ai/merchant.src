@@ -62,6 +62,11 @@ const RESTOCK_GOLD_MINUTES := 7200;        // In how many minutes will the NPC r
 const MAX_SKILLS      := 48;              // There are currently 48 Skills.
 Const REACT_THRESHOLD := 2;
 const IDENTIFY := 50;
+const CID_ELF_MALE := 0x025d;
+const CID_ELF_FEMALE := 0x025e;
+const CID_GARGOYLE_MALE := 0x029a;
+const CID_GARGOYLE_FEMALE := 0x029b;
+const BARBER_DEBUG := 1;
 
 Set_Priority( 50 );
 
@@ -189,7 +194,8 @@ program merchantai()
 				else
 					if(Find(txt, "buy", 1))
 						TurnToward(ev.source);
-						var res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
+						var res;
+						res := SendBuyWindow( ev.source, shop_sell, me, shop_buy, VENDOR_SEND_AOS_TOOLTIP );
 						res := res;
 					elseif (Find(txt, "sell all", 1))
 						//SellAll(ev.source);
@@ -255,9 +261,7 @@ program merchantai()
 						DestroyItem(thing);
 					//endif
 				endforeach
-				if (GetObjProperty(me, "MerchantType") == "Barber")
-					EquipAnyHair(ev.source);
-				endif
+				
 				PlaySoundEffect(me, 0x38);
 
 				//Print("Merchant AI: Finished SYSEVENT_MERCHANT_BOUGHT for NPC serial: "+me.serial);
@@ -276,6 +280,8 @@ program merchantai()
 					mygold := mygold + ev.amount;
 					SetObjProperty(shop_resale, "MyGold", mygold);
 				endif
+
+				//EquipAnyHair(ev.source);
 				PlaySoundEffect(me, 0x38);
 
 				//Print("Merchant AI: Finished SYSEVENT_MERCHANT_SOLD for NPC serial: "+me.serial);
@@ -579,39 +585,39 @@ endfunction
 // 	return 1;
 // endfunction
 
-function EquipAnyHair(who)
-
-	foreach item in EnumerateItemsInContainer(who.backpack)
-		// Destroy current hair, equip new
-		if (item.tile_layer == 0x0b)
-
-			DestroyItem(GetEquipmentByLayer(who, 0x0b));
-
-			item.color := GetObjProperty(who, "HairColour");
-			EquipItem(who, item);
-
-		// Destroy current facial hair, equip new
-		elseif (item.tile_layer == 0x10)
-			DestroyItem(GetEquipmentByLayer(who, 0x10));
-			// only males can have beards
-			if (who.gender == 0)
-				EquipItem(who, item);
-				item.color := GetObjProperty(who, "BeardColour");
-			endif
-		endif
-
-		// For no hair/no beard. They don't have layers
-		if (item.objtype == 0x2004)
-			DestroyItem(GetEquipmentByLayer(who, 0x0b));
-			DestroyItem(item);
-		elseif (item.objtype == 0x2005)
-			DestroyItem(GetEquipmentByLayer(who, 0x10));
-			DestroyItem(item);
-		endif
-
-	endforeach
-
-endfunction
+// function EquipAnyHair(who)
+// 
+// 	foreach item in EnumerateItemsInContainer(who.backpack)
+// 		// Destroy current hair, equip new
+// 		if (item.tile_layer == 0x0b)
+// 
+// 			DestroyItem(GetEquipmentByLayer(who, 0x0b));
+// 
+// 			item.color := GetObjProperty(who, "HairColour");
+// 			EquipItem(who, item);
+// 
+// 		// Destroy current facial hair, equip new
+// 		elseif (item.tile_layer == 0x10)
+// 			DestroyItem(GetEquipmentByLayer(who, 0x10));
+// 			// only males can have beards
+// 			if (who.gender == 0)
+// 				EquipItem(who, item);
+// 				item.color := GetObjProperty(who, "BeardColour");
+// 			endif
+// 		endif
+// 
+// 		// For no hair/no beard. They don't have layers
+// 		if (item.objtype == 0x2004)
+// 			DestroyItem(GetEquipmentByLayer(who, 0x0b));
+// 			DestroyItem(item);
+// 		elseif (item.objtype == 0x2005)
+// 			DestroyItem(GetEquipmentByLayer(who, 0x10));
+// 			DestroyItem(item);
+// 		endif
+// 
+// 	endforeach
+// 
+// endfunction
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
