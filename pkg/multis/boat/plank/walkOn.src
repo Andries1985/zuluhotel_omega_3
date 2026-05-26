@@ -4,20 +4,31 @@ use math;
 
 include "include/facings";
 
-program PlankWalkOn( mobile, unused plank, unused last_x, unused last_y, unused last_z )
+program PlankWalkOn( mobile, plank, unused last_x, unused last_y, unused last_z )
 
-	var i := 0,
-		z := 0,
-		coords := GetCoordsInFrontOf( mobile, 3 );
+	// When stepping onto an extended plank, try to disembark the mobile to
+	// the nearest reachable tile in front of them. Iterate from close to far
+	// so we land on the first walkable tile off the boat. We deliberately
+	// avoid a strict LOS check from plank-height to land/water below it,
+	// since dragon-boat decorations (figurehead, etc.) can block LOS even
+	// when the tile is otherwise reachable.
+	var coords := GetCoordsInFrontOf( mobile, 5 );
+	var i, sh, target_z;
+	var orig_multi := plank ? plank.multi : 0;
 
-	for( i:=1; i<=coords.Size(); i+=1 )
-		z := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm ).z;
-		if( !CheckLosBetween( mobile.x, mobile.y, mobile.z, coords[i].x, coords[i].y, z, mobile.realm ) )
+	for( i := 1; i <= coords.Size(); i += 1 )
+		sh := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm );
+		if( sh.errortext )
 			continue;
 		endif
+		target_z := sh.z;
 
-		if( MoveObjectToLocation( mobile, coords[i].x, coords[i].y, z, mobile.realm, MOVEOBJECT_FORCELOCATION ) )
-			break;
+		if( MoveObjectToLocation( mobile, coords[i].x, coords[i].y, target_z, mobile.realm, MOVEOBJECT_FORCELOCATION ) )
+			// If we ended up still inside the same boat, keep trying further out.
+			if( orig_multi && mobile.multi == orig_multi )
+				continue;
+			endif
+			return 1;
 		endif
 	endfor
 
