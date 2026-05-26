@@ -77,7 +77,7 @@ program use_hammer( character, hammer )
 	if( smith_cfg[use_on.graphic] && use_on.hp && use_on.quality)
 		var near := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
  		foreach thing in near
-	  		if ((thing.objtype == UOBJ_ANVIL1) or (thing.objtype == UOBJ_ANVIL2))
+	  		if ((thing.objtype == UOBJ_ANVIL1) or (thing.objtype == UOBJ_ANVIL2) or (thing.objtype == UOBJ_ELVEN_ANVIL1) or (thing.objtype == UOBJ_ELVEN_ANVIL2) or ((thing.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (thing.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
 	   			repair_item( character, use_on, SKILLID_BLACKSMITHY );
 	   			return;
 	  		endif
@@ -122,7 +122,7 @@ program use_hammer( character, hammer )
 	
 	var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
  	foreach item in Near_Items
-	  	if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2))
+	  	if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2) or (item.objtype == UOBJ_ELVEN_ANVIL1) or (item.objtype == UOBJ_ELVEN_ANVIL2) or ((item.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (item.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
 	   		MakeBoneItems( character , use_on , bone );
 	   		return;
 	  	endif
@@ -142,7 +142,7 @@ program use_hammer( character, hammer )
  	if (IsIngot(use_on))
 		var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
 		foreach item in Near_Items
-			if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2))
+			if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2) or (item.objtype == UOBJ_ELVEN_ANVIL1) or (item.objtype == UOBJ_ELVEN_ANVIL2) or ((item.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (item.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
 				MakeBlacksmithItems( character , use_on );
 				return;
 			endif
