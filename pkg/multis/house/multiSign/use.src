@@ -774,6 +774,16 @@ program Mulit_House_sign(who, sign)
 		SetObjProperty(sign, "lastownername", who.name);
 	else
 		data[6] := GetObjProperty(sign, "lastownername");
+		if(!data[6] || data[6].errortext)
+			// Fall back: resolve owner name from ownerserial if we never recorded it.
+			var owner_obj := SystemFindObjectBySerial(CInt(oserial));
+			if(owner_obj)
+				data[6] := owner_obj.name;
+				SetObjProperty(sign, "lastownername", owner_obj.name);
+			else
+				data[6] := "Unknown";
+			endif
+		endif
 	endif
 	data[8]  := GetObjProperty(sign, "RemainingLockdowns");
 	data[10] := GetObjProperty(sign, "RemainingSecures");

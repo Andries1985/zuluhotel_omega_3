@@ -55,7 +55,7 @@ program smeltarmor(character)
 			return;
 		endif
 
-		if ((use_forge.objtype == UOBJ_SMALL_FORGE) or ((use_forge.objtype >= UOBJ_FORGE_START) and (use_forge.objtype <= UOBJ_FORGE_END)))
+		if ((use_forge.objtype == UOBJ_SMALL_FORGE) or ((use_forge.objtype >= UOBJ_FORGE_START) and (use_forge.objtype <= UOBJ_FORGE_END)) or (use_forge.objtype == UOBJ_ELVEN_FORGE) or ((use_forge.objtype >= UOBJ_MINISOULFORGE_START) and (use_forge.objtype <= UOBJ_MINISOULFORGE_END)) or ((use_forge.objtype >= UOBJ_LARGESOULFORGE_START) and (use_forge.objtype <= UOBJ_LARGESOULFORGE_END)))
 	   		SmeltToIngots( character , use_on );
 		else
 	   		SendSysmessage( character, "You must use that on a forge" );
