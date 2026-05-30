@@ -1,0 +1,10 @@
+/*
+        Donation box: CanRemove hook.
+
+        Free-for-all: anyone may take items out of the donation box.
+*/
+use uo;
+
+program canRemove( unused mobile, unused container, unused item, unused move_type )
+	return 1;
+endprogram

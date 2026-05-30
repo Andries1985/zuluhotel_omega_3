@@ -1,0 +1,54 @@
+// Synopsis: Set household cap for a targeted household member account
+use uo;
+
+include ":accounts:accounts";
+
+program textcmd_householdcap( who, cap_text )
+
+	SendSysMessage( who, "Target a household member to set household cap." );
+	var targ := Target( who );
+	if( !targ || !targ.acctname )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		SendSysMessage( who, "Unable to resolve account Discord info." );
+		return 0;
+	endif
+
+	var household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
+	if( !household_id )
+		SendSysMessage( who, "Target is not assigned to a household. Use .householdadd first." );
+		return 0;
+	endif
+
+	if( !cap_text )
+		cap_text := SendTextEntryGump( who, "Enter household cap (minimum 1).", 4 );
+	endif
+
+	var cap := CInt( cap_text );
+	if( cap < 1 )
+		SendSysMessage( who, "Invalid cap value. Must be >= 1." );
+		return 0;
+	endif
+
+	var household := ACCT_GetHouseholdById( household_id, 1 );
+	if( household.errortext )
+		SendSysMessage( who, "Unable to open household record: " + household.errortext );
+		return 0;
+	endif
+
+	household.SetProp( "HouseholdCap", cap );
+	household.SetProp( "UpdatedBy", who.name );
+
+	SendSysMessage( who, "Household " + household_id + " cap set to " + CStr( cap ) + ".", 3, 53 );
+	return 1;
+endprogram

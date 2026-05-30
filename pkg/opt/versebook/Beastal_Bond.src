@@ -5,6 +5,7 @@ include "include/attributes";
 include "include/classes";
 include ":versebook:include/versefunctions";
 include ":versebook:include/verseconstants";
+include "include/constants/locations";
 
 var stamina, diff, skills, element, instrument, musicianship, name, time;
 
@@ -230,7 +231,7 @@ function BondToAnimal(who, animal, range)
 	override.+script := ":versebook:ai_beastal_bond";
 	//Old Britannia Map
 	//var wisp := CreateNpcFromTemplate("wisp", 5276, 1186, 0, override, "britannia");
-	var wisp	:= CreateNpcFromTemplate( "wisp", 6338, 1581, 0, override, "britannia_alt" );
+	var wisp	:= CreateNpcFromTemplate( "wisp", DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, override, DEFAULT_LOCATION_NPC_RELOCATION_R );
 	SetObjProperty(wisp, "Animal", animal.serial);
 	SetObjProperty(wisp, "Master", who.serial);
 	return 1;
@@ -244,8 +245,8 @@ function BringBackToPosition(who)
 
 	EraseObjProperty(who, "#ViewingBeast");
 
-	// only move if not already there
-	if (who.x != origx && who.y != origy && who.realm != origrealm)
+	// only move if not already there (any axis differs)
+	if (who.x != origx || who.y != origy || who.realm != origrealm)
 		MoveObjectToLocation(who, origx, origy, origz, origrealm, MOVEOBJECT_FORCELOCATION);
 	endif
 

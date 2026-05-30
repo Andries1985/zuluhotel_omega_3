@@ -1,0 +1,176 @@
+// Synopsis: Manage household assignments through a selection gump
+use uo;
+
+include ":accounts:accounts";
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+
+const BTN_CREATE_NEW := 10;
+const BTN_CLEAR_HOUSEHOLD := 20;
+const BTN_ASSIGN_BASE := 1000;
+
+program textcmd_householdmanager( who )
+
+	ACCT_DebugPrint( "householdmanager invoked by " + who.name );
+	SendSysMessage( who, "Target a player to manage household assignment." );
+	var targ := Target( who );
+	if( !targ || !targ.acctname )
+		ACCT_DebugPrint( "householdmanager cancelled before target selection." );
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		SendSysMessage( who, "Unable to resolve account policy info." );
+		return 0;
+	endif
+
+	var store := ACCT_GetHouseholdStore( 1 );
+	if( store.errortext )
+		SendSysMessage( who, "Unable to open household store." );
+		return 0;
+	endif
+
+	var keys := store.Keys();
+	var result := HouseholdManagerGump( who, targ, info, store, keys );
+	if( !result || !result[0] )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var button := CInt( result[0] );
+	if( button == BTN_CLEAR_HOUSEHOLD )
+		ACCT_DebugPrint( "householdmanager clear household requested for account " + account.name );
+		var removed := ACCT_RemoveAccountFromHousehold( account, who.name );
+		if( removed.errortext )
+			SendSysMessage( who, removed.errortext );
+			return 0;
+		endif
+
+		SendSysMessage( who, "Removed " + targ.name + " from household " + removed["HouseholdId"] + ".", 3, 53 );
+		return 1;
+	elseif( button == BTN_CREATE_NEW )
+		var new_id := SendTextEntryGump( who, "Enter new HouseholdId:", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 30 );
+		new_id := ACCT_TrimDiscordID( new_id );
+		if( !new_id )
+			ACCT_DebugPrint( "householdmanager create-new cancelled by " + who.name );
+			SendSysMessage( who, "Cancelled." );
+			return 0;
+		endif
+
+		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], new_id, "householdmanager", targ.acctname ))
+			return 0;
+		endif
+
+		var assign_new := ACCT_AssignAccountToHousehold( account, new_id, who.name );
+		if( assign_new.errortext )
+			SendSysMessage( who, "Unable to assign new household: " + assign_new.errortext );
+			return 0;
+		endif
+
+		SendSysMessage( who, "Assigned " + targ.name + " to new household " + assign_new["HouseholdId"] + ".", 3, 53 );
+		return 1;
+	elseif( button >= BTN_ASSIGN_BASE )
+		var idx := button - BTN_ASSIGN_BASE + 1;
+		if( idx < 1 || idx > keys.size() )
+			ACCT_DebugPrint( "householdmanager invalid index " + CStr( idx ) + " by " + who.name );
+			SendSysMessage( who, "Invalid household selection." );
+			return 0;
+		endif
+
+		var selected_household := CStr( keys[idx] );
+		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], selected_household, "householdmanager", targ.acctname ))
+			return 0;
+		endif
+
+		var assign_existing := ACCT_AssignAccountToHousehold( account, selected_household, who.name );
+		if( assign_existing.errortext )
+			SendSysMessage( who, "Unable to assign household: " + assign_existing.errortext );
+			return 0;
+		endif
+
+		SendSysMessage( who, "Assigned " + targ.name + " to household " + assign_existing["HouseholdId"] + ".", 3, 53 );
+		return 1;
+	endif
+
+	SendSysMessage( who, "Cancelled." );
+	return 0;
+endprogram
+function HouseholdManagerGump( who, targ, info, store, keys )
+
+	var gump := GFCreateGump( 20, 20, 740, 640 );
+	GFDisposable( gump, 0 );
+	GFResizePic( gump, 20, 20, 9250, 740, 640 );
+	GFResizePic( gump, 34, 56, 9200, 712, 34 );
+	GFResizePic( gump, 34, 92, 9200, 712, 492 );
+
+	GFResizePic( gump, 270, 35, 9200, 220, 20 );
+	GFTextLine( gump, 300, 35, 67, "Household Manager" );
+
+	GFTextLine( gump, 50, 68, 900, "Target" );
+	GFTextLine( gump, 180, 68, 0, targ.name + " (" + targ.acctname + ")" );
+	GFTextLine( gump, 50, 88, 900, "DiscordIDNorm" );
+	GFTextLine( gump, 180, 88, 0, CStr( info["DiscordIDNorm"] ));
+	GFTextLine( gump, 430, 88, 900, "Current Household" );
+	GFTextLine( gump, 575, 88, 0, CStr( info["HouseholdId"] ));
+
+	GFTextLine( gump, 50, 112, 900, "HouseholdId" );
+	GFTextLine( gump, 300, 112, 900, "Members" );
+	GFTextLine( gump, 400, 112, 900, "Cap" );
+	GFTextLine( gump, 520, 112, 900, "Assign" );
+
+	var y := 136;
+	var page := 1;
+	var perpage := 20;
+	var i;
+
+	GFTextLine( gump, 360, 610, 1000, "Page 1" );
+	GFPage( gump, 1 );
+
+	for( i := 1; i <= keys.size(); i := i + 1 )
+		if( perpage <= 0 )
+			GFAddButton( gump, 560, 606, 4005, 4006, 0, page + 1 );
+			GFPage( gump, page + 1 );
+			GFAddButton( gump, 80, 606, 4014, 4015, 0, page );
+			page := page + 1;
+			GFTextLine( gump, 360, 610, 1000, "Page " + page );
+			y := 136;
+			perpage := 20;
+		endif
+
+		var key := CStr( keys[i] );
+		var household := DFFindElement( store, key, DF_NO_CREATE );
+		var cap := 0;
+		var member_count := 0;
+		if( !household.errortext )
+			cap := CInt( household.GetProp( "HouseholdCap" ));
+			var members := household.GetProp( "Members" );
+			if( TypeOf( members ) == "Array" )
+				member_count := members.size();
+			endif
+		endif
+
+		GFTextLine( gump, 50, y, 0, key );
+		GFTextLine( gump, 300, y, 0, CStr( member_count ));
+		GFTextLine( gump, 400, y, 0, CStr( cap ));
+		GFAddButton( gump, 535, y - 3, 5540, 5541, GF_CLOSE_BTN, BTN_ASSIGN_BASE + ( i - 1 ) );
+
+		y := y + 22;
+		perpage := perpage - 1;
+	endfor
+
+	GFResizePic( gump, 34, 588, 9200, 712, 34 );
+	GFTextLine( gump, 54, 596, 900, "Create New Household" );
+	GFAddButton( gump, 210, 592, 4023, 4024, GF_CLOSE_BTN, BTN_CREATE_NEW );
+	GFTextLine( gump, 300, 596, 900, "Clear Target Household" );
+	GFAddButton( gump, 470, 592, 4020, 4021, GF_CLOSE_BTN, BTN_CLEAR_HOUSEHOLD );
+
+	return GFSendGump( who, gump );
+endfunction

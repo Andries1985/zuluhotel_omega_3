@@ -1,0 +1,66 @@
+// Synopsis: Show household info for a targeted household member account
+use uo;
+
+include ":accounts:accounts";
+
+program textcmd_householdinfo( who, household_id )
+
+	if( !household_id )
+		SendSysMessage( who, "Target a household member to inspect household info." );
+		var targ := Target( who );
+		if( !targ || !targ.acctname )
+			SendSysMessage( who, "Cancelled." );
+			return 0;
+		endif
+
+		var account := FindAccount( targ.acctname );
+		if( account.errortext )
+			SendSysMessage( who, "Unable to resolve account." );
+			return 0;
+		endif
+
+		var info := ACCT_GetAccountDiscordInfo( account );
+		if( info.errortext )
+			SendSysMessage( who, "Unable to resolve account Discord info." );
+			return 0;
+		endif
+
+		household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
+		if( !household_id )
+			SendSysMessage( who, "Target is not in a household." );
+			return 0;
+		endif
+	endif
+
+	var household := ACCT_GetHouseholdById( household_id, 0 );
+	if( household.errortext )
+		SendSysMessage( who, "Household record not found." );
+		return 0;
+	endif
+
+	var cap := CInt( household.GetProp( "HouseholdCap" ));
+	var members := household.GetProp( "Members" );
+	var known_ips := household.GetProp( "KnownIPs" );
+
+	if( TypeOf( members ) != "Array" )
+		members := array;
+	endif
+	if( TypeOf( known_ips ) != "Array" )
+		known_ips := array;
+	endif
+
+	SendSysMessage( who, "HouseholdId: " + household_id, 3, 53 );
+	SendSysMessage( who, "HouseholdCap: " + CStr( cap ) );
+	SendSysMessage( who, "Members: " + CStr( members.size() ) );
+	foreach m in members
+		SendSysMessage( who, " - " + m );
+		SleepMS(2);
+	endforeach
+	SendSysMessage( who, "Known IPs: " + CStr( known_ips.size() ) );
+	foreach k in known_ips
+		SendSysMessage( who, " - " + k );
+		SleepMS(2);
+	endforeach
+
+	return 1;
+endprogram

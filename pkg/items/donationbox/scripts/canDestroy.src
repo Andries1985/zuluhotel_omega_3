@@ -1,0 +1,16 @@
+/*
+        Donation box: DestroyScript.
+
+        Unregisters the box from the global registry when destroyed.
+*/
+use uo;
+use os;
+
+include ":donationbox:include/donationbox";
+
+program canDestroy( container )
+	if (container)
+		DonationBoxUnregister(container.serial);
+	endif
+	return 1;
+endprogram

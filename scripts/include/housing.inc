@@ -1,4 +1,5 @@
 use uo;
+use os;
 use cfgfile;
 
 include "include/findcity";
@@ -17,6 +18,18 @@ Const HOUSE_LOWER_ITEM			:= 6;
 Const HOUSE_DISPLAY_ITEM		:= 7;
 
 function GetHouseSign( who )
+
+	// Fast path: resolve the sign directly from the multi the player is standing on.
+	// This works for any custom house multi (small tower, etc.) regardless of sign objtype.
+	if ( who.multi )
+		var sserial := GetObjProperty( who.multi, "signserial" );
+		if ( sserial )
+			var msign := SystemFindObjectBySerial( sserial );
+			if ( msign )
+				return msign;
+			endif
+		endif
+	endif
 
 	foreach sign in ListObjectsInBox (who.x-32, who.y-32, -128, who.x+32, who.y+32, +127, who.realm)
 		if(sign.objtype in {0xBD2, 0xBD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})

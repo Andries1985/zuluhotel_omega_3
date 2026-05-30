@@ -48,7 +48,7 @@ function SmeltOre( character , ore , ingot , difficulty )
 	sendDiff( character , difficulty );
 	var near := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
 	foreach forge in near
-		if( ((forge.objtype >= UOBJ_FORGE_START) and (forge.objtype <= UOBJ_FORGE_END)) or (forge.objtype == UOBJ_SMALL_FORGE) )
+		if( ((forge.objtype >= UOBJ_FORGE_START) and (forge.objtype <= UOBJ_FORGE_END)) or (forge.objtype == UOBJ_SMALL_FORGE) or (forge.objtype == UOBJ_ELVEN_FORGE) or ((forge.objtype >= UOBJ_MINISOULFORGE_START) and (forge.objtype <= UOBJ_MINISOULFORGE_END)) or ((forge.objtype >= UOBJ_LARGESOULFORGE_START) and (forge.objtype <= UOBJ_LARGESOULFORGE_END)) )
 
 			if( CheckSkill( character , SKILLID_MINING , difficulty , 0 ) )
 

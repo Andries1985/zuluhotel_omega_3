@@ -15,9 +15,16 @@ include ":accounts:settings";
 const BANNED_IPS := ":ipban:bannedips";
 
 program logon( who )
-	//Print("I am using scripts misc logon.src");
+	Print("I am using scripts misc logon.src");
 
 	var stafflevel := who.cmdlevel;
+	if( !CheckForMaxClientsOnline( who ))
+		if( !ACCT_IsStaffCharacter( who ))
+			SysLog( "LoginAccount() Error: trying to login too many accounts." );
+			DisconnectClient( who );
+			return 0;
+		endif
+	endif
 
 	if(stafflevel > 0)
 		who.setlightlevel(0, 999999);
@@ -64,6 +71,12 @@ program logon( who )
 	if (stafflevel == 0)		
 		who.concealed := 0;
 	endif
+
+	// Clear stuck movement-blocking flags on logon. Players who logged out
+	// while frozen (e.g. mid-cast, mid-verse) or paralyzed (paralyze spell,
+	// stun) should not stay locked in place after logging back in.
+	who.frozen := 0;
+	who.paralyzed := 0;
 	
 	if(!GetObjProperty(who, "OrgName"))
 		SetObjProperty(who, "OrgName", who.name);
@@ -86,7 +99,19 @@ program logon( who )
 	else
 		Broadcast( who.name + " has come online and is here to help!");
 	endif
-	
+
+	// Resume personal powerhour if one was active when the player disconnected.
+	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
+		var pph_start := CInt(GetObjProperty(who, "pph_use_time"));
+		var remaining := (pph_start + 3600) - POLCore().systime;
+		if( remaining > 0 )
+			start_script(":powerhour:resumeph", {who, remaining});
+		else
+			EraseObjProperty(who, "#PPHH");
+			EraseObjProperty(who, "#PPHC");
+			EraseObjProperty(who, "#PPHS");
+		endif
+	endif
 
 endprogram
 

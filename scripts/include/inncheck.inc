@@ -25,7 +25,8 @@ function Inncheck(character)
 
 	foreach mobile in ListMobilesNearLocation( character.x, character.y, character.z, 5, character.realm )
     if( mobile.IsA(POLCLASS_NPC) )
-      if (GetObjProperty(mobile, "MerchantType") == "innkeep")
+      var mtype := Lower( CStr( GetObjProperty( mobile, "MerchantType" )));
+      if( mtype == "innkeep" || mtype == "innkeeper" )
         found := 1;
       endif
     endif

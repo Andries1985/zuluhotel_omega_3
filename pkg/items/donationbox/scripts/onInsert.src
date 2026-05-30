@@ -1,0 +1,44 @@
+/*
+        Donation box: OnInsert hook.
+
+        Tags the inserted item (and any stack it merged into) with a
+        "donatedat" gameclock timestamp and the donor's serial. The sweeper
+        script uses donatedat to expire items after DONATION_TTL_SECONDS.
+*/
+use uo;
+use os;
+
+include ":donationbox:include/donationbox";
+
+program onInsert( mobile, container, unused move_type, unused insert_type, adding_item, existing_stack, unused amount_to_add )
+	var now := ReadGameClock();
+	var donor_serial := 0;
+	if (mobile)
+		donor_serial := mobile.serial;
+	endif
+
+	// Lazy registration: ensures boxes created before this package existed
+	// (or that somehow missed onCreate) are still tracked by the sweeper.
+	if (container)
+		DonationBoxRegister(container.serial);
+	endif
+
+	if (existing_stack)
+		SetObjProperty(existing_stack, DONATED_AT_PROP, now);
+		SetObjProperty(existing_stack, DONATED_BY_PROP, donor_serial);
+	endif
+	if (adding_item)
+		SetObjProperty(adding_item, DONATED_AT_PROP, now);
+		SetObjProperty(adding_item, DONATED_BY_PROP, donor_serial);
+	endif
+
+	DonationDebug("onInsert mobile=0x" + Hex(donor_serial) + " container=0x" + Hex(container.serial) + " adding=0x" + Hex(adding_item ? adding_item.serial : 0) + " stack=0x" + Hex(existing_stack ? existing_stack.serial : 0) + " stamp=" + now);
+
+	if (mobile)
+		SendSysMessage(mobile, "Thank you for your donation!", color := 67);
+	endif
+	if (adding_item)
+		PlaySoundEffect(adding_item, 0x37);
+	endif
+	return 1;
+endprogram
