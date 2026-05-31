@@ -279,25 +279,25 @@ function DeniedMSG( who, reason)
 			newpacket.SetInt8(2, 0x00);
 			break;
 		2:	//Someone is already using this account.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x01);
 			break;
 		3:	//Your account has been blocked.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x02);
 			break;
-		4:	//Your account credentials are invalid.	
-			newpacket.SetInt8(2, 0x00);
+		4:	//Your account credentials are invalid.
+			newpacket.SetInt8(2, 0x03);
 			break;
 		5:	//Communication problem.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x04);
 			break;
 		6:	//The IGR concurrency limit has been met.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x05);
 			break;
 		7:	//The IGR time limit has been met.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x06);
 			break;
 		8:	//General IGR authentication failure.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(2, 0x07);
 			break;
 	endcase
 
