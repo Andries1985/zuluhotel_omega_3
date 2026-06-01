@@ -1,0 +1,51 @@
+// Synopsis: Toggle donation box item sweep on or off (test command)
+use uo;
+
+include ":donationbox:include/donationbox";
+
+program donationboxesweep(who, text)
+	var words := SplitWords(text);
+	var mode := "";
+	if (words.size() >= 1)
+		mode := Lower(words[1]);
+	endif
+
+	if (!mode or mode == "status")
+		TellState(who);
+		return;
+	endif
+
+	if (mode == "on" or mode == "enable" or mode == "enabled" or mode == "1")
+		SetDonationSweepEnabled(1);
+		SendSysMessage(who, "Donation box sweep is now ON.");
+		return;
+	endif
+
+	if (mode == "off" or mode == "disable" or mode == "disabled" or mode == "0")
+		SetDonationSweepEnabled(0);
+		SendSysMessage(who, "Donation box sweep is now OFF. Existing items will not be auto-deleted.");
+		return;
+	endif
+
+	if (mode == "toggle")
+		if (DonationSweepEnabled())
+			SetDonationSweepEnabled(0);
+			SendSysMessage(who, "Donation box sweep is now OFF. Existing items will not be auto-deleted.");
+		else
+			SetDonationSweepEnabled(1);
+			SendSysMessage(who, "Donation box sweep is now ON.");
+		endif
+		return;
+	endif
+
+	SendSysMessage(who, "Usage: .donationboxesweep [on|off|toggle|status]");
+endprogram
+
+function TellState(who)
+	if (DonationSweepEnabled())
+		SendSysMessage(who, "Donation box sweep is currently ON.");
+	else
+		SendSysMessage(who, "Donation box sweep is currently OFF.");
+	endif
+	return 1;
+endfunction

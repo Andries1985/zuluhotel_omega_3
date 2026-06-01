@@ -28,7 +28,11 @@ program donation_sweeper()
 	DonationDebug("sweeper online. period=" + DONATION_SWEEP_PERIOD + "s ttl=" + DONATION_TTL_SECONDS + "s");
 	while (1)
 		sleep(DONATION_SWEEP_PERIOD);
-		SweepAllBoxes();
+		if (DonationSweepEnabled())
+			SweepAllBoxes();
+		else
+			DonationDebug("tick skipped. sweeper disabled by global toggle.");
+		endif
 	endwhile
 endprogram
 
