@@ -1,5 +1,8 @@
-# Latest Changes
-Always check Discord announcements for all patchnotes.
+# Patch Notes — v1.0.3
+**Zuluhotel Omega 3 | Live Shard**  
+**Date: [TBD]**
+
+---
 
 ## What Changed
 
