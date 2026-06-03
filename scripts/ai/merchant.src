@@ -295,7 +295,7 @@ program merchantai()
 					PayForJobCompleted ( ev );
 				elseif (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN);
 					Say("Bah, I have no use for this. Be off with ye.");
-					MoveItemToContainer( ev.source.backpack , ev.item );
+						MoveItemToContainer( ev.item, ev.source.backpack );
 					//TrainSkill( me , ev.source , ev.item );
 				else
 					TakeItem( me, ev.source, ev.item, speech );
