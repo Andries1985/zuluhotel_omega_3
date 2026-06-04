@@ -29,7 +29,11 @@ program walk_on_bantile(who, tile)
 		return;
 	endif
 	if(who.serial in banlist)
-		MoveObjectToLocation( who, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
+		var banneddropspot := GetStandingHeight( hsign.x, hsign.y, -128, hsign.realm );
+		if(banneddropspot.errortext)
+			banneddropspot.z := hsign.z;
+		endif
+		MoveObjectToLocation( who, hsign.x, hsign.y, banneddropspot.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
 		SendSysMessageCL(who, 501340, color := 33); // You have been banned from this house.
 	endif
 endprogram

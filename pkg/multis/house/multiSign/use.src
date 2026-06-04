@@ -6,6 +6,7 @@ include ":keys:key";
 include ":mdgumps:confirmationSizable";
 include ":containers:storageAreas";
 include ":houseExtras:settings";
+include ":house:multihouse_settings";
 include "include/housing";
 include ":mdgumps:old-gumps";
 
@@ -44,7 +45,44 @@ function GetPlaqueLines(sign)
 	return array(line1, line2);
 endfunction
 
-function ShowHouseSignGump(who, sign, owner_name, house_type, lockdowns, secures, declare_text, can_manage)
+function GetHouseDecayDisplay(sign)
+	var decaytime := GetObjProperty(sign, "decay");
+	if(!decaytime || decaytime.errortext)
+		return "Unknown";
+	endif
+	var remaining := CInt(decaytime) - ReadGameClock();
+	if(remaining <= 0)
+		return "0mo 0d 0h 0m";
+	endif
+
+	var months := 0;
+	while(remaining >= 2592000)
+		months := months + 1;
+		remaining := remaining - 2592000;
+	endwhile
+
+	var days := 0;
+	while(remaining >= 86400)
+		days := days + 1;
+		remaining := remaining - 86400;
+	endwhile
+
+	var hours := 0;
+	while(remaining >= 3600)
+		hours := hours + 1;
+		remaining := remaining - 3600;
+	endwhile
+
+	var mins := 0;
+	while(remaining >= 60)
+		mins := mins + 1;
+		remaining := remaining - 60;
+	endwhile
+
+	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
+endfunction
+
+function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, lockdowns, secures, declare_text, can_manage)
 	GFInitGump();
 	GFNoDispose();
 	GFResizePic(100, 45, 2600, 412, 300);
@@ -60,19 +98,22 @@ function ShowHouseSignGump(who, sign, owner_name, house_type, lockdowns, secures
 	GFTextLine(330, 102, 0, "Options");
 	GFButtonPage(390, 104, 5209, 5003, 3);
 	GFButtonID(430, 308, 247, 248, 1, 0);
-	if(!can_manage)
-		return GFSendGump(who);
-	endif
 
 	GFPage(1);
 	GFTextLine(135, 140, 2302, "Owned by:");
 	GFTextLine(220, 140, 0, owner_name);
 	GFTextLine(135, 165, 2302, "House Type:");
 	GFTextLine(220, 165, 0, house_type);
-	GFTextLine(135, 190, 2302, "Number of locked down items:");
-	GFTextLine(350, 190, 0, CStr(lockdowns));
-	GFTextLine(135, 215, 2302, "Number of secure containers:");
-	GFTextLine(350, 215, 0, CStr(secures));
+	GFTextLine(135, 190, 2302, "House Decays At:");
+	GFTextLine(250, 190, 0, decay_display);
+	GFTextLine(135, 215, 2302, "Number of locked down items:");
+	GFTextLine(350, 215, 0, CStr(lockdowns));
+	GFTextLine(135, 240, 2302, "Number of secure containers:");
+	GFTextLine(350, 240, 0, CStr(secures));
+	if(!can_manage)
+		return GFSendGump(who);
+	endif
+
 	GFButtonID(125, 308, 2714, 2715, 1, 1);
 	GFTextLine(155, 308, 2302, "Change the house name!");
 
@@ -175,7 +216,13 @@ endfunction
 program Mulit_House_sign(who, sign)
 	var hserial := GetObjProperty(sign, "houseserial");
 	if(!hserial)
-		return;
+		if(sign.multi)
+			hserial := sign.multi.serial;
+			SetObjProperty(sign, "houseserial", hserial);
+			SetObjProperty(sign.multi, "signserial", sign.serial);
+		else
+			return;
+		endif
 	endif
 	var house := SystemFindObjectBySerial(CInt(hserial));
 	if(!house)
@@ -196,13 +243,17 @@ program Mulit_House_sign(who, sign)
 	else
 		owner_name := GetObjProperty(sign, "lastownername");
 		if(!owner_name || owner_name.errortext)
-			// Fall back: resolve owner name from ownerserial if we never recorded it.
+			owner_name := GetObjProperty(sign, "Owner");
+		endif
+		if(!owner_name || owner_name.errortext)
+			// Fall back: resolve owner name from ownerserial, including offline mobiles.
 			var owner_obj := SystemFindObjectBySerial(CInt(oserial));
+			if(!owner_obj)
+				owner_obj := SystemFindObjectBySerial(CInt(oserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
+			endif
 			if(owner_obj)
 				owner_name := owner_obj.name;
 				SetObjProperty(sign, "lastownername", owner_obj.name);
-			else
-				owner_name := "Unknown";
 			endif
 		endif
 	endif
@@ -217,16 +268,17 @@ program Mulit_House_sign(who, sign)
 	elseif(who.serial in coown)
 		cown := 1;
 	endif
+	if((oserial == who.serial) || (cown))
+		SetObjProperty(sign,"decay",(ReadGameClock() + get_abandon_time())); // Refreshed by configured abandon timeout.
+		SendSysMessageCL(who, 1043293, color := 66); // Your house's age and contents have been refreshed.
+	endif
+	var decay_display := GetHouseDecayDisplay(sign);
 	var result;
 	var acct := GetObjProperty(sign, "owneracct");
 	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2))
-		result := ShowHouseSignGump(who, sign, owner_name, house_type, remaining_lockdowns, remaining_secures, declare_text, 1);
+		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, declare_text, 1);
 	else
-		result := ShowHouseSignGump(who, sign, owner_name, house_type, remaining_lockdowns, remaining_secures, declare_text, 0);
-	endif
-	if((oserial == who.serial) ||(cown))
-		SetObjProperty(sign,"decay",(ReadGameClock()+ 2592000)); // Refreshed for 30 days.
-		SendSysMessageCL(who, 1043293, color := 66); // Your house's age and contents have been refreshed.
+		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, declare_text, 0);
 	endif
 	// Friends can see house lists.
 	if(sign.IsAFriend(who))
@@ -823,16 +875,19 @@ function demolish(house, sign, who, bank_region)
 					endif
 					thing.usescript := oldscript;
 					thing.movable := 1;
+					thing.decayat := ReadGameClock() + 1;
 					EraseObjProperty(thing, "houseserial" );
 					EraseObjProperty(thing, "oldscript" );
 				endif
 			elseif ((GetObjProperty(thing, "lockeddown" ) == 1) && (thing.movable == 0))
 				thing.movable := 1;
+				thing.decayat := ReadGameClock() + 1;
 				EraseObjProperty(thing, "houseserial" );
 				EraseObjProperty(thing, "lockeddown");
 			elseif (thing.movable == 0)
 				if(thing.objtype == 0x1A390)
 					MoveObjectToLocation(thing, thing.x, thing.y, house.z, house.realm, MOVEOBJECT_FORCELOCATION);
+					thing.decayat := ReadGameClock() + 1;
 				else
 					DestroyItem(thing);
 				endif

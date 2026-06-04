@@ -9,6 +9,15 @@ program use_securecont(who, item)
     SendSysMessageCL( who, 500294 ); // You cannot use that.
     return;
   endif
+  // Secures are only usable while both the secure and user are inside the same house multi.
+  if(!item.multi || (item.multi.serial != house.serial))
+    SendSysMessageCL( who, 500294 ); // You cannot use that.
+    return;
+  endif
+  if(!who.multi || (who.multi.serial != house.serial))
+    SendSysMessageCL( who, 500294 ); // You cannot use that.
+    return;
+  endif
   var sign := SystemFindObjectBySerial(GetObjProperty(house, "signserial"));
   var secure := 0;
 

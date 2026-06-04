@@ -4,6 +4,7 @@ use cliloc;
 include ":containers:storageAreas";
 include ":keys:key";
 include ":mdgumps:gumpPrompt";
+include ":house:multihouse_settings";
 
 program change_owner(who, deed)
 
@@ -28,7 +29,7 @@ program change_owner(who, deed)
 	var MaxSecures := GetObjProperty(sign, "MaxSecures");
 	SetObjProperty(sign, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(sign, "RemainingSecures", MaxSecures);
-	SetObjProperty(sign,"decay",ReadGameClock()+ 2592000); // Refreshed for 30 days.
+	SetObjProperty(sign,"decay",ReadGameClock() + get_abandon_time()); // Refreshed by configured abandon timeout.
 	SetObjProperty(sign, "owneracct", who.acctname);
 	SetObjProperty(sign, "ownerserial", who.serial);
 	SetObjProperty(sign, "signname", "a house");
