@@ -66,25 +66,31 @@ function Buildhouse(who, deed)
   wheresw.y := where.y + 16;
   var wherese;
   wherese.x := where.x + 16;
-  wherese.y := where.y + 16;
+  wherese.y := where.y - 16;
 
   if (IsInsideCity(who) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("character1");
     return;
   elseif (IsInsideCity(where) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("Where");
     return;
   elseif (IsInsideCity(wherenw) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherenw");
     return;
   elseif (IsInsideCity(wherene) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherene");
     return;
   elseif (IsInsideCity(wheresw) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wheresw");
     return;
   elseif (IsInsideCity(wherese) == 1)
     PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+    Print("wherese");
     return;
   endif
 
@@ -218,38 +224,57 @@ function CreatehouseKeysAndBuiltDeed2(character, housetype, where, deed)
 		return 0;
 	endif
 	var builtdeed := CreateItemInContainer(bankbox, 0x14ef);
+	SetName(builtdeed, deed.desc + " at " + x + ", " + y + ", " + z + "(built)");
 	if(!builtdeed)
 		PrintTextAbovePrivate(character, "Your bankbox is too full!", character);
 		DestroyItem(packkey);
 		DestroyItem(bankkey);
 		return 0;
 	endif
-  SetName(builtdeed, deed.desc + " at " + x + ", " + y + ", " + z + "(built)");
 	var house;
 	if( character.cmdlevel > 2)
 		house := CreateMultiAtLocation(x, y, z, housetype, CRMULTI_IGNORE_ALL, map);
 	else
 		house := CreateMultiAtLocation(x, y, z, housetype, 0, map);
 	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x + 10, y, z, housetype, 0, map);
+	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x, y+10, z, housetype, 0, map);
+	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x - 10, y, z, housetype, 0, map);
+	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x, y - 10, z, housetype, 0, map);
+	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x + 10, y+10, z, housetype, 0, map);
+	endif
+	if( !house)
+		house :=CreateMultiAtLocation(x - 10, y - 10, z, housetype, 0, map);
+	endif
 
+	var ftage := FindBoxArray(housetype, house);
+	SetObjProperty(house,"RemainingLockdowns",GetObjProperty(deed,"RemainingLockdowns"));
+	SetObjProperty(house,"RemainingSecures",GetObjProperty(deed,"RemainingSecures"));
+	SetObjProperty(house,"ownerserial",character.serial);
+	SetObjProperty(house,"owneracct",character.acctname);
+	SetObjProperty(house,"builtdeed",builtdeed.serial);
+	SetObjProperty(house,"decay", (ReadGameClock() + get_abandon_time()));
+	if(housetype==0x6bb8 || housetype==0x16070 || housetype==0x16072)
+		house.movable:=0;
+		house.visible:=1;
+	endif
 	if(!house)
+		PrintTextAbovePrivate(character, "I can't place the house there.", character);
 		print(house.errortext);
 		DestroyItem(packkey);
 		DestroyItem(bankkey);
 		DestroyItem(builtdeed);
 		return;
 	endif
-  var ftage := FindBoxArray(housetype, house);
-  SetObjProperty(house,"RemainingLockdowns",GetObjProperty(deed,"RemainingLockdowns"));
-  SetObjProperty(house,"RemainingSecures",GetObjProperty(deed,"RemainingSecures"));
-  SetObjProperty(house,"ownerserial",character.serial);
-  SetObjProperty(house,"owneracct",character.acctname);
-  SetObjProperty(house,"builtdeed",builtdeed.serial);
-  SetObjProperty(house,"decay", (ReadGameClock() + get_abandon_time()));
-  if(housetype==0x6bb8 || housetype==0x16070 || housetype==0x16072)
-    house.movable:=0;
-    house.visible:=1;
-  endif
 	var result := array;
 	result .+ packkey := packkey;
 	result .+ bankkey := bankkey;
@@ -306,13 +331,13 @@ function FindBoxArray(housetype, house)
     0x16071: ftage := castlearray(house, house.x, house.y, house.z); //castle
     0x16072: ftage := largehousearray(house, house.x, house.y, house.z); //largepatiohouse
     0x16073: ftage := smallhousearray(house, house.x, house.y, house.z); //smallwoodandstrawhouse
-    0x16074: ftage := largehousearray(house, house.x, house.y, house.z); //large?MarblePatioHouse
-    0x16075: ftage := smalltowerarray(house, house.x, house.y, house.z); //Small Stone Tower
-    0x16076: ftage := twostoryarray(house, house.x, house.y, house.z); // Log Cabin
-    0x16077: ftage := smallhousearray(house, house.x, house.y, house.z); // Sandstone Patio House
-    0x16078: ftage := twostoryarray(house, house.x, house.y, house.z); // Two Storey Villa with Patio
-    0x16079: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Stone Workshop
-    0x1607A: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Marble Workshop
+	0x16074: ftage := largehousearray(house, house.x, house.y, house.z); //large?MarblePatioHouse
+	0x16075: ftage := smalltowerarray(house, house.x, house.y, house.z); //Small Stone Tower
+	0x16076: ftage := twostoryarray(house, house.x, house.y, house.z); // Log Cabin
+	0x16077: ftage := smallhousearray(house, house.x, house.y, house.z); // Sandstone Patio House
+	0x16078: ftage := twostoryarray(house, house.x, house.y, house.z); // Two Storey Villa with Patio
+	0x16079: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Stone Workshop
+	0x1607A: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Marble Workshop
   endcase
   return ftage;
 endfunction
@@ -354,6 +379,7 @@ function largehousearray(house, x, y, z)
   boxarray[1] := box1;
   var banarray := {};
   var bantile;
+    PrintTextAbove(house, "H: " + house.objtype);
   if(house.objtype == 0x6072)
     bantile := CreateItemAtLocation(x-5, y+7, Z+4, "bantile", 1, house.realm);
     banarray.append(bantile.serial);
@@ -388,8 +414,8 @@ endfunction
 function smalltowerarray(house, x, y, z)
   // Small Stone Tower (multi 0x98) is a 7x7 footprint, ~2 stories tall.
   // Sign is on the south face at (x-1, y+4); the door sits at (x+1, y+3)
-  // with steps directly south at (x+1, y+4). Place ban tiles directly in
-  // front of the door and one tile to each side of the door.
+  // with steps directly south at (x+1, y+4). Place ban tiles on the steps
+  // by the door rather than under the sign.
   var boxarray := {};
   var box1 := {};
   box1.append(x - 3);
@@ -401,13 +427,13 @@ function smalltowerarray(house, x, y, z)
   boxarray[1] := box1;
   var banarray := {};
   var bantile;
-  bantile := CreateItemAtLocation(x,   y+3, Z+4, "bantile", 1, house.realm);
+  bantile := CreateItemAtLocation(x,   y+4, Z+4, "bantile", 1, house.realm);
   banarray.append(bantile.serial);
   SetObjProperty(bantile, "houseserial", house.serial);
   bantile := CreateItemAtLocation(x+1, y+4, Z+4, "bantile", 1, house.realm);
   banarray.append(bantile.serial);
   SetObjProperty(bantile, "houseserial", house.serial);
-  bantile := CreateItemAtLocation(x+2, y+3, Z+4, "bantile", 1, house.realm);
+  bantile := CreateItemAtLocation(x+2, y+4, Z+4, "bantile", 1, house.realm);
   banarray.append(bantile.serial);
   SetObjProperty(bantile, "houseserial", house.serial);
   SetObjProperty(house, "bantiles", banarray);

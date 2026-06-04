@@ -344,7 +344,7 @@ function unsecure(sign, event)
 		SendSysMessageCL(event.source, 1042023, color := 33); // Cancelled.
 		return;
 	endif
-	if (GetObjProperty(itemt,"secure") != 1)
+	if (!GetObjProperty(itemt,"secure") ==1)
 		SendSysMessage(event.source,"You cannot unsecure that.", color := 33);
 		return;
 	endif

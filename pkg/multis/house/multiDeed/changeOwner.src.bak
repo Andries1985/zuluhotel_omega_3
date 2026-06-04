@@ -55,9 +55,15 @@ function ReKey(byref sign, byref new_key, byref lock_id)
 
 	var addonitem;
 	var house := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "houseserial")));
+	Print(GetObjProperty(sign, "houseserial"));
+	if(!house)
+		Print("no house found.   " + house.errortext);
+	endif
+	Print("components = " + house.components);
 	new_key.SetLockId(lock_id);
 	foreach item in(house.components)
 		if(item.IsA(POLCLASS_DOOR))
+		Print("It's a dorr.");
 			item.locked := 1;
 			SetObjProperty(item,"LockID",lock_id);
 		endif

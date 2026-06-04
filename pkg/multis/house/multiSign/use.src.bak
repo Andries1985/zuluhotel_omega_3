@@ -758,20 +758,16 @@ program Mulit_House_sign(who, sign)
 	var oserial := GetObjProperty(sign, "ownerserial");
 
 	SetPlaqueName(sign, house);
-	var layout_local := array;
-	foreach entry in layout
-		layout_local.append(entry);
-	endforeach
 	if(GetObjProperty(sign, "Public"))
 		data[31] := "Declare this house Private";
 		data[30] := "Change the sign type";
-		layout_local.append("page 3");
-		layout_local.append("button 160 190 2714 2715 0 4 26");
+		layout.append("page 3");
+		layout.append("button 160 190 2714 2715 0 4 26");
 	else
 		data[31] := "Declare this house Public";
 		data[30] := "Change the master key";
-		layout_local.append("page 3");
-		layout_local.append("button 160 190 2714 2715 1 4 16");
+		layout.append("page 3");
+		layout.append("button 160 190 2714 2715 1 4 16");
 	endif
 	if(who.serial == oserial)
 		data[6] := who.name;
@@ -802,7 +798,7 @@ program Mulit_House_sign(who, sign)
 	var result;
 	var acct := GetObjProperty(sign, "owneracct");
 	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2))
-		result := SendDialogGump(who, layout_local, data);
+		result := SendDialogGump(who, layout, data);
 	else
 		SendDialogGump(who, nonlayout, data);
 	endif
@@ -872,7 +868,7 @@ program Mulit_House_sign(who, sign)
 					ChangeLocks(who, house);
 				endif
 			17:	if(SmallYesNo(who,"Clear List?"))                               //clear co-owner list
-					EraseObjProperty(sign, "coowners");
+					EraseObjProperty(house, "coownlist");
 					SendSysMessage(who,"Co-owner list has been cleared.");
 				else
 					SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
@@ -999,7 +995,7 @@ function AddBan(hsign, who)
 			SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
 			return;
 		endif
-		checklists(hsign, targetchr, "friendlist", "coowners");
+		checklists(hsign, targetchr, "friendlist", "coownlist");
 		result := hsign.AddBan(targetchr);
 		if(result < 0)
 			SendSysMessageCL(who, 501355, color := 33); // The ban limit for this house has been reached!
@@ -1034,7 +1030,7 @@ function DeleteBan(hsign,who)
 	var bancheck, returncheck;
 	if(retval1[0] > 2 && retval1[0] <= 22)
 		returncheck := retval1[0] - 2;
-		bancheck := newlist[returncheck];
+		bancheck := banlist[returncheck];
 		var unbanned := SystemFindObjectBySerial(bancheck);
 		var result := hsign.RemoveBan( unbanned );
 		if(result > 0)
@@ -1157,12 +1153,9 @@ endfunction
 
 function ChangeHouseOwner(oldowner, newowner, sign, bank_region)
 	var oldownerserial:=GetObjProperty(sign, "ownerserial");
-	if(!newowner || !newowner.acctname)
-		return 0;
-	endif
 	if(oldownerserial == newowner.serial)
 		return 0;
-	else
+	elseif(newowner.acctname)
 		var chk;
 		var builtdeed := GetObjProperty(sign, "builtdeed");
 		if(builtdeed)
@@ -1272,11 +1265,11 @@ function Eject(hsign, who)
 
 	SendSysMessageCL(who, 502014, color := 88); // Select the victim.
 	var targetchr:=Target(who);
-	if(!targetchr)
-		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+	if((!targetchr.multi) && (Distance(who, hsign)>15))
 		return;
 	endif
-	if((!targetchr.multi) && (Distance(who, hsign)>15))
+	if(!targetchr)
+		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 		return;
 	endif
 	MoveObjectToLocation(targetchr, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION);

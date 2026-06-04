@@ -5,34 +5,16 @@ use cliloc;
 program use_securecont(who, item)
 
   var house := SystemFindObjectBySerial( GetObjProperty( item, "houseserial" ));
-  if(!house)
-    SendSysMessageCL( who, 500294 ); // You cannot use that.
-    return;
-  endif
-  var sign := SystemFindObjectBySerial(GetObjProperty(house, "signserial"));
   var secure := 0;
 
   if ((GetObjProperty( house, "ownerserial" ) == who.serial) || (GetObjProperty( house, "owneracct" ) == who.acctname))
      secure := 1;
   else
-    var coownerinfo := {};
-    var friendinfo := {};
-    if(sign)
-      coownerinfo := sign.GetCoOwnerList();
-      friendinfo := sign.GetFriendList();
-    else
-      coownerinfo := GetObjProperty(house,"coowners");
-      friendinfo := GetObjProperty(house,"friendlist");
-    endif
-    if(!coownerinfo)
-      coownerinfo := {};
-    endif
-    if(!friendinfo)
-      friendinfo := {};
-    endif
+    var coownerinfo := GetObjProperty(house,"coowners");
     if(who.serial in coownerinfo)
       secure := 1;
     else
+      var friendinfo := GetObjProperty(house,"friendlist");
       if(who.serial in friendinfo)
         secure := 1;
       endif

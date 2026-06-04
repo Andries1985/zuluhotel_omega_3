@@ -8,14 +8,8 @@ include ":house:multihouse_settings";
 
 program walk_on_bantile(who, tile)
 	var hsign := GetHSign( who, tile );
-	if(!hsign)
-		return;
-	endif
 	var ownerser := hsign.GetOwnerSerial();
-	var	coownerinfo := hsign.GetCoOwnerList();
-	if(!coownerinfo)
-		coownerinfo := {};
-	endif
+	var	coownerinfo := coownerinfo := hsign.GetCoOwnerList();
 	if(ownerser == who.serial)
 		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
 //		SendSysMessage(who, "Your house is refreshed.", color := 66);
