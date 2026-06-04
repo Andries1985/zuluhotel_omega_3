@@ -9,7 +9,6 @@ include ":containers:storageAreas";
 include "include/objtype";
 include "include/findcity";
 include "include/canAccess";
-include ":house:isValidLoc";
 include ":house:multihouse_settings";
 
 const UOBJECT_TENT_CHEST:=0xe43;
@@ -54,37 +53,14 @@ function Buildhouse(who, deed)
     return;
   endif
 
-//Added from old housing system
-  var wherenw;
-  wherenw.x := where.x - 16;
-  wherenw.y := where.y - 16;
-  var wherene;
-  wherene.x := where.x + 16;
-  wherene.y := where.y - 16;
-  var wheresw;
-  wheresw.x := where.x - 16;
-  wheresw.y := where.y + 16;
-  var wherese;
-  wherese.x := where.x + 16;
-  wherese.y := where.y + 16;
+  if(IsHousePlacementBlockedByRegionType(housetype, where, "city"))
+	SendSysMessageCL(who, 500269, color := 33); // You cannot build that there.
+    PrintTextAbovePrivate(deed, "You can't build in cities.", who, color := 33);
+    return;
+  endif
 
-  if (IsInsideCity(who) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
-    return;
-  elseif (IsInsideCity(where) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
-    return;
-  elseif (IsInsideCity(wherenw) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
-    return;
-  elseif (IsInsideCity(wherene) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
-    return;
-  elseif (IsInsideCity(wheresw) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
-    return;
-  elseif (IsInsideCity(wherese) == 1)
-    PrintTextAbovePrivate( deed, "House cannot be placed inside a city.", who );
+  if(IsHousePlacementBlockedByRegionType(housetype, where, "dungeon"))
+    PrintTextAbovePrivate(deed, "You can't build in dungeons.", who, color := 33);
     return;
   endif
 
@@ -128,20 +104,8 @@ function Buildhouse(who, deed)
       return;
   endif
 
-//Back to new housing stuff
-
-  if((WhatCityAmIIn(who) != "notincity") || (WhatCityAmIIn(where) != "notincity"))
-	SendSysMessageCL(who, 500269, color := 33); // You cannot build that there.
-    PrintTextAbovePrivate(deed, "You can't build in cities.", who, color := 33);
-    return;
-  endif
-
   if (Distance(who,where) > 50)
     PrintTextAbovePrivate(deed, "You are too far from where you are trying to build.", who);
-    return;
-  endif
-  if(!isValidLoc(where.x, where.y) && (who.cmdlevel < 2))
-    PrintTextAbovePrivate(deed, "You may not build in Green Acres.", who);
     return;
   endif
 
@@ -283,6 +247,96 @@ function IsInContainer(container, item)
   return 0;
 endfunction
 
+function IsHousePlacementBlockedByRegionType(housetype, where, region_type)
+  var bounds := GetHouseFootprintBounds(housetype, where.x, where.y);
+  if(!bounds)
+    return 0;
+  endif
+
+  var regions_cfg := ReadConfigFile("::regions/regions");
+  if(!regions_cfg)
+    return 0;
+  endif
+
+  var keys := GetConfigStringKeys(regions_cfg);
+  var region;
+  var range;
+  var x1 := bounds[1];
+  var y1 := bounds[2];
+  var x2 := bounds[3];
+  var y2 := bounds[4];
+
+  foreach key in keys
+    region := FindConfigElem(regions_cfg, key);
+    if(!region)
+      continue;
+    endif
+
+    if(Lower(GetConfigString(region, "Type")) != Lower(region_type))
+      continue;
+    endif
+
+    var region_realm := Lower(GetConfigString(region, "Realm"));
+    if(len(region_realm) && (region_realm != Lower(where.realm)))
+      continue;
+    endif
+
+    range := SplitWords(GetConfigString(region, "Range"));
+    if(len(range) < 4)
+      continue;
+    endif
+
+    var rx1 := CInt(range[1]);
+    var ry1 := CInt(range[2]);
+    var rx2 := CInt(range[3]);
+    var ry2 := CInt(range[4]);
+
+    if((x1 <= rx2) && (x2 >= rx1) && (y1 <= ry2) && (y2 >= ry1))
+      return 1;
+    endif
+  endforeach
+
+  return 0;
+endfunction
+
+function GetHouseFootprintBounds(housetype, x, y)
+  var bounds := {};
+  case(housetype)
+    0x16060:
+    0x16061:
+    0x16062:
+    0x16063:
+    0x16064:
+    0x16073:
+    0x16077:
+    0x16079:
+    0x1607A:
+    0x1607B:
+    0x1607C:
+      bounds := {x - 2, y - 2, x + 2, y + 2};
+    0x16065:
+    0x16072:
+    0x16074:
+      bounds := {x - 6, y - 6, x + 6, y + 5};
+    0x16066:
+    0x16068:
+    0x16076:
+    0x16078:
+      bounds := {x - 6, y - 6, x + 5, y + 5};
+    0x16069:
+      bounds := {x - 10, y - 6, x + 11, y + 5};
+    0x16070:
+      bounds := {x - 10, y - 10, x + 11, y + 11};
+    0x16071:
+      bounds := {x - 14, y - 14, x + 14, y + 14};
+    0x16075:
+      bounds := {x - 3, y - 3, x + 3, y + 3};
+    default:
+      return 0;
+  endcase
+  return bounds;
+endfunction
+
 function FindBoxArray(housetype, house)
   var ftage;
   var sign1;
@@ -311,8 +365,10 @@ function FindBoxArray(housetype, house)
     0x16076: ftage := twostoryarray(house, house.x, house.y, house.z); // Log Cabin
     0x16077: ftage := smallhousearray(house, house.x, house.y, house.z); // Sandstone Patio House
     0x16078: ftage := twostoryarray(house, house.x, house.y, house.z); // Two Storey Villa with Patio
-    0x16079: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Stone Workshop
+    0x16079: ftage := smallstoneworkshoparray(house, house.x, house.y, house.z); // Small Stone Workshop
     0x1607A: ftage := smallhousearray(house, house.x, house.y, house.z); // Small Marble Workshop
+    0x1607B: ftage := smallhousearray(house, house.x, house.y, house.z); // Garden Shed South
+    0x1607C: ftage := smallhousearray(house, house.x, house.y, house.z); // Garden Shed East
   endcase
   return ftage;
 endfunction
@@ -336,6 +392,32 @@ function smallhousearray(house, x, y, z)
   banarray.append(bantile.serial);
   SetObjProperty(bantile, "houseserial", house.serial);
   bantile := CreateItemAtLocation(x+1, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function smallstoneworkshoparray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 2);
+  box1.append(y - 2);
+  box1.append(z + 7);
+  box1.append(x + 2);
+  box1.append(y + 2);
+  box1.append(z + 27);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  // Shift workshop front ban tiles one step left on X.
+  bantile := CreateItemAtLocation(x-2, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-0, y+4, Z+4, "bantile", 1, house.realm);
   banarray.append(bantile.serial);
   SetObjProperty(bantile, "houseserial", house.serial);
   SetObjProperty(house, "bantiles", banarray);
