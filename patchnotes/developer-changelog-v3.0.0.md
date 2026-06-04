@@ -101,6 +101,7 @@ Behavior changes:
 - Added new footprint helper arrays in footagearrays.inc for multiple house shapes and workshop/tower variants.
 - Replaced the old isValidLoc-style placement gating with region-type footprint checks in multiDeed/use.src.
 - House placement now checks city and dungeon regions against the footprint bounds of the target house type.
+- House placement now also blocks placement near anti-house objects and dungeon teleporter objects.
 - Added a more robust house footprint function to resolve the occupied area per house type.
 - The build flow now sets the built deed name after item creation and no longer retries placement in multiple offset positions.
 - House ownership and decay timing now use the shared multihouse settings path rather than hard-coded timing.
@@ -110,6 +111,7 @@ Behavior changes:
 - Secure-container use now requires the secure and the player to be in the same house multi, and it now uses sign-derived permissions when available.
 - House walk-on ban handling now drops the player at a standing-height-safe location instead of force-moving to the house Z value directly.
 - House sign listener flow was simplified and decay refresh behavior remains aligned with the new package.
+- House sign and ban-tile decay refresh now only trigger for the house owner, not co-owners.
 - House deed change-owner handling now uses the shared abandon timeout setting.
 - The new house config set adds house descriptions and the new garden shed deed types.
 - The migrate-and-backup pattern is reflected in the numerous .bak snapshots that preserve the previous package behavior.
