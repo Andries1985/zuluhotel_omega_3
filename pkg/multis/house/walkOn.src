@@ -8,12 +8,11 @@ include ":house:multihouse_settings";
 
 program walk_on_bantile(who, tile)
 	var hsign := GetHSign( who, tile );
+	if(!hsign)
+		return;
+	endif
 	var ownerser := hsign.GetOwnerSerial();
-	var	coownerinfo := coownerinfo := hsign.GetCoOwnerList();
 	if(ownerser == who.serial)
-		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
-//		SendSysMessage(who, "Your house is refreshed.", color := 66);
-	elseif(who.serial in coownerinfo)
 		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
 //		SendSysMessage(who, "Your house is refreshed.", color := 66);
 	endif
@@ -23,7 +22,11 @@ program walk_on_bantile(who, tile)
 		return;
 	endif
 	if(who.serial in banlist)
-		MoveObjectToLocation( who, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
+		var banneddropspot := GetStandingHeight( hsign.x, hsign.y, -128, hsign.realm );
+		if(banneddropspot.errortext)
+			banneddropspot.z := hsign.z;
+		endif
+		MoveObjectToLocation( who, hsign.x, hsign.y, banneddropspot.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
 		SendSysMessageCL(who, 501340, color := 33); // You have been banned from this house.
 	endif
 endprogram

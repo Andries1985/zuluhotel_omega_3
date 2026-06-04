@@ -1,0 +1,526 @@
+use uo;
+
+function smallhousearray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 2);
+  box1.append(y - 2);
+  box1.append(z + 5);
+  box1.append(x + 2);
+  box1.append(y + 2);
+  box1.append(z + 25);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-0, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function gardenshedarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 2);
+  box1.append(y - 2);
+  box1.append(z + 5);
+  box1.append(x + 2);
+  box1.append(y + 2);
+  box1.append(z + 25);
+  boxarray[1] := box1;
+  SetObjProperty(house, "bantiles", {});
+  return boxarray;
+endfunction
+
+function smallstoneworkshoparray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 2);
+  box1.append(y - 2);
+  box1.append(z + 7);
+  box1.append(x + 2);
+  box1.append(y + 2);
+  box1.append(z + 27);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  // Shift workshop front ban tiles one step left on X.
+  bantile := CreateItemAtLocation(x-2, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-0, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function smallmarbleworkshoparray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 2);
+  box1.append(y - 2);
+  // Marble workshop uses multiple usable floor elevations.
+  box1.append(z - 2);
+  box1.append(x + 2);
+  box1.append(y + 2);
+  box1.append(z + 60);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-0, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function largehousearray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x + 6);
+  box1.append(y + 5);
+  box1.append(z + 27);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-2, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function largepatioarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x + 6);
+  box1.append(y + 5);
+  box1.append(z + 27);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-5, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-4, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-3, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-2, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function largemarblepatioarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x + 6);
+  box1.append(y + 5);
+  box1.append(z + 27);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-6, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-5, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-4, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-3, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-2, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+7, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+5, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+4, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function smalltowerarray(house, x, y, z)
+  // Small Stone Tower (multi 0x98) is a 7x7 footprint, ~2 stories tall.
+  // Sign is on the south face at (x-1, y+4); the door sits at (x+1, y+3)
+  // with steps directly south at (x+1, y+4). Place ban tiles directly in
+  // front of the door and one tile to each side of the door.
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 3);
+  box1.append(y - 3);
+  box1.append(z + 7);
+  box1.append(x + 3);
+  box1.append(y + 3);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x+2, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+3, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+4, y+4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function twostoryarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x    );
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  box1 := {};
+  box1.append(x    );
+  box1.append(y    );
+  box1.append(z + 7);
+  box1.append(x + 5);
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[2] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-4, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-3, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-2, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+7, Z+4, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function twostoryvillaarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x    );
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  box1 := {};
+  box1.append(x    );
+  box1.append(y    );
+  box1.append(z + 7);
+  box1.append(x + 5);
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[2] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x+2, y+6, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+3, y+6, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+4, y+6, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+5, y+6, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function sandstonepatioarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 4);
+  box1.append(y - 4);
+  box1.append(z + 2);
+  box1.append(x + 6);
+  box1.append(y + 4);
+  box1.append(z + 60);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-2, y+4, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+4, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+4, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+3, y+3, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+4, y+3, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+5, y+3, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y+3, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y+2, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y+1, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y-1, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y-2, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y-3, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+6, y-4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+5, y-4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+4, y-4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+3, y-4, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function logcabinarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 7);
+  box1.append(x    );
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  box1 := {};
+  box1.append(x    );
+  box1.append(y    );
+  box1.append(z + 7);
+  box1.append(x + 5);
+  box1.append(y + 5);
+  box1.append(z + 47);
+  boxarray[2] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x+1, y+6, Z+2, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function bigtowerarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 6);
+  box1.append(y - 6);
+  box1.append(z + 6);
+  box1.append(x + 7);
+  box1.append(y + 5);
+  box1.append(z + 65);
+  boxarray[1] := box1;
+  box1 := {};
+  box1.append(x - 10);
+  box1.append(y - 6);
+  box1.append(z + 66);
+  box1.append(x + 11);
+  box1.append(y + 5);
+  box1.append(z + 86);
+  boxarray[2] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+8, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+8, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+8, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+8, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+7, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+7, Z+6, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+7, Z+6, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+7, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function castlearray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 14);
+  box1.append(y - 14);
+  box1.append(z     );
+  box1.append(x + 14);
+  box1.append(y + 14);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y+10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1,  y+6, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x,  y+6, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1,  y+6, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2,  y+6, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-2, y-10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x-1, y-10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y-10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y-10, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
+function keeparray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 10);
+  box1.append(y - 10);
+  box1.append(z     );
+  box1.append(x + 11);
+  box1.append(y + 11);
+  box1.append(z + 47);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+11, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+11, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+11, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+11, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction

@@ -1,1010 +1,2377 @@
-# Developer Changelog — v1.0.0
+# Developer Changelog - v1.0.0
 
-**Range:** `8efb7ef2f60e657bc2b188b0a226185aa73e4832` (initial commit) → `HEAD`  
-**Branch:** main  
-**Date:** [TBD]
-
----
-
-## Table of Contents
-
-0. [Areas Policy System Stabilization (May 2026)](#0-areas-policy-system-stabilization-may-2026)
-1. [Combat System](#1-combat-system)
-2. [Crafting System](#2-crafting-system)
-3. [Optional Gameplay Packages](#3-optional-gameplay-packages)
-4. [Item Packages](#4-item-packages)
-5. [Standard Skill Packages](#5-standard-skill-packages)
-6. [Utility Packages](#6-utility-packages)
-7. [System Packages](#7-system-packages)
-8. [AI & NPC Behavior](#8-ai--npc-behavior)
-9. [Shared Scripts & Includes](#9-shared-scripts--includes)
-10. [Command Trees](#10-command-trees)
-11. [World Data & Regions](#11-world-data--regions)
-12. [Root Config, Builds, and Tooling](#12-root-config-builds-and-tooling)
+Range: 8efb7ef2f60e657bc2b188b0a226185aa73e4832..a1ec62b
+Branch: Patch-1.0.0
+Date: 2026-06-03
 
 ---
 
-## 0. Areas Policy System Stabilization (May 2026)
+## Scope Summary
 
-Summary:
-Area policy storage and resolution were fully migrated to a persistent, realm-scoped datafile model. Legacy global-property fallback paths were removed from active runtime checks. The staff areas gump now writes policy state by stable AreaId and persistence across reboot is verified.
-
-Details:
-- Added persistent per-realm policy storage in areas package datafiles using descriptor format :areas:area_policies_<realm>.
-- Adopted per-area element keys based on strict AreaId tokens from areas.cfg.
-- Enforced strict area syntax: every Area line must include id=<value> in token position after coordinates.
-- Normalized area ids to short lowercase alphanumeric values and migrated areas.cfg entries accordingly.
-- Removed runtime legacy fallback branches from scripts/include/areas.inc (global arrays/properties are no longer used in active area-policy checks).
-- Updated admin areas command to:
-	- prune stale datastore elements against current areas.cfg,
-	- save only current-page changes by AreaId keys,
-	- reload after save, and
-	- display clean area names without id= prefix in the gump.
-- Added robust realm/area input validation for .areas command to prevent silent failures.
-- Completed debug hardening and removed temporary parser traces after validation.
-
-Key Files Changed:
-- pkg/opt/areas/include/areapolicy.inc
-- pkg/opt/areas/textcmd/admin/areas.src
-- scripts/include/areas.inc
-- pkg/opt/areas/areas.cfg
-
-Validation Notes:
-- ecompile clean for all affected files.
-- .areas gump open/save flow verified.
-- persistence after reboot verified.
-
-## 1. Combat System
-
-**Summary:**
-Major overhaul and implementation of the combat system, including on-hit effects, critical hits, elemental damage, and combat event handling. Added support for new combat scripts, configuration files, and modular on-hit logic.
-
-**Details:**
-- Added modular on-hit behavior and combat script routing.
-- Extended hit, damage, and death handling for combat-driven effects.
-- Added combat-related constants, spell hooks, and item interactions.
-
-**Key Files Changed:**
-- pkg/systems/combat/* (all combat scripts and configs)
-- scripts/ai/combat/* (combat event includes)
-- scripts/include/constants/hitscripts.inc
-- scripts/include/constants/onhitscripts.inc
-- scripts/include/constants/skillids.inc
-- scripts/include/constants/skillnames.inc
-- scripts/include/constants/propids.inc
-- scripts/include/constants/privilegeids.inc
-- scripts/include/constants/settings.inc
-- scripts/include/constants/syseventids.inc
-- scripts/include/constants/timeids.inc
-- scripts/include/constants/usescriptids.inc
-- scripts/include/creatureRoutines.inc
-- scripts/include/creature_spellcast.inc
-- scripts/include/damages.inc
-- scripts/include/events.inc
-- scripts/include/fields.inc
-- scripts/include/skilllists.inc
-- scripts/include/skillpoints.inc
-- scripts/include/skilltitles.inc
-- scripts/include/spawn.inc
-- scripts/include/spawnnet.inc
-- scripts/include/spawnpoint.inc
-- scripts/include/spelldata.inc
-- scripts/include/statmod.inc
-- scripts/include/std.inc
-- scripts/include/string.inc
-- scripts/include/stringarrays.inc
-- scripts/include/sysevent.inc
-- scripts/include/utility.inc
-- scripts/items/bladed.src
-- scripts/items/fletch.src
-- scripts/items/warriorforhire.src
-- scripts/misc/chrdeath.src
-- scripts/misc/death.src
-- scripts/misc/skilladv.src
-- scripts/misc/skillwin.src
+- Files changed: 2296
+- 2296 files changed, 1538024 insertions(+), 2 deletions(-)
 
 ---
 
-## 2. Crafting System
+## Complete File Inventory (Exhaustive)
 
-**Summary:**
-Major overhaul and implementation of the crafting system, including new crafting options, improved crafting mechanics, and support for custom crafting configurations.
-
-**Details:**
-- Added and expanded crafting skill packages and helper includes.
-- Updated item, resource, and spawn-related constants used by crafting flows.
-- Added utility scripts for repair, loot, potion handling, and related support.
-
-**Key Files Changed:**
-- pkg/systems/crafting/* (all crafting scripts and configs)
-- scripts/include/constants/cfgfiles.inc
-- scripts/include/constants/cids.inc
-- scripts/include/constants/cmdlevels.inc
-- scripts/include/constants/colors.inc
-- scripts/include/constants/creaturetypes.inc
-- scripts/include/constants/datastorefiles.inc
-- scripts/include/constants/eventids.inc
-- scripts/include/constants/facings.inc
-- scripts/include/constants/fonts.inc
-- scripts/include/constants/fxs.inc
-- scripts/include/constants/gumpids.inc
-- scripts/include/constants/hitscripts.inc
-- scripts/include/constants/itemids.inc
-- scripts/include/constants/landtiles.inc
-- scripts/include/constants/layers.inc
-- scripts/include/constants/locations.inc
-- scripts/include/constants/merchanttypes.inc
-- scripts/include/constants/mountids.inc
-- scripts/include/constants/multiids.inc
-- scripts/include/constants/npcai.inc
-- scripts/include/constants/npcdata.inc
-- scripts/include/constants/npctemplates.inc
-- scripts/include/constants/objtypes.zip
-- scripts/include/constants/onhitscripts.inc
-- scripts/include/constants/privilegeids.inc
-- scripts/include/constants/propids.inc
-- scripts/include/constants/raceids.inc
-- scripts/include/constants/resourceids.inc
-- scripts/include/constants/scriptids.inc
-- scripts/include/constants/settings.inc
-- scripts/include/constants/sfxs.inc
-- scripts/include/constants/skillids.inc
-- scripts/include/constants/skillnames.inc
-- scripts/include/constants/statids.inc
-- scripts/include/constants/storageareas.zip
-- scripts/include/constants/syseventids.inc
-- scripts/include/constants/timeids.inc
-- scripts/include/constants/usescriptids.inc
-- scripts/include/createnpc.inc
-- scripts/include/creatureRoutines.inc
-- scripts/include/creature_spellcast.inc
-- scripts/include/damages.inc
-- scripts/include/events.inc
-- scripts/include/fields.inc
-- scripts/include/skilllists.inc
-- scripts/include/skillpoints.inc
-- scripts/include/skilltitles.inc
-- scripts/include/spawn.inc
-- scripts/include/spawnnet.inc
-- scripts/include/spawnpoint.inc
-- scripts/include/spelldata.inc
-- scripts/include/statmod.inc
-- scripts/include/std.inc
-- scripts/include/string.inc
-- scripts/include/stringarrays.inc
-- scripts/include/sysevent.inc
-- scripts/include/utility.inc
-- scripts/util/bank.zip
-- scripts/util/buddies.inc
-- scripts/util/conflicts.inc
-- scripts/util/creature.inc
-- scripts/util/homeTurf.inc
-- scripts/util/key.zip
-- scripts/util/lookForTrouble_AI.inc
-- scripts/util/loot.inc
-- scripts/util/potion_stuff.inc
-- scripts/util/repair.inc
-- scripts/util/spawn.inc
-- scripts/vcomp120.dll
-- scripts/www/webstuff.src
-- scripts/www/www.rar
-
-### Includes
-- scripts/include/NameChecker.inc
-- scripts/include/account.inc
-- scripts/include/alchemy.inc
-- scripts/include/all.inc
-- scripts/include/anchors.inc
-- scripts/include/animal.inc
-- scripts/include/areas.inc
-- scripts/include/arrays.inc
-- scripts/include/astralfights.inc
-- scripts/include/attributes.inc
-- scripts/include/autoloop.inc
-- scripts/include/bard.inc
-- scripts/include/bitwise.inc
-- scripts/include/buddies.inc
-- scripts/include/camouflage.inc
-- scripts/include/canAccess.inc
-- scripts/include/cfglogging.inc
-- scripts/include/change.inc
-- scripts/include/chaoseffects.inc
-- scripts/include/checkcity.inc
-- scripts/include/chests.inc
-- scripts/include/classes.inc
-- scripts/include/client.inc
-- scripts/include/clock.inc
-- scripts/include/constants.inc
-- scripts/include/constants/anims.inc
-- scripts/include/constants/cfgfiles.inc
-- scripts/include/constants/cids.inc
-- scripts/include/constants/cmdlevels.inc
-- scripts/include/constants/colors.inc
-- scripts/include/constants/creaturetypes.inc
-- scripts/include/constants/datastorefiles.inc
-- scripts/include/constants/eventids.inc
-- scripts/include/constants/facings.inc
-- scripts/include/constants/fonts.inc
-- scripts/include/constants/fxs.inc
-- scripts/include/constants/gumpids.inc
-- scripts/include/constants/hitscripts.inc
-- scripts/include/constants/itemids.inc
-- scripts/include/constants/landtiles.inc
-- scripts/include/constants/layers.inc
-- scripts/include/constants/locations.inc
-- scripts/include/constants/merchanttypes.inc
-- scripts/include/constants/mountids.inc
-- scripts/include/constants/multiids.inc
-- scripts/include/constants/npcai.inc
-- scripts/include/constants/npcdata.inc
-- scripts/include/constants/npctemplates.inc
-- scripts/include/constants/objtypes.zip
-- scripts/include/constants/onhitscripts.inc
-- scripts/include/constants/privilegeids.inc
-- scripts/include/constants/propids.inc
-- scripts/include/constants/raceids.inc
-- scripts/include/constants/resourceids.inc
-- scripts/include/constants/scriptids.inc
-- scripts/include/constants/settings.inc
-- scripts/include/constants/sfxs.inc
-- scripts/include/constants/skillids.inc
-- scripts/include/constants/skillnames.inc
-- scripts/include/constants/statids.inc
-- scripts/include/constants/storageareas.zip
-- scripts/include/constants/syseventids.inc
-- scripts/include/constants/timeids.inc
-- scripts/include/constants/usescriptids.inc
-- scripts/include/coords.inc
-- scripts/include/createnpc.inc
-- scripts/include/creatureRoutines.inc
-- scripts/include/creature_spellcast.inc
-- scripts/include/damages.inc
-- scripts/include/datafile.inc
-- scripts/include/difficulty.inc
-- scripts/include/dismount.inc
-- scripts/include/doors.inc
-- scripts/include/dotempmods.inc
-- scripts/include/drinkpotion.inc
-- scripts/include/eventid.inc
-- scripts/include/events.inc
-- scripts/include/facings.inc
-- scripts/include/fields.inc
-- scripts/include/findcity.inc
-- scripts/include/fix.inc
-- scripts/include/housecheck.inc
-- scripts/include/housing.inc
-- scripts/include/inncheck.inc
-- scripts/include/irc.inc
-- scripts/include/itemutil.inc
-- scripts/include/jailcheck.inc
-- scripts/include/listex.inc
-- scripts/include/managers.inc
-- scripts/include/math.inc
-- scripts/include/mobileutil.inc
-- scripts/include/moongate.inc
-- scripts/include/moongates.inc
-- scripts/include/mrcspawn.inc
-- scripts/include/multicommands.inc
-- scripts/include/multiutil.inc
-- scripts/include/myutil.inc
-- scripts/include/names.inc
-- scripts/include/namingbyenchant.inc
-- scripts/include/npcbackpacks.zip
-- scripts/include/npcboosts.inc
-- scripts/include/npccast.inc
-- scripts/include/npccastspells.inc
-- scripts/include/npcutil.inc
-- scripts/include/objtype.inc
-- scripts/include/packets.inc
-- scripts/include/parsewords.inc
-- scripts/include/possess.inc
-- scripts/include/privs.inc
-- scripts/include/randname.inc
-- scripts/include/randname_util.inc
-- scripts/include/random.inc
-- scripts/include/randomreg.inc
-- scripts/include/recalling.inc
-- scripts/include/report.inc
-- scripts/include/reportmurder.inc
-- scripts/include/res.inc
-- scripts/include/rituals.zip
-- scripts/include/security.inc
-- scripts/include/selchar.inc
-- scripts/include/shard.inc
-- scripts/include/skilllists.inc
-- scripts/include/skillpoints.inc
-- scripts/include/skilltitles.inc
-- scripts/include/snoop.inc
-- scripts/include/sounds.inc
-- scripts/include/spawn.inc
-- scripts/include/spawnnet.inc
-- scripts/include/spawnpoint.inc
-- scripts/include/speech.inc
-- scripts/include/spelldata.inc
-- scripts/include/starteqp.inc
-- scripts/include/statmod.inc
-- scripts/include/std.inc
-- scripts/include/string.inc
-- scripts/include/stringarrays.inc
-- scripts/include/sysevent.inc
-- scripts/include/teleporters.inc
-- scripts/include/tempmod.inc
-- scripts/include/time.inc
-- scripts/include/uo_extend.inc
-- scripts/include/utility.inc
-- scripts/include/vetement.inc
-- scripts/include/virtue.inc
-- scripts/include/weather.inc
-
-### Modules
-- scripts/modules/attributes.em
-- scripts/modules/basic.em
-- scripts/modules/basicio.em
-- scripts/modules/boat.em
-- scripts/modules/cfgfile.em
-- scripts/modules/cliloc.em
-- scripts/modules/datafile.em
-- scripts/modules/file.em
-- scripts/modules/guilds.em
-- scripts/modules/http.em
-- scripts/modules/math.em
-- scripts/modules/npc.em
-- scripts/modules/os.em
-- scripts/modules/party.em
-- scripts/modules/polsys.em
-- scripts/modules/sql.em
-- scripts/modules/storage.em
-- scripts/modules/unicode.em
-- scripts/modules/uo.em
-- scripts/modules/util.em
-- scripts/modules/vitals.em
-- scripts/playermanager.src
-- scripts/poltool.pdb
-- scripts/runecl.exe
-- scripts/runecl.pdb
-- scripts/start.src
-- scripts/storagewipe.zip
-
-## Packages
-
-### Standard Packages (pkg/std)
-- pkg/std/spells/dispel_field.src
-- pkg/std/spells/earthquake.src
-- pkg/std/spells/ebolt.src
-- pkg/std/spells/energy_field.src
-- pkg/std/spells/explosion.src
-- pkg/std/spells/feeblemind.src
-- pkg/std/spells/fireball.src
-- pkg/std/spells/firefield.src
-- pkg/std/spells/fstrike.src
-- pkg/std/spells/gate.src
-- pkg/std/spells/getspellid.inc
-- pkg/std/spells/gheal.src
-- pkg/std/spells/harm.src
-- pkg/std/spells/heal.src
-- pkg/std/spells/incognito.src
-- pkg/std/spells/invisibility.src
-- pkg/std/spells/itemdesc.cfg
-- pkg/std/spells/lightning.src
-- pkg/std/spells/magicarrow.src
-- pkg/std/spells/magiclock.src
-- pkg/std/spells/magictrap.src
-- pkg/std/spells/magicuntrap.src
-- pkg/std/spells/manadrain.src
-- pkg/std/spells/manavamp.src
-- pkg/std/spells/mark.src
-- pkg/std/spells/masscurse.src
-- pkg/std/spells/massdispel.src
-- pkg/std/spells/meteor_swarm.src
-- pkg/std/spells/mindblast.src
-- pkg/std/spells/nightsight.src
-- pkg/std/spells/parafield.src
-- pkg/std/spells/paralyze.src
-- pkg/std/spells/pkg.cfg
-- pkg/std/spells/poison.src
-- pkg/std/spells/poisonfield.src
-- pkg/std/spells/protection with timer.src
-- pkg/std/spells/protection.src
-- pkg/std/spells/reactivearmor.src
-- pkg/std/spells/recall.src
-- pkg/std/spells/reflect.src
-- pkg/std/spells/resurrect.src
-- pkg/std/spells/reveal.src
-- pkg/std/spells/scroll.src
-- pkg/std/spells/spells.cfg
-- pkg/std/spells/strength.src
-- pkg/std/spells/summon_air.src
-- pkg/std/spells/summon_creature.src
-- pkg/std/spells/summon_daemon.src
-- pkg/std/spells/summon_earth.src
-- pkg/std/spells/summon_fire.src
-- pkg/std/spells/summon_water.src
-- pkg/std/spells/telekinesis.src
-- pkg/std/spells/teleport.src
-- pkg/std/spells/thaw.src
-- pkg/std/spells/unlock.src
-- pkg/std/spells/vortex.src
-- pkg/std/spells/wallofstone.src
-- pkg/std/spells/weaken.src
-- pkg/std/spiritspeak/pkg.cfg
-- pkg/std/spiritspeak/spiritspeak.src
-- pkg/std/stealing/itemdesc.cfg
-- pkg/std/stealing/pkg.cfg
-- pkg/std/stealing/prestealing.src
-- pkg/std/stealing/stealing.src
-- pkg/std/stealth/pkg.cfg
-- pkg/std/stealth/stealth.src
-- pkg/std/tailoring/bridle.src
-- pkg/std/tailoring/itemdesc.cfg
-- pkg/std/tailoring/make_cloth_items.src
-- pkg/std/tailoring/pkg.cfg
-- pkg/std/tailoring/scissors.src
-- pkg/std/tailoring/tailoring.cfg
-- pkg/std/tailoring/tailoring.src
-- pkg/std/tailoring/unstitch.src
-- pkg/std/taming/pkg.cfg
-- pkg/std/taming/taming.src
-- pkg/std/tasteid/pkg.cfg
-- pkg/std/tasteid/tasteid.src
-- pkg/std/taunt/enticeai.src
-- pkg/std/taunt/pkg.cfg
-- pkg/std/taunt/taunt.src
-- pkg/std/tinkering/candlemaking.src
-- pkg/std/tinkering/itemdesc.cfg
-- pkg/std/tinkering/pkg.cfg
-- pkg/std/tinkering/tarot.src
-- pkg/std/tinkering/tinker.cfg
-- pkg/std/tinkering/tinkering.src
-- pkg/std/tracking/pkg.cfg
-- pkg/std/tracking/tracking.cfg
-- pkg/std/tracking/tracking.src
-- pkg/std/training/archery_butte.src
-- pkg/std/training/dummy.src
-- pkg/std/training/dummy_pickpocket.src
-- pkg/std/training/itemdesc.cfg
-- pkg/std/training/pkg.cfg
-- pkg/std/traps/hiddentrap.src
-- pkg/std/traps/itemdesc.cfg
-- pkg/std/traps/pkg.cfg
-- pkg/std/traps/traps.src
-- pkg/std/treasuremap/decodemap.src
-- pkg/std/treasuremap/digtreasure.src
-- pkg/std/treasuremap/guardians.cfg
-- pkg/std/treasuremap/itemdesc.cfg
-- pkg/std/treasuremap/pkg.cfg
-- pkg/std/treasuremap/treasure.cfg
-- pkg/std/veterinary/pkg.cfg
-- pkg/std/veterinary/vet.src
-
-### System Packages (pkg/systems)
-- pkg/systems/accounts/acctWatcher/acctWatcher.src
-- pkg/systems/accounts/commands/dev/eraseEmptyAccounts.src
-- pkg/systems/accounts/config/icp.cfg
-- pkg/systems/accounts/config/settings.cfg
-- pkg/systems/accounts/config/uopacket.cfg
-- pkg/systems/accounts/hook/onLogin.src
-- pkg/systems/accounts/include/accounts.inc
-- pkg/systems/accounts/include/mailSystem.inc
-- pkg/systems/accounts/include/settings.inc
-- pkg/systems/accounts/logon.src
-- pkg/systems/accounts/pkg.cfg
-- pkg/systems/accounts/reconnect.src
-- pkg/systems/combat/avengingonhit.src
-- pkg/systems/combat/balanceddagger.src
-- pkg/systems/combat/banishonhit.src
-- pkg/systems/combat/banishscript.src
-- pkg/systems/combat/blackrockscript.src
-- pkg/systems/combat/blindingonhit.src
-- pkg/systems/combat/blindingscript.src
-- pkg/systems/combat/bouncingonhit.src
-- pkg/systems/combat/config/Stuff to add.txt
-- pkg/systems/combat/config/enchantableitems.cfg
-- pkg/systems/combat/config/hitscriptdesc.cfg
-- pkg/systems/combat/config/itemdesc.cfg
-- pkg/systems/combat/config/modenchantdesc.cfg
-- pkg/systems/combat/config/onhitscriptdesc.cfg
-- pkg/systems/combat/config/settings.cfg
-- pkg/systems/combat/crithit.src
-- pkg/systems/combat/deflectiononhit.src
-- pkg/systems/combat/dualplanaronhit.src
-- pkg/systems/combat/dualplanarscript.src
-- pkg/systems/combat/explosionlauncherscript.src
-- pkg/systems/combat/guardhitscript.src
-- pkg/systems/combat/herd.src
-- pkg/systems/combat/include/hitscriptinc.inc
-- pkg/systems/combat/invisibleonhit.src
-- pkg/systems/combat/lifedrainscript.src
-- pkg/systems/combat/mainhit.src
-- pkg/systems/combat/manadrainonhit.src
-- pkg/systems/combat/manadrainscript.src
-- pkg/systems/combat/paralyzehit.src
-- pkg/systems/combat/paralyzeonhit.src
-- pkg/systems/combat/piercingonhit.src
-- pkg/systems/combat/piercingscript.src
-- pkg/systems/combat/pkg.cfg
-- pkg/systems/combat/poisonhit.src
-- pkg/systems/combat/poisononhit.src
-- pkg/systems/combat/raceresistonhit.src
-- pkg/systems/combat/raxweapon.src
-- pkg/systems/combat/reactivearmoronhit.src
-- pkg/systems/combat/slayerscript.src
-- pkg/systems/combat/sparhit.src
-- pkg/systems/combat/spellonhit.src
-- pkg/systems/combat/spellstrikescript.src
-- pkg/systems/combat/staminadrainonhit.src
-- pkg/systems/combat/staminadrainscript.src
-- pkg/systems/combat/thiefpoisonhit.src
-- pkg/systems/combat/trielementalonhit.src
-- pkg/systems/combat/trielementalscript.src
-- pkg/systems/combat/voidscript.src
-- pkg/systems/crafting/include/craftingfunctions.inc
-- pkg/systems/crafting/pkg.cfg
-- pkg/systems/email/chardelete.src
-- pkg/systems/email/commands/gm/inspectmail.src
-- pkg/systems/email/commands/player/email.src
-- pkg/systems/email/config/icp.cfg
-- pkg/systems/email/email.src
-- pkg/systems/email/emailMessage/newEmail.src
-- pkg/systems/email/include/email.inc
-- pkg/systems/email/include/email_const.inc
-- pkg/systems/email/logon.src
-- pkg/systems/email/pkg.cfg
-- pkg/systems/email/reconnect.src
-- pkg/systems/email/webmail/webmail.src
-- pkg/systems/onlineCount/cheatCount.src
-- pkg/systems/onlineCount/commands/dev/connectBot.src
-- pkg/systems/onlineCount/commands/dev/disconnectBot.src
-- pkg/systems/onlineCount/commands/dev/restartCheatCount.src
-- pkg/systems/onlineCount/config/icp.cfg
-- pkg/systems/onlineCount/config/settings.cfg
-- pkg/systems/onlineCount/include/bots.inc
-- pkg/systems/onlineCount/include/settings.inc
-- pkg/systems/onlineCount/pkg.cfg
-- pkg/systems/onlineCount/start.src
-- pkg/systems/reputation/config/icp.cfg
-- pkg/systems/reputation/hook/namedyes.src
-- pkg/systems/reputation/pkg.cfg
-
-### Utility Packages (pkg/utils)
-- pkg/utils/clilocs/commands/test/clilocTest.src
-- pkg/utils/clilocs/config/backup_of_clilocs.cfg
-- pkg/utils/clilocs/config/clilocs.cfg
-- pkg/utils/clilocs/config/icp.cfg
-- pkg/utils/clilocs/include/clilocs.inc
-- pkg/utils/clilocs/pkg.cfg
-- pkg/utils/datafile/config/icp.cfg
-- pkg/utils/datafile/include/datafile.inc
-- pkg/utils/datafile/include/datafile_ex.inc
-- pkg/utils/datafile/pkg.cfg
-- pkg/utils/gumps/changelog.txt
-- pkg/utils/gumps/commands/admin/gumpprompt.src
-- pkg/utils/gumps/commands/admin/htmlgump.src
-- pkg/utils/gumps/commands/admin/requestgump.src
-- pkg/utils/gumps/commands/admin/resizepic.src
-- pkg/utils/gumps/commands/admin/samplegump.src
-- pkg/utils/gumps/commands/admin/selectiongump.src
-- pkg/utils/gumps/commands/admin/yesno.src
-- pkg/utils/gumps/config/GumpInfo - Copy.cfg
-- pkg/utils/gumps/config/GumpInfo.cfg
-- pkg/utils/gumps/config/fontSize.cfg
-- pkg/utils/gumps/config/icp.cfg
-- pkg/utils/gumps/include/autoClose.inc
-- pkg/utils/gumps/include/gumpprompt.inc
-- pkg/utils/gumps/include/gumps.inc
-- pkg/utils/gumps/include/gumps_ex.inc
-- pkg/utils/gumps/include/htmlgump.inc
-- pkg/utils/gumps/include/old-gumps.inc
-- pkg/utils/gumps/include/old/old-gumps.inc
-- pkg/utils/gumps/include/playerselectiongump.inc
-- pkg/utils/gumps/include/requestgump.inc
-- pkg/utils/gumps/include/selectiongump.inc
-- pkg/utils/gumps/include/textConsts.inc
-- pkg/utils/gumps/include/yesNoSizable.inc
-- pkg/utils/gumps/include/yesno.inc
-- pkg/utils/gumps/pkg.cfg
-- pkg/utils/gumps/scripts/autoClose/autoClose.src
-- pkg/utils/gumps/scripts/autoClose/autoCloseOnLeaveArea.src
-- pkg/utils/gumps/scripts/autoClose/autoCloseOnMovedCoordinateDistance.src
-- pkg/utils/gumps/scripts/autoClose/autoCloseOnMovedDistance.src
-- pkg/utils/gumps/scripts/yesNo/yesNoGump.src
-- pkg/utils/gumps/scripts/yesNo/yesNoMiniGump.src
-- pkg/utils/itemUtils/config/icp.cfg
-- pkg/utils/itemUtils/config/offset.cfg
-- pkg/utils/itemUtils/config/sets.cfg
-- pkg/utils/itemUtils/config/stairs.cfg
-- pkg/utils/itemUtils/include/canAccess.inc
-- pkg/utils/itemUtils/include/colors.inc
-- pkg/utils/itemUtils/include/desc.inc
-- pkg/utils/itemUtils/include/itemInfo.inc
-- pkg/utils/itemUtils/include/itemProps.inc
-- pkg/utils/itemUtils/include/itemUtil.inc
-- pkg/utils/itemUtils/include/itemUtil_ex.inc
-- pkg/utils/itemUtils/include/itemdesc.inc
-- pkg/utils/itemUtils/include/itemtypes.inc
-- pkg/utils/itemUtils/include/layers.inc
-- pkg/utils/itemUtils/include/offsets.inc
-- pkg/utils/itemUtils/include/toolWear.inc
-- pkg/utils/itemUtils/pkg.cfg
-- pkg/utils/itemUtils/rotate/rotate.src
-- pkg/utils/mdgumps/changelog.txt
-- pkg/utils/mdgumps/commands/test/gfchart.src
-- pkg/utils/mdgumps/commands/test/gumpprompt.src
-- pkg/utils/mdgumps/commands/test/htmlgump.src
-- pkg/utils/mdgumps/commands/test/requestgump.src
-- pkg/utils/mdgumps/commands/test/resizepic.src
-- pkg/utils/mdgumps/commands/test/samplegump.src
-- pkg/utils/mdgumps/commands/test/selectiongump.src
-- pkg/utils/mdgumps/commands/test/yesno.src
-- pkg/utils/mdgumps/config/GumpInfo.cfg
-- pkg/utils/mdgumps/config/fontSize.cfg
-- pkg/utils/mdgumps/config/icp.cfg
-- pkg/utils/mdgumps/include/autoClose.inc
-- pkg/utils/mdgumps/include/confirmationSizable.inc
-- pkg/utils/mdgumps/include/gumpCaching.inc
-- pkg/utils/mdgumps/include/gumpPrompt.inc
-- pkg/utils/mdgumps/include/gumps.inc
-- pkg/utils/mdgumps/include/gumps_ex.inc
-- pkg/utils/mdgumps/include/htmlGump.inc
-- pkg/utils/mdgumps/include/old-gumps.inc
-- pkg/utils/mdgumps/include/old/old-gumps.inc
-- pkg/utils/mdgumps/include/playerSelectionGump.inc
-- pkg/utils/mdgumps/include/requestGump.inc
-- pkg/utils/mdgumps/include/selectionGump.inc
-- pkg/utils/mdgumps/include/textConsts.inc
-- pkg/utils/mdgumps/include/yesNo.inc
-- pkg/utils/mdgumps/pkg.cfg
-- pkg/utils/mdgumps/scripts/autoClose/autoClose.src
-- pkg/utils/mdgumps/scripts/autoClose/autoCloseOnLeaveArea.src
-- pkg/utils/mdgumps/scripts/autoClose/autoCloseOnMovedCoordinateDistance.src
-- pkg/utils/mdgumps/scripts/autoClose/autoCloseOnMovedDistance.src
-- pkg/utils/mdgumps/scripts/yesNo/binaryChoice.src
-- pkg/utils/mdgumps/scripts/yesNo/yesNoGump.src
-- pkg/utils/mdgumps/scripts/yesNo/yesNoMiniGump.src
-- pkg/utils/objClassMethods/config/icp.cfg
-- pkg/utils/objClassMethods/config/syshook.cfg
-- pkg/utils/objClassMethods/pkg.cfg
-- pkg/utils/objClassMethods/scripts/character.src
-- pkg/utils/security/config/icp.cfg
-- pkg/utils/security/include/attributesReport.inc
-- pkg/utils/security/include/commandReport.inc
-- pkg/utils/security/include/damageReport.inc
-- pkg/utils/security/include/itemReport.inc
-- pkg/utils/security/include/report.inc
-- pkg/utils/security/include/speechReport.inc
-- pkg/utils/security/pkg.cfg
-- pkg/utils/timeutils/commands/player/serverTime.src
-- pkg/utils/timeutils/commands/test/timetest.src
-- pkg/utils/timeutils/config/icp.cfg
-- pkg/utils/timeutils/config/settings.cfg
-- pkg/utils/timeutils/include/gameTime.inc
-- pkg/utils/timeutils/include/settings.inc
-- pkg/utils/timeutils/include/time.inc
-- pkg/utils/timeutils/pkg.cfg
-
-### Template Packages
-- pkg/template/pkg.cfg
+| Status | File | + | - |
+|---|---|---:|---:|
+| A | .gitignore | 20 | 0 |
+| A | .vscode/settings.json | 12 | 0 |
+| A | ConfigPath.zip | n/a | n/a |
+| A | Converted_Used_Colors.txt | 7034 | 0 |
+| A | POLConfigurator.dat | 6 | 0 |
+| D | README.md | 0 | 2 |
+| A | README.txt | 43 | 0 |
+| A | Used Colors.txt | 7034 | 0 |
+| A | ZHO-DataBackup.ps1 | 2 | 0 |
+| A | breaking-changes.txt | 89 | 0 |
+| A | config/accip.cfg | 1172 | 0 |
+| A | config/animxlate.cfg | 1145 | 0 |
+| A | config/armrzone.cfg | 47 | 0 |
+| A | config/bannedips.cfg | 0 | 0 |
+| A | config/boats.cfg | 1937 | 0 |
+| A | config/bowcraft.cfg | 61 | 0 |
+| A | config/christmassongs.cfg | 179 | 0 |
+| A | config/circles.cfg | 284 | 0 |
+| A | config/cloths.cfg | 415 | 0 |
+| A | config/cmds.cfg | 70 | 0 |
+| A | config/colors.cfg | 275 | 0 |
+| A | config/combat.cfg | 92 | 0 |
+| A | config/console.cfg | 141 | 0 |
+| A | config/corpses.cfg | 3491 | 0 |
+| A | config/days.cfg | 16 | 0 |
+| A | config/equip.cfg | 3107 | 0 |
+| A | config/equip2.cfg | 726 | 0 |
+| A | config/extobj.cfg | 20 | 0 |
+| A | config/fileaccess.cfg | 11 | 0 |
+| A | config/flip.cfg | 6868 | 0 |
+| A | config/food.cfg | 245 | 0 |
+| A | config/friendchat.cfg | 103 | 0 |
+| A | config/goloc.cfg | 305 | 0 |
+| A | config/golocs.cfg | 382 | 0 |
+| A | config/golocsfelucca.cfg | 392 | 0 |
+| A | config/golocsilshenar.cfg | 251 | 0 |
+| A | config/golocsmalas.cfg | 161 | 0 |
+| A | config/golocssosaria.cfg | 262 | 0 |
+| A | config/golocstermur.cfg | 11 | 0 |
+| A | config/golocstokuno.cfg | 241 | 0 |
+| A | config/gorealm.cfg | 63 | 0 |
+| A | config/guardedareas.cfg | 64 | 0 |
+| A | config/incognito.cfg | 3734 | 0 |
+| A | config/innlocation.cfg | 211 | 0 |
+| A | config/itemdesc.cfg | 3041 | 0 |
+| A | config/landtiles.cfg | 27771 | 0 |
+| A | config/loot.cfg | 472 | 0 |
+| A | config/lootgroup.cfg | 359 | 0 |
+| A | config/menus.cfg | 938 | 0 |
+| A | config/movecost.cfg | 30 | 0 |
+| A | config/mrcspawn.cfg | 2552 | 0 |
+| A | config/names.cfg | 6091 | 0 |
+| A | config/news.cfg | 10 | 0 |
+| A | config/nlootgroup.cfg | 2365 | 0 |
+| A | config/npcdesc.cfg | 33186 | 0 |
+| A | config/questitems.cfg | 119 | 0 |
+| A | config/questlocs.cfg | 391 | 0 |
+| A | config/repsys.cfg | 76 | 0 |
+| A | config/responses.cfg | 5 | 0 |
+| A | config/servspecopt.cfg | 460 | 0 |
+| A | config/signs.cfg | 3882 | 0 |
+| A | config/songs.cfg | 170 | 0 |
+| A | config/spawndef.cfg | 541 | 0 |
+| A | config/speechgroup.cfg | 3924 | 0 |
+| A | config/spells.cfg | 0 | 0 |
+| A | config/stacking.cfg | 4 | 0 |
+| A | config/starteqp.cfg | 349 | 0 |
+| A | config/startloc.cfg | 69 | 0 |
+| A | config/teleporters.cfg | 2338 | 0 |
+| A | config/traveling.cfg | 47 | 0 |
+| A | config/use_stuff.cfg | 688 | 0 |
+| A | config/watch.cfg | 12 | 0 |
+| A | core-changes.txt | 8255 | 0 |
+| A | libmysql.dll | n/a | n/a |
+| A | loogroups.txt | 1131 | 0 |
+| A | mapgen/sosaria_26-01-26-items.txt | 66090 | 0 |
+| A | mapgen/sosaria_decorated_with_obsolete_dungeon_doors_items.txt | 62982 | 0 |
+| A | mapgen/sosaria_removed_obsolete_dungeon_doors_items.txt | 60156 | 0 |
+| A | mapgen/trammel/items-doors.txt | 43840 | 0 |
+| A | mapgen/trammel/items-merchants-townsfolk.txt | 10141 | 0 |
+| A | orphans.txt | 0 | 0 |
+| A | packethooks.txt | 533 | 0 |
+| A | packets.zip | n/a | n/a |
+| A | pkg/commands/commands/gm/clearparty.src | 64 | 0 |
+| A | pkg/commands/commands/gm/mobedit.src | 478 | 0 |
+| A | pkg/commands/commands/gm/reducephysical.src | 18 | 0 |
+| A | pkg/commands/commands/gm/reducepoison.src | 17 | 0 |
+| A | pkg/commands/pkg.cfg | 4 | 0 |
+| A | pkg/items/abbatoir/config/icp.cfg | 10 | 0 |
+| A | pkg/items/abbatoir/config/itemdesc.cfg | 65 | 0 |
+| A | pkg/items/abbatoir/pkg.cfg | 16 | 0 |
+| A | pkg/items/ankh/config/icp.cfg | 10 | 0 |
+| A | pkg/items/ankh/config/itemdesc.cfg | 53 | 0 |
+| A | pkg/items/ankh/pkg.cfg | 16 | 0 |
+| A | pkg/items/anvil/anvil/method.src | 15 | 0 |
+| A | pkg/items/anvil/config/icp.cfg | 17 | 0 |
+| A | pkg/items/anvil/config/itemdesc.cfg | 58 | 0 |
+| A | pkg/items/anvil/pkg.cfg | 18 | 0 |
+| A | pkg/items/arcaneCircle/config/icp.cfg | 10 | 0 |
+| A | pkg/items/arcaneCircle/config/itemdesc.cfg | 74 | 0 |
+| A | pkg/items/arcaneCircle/pkg.cfg | 16 | 0 |
+| A | pkg/items/armor/include/armorZones.inc | 133 | 0 |
+| A | pkg/items/armor/pkg.cfg | 3 | 0 |
+| A | pkg/items/beds/bed/use.src | 434 | 0 |
+| A | pkg/items/beds/config/icp.cfg | 10 | 0 |
+| A | pkg/items/beds/config/itemdesc.cfg | 77 | 0 |
+| A | pkg/items/beds/pkg.cfg | 16 | 0 |
+| A | pkg/items/bloodPentagram/config/icp.cfg | 10 | 0 |
+| A | pkg/items/bloodPentagram/config/itemdesc.cfg | 240 | 0 |
+| A | pkg/items/bloodPentagram/pkg.cfg | 16 | 0 |
+| A | pkg/items/carpets/carpet/method.src | 10 | 0 |
+| A | pkg/items/carpets/config/icp.cfg | 10 | 0 |
+| A | pkg/items/carpets/config/itemdesc.cfg | 2927 | 0 |
+| A | pkg/items/carpets/pkg.cfg | 16 | 0 |
+| A | pkg/items/containers/Extra containers.zip | n/a | n/a |
+| A | pkg/items/containers/backPack/method.src | 85 | 0 |
+| A | pkg/items/containers/backPack/use.src | 74 | 0 |
+| A | pkg/items/containers/bookshelf/canInsert.src | 15 | 0 |
+| A | pkg/items/containers/bookshelf/canRemove.src | 22 | 0 |
+| A | pkg/items/containers/bookshelf/method.src | 84 | 0 |
+| A | pkg/items/containers/bookshelf/onDestroy.src | 24 | 0 |
+| A | pkg/items/containers/bookshelf/onInsert.src | 28 | 0 |
+| A | pkg/items/containers/bookshelf/onRemove.src | 31 | 0 |
+| A | pkg/items/containers/commands/player/flip.src | 919 | 0 |
+| A | pkg/items/containers/commands/test/fixBank.src | 105 | 0 |
+| A | pkg/items/containers/commands/test/openstorage.src | 31 | 0 |
+| A | pkg/items/containers/commands/test/storageareas.src | 111 | 0 |
+| A | pkg/items/containers/commands/test/wipestoragearea.src | 76 | 0 |
+| A | pkg/items/containers/config/bookshelf.cfg | 57 | 0 |
+| A | pkg/items/containers/config/icp.cfg | 17 | 0 |
+| A | pkg/items/containers/config/insertsound.cfg | 46 | 0 |
+| A | pkg/items/containers/config/itemdesc.cfg | 2424 | 0 |
+| A | pkg/items/containers/config/settings.cfg | 13 | 0 |
+| A | pkg/items/containers/container/canDestroy.src | 34 | 0 |
+| A | pkg/items/containers/container/canInsert.src | 38 | 0 |
+| A | pkg/items/containers/container/canRemove.src | 44 | 0 |
+| A | pkg/items/containers/container/firstAidBeltCreate.src | 12 | 0 |
+| A | pkg/items/containers/container/method.src | 100 | 0 |
+| A | pkg/items/containers/container/onCreate.src | 44 | 0 |
+| A | pkg/items/containers/container/onInsert.src | 30 | 0 |
+| A | pkg/items/containers/container/onRemove.src | 19 | 0 |
+| A | pkg/items/containers/container/quiverOnInsert.src | 23 | 0 |
+| A | pkg/items/containers/container/use.src | 87 | 0 |
+| A | pkg/items/containers/include/canRemove.inc | 29 | 0 |
+| A | pkg/items/containers/include/checks.inc | 29 | 0 |
+| A | pkg/items/containers/include/containers.inc | 69 | 0 |
+| A | pkg/items/containers/include/insertSound.inc | 139 | 0 |
+| A | pkg/items/containers/include/settings.inc | 28 | 0 |
+| A | pkg/items/containers/include/storageAreas.inc | 315 | 0 |
+| A | pkg/items/containers/include/useCorpse.inc | 41 | 0 |
+| A | pkg/items/containers/noView.src | 17 | 0 |
+| A | pkg/items/containers/ondelete.src | 21 | 0 |
+| A | pkg/items/containers/pkg.cfg | 10 | 0 |
+| A | pkg/items/crystalThemePack/config/icp.cfg | 10 | 0 |
+| A | pkg/items/crystalThemePack/config/itemdesc.cfg | 155 | 0 |
+| A | pkg/items/crystalThemePack/pkg.cfg | 16 | 0 |
+| A | pkg/items/currency/BankersOrder/bankersOrder.src | 108 | 0 |
+| A | pkg/items/currency/coins/methods.src | 42 | 0 |
+| A | pkg/items/currency/commands/gm/makeCopper.src | 53 | 0 |
+| A | pkg/items/currency/commands/gm/makeGold.src | 53 | 0 |
+| A | pkg/items/currency/commands/gm/makeSilver.src | 53 | 0 |
+| A | pkg/items/currency/config/icp.cfg | 10 | 0 |
+| A | pkg/items/currency/config/itemdesc.cfg | 66 | 0 |
+| A | pkg/items/currency/include/currency.inc | 220 | 0 |
+| A | pkg/items/currency/pkg.cfg | 14 | 0 |
+| A | pkg/items/curtains/config/icp.cfg | 10 | 0 |
+| A | pkg/items/curtains/config/itemdesc.cfg | 143 | 0 |
+| A | pkg/items/curtains/curtains/method.src | 14 | 0 |
+| A | pkg/items/curtains/curtains/use.src | 0 | 0 |
+| A | pkg/items/curtains/pkg.cfg | 16 | 0 |
+| A | pkg/items/deed/built/A_TEMPLATE.cfg | 38 | 0 |
+| A | pkg/items/deed/built/abbatoir.cfg | 38 | 0 |
+| A | pkg/items/deed/built/advancedTrainingDummy.cfg | 50 | 0 |
+| A | pkg/items/deed/built/alchemistTable.cfg | 38 | 0 |
+| A | pkg/items/deed/built/ankh.cfg | 38 | 0 |
+| A | pkg/items/deed/built/anvil.cfg | 36 | 0 |
+| A | pkg/items/deed/built/arcaneBookshelf.cfg | 37 | 0 |
+| A | pkg/items/deed/built/arcaneCircle.cfg | 37 | 0 |
+| A | pkg/items/deed/built/arcanistStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/archeryButte.cfg | 36 | 0 |
+| A | pkg/items/deed/built/bedOfNails.cfg | 38 | 0 |
+| A | pkg/items/deed/built/bloodPentagram.cfg | 64 | 0 |
+| A | pkg/items/deed/built/boneCouch.cfg | 38 | 0 |
+| A | pkg/items/deed/built/bountifulchest.cfg | 36 | 0 |
+| A | pkg/items/deed/built/bronzeArcher.cfg | 36 | 0 |
+| A | pkg/items/deed/built/bronzeFairyOnShroom.cfg | 36 | 0 |
+| A | pkg/items/deed/built/bronzeGlobe.cfg | 36 | 0 |
+| A | pkg/items/deed/built/bronzeManOnBench.cfg | 38 | 0 |
+| A | pkg/items/deed/built/brownBearSkinRug.cfg | 51 | 0 |
+| A | pkg/items/deed/built/cauldron.cfg | 36 | 0 |
+| A | pkg/items/deed/built/chickenCoop.cfg | 36 | 0 |
+| A | pkg/items/deed/built/comtoiseClock.cfg | 36 | 0 |
+| A | pkg/items/deed/built/crystalAltar.cfg | 34 | 0 |
+| A | pkg/items/deed/built/crystalBeggarStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/crystalBrazier.cfg | 31 | 0 |
+| A | pkg/items/deed/built/crystalBull.cfg | 38 | 0 |
+| A | pkg/items/deed/built/crystalRunnerStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/crystalSupplicantStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/crystalTable.cfg | 38 | 0 |
+| A | pkg/items/deed/built/crystalThrone.cfg | 36 | 0 |
+| A | pkg/items/deed/built/curtains.cfg | 43 | 0 |
+| A | pkg/items/deed/built/daviesLocker.cfg | 46 | 0 |
+| A | pkg/items/deed/built/dawnsMusicBox.cfg | 36 | 0 |
+| A | pkg/items/deed/built/displayCase.cfg | 46 | 0 |
+| A | pkg/items/deed/built/distillery.cfg | 38 | 0 |
+| A | pkg/items/deed/built/dolphinRug.cfg | 92 | 0 |
+| A | pkg/items/deed/built/dragonRug.cfg | 84 | 0 |
+| A | pkg/items/deed/built/elvenBed.cfg | 38 | 0 |
+| A | pkg/items/deed/built/elvenForge.cfg | 30 | 0 |
+| A | pkg/items/deed/built/elvenLoveSeat.cfg | 38 | 0 |
+| A | pkg/items/deed/built/elvenSpinningWheel.cfg | 36 | 0 |
+| A | pkg/items/deed/built/elvenStove.cfg | 36 | 0 |
+| A | pkg/items/deed/built/elvenWashBasin.cfg | 38 | 0 |
+| A | pkg/items/deed/built/elvenanvil.cfg | 36 | 0 |
+| A | pkg/items/deed/built/elvendresser.cfg | 38 | 0 |
+| A | pkg/items/deed/built/fancyCouch.cfg | 39 | 0 |
+| A | pkg/items/deed/built/fancyDisplayCase.cfg | 40 | 0 |
+| A | pkg/items/deed/built/fancyElvenTable.cfg | 40 | 0 |
+| A | pkg/items/deed/built/fancyLoveSeat.cfg | 38 | 0 |
+| A | pkg/items/deed/built/fireDaemonStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/firePit.cfg | 30 | 0 |
+| A | pkg/items/deed/built/flourMill.cfg | 40 | 0 |
+| A | pkg/items/deed/built/fountainoflife.cfg | 36 | 0 |
+| A | pkg/items/deed/built/fourPostBed.cfg | 46 | 0 |
+| A | pkg/items/deed/built/gardenShed.cfg | 58 | 0 |
+| A | pkg/items/deed/built/gargishCot.cfg | 38 | 0 |
+| A | pkg/items/deed/built/gargishCouch.cfg | 38 | 0 |
+| A | pkg/items/deed/built/gargishLongTable.cfg | 38 | 0 |
+| A | pkg/items/deed/built/gargoyleShortTable.cfg | 33 | 0 |
+| A | pkg/items/deed/built/gingerbreadHouse.cfg | 33 | 0 |
+| A | pkg/items/deed/built/globeOfSosaria.cfg | 34 | 0 |
+| A | pkg/items/deed/built/goldenTable.cfg | 42 | 0 |
+| A | pkg/items/deed/built/greyBrickFireplace.cfg | 38 | 0 |
+| A | pkg/items/deed/built/harpsichord.cfg | 48 | 0 |
+| A | pkg/items/deed/built/hearthOfHomeFireplace.cfg | 38 | 0 |
+| A | pkg/items/deed/built/largeBed.cfg | 43 | 0 |
+| A | pkg/items/deed/built/largeBed2.cfg | 43 | 0 |
+| A | pkg/items/deed/built/largeBed3.cfg | 43 | 0 |
+| A | pkg/items/deed/built/largeCouch.cfg | 40 | 0 |
+| A | pkg/items/deed/built/largeForge.cfg | 42 | 0 |
+| A | pkg/items/deed/built/largeGargoyleBed.cfg | 52 | 0 |
+| A | pkg/items/deed/built/largeSoulForge.cfg | 46 | 0 |
+| A | pkg/items/deed/built/largeStoneTable.cfg | 40 | 0 |
+| A | pkg/items/deed/built/longBench.cfg | 40 | 0 |
+| A | pkg/items/deed/built/longMetalTable.cfg | 47 | 0 |
+| A | pkg/items/deed/built/longWoodenTable.cfg | 47 | 0 |
+| A | pkg/items/deed/built/longcaseClock.cfg | 36 | 0 |
+| A | pkg/items/deed/built/loom.cfg | 38 | 0 |
+| A | pkg/items/deed/built/marbleTable.cfg | 43 | 0 |
+| A | pkg/items/deed/built/mediumStoneTable.cfg | 38 | 0 |
+| A | pkg/items/deed/built/miniSoulForge.cfg | 31 | 0 |
+| A | pkg/items/deed/built/minotaurStatue.cfg | 53 | 0 |
+| A | pkg/items/deed/built/obsidianPillar.cfg | 31 | 0 |
+| A | pkg/items/deed/built/obsidianRock.cfg | 30 | 0 |
+| A | pkg/items/deed/built/ornateBed.cfg | 47 | 0 |
+| A | pkg/items/deed/built/ornateClock.cfg | 36 | 0 |
+| A | pkg/items/deed/built/ornateElvenTable.cfg | 40 | 0 |
+| A | pkg/items/deed/built/pentagram.cfg | 38 | 0 |
+| A | pkg/items/deed/built/pickpocketDip.cfg | 36 | 0 |
+| A | pkg/items/deed/built/plushLoveSeat.cfg | 38 | 0 |
+| A | pkg/items/deed/built/polarBearSkinRug.cfg | 51 | 0 |
+| A | pkg/items/deed/built/poseidonStatue.cfg | 40 | 0 |
+| A | pkg/items/deed/built/replicaBlackthorneThrone.cfg | 40 | 0 |
+| A | pkg/items/deed/built/replicaBritishThrone.cfg | 32 | 0 |
+| A | pkg/items/deed/built/roseRug.cfg | 90 | 0 |
+| A | pkg/items/deed/built/rusticBench.cfg | 38 | 0 |
+| A | pkg/items/deed/built/sandstoneFireplace.cfg | 38 | 0 |
+| A | pkg/items/deed/built/sandstoneFountain.cfg | 45 | 0 |
+| A | pkg/items/deed/built/sandstoneOven.cfg | 38 | 0 |
+| A | pkg/items/deed/built/scarecrow.cfg | 36 | 0 |
+| A | pkg/items/deed/built/shadowAltar.cfg | 38 | 0 |
+| A | pkg/items/deed/built/shadowBanner.cfg | 38 | 0 |
+| A | pkg/items/deed/built/shadowFirePit.cfg | 33 | 0 |
+| A | pkg/items/deed/built/shadowPillar.cfg | 31 | 0 |
+| A | pkg/items/deed/built/skullPile.cfg | 37 | 0 |
+| A | pkg/items/deed/built/skullRug.cfg | 90 | 0 |
+| A | pkg/items/deed/built/smallBed.cfg | 37 | 0 |
+| A | pkg/items/deed/built/smallCouch.cfg | 38 | 0 |
+| A | pkg/items/deed/built/smallForge.cfg | 29 | 0 |
+| A | pkg/items/deed/built/smallMetalTable.cfg | 43 | 0 |
+| A | pkg/items/deed/built/smallSoulForge.cfg | 29 | 0 |
+| A | pkg/items/deed/built/smallTable.cfg | 38 | 0 |
+| A | pkg/items/deed/built/smallWoodenTable.cfg | 39 | 0 |
+| A | pkg/items/deed/built/snowman.cfg | 36 | 0 |
+| A | pkg/items/deed/built/soulForgeAnvil.cfg | 38 | 0 |
+| A | pkg/items/deed/built/spikeColumn.cfg | 31 | 0 |
+| A | pkg/items/deed/built/spikePost.cfg | 36 | 0 |
+| A | pkg/items/deed/built/spinningWheel.cfg | 45 | 0 |
+| A | pkg/items/deed/built/squirrelStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/stoneAnvil.cfg | 36 | 0 |
+| A | pkg/items/deed/built/stoneFireplace.cfg | 38 | 0 |
+| A | pkg/items/deed/built/stoneFountain.cfg | 45 | 0 |
+| A | pkg/items/deed/built/stoneOven.cfg | 38 | 0 |
+| A | pkg/items/deed/built/tallElvenBed.cfg | 42 | 0 |
+| A | pkg/items/deed/built/terMurDresser.cfg | 38 | 0 |
+| A | pkg/items/deed/built/tigerSkinRug.cfg | 47 | 0 |
+| A | pkg/items/deed/built/tortureRack.cfg | 41 | 0 |
+| A | pkg/items/deed/built/trainingDummy.cfg | 36 | 0 |
+| A | pkg/items/deed/built/vanity.cfg | 38 | 0 |
+| A | pkg/items/deed/built/wallBench.cfg | 38 | 0 |
+| A | pkg/items/deed/built/wallClock.cfg | 36 | 0 |
+| A | pkg/items/deed/built/warriorStatue.cfg | 36 | 0 |
+| A | pkg/items/deed/built/waterTrough.cfg | 38 | 0 |
+| A | pkg/items/deed/built/woodenCoffin.cfg | 40 | 0 |
+| A | pkg/items/deed/built/wreath.cfg | 36 | 0 |
+| A | pkg/items/deed/carpetDeed/method.src | 11 | 0 |
+| A | pkg/items/deed/carpetDeed/use.src | 183 | 0 |
+| A | pkg/items/deed/commands/player/redeednew.src | 196 | 0 |
+| A | pkg/items/deed/config/Banner.cfg | 575 | 0 |
+| A | pkg/items/deed/config/bannerMenu.cfg | 137 | 0 |
+| A | pkg/items/deed/config/icp.cfg | 13 | 0 |
+| A | pkg/items/deed/config/itemdesc.cfg | 1902 | 0 |
+| A | pkg/items/deed/config/itemdesc2.cfg | 1466 | 0 |
+| A | pkg/items/deed/config/signs.cfg | 391 | 0 |
+| A | pkg/items/deed/deed/method.src | 10 | 0 |
+| A | pkg/items/deed/deed/use.src | 289 | 0 |
+| A | pkg/items/deed/harpsichord/create.src | 49 | 0 |
+| A | pkg/items/deed/include/carpet.inc | 349 | 0 |
+| A | pkg/items/deed/pkg.cfg | 19 | 0 |
+| A | pkg/items/deed/redeed.zip | n/a | n/a |
+| A | pkg/items/doors/config/icp.cfg | 9 | 0 |
+| A | pkg/items/doors/config/itemdesc.cfg | 2837 | 0 |
+| A | pkg/items/doors/config/settings.cfg | 11 | 0 |
+| A | pkg/items/doors/docs/Door Documentation.txt | 17 | 0 |
+| A | pkg/items/doors/include/doors.inc | 154 | 0 |
+| A | pkg/items/doors/include/settings.inc | 67 | 0 |
+| A | pkg/items/doors/items/doors/control.src | 11 | 0 |
+| A | pkg/items/doors/items/doors/methods.src | 56 | 0 |
+| A | pkg/items/doors/items/doors/use.src | 61 | 0 |
+| A | pkg/items/doors/openDoorMacro.src | 31 | 0 |
+| A | pkg/items/doors/pkg.cfg | 5 | 0 |
+| A | pkg/items/doors/uopacket.cfg | 12 | 0 |
+| A | pkg/items/elvenFurniture/config/icp.cfg | 10 | 0 |
+| A | pkg/items/elvenFurniture/config/itemdesc.cfg | 875 | 0 |
+| A | pkg/items/elvenFurniture/pkg.cfg | 16 | 0 |
+| A | pkg/items/houseExtras/config/icp.cfg | 10 | 0 |
+| A | pkg/items/houseExtras/config/itemdesc.cfg | 23 | 0 |
+| A | pkg/items/houseExtras/config/settings.cfg | 26 | 0 |
+| A | pkg/items/houseExtras/hteleporter/houseTeleporterKit.src | 219 | 0 |
+| A | pkg/items/houseExtras/hteleporter/teleporterFunctions.src | 219 | 0 |
+| A | pkg/items/houseExtras/hteleporter/walkOn.src | 105 | 0 |
+| A | pkg/items/houseExtras/include/settings.inc | 102 | 0 |
+| A | pkg/items/houseExtras/pkg.cfg | 7 | 0 |
+| A | pkg/items/keys/config/icp.cfg | 17 | 0 |
+| A | pkg/items/keys/config/itemdesc.cfg | 85 | 0 |
+| A | pkg/items/keys/include/key.inc | 186 | 0 |
+| A | pkg/items/keys/key/methods.src | 37 | 0 |
+| A | pkg/items/keys/key/use.src | 78 | 0 |
+| A | pkg/items/keys/keyRing/canInsert.src | 20 | 0 |
+| A | pkg/items/keys/keyRing/methods.src | 33 | 0 |
+| A | pkg/items/keys/keyRing/onInsert.src | 14 | 0 |
+| A | pkg/items/keys/keyRing/onRemove.src | 27 | 0 |
+| A | pkg/items/keys/keyRing/use.src | 182 | 0 |
+| A | pkg/items/keys/pkg.cfg | 17 | 0 |
+| A | pkg/items/keys/textcmd/gm/fixkeyring.src | 43 | 0 |
+| A | pkg/items/keys/textcmd/gm/showKeyRing.src | 163 | 0 |
+| A | pkg/items/pentagram/config/icp.cfg | 10 | 0 |
+| A | pkg/items/pentagram/config/itemdesc.cfg | 65 | 0 |
+| A | pkg/items/pentagram/pkg.cfg | 16 | 0 |
+| A | pkg/items/sysbook/ReadMe.txt | 1 | 0 |
+| A | pkg/items/sysbook/bookShelfMonitor.src | 78 | 0 |
+| A | pkg/items/sysbook/books/bookMethods.src | 125 | 0 |
+| A | pkg/items/sysbook/books/openBook.src | 5 | 0 |
+| A | pkg/items/sysbook/books/readOnly.src | 54 | 0 |
+| A | pkg/items/sysbook/books/sysbook_create.src | 8 | 0 |
+| A | pkg/items/sysbook/commands/admin/addtomasterlibrary.src | 143 | 0 |
+| A | pkg/items/sysbook/commands/admin/addtoshardlibrary.src | 108 | 0 |
+| A | pkg/items/sysbook/commands/admin/createshardlibrary.src | 67 | 0 |
+| A | pkg/items/sysbook/commands/admin/removefromshardlibrary.src | 74 | 0 |
+| A | pkg/items/sysbook/commands/admin/setbooktonotspawn.src | 62 | 0 |
+| A | pkg/items/sysbook/commands/admin/setbooktospawn.src | 61 | 0 |
+| A | pkg/items/sysbook/commands/gm/addspawnshelf.src | 68 | 0 |
+| A | pkg/items/sysbook/commands/gm/findbook.src | 90 | 0 |
+| A | pkg/items/sysbook/commands/gm/removespawnshelf.src | 59 | 0 |
+| A | pkg/items/sysbook/commands/seer/bookro.src | 23 | 0 |
+| A | pkg/items/sysbook/commands/seer/setbook.src | 86 | 0 |
+| A | pkg/items/sysbook/commands/seer/setpages.src | 37 | 0 |
+| A | pkg/items/sysbook/commands/seer/titletoname.src | 20 | 0 |
+| A | pkg/items/sysbook/commands/test/shelfclear.src | 44 | 0 |
+| A | pkg/items/sysbook/commands/test/shelfstock.src | 64 | 0 |
+| A | pkg/items/sysbook/commands/test/spawnshelfdatawipe.src | 45 | 0 |
+| A | pkg/items/sysbook/config/Distro_liibrary.cfg | 6847 | 0 |
+| A | pkg/items/sysbook/config/icp.cfg | 32 | 0 |
+| A | pkg/items/sysbook/config/itemdesc.cfg | 174 | 0 |
+| A | pkg/items/sysbook/config/master_library.cfg | 13886 | 0 |
+| A | pkg/items/sysbook/config/settings.cfg | 16 | 0 |
+| A | pkg/items/sysbook/include/settings.inc | 65 | 0 |
+| A | pkg/items/sysbook/include/spawnShelf.inc | 168 | 0 |
+| A | pkg/items/sysbook/include/sysBook.inc | 196 | 0 |
+| A | pkg/items/sysbook/pkg.cfg | 5 | 0 |
+| A | pkg/items/sysbook/start.src | 21 | 0 |
+| A | pkg/mobiles/job/config/icp.cfg | 21 | 0 |
+| A | pkg/mobiles/job/config/itemdesc.cfg | 0 | 0 |
+| A | pkg/mobiles/job/job.src | 459 | 0 |
+| A | pkg/mobiles/job/pkg.cfg | 11 | 0 |
+| A | pkg/mobiles/npcs.zip | n/a | n/a |
+| A | pkg/mobiles/npcs/animaltrainer/config/icp.cfg | 21 | 0 |
+| A | pkg/mobiles/npcs/animaltrainer/config/itemdesc.cfg | 202 | 0 |
+| A | pkg/mobiles/npcs/animaltrainer/pkg.cfg | 5 | 0 |
+| A | pkg/mobiles/npcs/config/icp.cfg | 12 | 0 |
+| A | pkg/mobiles/npcs/config/settings.cfg | 39 | 0 |
+| A | pkg/mobiles/npcs/config/specialNPCs.cfg | 486 | 0 |
+| A | pkg/mobiles/npcs/include/NPCBackpacks.inc | 59 | 0 |
+| A | pkg/multis/boat/boat/methods.src | 17 | 0 |
+| A | pkg/multis/boat/boat/use.src | 128 | 0 |
+| A | pkg/multis/boat/commands/gm/restartboat.src | 28 | 0 |
+| A | pkg/multis/boat/commands/gm/whereBoat.src | 31 | 0 |
+| A | pkg/multis/boat/config/commands.cfg | 155 | 0 |
+| A | pkg/multis/boat/config/icp.cfg | 15 | 0 |
+| A | pkg/multis/boat/config/itemdesc.cfg | 360 | 0 |
+| A | pkg/multis/boat/config/planks.cfg | 50 | 0 |
+| A | pkg/multis/boat/config/seafaringCreatures.cfg | 17 | 0 |
+| A | pkg/multis/boat/config/worldWrap.cfg | 8 | 0 |
+| A | pkg/multis/boat/include/autoPilot.inc | 77 | 0 |
+| A | pkg/multis/boat/include/cmdParser.inc | 40 | 0 |
+| A | pkg/multis/boat/multi/listener.src | 484 | 0 |
+| A | pkg/multis/boat/navigator/navigator.src | 129 | 0 |
+| A | pkg/multis/boat/pkg.cfg | 18 | 0 |
+| A | pkg/multis/boat/plank/control.src | 8 | 0 |
+| A | pkg/multis/boat/plank/methods.src | 62 | 0 |
+| A | pkg/multis/boat/plank/use.src | 29 | 0 |
+| A | pkg/multis/boat/plank/walkOn.src | 49 | 0 |
+| A | pkg/multis/boat/rope/methods.src | 62 | 0 |
+| A | pkg/multis/boat/rope/use.src | 103 | 0 |
+| A | pkg/multis/boat/tiller/canInsert.src | 11 | 0 |
+| A | pkg/multis/boat/tiller/methods.src | 188 | 0 |
+| A | pkg/multis/boat/tiller/use.src | 34 | 0 |
+| A | pkg/multis/customHousing/config/icp.cfg | 20 | 0 |
+| A | pkg/multis/customHousing/config/itemdesc.cfg | 753 | 0 |
+| A | pkg/multis/customHousing/config/syshook.cfg | 4 | 0 |
+| A | pkg/multis/customHousing/include/house.inc | 727 | 0 |
+| A | pkg/multis/customHousing/include/housefriends.inc | 179 | 0 |
+| A | pkg/multis/customHousing/lockunlock.src | 699 | 0 |
+| A | pkg/multis/customHousing/pkg.cfg | 6 | 0 |
+| A | pkg/multis/customHousing/scripts/customHouseDeed.src | 702 | 0 |
+| A | pkg/multis/customHousing/sign.src | 633 | 0 |
+| A | pkg/multis/customHousing/signcontrol.src | 164 | 0 |
+| A | pkg/multis/customHousing/syshook/closecustomhouse.src | 64 | 0 |
+| A | pkg/multis/house/config/buildlocs.cfg | 14 | 0 |
+| A | pkg/multis/house/config/icp.cfg | 21 | 0 |
+| A | pkg/multis/house/config/itemdesc.cfg | 529 | 0 |
+| A | pkg/multis/house/config/settings.cfg | 31 | 0 |
+| A | pkg/multis/house/include/isValidLoc.inc | 47 | 0 |
+| A | pkg/multis/house/include/multihouse_settings.inc | 19 | 0 |
+| A | pkg/multis/house/include/utility.inc | 64 | 0 |
+| A | pkg/multis/house/multiDeed/changeOwner.src | 78 | 0 |
+| A | pkg/multis/house/multiDeed/use.src | 586 | 0 |
+| A | pkg/multis/house/multiSign/control.src | 490 | 0 |
+| A | pkg/multis/house/multiSign/method.src | 1262 | 0 |
+| A | pkg/multis/house/multiSign/use.src | 1468 | 0 |
+| A | pkg/multis/house/pkg.cfg | 11 | 0 |
+| A | pkg/multis/house/secureCont.src | 34 | 0 |
+| A | pkg/multis/house/walkOn.src | 44 | 0 |
+| A | pkg/multis/multiCommands/commands/gm/destroymulti.src | 31 | 0 |
+| A | pkg/multis/multiCommands/commands/gm/getMultiSerial.src | 18 | 0 |
+| A | pkg/multis/multiCommands/commands/gm/makemulti.src | 52 | 0 |
+| A | pkg/multis/multiCommands/config/icp.cfg | 19 | 0 |
+| A | pkg/multis/multiCommands/config/itemdesc.cfg | 73 | 0 |
+| A | pkg/multis/multiCommands/include/multicommands.inc | 102 | 0 |
+| A | pkg/multis/multiCommands/pkg.cfg | 19 | 0 |
+| A | pkg/opt/ArtifactSystem/ReadMe.txt | 44 | 0 |
+| A | pkg/opt/ArtifactSystem/artifact.inc | 46 | 0 |
+| A | pkg/opt/ArtifactSystem/artifactbox.src | 20 | 0 |
+| A | pkg/opt/ArtifactSystem/artifactdestroy.src | 23 | 0 |
+| A | pkg/opt/ArtifactSystem/commands/admin/destroyartifact.src | 18 | 0 |
+| A | pkg/opt/ArtifactSystem/commands/admin/makeartifact.src | 19 | 0 |
+| A | pkg/opt/ArtifactSystem/commands/admin/openartifact.src | 9 | 0 |
+| A | pkg/opt/ArtifactSystem/itemdesc.cfg | 9 | 0 |
+| A | pkg/opt/ArtifactSystem/pkg.cfg | 7 | 0 |
+| A | pkg/opt/Donator/donatorbearstone.src | 193 | 0 |
+| A | pkg/opt/Donator/donatorhorsestone.src | 193 | 0 |
+| A | pkg/opt/Donator/donatorllamastone.src | 193 | 0 |
+| A | pkg/opt/Donator/donatorostardstone.src | 194 | 0 |
+| A | pkg/opt/Donator/donatorrecall.src | 135 | 0 |
+| A | pkg/opt/Donator/itemdesc.cfg | 73 | 0 |
+| A | pkg/opt/Donator/pkg.cfg | 5 | 0 |
+| A | pkg/opt/Donator/textcmd/test/createdonatorbear.src | 28 | 0 |
+| A | pkg/opt/Donator/textcmd/test/createdonatorhorse.src | 28 | 0 |
+| A | pkg/opt/Donator/textcmd/test/createdonatorllama.src | 28 | 0 |
+| A | pkg/opt/Donator/textcmd/test/createdonatorostard.src | 28 | 0 |
+| A | pkg/opt/Donator/textcmd/test/makedonator.src | 21 | 0 |
+| A | pkg/opt/Events/include/bag.inc | 329 | 0 |
+| A | pkg/opt/Events/pkg.cfg | 3 | 0 |
+| A | pkg/opt/Events/textcmd/seer/createEventBag.src | 251 | 0 |
+| A | pkg/opt/GMItems/bowofshadows_usescript.src | 30 | 0 |
+| A | pkg/opt/GMItems/cains_exploder.src | 90 | 0 |
+| A | pkg/opt/GMItems/cains_usescript.src | 32 | 0 |
+| A | pkg/opt/GMItems/cutlass_usescript.src | 35 | 0 |
+| A | pkg/opt/GMItems/fanofknives.src | 50 | 0 |
+| A | pkg/opt/GMItems/grarkshep.src | 124 | 0 |
+| A | pkg/opt/GMItems/itemdesc.cfg | 13 | 0 |
+| A | pkg/opt/GMItems/jouster_hitscript.src | 83 | 0 |
+| A | pkg/opt/GMItems/jouster_usescript.src | 34 | 0 |
+| A | pkg/opt/GMItems/pkg.cfg | 5 | 0 |
+| A | pkg/opt/GMItems/staffofnagash_usescript.src | 104 | 0 |
+| A | pkg/opt/GMItems/warfork_usescript.src | 74 | 0 |
+| A | pkg/opt/MagicWands/getspellid.inc | 12 | 0 |
+| A | pkg/opt/MagicWands/golem.src | 94 | 0 |
+| A | pkg/opt/MagicWands/itemdesc.cfg | 929 | 0 |
+| A | pkg/opt/MagicWands/magicwands.src | 93 | 0 |
+| A | pkg/opt/MagicWands/pkg.cfg | 2 | 0 |
+| A | pkg/opt/MagicWands/toxiccloud.src | 107 | 0 |
+| A | pkg/opt/MagicWands/wallofdeath.src | 110 | 0 |
+| A | pkg/opt/OrionClient/config/settings.cfg | 25 | 0 |
+| A | pkg/opt/OrionClient/include/settings.inc | 53 | 0 |
+| A | pkg/opt/OrionClient/logon.src | 35 | 0 |
+| A | pkg/opt/OrionClient/pkg.cfg | 12 | 0 |
+| A | pkg/opt/OrionClient/reconnect.src | 34 | 0 |
+| A | pkg/opt/Staff/RecordXYZ.src | 56 | 0 |
+| A | pkg/opt/Staff/include/staff.inc | 90 | 0 |
+| A | pkg/opt/Staff/logoff.src | 40 | 0 |
+| A | pkg/opt/Staff/logon.src | 43 | 0 |
+| A | pkg/opt/Staff/pkg.cfg | 5 | 0 |
+| A | pkg/opt/alchemyplus/alchemy.inc | 330 | 0 |
+| A | pkg/opt/alchemyplus/alchemyplus toad.src | 644 | 0 |
+| A | pkg/opt/alchemyplus/alchemyplus.cfg | 816 | 0 |
+| A | pkg/opt/alchemyplus/alchemyplus.src | 695 | 0 |
+| A | pkg/opt/alchemyplus/itemdesc.cfg | 1147 | 0 |
+| A | pkg/opt/alchemyplus/newpotions.src | 544 | 0 |
+| A | pkg/opt/alchemyplus/pkg.cfg | 4 | 0 |
+| A | pkg/opt/alchemyplus/potionbook.src | 291 | 0 |
+| A | pkg/opt/alchemyplus/potionkeg.src | 243 | 0 |
+| A | pkg/opt/areas/EnterArea.src | 18 | 0 |
+| A | pkg/opt/areas/EnterAreaDelay.src | 62 | 0 |
+| A | pkg/opt/areas/LeaveArea.src | 54 | 0 |
+| A | pkg/opt/areas/Todo.txt | 10 | 0 |
+| A | pkg/opt/areas/areaban.src | 48 | 0 |
+| A | pkg/opt/areas/areas.cfg | 145 | 0 |
+| A | pkg/opt/areas/callguards.src | 100 | 0 |
+| A | pkg/opt/areas/include/areafunctions.inc | 81 | 0 |
+| A | pkg/opt/areas/itemdesc.cfg | 8 | 0 |
+| A | pkg/opt/areas/pkg.cfg | 5 | 0 |
+| A | pkg/opt/areas/textcmd/admin/areas.src | 256 | 0 |
+| A | pkg/opt/astralfights/astralincapacity.src | 24 | 0 |
+| A | pkg/opt/astralfights/itemdesc.cfg | 229 | 0 |
+| A | pkg/opt/astralfights/pkg.cfg | 5 | 0 |
+| A | pkg/opt/botanik/awake.src | 56 | 0 |
+| A | pkg/opt/botanik/botanik.inc | 56 | 0 |
+| A | pkg/opt/botanik/equip.txt | 16 | 0 |
+| A | pkg/opt/botanik/harvest.src | 206 | 0 |
+| A | pkg/opt/botanik/itemdesc.cfg | 201 | 0 |
+| A | pkg/opt/botanik/maketree.src | 113 | 0 |
+| A | pkg/opt/botanik/mrcspawn.txt | 17 | 0 |
+| A | pkg/opt/botanik/npcdesc.txt | 44 | 0 |
+| A | pkg/opt/botanik/pkg.cfg | 4 | 0 |
+| A | pkg/opt/botanik/regrow.src | 65 | 0 |
+| A | pkg/opt/botanik/tree.cfg | 231 | 0 |
+| A | pkg/opt/botanik/treedeath.src | 40 | 0 |
+| A | pkg/opt/capper/capper.src | 87 | 0 |
+| A | pkg/opt/capper/pkg.cfg | 5 | 0 |
+| A | pkg/opt/capper/start.src | 3 | 0 |
+| A | pkg/opt/champspawns/config/icp.cfg | 16 | 0 |
+| A | pkg/opt/champspawns/config/itemdesc.cfg | 65 | 0 |
+| A | pkg/opt/champspawns/config/spawns.cfg | 124 | 0 |
+| A | pkg/opt/champspawns/include/altar.inc | 64 | 0 |
+| A | pkg/opt/champspawns/include/death.inc | 46 | 0 |
+| A | pkg/opt/champspawns/include/rewards.inc | 86 | 0 |
+| A | pkg/opt/champspawns/include/settings.inc | 53 | 0 |
+| A | pkg/opt/champspawns/include/skulls.inc | 161 | 0 |
+| A | pkg/opt/champspawns/include/spawning.inc | 156 | 0 |
+| A | pkg/opt/champspawns/include/titles.inc | 16 | 0 |
+| A | pkg/opt/champspawns/pkg.cfg | 7 | 0 |
+| A | pkg/opt/champspawns/scripts/control.src | 121 | 0 |
+| A | pkg/opt/champspawns/scripts/oncreate.src | 110 | 0 |
+| A | pkg/opt/champspawns/scripts/walkOnChampReject.src | 19 | 0 |
+| A | pkg/opt/champspawns/scripts/walkOnChampRejectDestard.src | 19 | 0 |
+| A | pkg/opt/champspawns/textcmd/test/createchampionspawn.src | 116 | 0 |
+| A | pkg/opt/christmas/Christmasgifts.src | 50 | 0 |
+| A | pkg/opt/christmas/autodeco.cfg | 819 | 0 |
+| A | pkg/opt/christmas/autosanta.cfg | 16 | 0 |
+| A | pkg/opt/christmas/giftopen.src | 493 | 0 |
+| A | pkg/opt/christmas/itemdesc.cfg | 372 | 0 |
+| A | pkg/opt/christmas/pkg.cfg | 2 | 0 |
+| A | pkg/opt/colorwars/commands/admin/cwstone.src | 22 | 0 |
+| A | pkg/opt/colorwars/commands/gm/cleancw.src | 76 | 0 |
+| A | pkg/opt/colorwars/commands/player/cwready.src | 46 | 0 |
+| A | pkg/opt/colorwars/cwars.src | 1523 | 0 |
+| A | pkg/opt/colorwars/cwprize.src | 42 | 0 |
+| A | pkg/opt/colorwars/itemdesc.cfg | 54 | 0 |
+| A | pkg/opt/colorwars/pkg.cfg | 4 | 0 |
+| A | pkg/opt/crafterboost/crafterboost.cfg | 31 | 0 |
+| A | pkg/opt/crafterboost/itemdesc.cfg | 54 | 0 |
+| A | pkg/opt/crafterboost/make_crafter_boosts.src | 235 | 0 |
+| A | pkg/opt/crafterboost/mendingoil.src | 74 | 0 |
+| A | pkg/opt/crafterboost/pkg.cfg | 6 | 0 |
+| A | pkg/opt/crafterboost/refiningitem.src | 134 | 0 |
+| A | pkg/opt/customhousing.zip | n/a | n/a |
+| A | pkg/opt/decoratefacets/Replace Item with Decor #.py | 21 | 0 |
+| A | pkg/opt/decoratefacets/commands/test/decoratefacets.src | 203 | 0 |
+| A | pkg/opt/decoratefacets/commands/test/udestroy.src | 27 | 0 |
+| A | pkg/opt/decoratefacets/commands/test/udestroymany.src | 46 | 0 |
+| A | pkg/opt/decoratefacets/commands/test/undecoratefacets.src | 184 | 0 |
+| A | pkg/opt/decoratefacets/config/icp.cfg | 19 | 0 |
+| A | pkg/opt/decoratefacets/decor_items.txt | 38626 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia/decorations.zip | n/a | n/a |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/blockers.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/decorations.cfg | 11 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg | 38638 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/lights.cfg | 11 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/signs.cfg | 11 | 0 |
+| A | pkg/opt/decoratefacets/decorations/britannia_alt/spawnpoints.cfg | 5848 | 0 |
+| A | pkg/opt/decoratefacets/decorations/ilshenar/blockers.cfg | 875 | 0 |
+| A | pkg/opt/decoratefacets/decorations/ilshenar/decorations.cfg | 34763 | 0 |
+| A | pkg/opt/decoratefacets/decorations/ilshenar/doors.cfg | 3059 | 0 |
+| A | pkg/opt/decoratefacets/decorations/ilshenar/lights.cfg | 563 | 0 |
+| A | pkg/opt/decoratefacets/decorations/ilshenar/signs.cfg | 35 | 0 |
+| A | pkg/opt/decoratefacets/decorations/malas/blockers.cfg | 12 | 0 |
+| A | pkg/opt/decoratefacets/decorations/malas/decorations.cfg | 2292 | 0 |
+| A | pkg/opt/decoratefacets/decorations/malas/doors.cfg | 1056 | 0 |
+| A | pkg/opt/decoratefacets/decorations/malas/lights.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/malas/signs.cfg | 276 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/blockers.cfg | 216 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/decorations.cfg | 840 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/doors.cfg | 12 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/lights.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/signs.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/termur/spawnpoints.cfg | 11 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/blockers.cfg | 96 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/decorations.cfg | 24516 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/doors.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/lights.cfg | 0 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/signs.cfg | 192 | 0 |
+| A | pkg/opt/decoratefacets/decorations/tokuno/spawnpoints.cfg | 558 | 0 |
+| A | pkg/opt/decoratefacets/doors.txt | 237 | 0 |
+| A | pkg/opt/decoratefacets/filtered_items.txt | 38614 | 0 |
+| A | pkg/opt/decoratefacets/include/decorate.inc | 203 | 0 |
+| A | pkg/opt/decoratefacets/include/gump.inc | 12 | 0 |
+| A | pkg/opt/decoratefacets/pkg.cfg | 15 | 0 |
+| A | pkg/opt/dyteitems/dyecheck.src | 90 | 0 |
+| A | pkg/opt/dyteitems/dyecheck.txt | 52 | 0 |
+| A | pkg/opt/dyteitems/dyeitems.cfg | 260 | 0 |
+| A | pkg/opt/dyteitems/itemdesc.cfg | 16 | 0 |
+| A | pkg/opt/dyteitems/pkg.cfg | 4 | 0 |
+| A | pkg/opt/dyteitems/usedyes.src | 72 | 0 |
+| A | pkg/opt/earth/antidote.src | 90 | 0 |
+| A | pkg/opt/earth/bookofearth.src | 108 | 0 |
+| A | pkg/opt/earth/calllightning.src | 81 | 0 |
+| A | pkg/opt/earth/druidscroll.src | 44 | 0 |
+| A | pkg/opt/earth/earthblessing.src | 78 | 0 |
+| A | pkg/opt/earth/earthportal.src | 185 | 0 |
+| A | pkg/opt/earth/earthspirit.src | 49 | 0 |
+| A | pkg/opt/earth/flamespirit.src | 49 | 0 |
+| A | pkg/opt/earth/gustofair.src | 93 | 0 |
+| A | pkg/opt/earth/icestrike.src | 70 | 0 |
+| A | pkg/opt/earth/itemdesc.cfg | 242 | 0 |
+| A | pkg/opt/earth/naturestouch.src | 70 | 0 |
+| A | pkg/opt/earth/owlsight.src | 69 | 0 |
+| A | pkg/opt/earth/pkg.cfg | 4 | 0 |
+| A | pkg/opt/earth/risingfire.src | 113 | 0 |
+| A | pkg/opt/earth/shapechange.cfg | 137 | 0 |
+| A | pkg/opt/earth/shapeshift.cfg | 153 | 0 |
+| A | pkg/opt/earth/shapeshift.src | 139 | 0 |
+| A | pkg/opt/earth/shiftingearth.src | 97 | 0 |
+| A | pkg/opt/earth/spells.cfg | 189 | 0 |
+| A | pkg/opt/earth/stormspirit.src | 50 | 0 |
+| A | pkg/opt/earth/summonmammals.src | 104 | 0 |
+| A | pkg/opt/earth/waterspirit.src | 49 | 0 |
+| A | pkg/opt/farming/clean.src | 20 | 0 |
+| A | pkg/opt/farming/farming.src | 119 | 0 |
+| A | pkg/opt/farming/gethoney.src | 106 | 0 |
+| A | pkg/opt/farming/itemdesc.cfg | 485 | 0 |
+| A | pkg/opt/farming/newhive.src | 84 | 0 |
+| A | pkg/opt/farming/pkg.cfg | 4 | 0 |
+| A | pkg/opt/farming/plants.cfg | 231 | 0 |
+| A | pkg/opt/farming/regrow.src | 46 | 0 |
+| A | pkg/opt/farming/seed.src | 81 | 0 |
+| A | pkg/opt/farming/seedling.src | 27 | 0 |
+| A | pkg/opt/farming/spinning.src | 120 | 0 |
+| A | pkg/opt/farming/swarmofbees.src | 32 | 0 |
+| A | pkg/opt/guilds/commands/player/c.src | 127 | 0 |
+| A | pkg/opt/guilds/commands/player/ca.src | 10 | 0 |
+| A | pkg/opt/guilds/commands/player/co.src | 10 | 0 |
+| A | pkg/opt/guilds/guild_uniform.src | 84 | 0 |
+| A | pkg/opt/guilds/include/guildchat.inc | 128 | 0 |
+| A | pkg/opt/guilds/include/guildconstants.inc | 45 | 0 |
+| A | pkg/opt/guilds/include/guilds.inc | 516 | 0 |
+| A | pkg/opt/guilds/include/guilds.rar | n/a | n/a |
+| A | pkg/opt/guilds/ondelete.src | 51 | 0 |
+| A | pkg/opt/guilds/pkg.cfg | 2 | 0 |
+| A | pkg/opt/holybook/angelicaura.src | 92 | 0 |
+| A | pkg/opt/holybook/angelicfeast.src | 40 | 0 |
+| A | pkg/opt/holybook/angelicgate.src | 32 | 0 |
+| A | pkg/opt/holybook/apocalypse.src | 200 | 0 |
+| A | pkg/opt/holybook/astralstorm.src | 124 | 0 |
+| A | pkg/opt/holybook/astralstorm_damage.src | 36 | 0 |
+| A | pkg/opt/holybook/divinefury.src | 67 | 0 |
+| A | pkg/opt/holybook/enlightenment.src | 93 | 0 |
+| A | pkg/opt/holybook/holybolt.src | 74 | 0 |
+| A | pkg/opt/holybook/holybook.src | 113 | 0 |
+| A | pkg/opt/holybook/holyscroll.src | 44 | 0 |
+| A | pkg/opt/holybook/itemdesc.cfg | 243 | 0 |
+| A | pkg/opt/holybook/lightofday.src | 64 | 0 |
+| A | pkg/opt/holybook/pkg.cfg | 3 | 0 |
+| A | pkg/opt/holybook/removecurse.src | 76 | 0 |
+| A | pkg/opt/holybook/revive.src | 71 | 0 |
+| A | pkg/opt/holybook/sanctuary.src | 77 | 0 |
+| A | pkg/opt/holybook/seraphimswill.src | 136 | 0 |
+| A | pkg/opt/holybook/spells.cfg | 203 | 0 |
+| A | pkg/opt/holybook/summonguardian.src | 40 | 0 |
+| A | pkg/opt/holybook/turnundead.src | 64 | 0 |
+| A | pkg/opt/holybook/wrathofgod.src | 98 | 0 |
+| A | pkg/opt/ipban/pkg.cfg | 3 | 0 |
+| A | pkg/opt/ipban/textcmd/admin/ipban.src | 271 | 0 |
+| A | pkg/opt/karmafame/famereducer.src | 33 | 0 |
+| A | pkg/opt/karmafame/karmafame.inc | 477 | 0 |
+| A | pkg/opt/karmafame/pkg.cfg | 4 | 0 |
+| A | pkg/opt/karmafame/start.src | 3 | 0 |
+| A | pkg/opt/karmafame/textcmd/admin/setkf.src | 32 | 0 |
+| A | pkg/opt/karmafame/textcmd/player/karma.src | 162 | 0 |
+| A | pkg/opt/karmafame/textcmd/test/resetkf.src | 26 | 0 |
+| A | pkg/opt/karmafame/textcmd/test/updatekf.src | 15 | 0 |
+| A | pkg/opt/lighting/change.src | 26 | 0 |
+| A | pkg/opt/lighting/duration.src | 59 | 0 |
+| A | pkg/opt/lighting/itemdesc.cfg | 962 | 0 |
+| A | pkg/opt/lighting/lighting.html | 441 | 0 |
+| A | pkg/opt/lighting/pkg.cfg | 5 | 0 |
+| A | pkg/opt/loot/antiloot.inc | 276 | 0 |
+| A | pkg/opt/loot/itemdesc.cfg | 15 | 0 |
+| A | pkg/opt/loot/lootgump.src | 115 | 0 |
+| A | pkg/opt/loot/lootgumpdistance.src | 27 | 0 |
+| A | pkg/opt/loot/noview.src | 20 | 0 |
+| A | pkg/opt/loot/pkg.cfg | 4 | 0 |
+| A | pkg/opt/lootlottery/commands/GM/cfglotto.src | 142 | 0 |
+| A | pkg/opt/lootlottery/include/lootlottery.inc | 154 | 0 |
+| A | pkg/opt/lootlottery/include/storedamage.inc | 9 | 0 |
+| A | pkg/opt/lootlottery/itemdesc.cfg | 17 | 0 |
+| A | pkg/opt/lootlottery/pkg.cfg | 7 | 0 |
+| A | pkg/opt/lootlottery/use_lootbag.src | 20 | 0 |
+| A | pkg/opt/moongates/include/moongate.inc | 78 | 0 |
+| A | pkg/opt/moongates/itemdesc.cfg | 70 | 0 |
+| A | pkg/opt/moongates/moongate/methodmoon.src | 52 | 0 |
+| A | pkg/opt/moongates/moongate/mmethodmoon.src | 52 | 0 |
+| A | pkg/opt/moongates/moongate/mwalkOnmoon.src | 51 | 0 |
+| A | pkg/opt/moongates/moongate/nmethodmoon.src | 52 | 0 |
+| A | pkg/opt/moongates/moongate/nwalkOnmoon.src | 78 | 0 |
+| A | pkg/opt/moongates/moongate/walkOnmoon.src | 45 | 0 |
+| A | pkg/opt/moongates/moongate/ynwalkOnmoon.src | 84 | 0 |
+| A | pkg/opt/moongates/moongates.inc | 75 | 0 |
+| A | pkg/opt/moongates/pkg.cfg | 9 | 0 |
+| A | pkg/opt/moongates/start.src | 15 | 0 |
+| A | pkg/opt/moongates/systemmoongate.src | 396 | 0 |
+| A | pkg/opt/moons/itemdesc.cfg | 18 | 0 |
+| A | pkg/opt/moons/moonphase.src | 39 | 0 |
+| A | pkg/opt/moons/pkg.cfg | 4 | 0 |
+| A | pkg/opt/moons/spyglass.src | 98 | 0 |
+| A | pkg/opt/moons/start.src | 3 | 0 |
+| A | pkg/opt/msg/commands/player/msg.src | 233 | 0 |
+| A | pkg/opt/msg/commands/player/reply.src | 30 | 0 |
+| A | pkg/opt/msg/include/message.inc | 105 | 0 |
+| A | pkg/opt/msg/msgalert.src | 30 | 0 |
+| A | pkg/opt/msg/ondelete.src | 20 | 0 |
+| A | pkg/opt/msg/pkg.cfg | 4 | 0 |
+| A | pkg/opt/necro/abyssalflame.src | 107 | 0 |
+| A | pkg/opt/necro/animatedead.src | 185 | 0 |
+| A | pkg/opt/necro/codexdamnorum.src | 175 | 0 |
+| A | pkg/opt/necro/controlundead.src | 121 | 0 |
+| A | pkg/opt/necro/darkcloak.src | 31 | 0 |
+| A | pkg/opt/necro/darkness.src | 81 | 0 |
+| A | pkg/opt/necro/decayingray.src | 110 | 0 |
+| A | pkg/opt/necro/itemdesc.cfg | 240 | 0 |
+| A | pkg/opt/necro/kill.src | 129 | 0 |
+| A | pkg/opt/necro/liche.src | 92 | 0 |
+| A | pkg/opt/necro/necroscroll.src | 45 | 0 |
+| A | pkg/opt/necro/pkg.cfg | 4 | 0 |
+| A | pkg/opt/necro/plague.src | 81 | 0 |
+| A | pkg/opt/necro/raisedead.src | 70 | 0 |
+| A | pkg/opt/necro/release.src | 53 | 0 |
+| A | pkg/opt/necro/sacrifice.src | 112 | 0 |
+| A | pkg/opt/necro/sorcerersbane.src | 170 | 0 |
+| A | pkg/opt/necro/spectretouch.src | 83 | 0 |
+| A | pkg/opt/necro/spellbind.src | 202 | 0 |
+| A | pkg/opt/necro/spells.cfg | 217 | 0 |
+| A | pkg/opt/necro/summonspirit.src | 80 | 0 |
+| A | pkg/opt/necro/sunderingsword.src | 29 | 0 |
+| A | pkg/opt/necro/wraith_breath_delay.src | 41 | 0 |
+| A | pkg/opt/necro/wraithbreath.src | 121 | 0 |
+| A | pkg/opt/necro/wraithform.src | 108 | 0 |
+| A | pkg/opt/necro/wyvernstrike.src | 94 | 0 |
+| A | pkg/opt/pillar/itemdesc.cfg | 33 | 0 |
+| A | pkg/opt/pillar/pillar.src | 137 | 0 |
+| A | pkg/opt/pillar/pkg.cfg | 4 | 0 |
+| A | pkg/opt/pillar/setpillars.src | 15 | 0 |
+| A | pkg/opt/pillar/start.src | 6 | 0 |
+| A | pkg/opt/powerhour/pkg.cfg | 4 | 0 |
+| A | pkg/opt/powerhour/powerhour.src | 54 | 0 |
+| A | pkg/opt/powerhour/start.src | 3 | 0 |
+| A | pkg/opt/powerhour/textcmd/player/ph.src | 23 | 0 |
+| A | pkg/opt/powerhour/textcmd/player/setph.src | 170 | 0 |
+| A | pkg/opt/powerhour/textcmd/test/resetph.src | 31 | 0 |
+| A | pkg/opt/powerscrolls.zip | n/a | n/a |
+| A | pkg/opt/powerscrolls/createpowerscroll.src | 14 | 0 |
+| A | pkg/opt/powerscrolls/createstatpotion.src | 24 | 0 |
+| A | pkg/opt/powerscrolls/itemdesc.cfg | 48 | 0 |
+| A | pkg/opt/powerscrolls/pkg.cfg | 7 | 0 |
+| A | pkg/opt/powerscrolls/powerscroll.src | 98 | 0 |
+| A | pkg/opt/powerscrolls/randomTome.src | 16 | 0 |
+| A | pkg/opt/powerscrolls/statpotion.src | 82 | 0 |
+| A | pkg/opt/powerscrolls/textcmd/admin/raisecaps.src | 99 | 0 |
+| A | pkg/opt/powerscrolls/textcmd/player/showcaps.src | 167 | 0 |
+| A | pkg/opt/powerscrolls/transcendscroll.src | 157 | 0 |
+| A | pkg/opt/randomero/pkg.cfg | 20 | 0 |
+| A | pkg/opt/randomero/start.src | 16 | 0 |
+| A | pkg/opt/randomero/textcmd/test/testinternal.src | 24 | 0 |
+| A | pkg/opt/randomero/textcmd/test/testnormal.src | 12 | 0 |
+| A | pkg/opt/randomero/textcmd/test/testprng.src | 23 | 0 |
+| A | pkg/opt/rituals/captor/control.src | 57 | 0 |
+| A | pkg/opt/rituals/captor/method.src | 21 | 0 |
+| A | pkg/opt/rituals/config/icp.cfg | 19 | 0 |
+| A | pkg/opt/rituals/config/itemdesc.cfg | 725 | 0 |
+| A | pkg/opt/rituals/config/rituals.cfg | 2369 | 0 |
+| A | pkg/opt/rituals/crystal/method.src | 21 | 0 |
+| A | pkg/opt/rituals/equipment/robe.src | 26 | 0 |
+| A | pkg/opt/rituals/equipment/staff.src | 26 | 0 |
+| A | pkg/opt/rituals/include/rituals.inc | 793 | 0 |
+| A | pkg/opt/rituals/include/settings.inc | 33 | 0 |
+| A | pkg/opt/rituals/pkg.cfg | 19 | 0 |
+| A | pkg/opt/rituals/rituals/advancedTheurgy.src | 127 | 0 |
+| A | pkg/opt/rituals/rituals/attunement.src | 51 | 0 |
+| A | pkg/opt/rituals/rituals/bloodSeeking.src | 47 | 0 |
+| A | pkg/opt/rituals/rituals/consecration.src | 36 | 0 |
+| A | pkg/opt/rituals/rituals/createFocus.src | 48 | 0 |
+| A | pkg/opt/rituals/rituals/cursing.src | 40 | 0 |
+| A | pkg/opt/rituals/rituals/disenchantment.src | 45 | 0 |
+| A | pkg/opt/rituals/rituals/enhancement.src | 46 | 0 |
+| A | pkg/opt/rituals/rituals/freeMovement.src | 46 | 0 |
+| A | pkg/opt/rituals/rituals/hardening.src | 47 | 0 |
+| A | pkg/opt/rituals/rituals/manaDimissal.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/manaFlux.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/physicalWard.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/protectiveAura.src | 52 | 0 |
+| A | pkg/opt/rituals/rituals/purification.src | 40 | 0 |
+| A | pkg/opt/rituals/rituals/quickHealing.src | 48 | 0 |
+| A | pkg/opt/rituals/rituals/resilience.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/restoration.src | 40 | 0 |
+| A | pkg/opt/rituals/rituals/spellBouncing.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/spellWarding.src | 49 | 0 |
+| A | pkg/opt/rituals/rituals/venomBane.src | 48 | 0 |
+| A | pkg/opt/rituals/rituals/venomMastery.src | 49 | 0 |
+| A | pkg/opt/rituals/rune/method.src | 26 | 0 |
+| A | pkg/opt/rituals/scroll/use.src | 46 | 0 |
+| A | pkg/opt/roleplaying/itemdesc.cfg | 34 | 0 |
+| A | pkg/opt/roleplaying/macrotimer.src | 61 | 0 |
+| A | pkg/opt/roleplaying/pkg.cfg | 17 | 0 |
+| A | pkg/opt/roleplaying/randoringate.src | 27 | 0 |
+| A | pkg/opt/roleplaying/rper.inc | 209 | 0 |
+| A | pkg/opt/roleplaying/rperstone.src | 247 | 0 |
+| A | pkg/opt/roleplaying/textcmd/admin/fixstartgear.src | 85 | 0 |
+| A | pkg/opt/roleplaying/textcmd/coun/macrotest.src | 65 | 0 |
+| A | pkg/opt/roleplaying/textcmd/player/rc.src | 33 | 0 |
+| A | pkg/opt/roleplaying/textcmd/seer/makerpergate.src | 65 | 0 |
+| A | pkg/opt/roleplaying/textcmd/seer/rperoff.src | 28 | 0 |
+| A | pkg/opt/roleplaying/textcmd/seer/rperon.src | 28 | 0 |
+| A | pkg/opt/roleplaying/textcmd/seer/setrper.src | 36 | 0 |
+| A | pkg/opt/roleplaying/walk_on_rpergate.src | 30 | 0 |
+| A | pkg/opt/shilhook/attributes.cfg | 456 | 0 |
+| A | pkg/opt/shilhook/checkskill.cfg | 6 | 0 |
+| A | pkg/opt/shilhook/omegaattack.inc | 240 | 0 |
+| A | pkg/opt/shilhook/omegaattack.src | 17 | 0 |
+| A | pkg/opt/shilhook/parry.src | 17 | 0 |
+| A | pkg/opt/shilhook/pkg.cfg | 5 | 0 |
+| A | pkg/opt/shilhook/regen.src | 159 | 0 |
+| A | pkg/opt/shilhook/shilcombat.inc | 72 | 0 |
+| A | pkg/opt/shilhook/shilcombat.src | 27 | 0 |
+| A | pkg/opt/shilhook/shilhook.src | 175 | 0 |
+| A | pkg/opt/shilhook/skillsdef.cfg | 361 | 0 |
+| A | pkg/opt/shilhook/syshook.cfg | 19 | 0 |
+| A | pkg/opt/shilhook/textcmd/admin/setglobalmultipliers.src | 447 | 0 |
+| A | pkg/opt/shilhook/textcmd/admin/setplayermultipliers.src | 460 | 0 |
+| A | pkg/opt/shilhook/uoclient.cfg | 81 | 0 |
+| A | pkg/opt/shilhook/uoskills.cfg | 244 | 0 |
+| A | pkg/opt/shilhook/vitals.cfg | 23 | 0 |
+| A | pkg/opt/shilitems/heaventouch.src | 48 | 0 |
+| A | pkg/opt/shilitems/include/shilitems.inc | 57 | 0 |
+| A | pkg/opt/shilitems/infinitegems.src | 46 | 0 |
+| A | pkg/opt/shilitems/infinitenormals.src | 43 | 0 |
+| A | pkg/opt/shilitems/infinitepagans.src | 59 | 0 |
+| A | pkg/opt/shilitems/infiniteregs.src | 61 | 0 |
+| A | pkg/opt/shilitems/itemdesc.cfg | 129 | 0 |
+| A | pkg/opt/shilitems/lightningstorm.src | 59 | 0 |
+| A | pkg/opt/shilitems/makeinvisible.src | 45 | 0 |
+| A | pkg/opt/shilitems/pkg.cfg | 6 | 0 |
+| A | pkg/opt/shilitems/regeneration.src | 43 | 0 |
+| A | pkg/opt/shilitems/saferecall-off.src | 45 | 0 |
+| A | pkg/opt/shilitems/saferecall.src | 82 | 0 |
+| A | pkg/opt/shilitems/spellcastingitem.src | 68 | 0 |
+| A | pkg/opt/shilitems/trashcanofwonders.src | 201 | 0 |
+| A | pkg/opt/shilitems/usescriptdesc.cfg | 67 | 0 |
+| A | pkg/opt/shilitems/vengeance.src | 46 | 0 |
+| A | pkg/opt/shilitems/wandofid.src | 108 | 0 |
+| A | pkg/opt/shilitems/wopteleporter.src | 24 | 0 |
+| A | pkg/opt/shilitems/wordofpowertele.src | 83 | 0 |
+| A | pkg/opt/shilitems/wordofpowerteleon.src | 72 | 0 |
+| A | pkg/opt/shrink/Use_Shrink.src | 76 | 0 |
+| A | pkg/opt/shrink/itemdesc.cfg | 20 | 0 |
+| A | pkg/opt/shrink/pkg.cfg | 3 | 0 |
+| A | pkg/opt/shrink/textcmd/test/shrink.src | 117 | 0 |
+| A | pkg/opt/songbook/frightai.src | 46 | 0 |
+| A | pkg/opt/songbook/itemdesc.cfg | 251 | 0 |
+| A | pkg/opt/songbook/pkg.cfg | 3 | 0 |
+| A | pkg/opt/songbook/songbook.src | 105 | 0 |
+| A | pkg/opt/songbook/songdata.inc | 0 | 0 |
+| A | pkg/opt/songbook/songofair.src | 122 | 0 |
+| A | pkg/opt/songbook/songofbeckon.src | 135 | 0 |
+| A | pkg/opt/songbook/songofcloaking.src | 128 | 0 |
+| A | pkg/opt/songbook/songofdefense.src | 116 | 0 |
+| A | pkg/opt/songbook/songofdismissal.src | 118 | 0 |
+| A | pkg/opt/songbook/songofearth.src | 119 | 0 |
+| A | pkg/opt/songbook/songoffire.src | 138 | 0 |
+| A | pkg/opt/songbook/songoffright.src | 137 | 0 |
+| A | pkg/opt/songbook/songofglory.src | 126 | 0 |
+| A | pkg/opt/songbook/songofhaste.src | 116 | 0 |
+| A | pkg/opt/songbook/songoflife.src | 133 | 0 |
+| A | pkg/opt/songbook/songoflight.src | 119 | 0 |
+| A | pkg/opt/songbook/songofremedy.src | 128 | 0 |
+| A | pkg/opt/songbook/songofsalvation.src | 128 | 0 |
+| A | pkg/opt/songbook/songofsirens.src | 122 | 0 |
+| A | pkg/opt/songbook/songofwater.src | 121 | 0 |
+| A | pkg/opt/songbook/songscroll.src | 47 | 0 |
+| A | pkg/opt/songbook/songwriting.src | 182 | 0 |
+| A | pkg/opt/songbook/spells.cfg | 144 | 0 |
+| A | pkg/opt/spawnpoint/allspawner.src | 17 | 0 |
+| A | pkg/opt/spawnpoint/checkpoint.src | 795 | 0 |
+| A | pkg/opt/spawnpoint/config/groups.cfg | 2490 | 0 |
+| A | pkg/opt/spawnpoint/config/itemdesc.cfg | 38 | 0 |
+| A | pkg/opt/spawnpoint/config/settings.cfg | 8 | 0 |
+| A | pkg/opt/spawnpoint/convertpoint.src | 114 | 0 |
+| A | pkg/opt/spawnpoint/createpoint.src | 23 | 0 |
+| A | pkg/opt/spawnpoint/defaultdelay.src | 50 | 0 |
+| A | pkg/opt/spawnpoint/delayedspawning.src | 15 | 0 |
+| A | pkg/opt/spawnpoint/despawner.src | 57 | 0 |
+| A | pkg/opt/spawnpoint/destroypoint.src | 66 | 0 |
+| A | pkg/opt/spawnpoint/include/customnpc.inc | 412 | 0 |
+| A | pkg/opt/spawnpoint/newnpcs.cfg | 80 | 0 |
+| A | pkg/opt/spawnpoint/noRemove.src | 11 | 0 |
+| A | pkg/opt/spawnpoint/pkg.cfg | 5 | 0 |
+| A | pkg/opt/spawnpoint/spawndeath.src | 72 | 0 |
+| A | pkg/opt/spawnpoint/spawnpoint.src | 501 | 0 |
+| A | pkg/opt/spawnpoint/spawnpointmanager.src | 236 | 0 |
+| A | pkg/opt/spawnpoint/spawntriggerwalkon.src | 24 | 0 |
+| A | pkg/opt/spawnpoint/start.src | 14 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/createspawntrigger.src | 105 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/despawn.src | 23 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/forcespawn.src | 30 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/gotomobtype.src | 146 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/gotospawnpoint.src | 159 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/newmobedit.src | 833 | 0 |
+| A | pkg/opt/spawnpoint/textcmd/admin/primespawn.src | 24 | 0 |
+| A | pkg/opt/statichousing.zip | n/a | n/a |
+| A | pkg/opt/summoning/checkboost.src | 102 | 0 |
+| A | pkg/opt/summoning/checkclasse.src | 36 | 0 |
+| A | pkg/opt/summoning/checkmove.src | 17 | 0 |
+| A | pkg/opt/summoning/magiccircleappear.src | 200 | 0 |
+| A | pkg/opt/summoning/npcremovefields.src | 15 | 0 |
+| A | pkg/opt/summoning/npcsummoning.src | 63 | 0 |
+| A | pkg/opt/summoning/pkg.cfg | 4 | 0 |
+| A | pkg/opt/summoning/polymorphing.src | 51 | 0 |
+| A | pkg/opt/summoning/processpersistedmod.src | 117 | 0 |
+| A | pkg/opt/summoning/processpoisonmod.src | 199 | 0 |
+| A | pkg/opt/summoning/processtempmod.src | 153 | 0 |
+| A | pkg/opt/summoning/start.src | 5 | 0 |
+| A | pkg/opt/summoning/summoning.src | 167 | 0 |
+| A | pkg/opt/summoning/waterfallappear.src | 123 | 0 |
+| A | pkg/opt/sunshine/itemdesc.cfg | 44 | 0 |
+| A | pkg/opt/sunshine/pkg.cfg | 8 | 0 |
+| A | pkg/opt/sunshine/silverhit.src | 49 | 0 |
+| A | pkg/opt/sysbook.zip | n/a | n/a |
+| A | pkg/opt/timer/pkg.cfg | 5 | 0 |
+| A | pkg/opt/timer/start.src | 3 | 0 |
+| A | pkg/opt/timer/timers.src | 106 | 0 |
+| A | pkg/opt/townstones/itemdesc.cfg | 29 | 0 |
+| A | pkg/opt/townstones/pkg.cfg | 4 | 0 |
+| A | pkg/opt/townstones/textcmd/admin/createstone.src | 29 | 0 |
+| A | pkg/opt/townstones/textcmd/admin/fixstone.src | 19 | 0 |
+| A | pkg/opt/townstones/tstone.inc | 310 | 0 |
+| A | pkg/opt/townstones/tstone.src | 365 | 0 |
+| A | pkg/opt/vanityshop/customitemdye.src | 84 | 0 |
+| A | pkg/opt/vanityshop/customitemname.src | 82 | 0 |
+| A | pkg/opt/vanityshop/include/mountFunctions.src | 16 | 0 |
+| A | pkg/opt/vanityshop/itemdesc.cfg | 139 | 0 |
+| A | pkg/opt/vanityshop/mountstone.src | 136 | 0 |
+| A | pkg/opt/vanityshop/pkg.cfg | 17 | 0 |
+| A | pkg/opt/vanityshop/runebookdye.src | 69 | 0 |
+| A | pkg/opt/vanityshop/vanityshop.src | 222 | 0 |
+| A | pkg/opt/versebook/Bardic_Boulders.src | 158 | 0 |
+| A | pkg/opt/versebook/Bardic_Boulders_Target.src | 32 | 0 |
+| A | pkg/opt/versebook/Beast_Bond_Cancel.src | 28 | 0 |
+| A | pkg/opt/versebook/Beast_Bond_View.src | 29 | 0 |
+| A | pkg/opt/versebook/Beastal_Bond.src | 252 | 0 |
+| A | pkg/opt/versebook/Corpse_Distention.src | 178 | 0 |
+| A | pkg/opt/versebook/Dragon_Skin.src | 163 | 0 |
+| A | pkg/opt/versebook/Lesser_Healing.src | 105 | 0 |
+| A | pkg/opt/versebook/Life_Balance.src | 138 | 0 |
+| A | pkg/opt/versebook/Not_Implemented.src | 81 | 0 |
+| A | pkg/opt/versebook/Shadows.src | 105 | 0 |
+| A | pkg/opt/versebook/Sonic_Disturbance.src | 103 | 0 |
+| A | pkg/opt/versebook/Spirit_Flock.src | 214 | 0 |
+| A | pkg/opt/versebook/ai_beastal_bond.src | 75 | 0 |
+| A | pkg/opt/versebook/ai_spirit_flock.src | 249 | 0 |
+| A | pkg/opt/versebook/deflate_corpse.src | 40 | 0 |
+| A | pkg/opt/versebook/explode_corpse.src | 103 | 0 |
+| A | pkg/opt/versebook/include/verseconstants.inc | 2 | 0 |
+| A | pkg/opt/versebook/include/versefunctions.inc | 697 | 0 |
+| A | pkg/opt/versebook/include/verseinfo.inc | 153 | 0 |
+| A | pkg/opt/versebook/itemdesc.cfg | 125 | 0 |
+| A | pkg/opt/versebook/pkg.cfg | 3 | 0 |
+| A | pkg/opt/versebook/versebook.src | 196 | 0 |
+| A | pkg/opt/versebook/verses.cfg | 120 | 0 |
+| A | pkg/opt/versebook/versescroll.src | 54 | 0 |
+| A | pkg/opt/zulugames/chessboard.src | 190 | 0 |
+| A | pkg/opt/zulugames/dice.src | 11 | 0 |
+| A | pkg/opt/zulugames/gamedict.inc | 17 | 0 |
+| A | pkg/opt/zulugames/gamehelp.inc | 103 | 0 |
+| A | pkg/opt/zulugames/gamelist.inc | 30 | 0 |
+| A | pkg/opt/zulugames/gumpids.inc | 31 | 0 |
+| A | pkg/opt/zulugames/itemdesc.cfg | 62 | 0 |
+| A | pkg/opt/zulugames/pkg.cfg | 4 | 0 |
+| A | pkg/opt/zuluitems/TestBoostStone.src | 168 | 0 |
+| A | pkg/opt/zuluitems/Testclassbooststone.src | 193 | 0 |
+| A | pkg/opt/zuluitems/bagrenamer.src | 60 | 0 |
+| A | pkg/opt/zuluitems/booststone.src | 249 | 0 |
+| A | pkg/opt/zuluitems/cannon.src | 109 | 0 |
+| A | pkg/opt/zuluitems/catapult.src | 78 | 0 |
+| A | pkg/opt/zuluitems/classbooststone.src | 120 | 0 |
+| A | pkg/opt/zuluitems/dragoneggs.src | 136 | 0 |
+| A | pkg/opt/zuluitems/dyecheck.src | 68 | 0 |
+| A | pkg/opt/zuluitems/fireworks.src | 27 | 0 |
+| A | pkg/opt/zuluitems/frenziedeggs.src | 121 | 0 |
+| A | pkg/opt/zuluitems/hairdye.src | 614 | 0 |
+| A | pkg/opt/zuluitems/infernotrap.src | 109 | 0 |
+| A | pkg/opt/zuluitems/itemdesc.cfg | 1250 | 0 |
+| A | pkg/opt/zuluitems/ostardeggs.src | 110 | 0 |
+| A | pkg/opt/zuluitems/pkg.cfg | 4 | 0 |
+| A | pkg/opt/zuluitems/resgate.src | 22 | 0 |
+| A | pkg/opt/zuluitems/tooltraps.src | 67 | 0 |
+| A | pkg/opt/zuluitems/trashdeed.src | 61 | 0 |
+| A | pkg/opt/zuluitems/use_racegate.src | 150 | 0 |
+| A | pkg/opt/zuluitems/vendordeed.src | 63 | 0 |
+| A | pkg/opt/zuluitems/walkon_racegate.src | 122 | 0 |
+| A | pkg/packethooks/OpenDoor/config/icp.cfg | 17 | 0 |
+| A | pkg/packethooks/OpenDoor/config/uopacket.cfg | 12 | 0 |
+| A | pkg/packethooks/OpenDoor/openDoor.src | 73 | 0 |
+| A | pkg/packethooks/OpenDoor/pkg.cfg | 9 | 0 |
+| A | pkg/packethooks/RazorNegotiate.rar | n/a | n/a |
+| A | pkg/packethooks/SingleClick/config/icp.cfg | 15 | 0 |
+| A | pkg/packethooks/SingleClick/config/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/SingleClick/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/SingleClick/singleClick.src | 141 | 0 |
+| A | pkg/packethooks/chathook/ChatHook.src | 25 | 0 |
+| A | pkg/packethooks/chathook/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/chathook/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/combatBook/booki.src | 13 | 0 |
+| A | pkg/packethooks/combatBook/pkg.cfg | 4 | 0 |
+| A | pkg/packethooks/combatBook/uopacket.cfg | 11 | 0 |
+| A | pkg/packethooks/deletedhooks.rar | n/a | n/a |
+| A | pkg/packethooks/doubleclick/doubleclick.src | 40 | 0 |
+| A | pkg/packethooks/doubleclick/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/doubleclick/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/megacliloc.zip | n/a | n/a |
+| A | pkg/packethooks/megacliloc/Cliloc.enu | n/a | n/a |
+| A | pkg/packethooks/megacliloc/UsedClilocs.txt | 52 | 0 |
+| A | pkg/packethooks/megacliloc/commands/player/updatetp.src | 15 | 0 |
+| A | pkg/packethooks/megacliloc/config/icp.cfg | 17 | 0 |
+| A | pkg/packethooks/megacliloc/config/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/megacliloc/itemdata.src | 449 | 0 |
+| A | pkg/packethooks/megacliloc/mobiledata.src | 309 | 0 |
+| A | pkg/packethooks/megacliloc/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/megacliloc/toolTips.src | 125 | 0 |
+| A | pkg/packethooks/packethook/ForceMove.src | 14 | 0 |
+| A | pkg/packethooks/packethook/dropitem.rar | n/a | n/a |
+| A | pkg/packethooks/packethook/packethook.src | 229 | 0 |
+| A | pkg/packethooks/packethook/pkg.cfg | 2 | 0 |
+| A | pkg/packethooks/packethook/uopacket.cfg | 25 | 0 |
+| A | pkg/packethooks/pickupitem/pickupitem.src | 74 | 0 |
+| A | pkg/packethooks/pickupitem/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/pickupitem/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/speech/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/speech/receivespeechhook.src | 71 | 0 |
+| A | pkg/packethooks/speech/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/uosteamfix.zip | n/a | n/a |
+| A | pkg/packethooks/versionHook/config/clients.cfg | 4 | 0 |
+| A | pkg/packethooks/versionHook/config/icp.cfg | 15 | 0 |
+| A | pkg/packethooks/versionHook/config/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/versionHook/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/versionHook/sleeper.src | 16 | 0 |
+| A | pkg/packethooks/versionHook/versionhook.rar | n/a | n/a |
+| A | pkg/packethooks/versionHook/versionhook.src | 69 | 0 |
+| A | pkg/packethooks/wearitem/equipitem_delay.src | 13 | 0 |
+| A | pkg/packethooks/wearitem/pkg.cfg | 6 | 0 |
+| A | pkg/packethooks/wearitem/uopacket.cfg | 5 | 0 |
+| A | pkg/packethooks/wearitem/wearitem.src | 22 | 0 |
+| A | pkg/std/alchemy/alchemy.cfg | 224 | 0 |
+| A | pkg/std/alchemy/alchemy.src | 436 | 0 |
+| A | pkg/std/alchemy/blackpotion.src | 27 | 0 |
+| A | pkg/std/alchemy/bluepotion.src | 34 | 0 |
+| A | pkg/std/alchemy/boot.src | 10 | 0 |
+| A | pkg/std/alchemy/exploder.src | 85 | 0 |
+| A | pkg/std/alchemy/explosion_potion.src | 62 | 0 |
+| A | pkg/std/alchemy/greenpotion.src | 30 | 0 |
+| A | pkg/std/alchemy/itemdesc.cfg | 993 | 0 |
+| A | pkg/std/alchemy/orangepotion.src | 40 | 0 |
+| A | pkg/std/alchemy/pkg.cfg | 4 | 0 |
+| A | pkg/std/alchemy/redpotion.src | 36 | 0 |
+| A | pkg/std/alchemy/whitepotion.src | 35 | 0 |
+| A | pkg/std/alchemy/yellowpotion.src | 33 | 0 |
+| A | pkg/std/anatomy/anatomy.src | 114 | 0 |
+| A | pkg/std/anatomy/pkg.cfg | 4 | 0 |
+| A | pkg/std/animallore/animallore.src | 89 | 0 |
+| A | pkg/std/animallore/pkg.cfg | 4 | 0 |
+| A | pkg/std/armslore/armslore.src | 224 | 0 |
+| A | pkg/std/armslore/pkg.cfg | 4 | 0 |
+| A | pkg/std/begging/begging.src | 179 | 0 |
+| A | pkg/std/begging/pkg.cfg | 4 | 0 |
+| A | pkg/std/blacksmithy/blacksmithy.cfg | 763 | 0 |
+| A | pkg/std/blacksmithy/blacksmithy.src | 167 | 0 |
+| A | pkg/std/blacksmithy/itemdesc.cfg | 88 | 0 |
+| A | pkg/std/blacksmithy/make_blacksmith_items.src | 560 | 0 |
+| A | pkg/std/blacksmithy/meltdown.src | 152 | 0 |
+| A | pkg/std/blacksmithy/pkg.cfg | 4 | 0 |
+| A | pkg/std/boat.zip | n/a | n/a |
+| A | pkg/std/camping/bedroll.src | 37 | 0 |
+| A | pkg/std/camping/camping.src | 90 | 0 |
+| A | pkg/std/camping/itemdesc.cfg | 28 | 0 |
+| A | pkg/std/camping/pkg.cfg | 4 | 0 |
+| A | pkg/std/carpentry/carpentry.cfg | 1754 | 0 |
+| A | pkg/std/carpentry/carpentry.src | 933 | 0 |
+| A | pkg/std/carpentry/carpentrydeed.src | 327 | 0 |
+| A | pkg/std/carpentry/commands/player/redeed.src | 192 | 0 |
+| A | pkg/std/carpentry/itemdesc.cfg | 1581 | 0 |
+| A | pkg/std/carpentry/pkg.cfg | 4 | 0 |
+| A | pkg/std/cartography/cartography.src | 156 | 0 |
+| A | pkg/std/cartography/itemdesc.cfg | 363 | 0 |
+| A | pkg/std/cartography/makemap.src | 71 | 0 |
+| A | pkg/std/cartography/pkg.cfg | 4 | 0 |
+| A | pkg/std/cooking/cookbook.src | 290 | 0 |
+| A | pkg/std/cooking/cooking.cfg | 1391 | 0 |
+| A | pkg/std/cooking/cooking.src | 482 | 0 |
+| A | pkg/std/cooking/drink.src | 119 | 0 |
+| A | pkg/std/cooking/drunk.src | 183 | 0 |
+| A | pkg/std/cooking/eat.src | 187 | 0 |
+| A | pkg/std/cooking/fillpitcher.src | 306 | 0 |
+| A | pkg/std/cooking/food.inc | 486 | 0 |
+| A | pkg/std/cooking/grinding.cfg | 37 | 0 |
+| A | pkg/std/cooking/grinding.src | 290 | 0 |
+| A | pkg/std/cooking/hunger.rar | n/a | n/a |
+| A | pkg/std/cooking/hunger.src | 191 | 0 |
+| A | pkg/std/cooking/itemdesc.cfg | 1627 | 0 |
+| A | pkg/std/cooking/pkg.cfg | 6 | 0 |
+| A | pkg/std/daynight/daynight.src | 72 | 0 |
+| A | pkg/std/daynight/pkg.cfg | 4 | 0 |
+| A | pkg/std/daynight/start.src | 12 | 0 |
+| A | pkg/std/decorations/itemdesc.cfg | 299 | 0 |
+| A | pkg/std/decorations/pkg.cfg | 4 | 0 |
+| A | pkg/std/detecthidden/detecthidden.src | 189 | 0 |
+| A | pkg/std/detecthidden/pkg.cfg | 4 | 0 |
+| A | pkg/std/doors.zip | n/a | n/a |
+| A | pkg/std/dundee/coconut.src | 12 | 0 |
+| A | pkg/std/dundee/codex.cfg | 206 | 0 |
+| A | pkg/std/dundee/deathvortex.src | 58 | 0 |
+| A | pkg/std/dundee/dragonspeak.cfg | 73 | 0 |
+| A | pkg/std/dundee/itemdesc.cfg | 25 | 0 |
+| A | pkg/std/dundee/lifecrystal.src | 26 | 0 |
+| A | pkg/std/dundee/pkg.cfg | 4 | 0 |
+| A | pkg/std/dundee/resfield.src | 27 | 0 |
+| A | pkg/std/dundee/shrinewalkon.src | 63 | 0 |
+| A | pkg/std/dundee/totem.src | 42 | 0 |
+| A | pkg/std/dundee/virtuewalkon.src | 34 | 0 |
+| A | pkg/std/dundee/walkon.src | 14 | 0 |
+| A | pkg/std/evalint/evalint.src | 239 | 0 |
+| A | pkg/std/evalint/pkg.cfg | 4 | 0 |
+| A | pkg/std/fishing/fishing.inc | 195 | 0 |
+| A | pkg/std/fishing/fishing.src | 361 | 0 |
+| A | pkg/std/fishing/fishingnet.src | 173 | 0 |
+| A | pkg/std/fishing/itemdesc.cfg | 576 | 0 |
+| A | pkg/std/fishing/magicfish.src | 311 | 0 |
+| A | pkg/std/fishing/pkg.cfg | 4 | 0 |
+| A | pkg/std/fishing/sosarea.cfg | 70 | 0 |
+| A | pkg/std/fishing/sosbottle.src | 65 | 0 |
+| A | pkg/std/fishing/sosmessage.src | 47 | 0 |
+| A | pkg/std/forensicevaluation/forensic.src | 139 | 0 |
+| A | pkg/std/forensicevaluation/forensic_can_insert.src | 25 | 0 |
+| A | pkg/std/forensicevaluation/forensicitem.src | 34 | 0 |
+| A | pkg/std/forensicevaluation/itemdesc.cfg | 34 | 0 |
+| A | pkg/std/forensicevaluation/pkg.cfg | 4 | 0 |
+| A | pkg/std/healing/cleanbandages.src | 70 | 0 |
+| A | pkg/std/healing/healing.cfg | 92 | 0 |
+| A | pkg/std/healing/healing.src | 530 | 0 |
+| A | pkg/std/healing/itemdesc.cfg | 14 | 0 |
+| A | pkg/std/healing/npchealing.src | 166 | 0 |
+| A | pkg/std/healing/pkg.cfg | 4 | 0 |
+| A | pkg/std/healing/poison_heal.src | 87 | 0 |
+| A | pkg/std/help/help.inc | 70 | 0 |
+| A | pkg/std/help/help.src | 379 | 0 |
+| A | pkg/std/help/pkg.cfg | 5 | 0 |
+| A | pkg/std/herding/herd.src | 75 | 0 |
+| A | pkg/std/herding/herdedai.src | 31 | 0 |
+| A | pkg/std/herding/itemdesc.cfg | 33 | 0 |
+| A | pkg/std/herding/pkg.cfg | 4 | 0 |
+| A | pkg/std/hiding/hiding.src | 84 | 0 |
+| A | pkg/std/hiding/pkg.cfg | 4 | 0 |
+| A | pkg/std/housing.zip | n/a | n/a |
+| A | pkg/std/inscription/inscription.cfg | 1551 | 0 |
+| A | pkg/std/inscription/inscription.src | 1785 | 0 |
+| A | pkg/std/inscription/pkg.cfg | 9 | 0 |
+| A | pkg/std/inscription/scribe.cfg | 973 | 0 |
+| A | pkg/std/itemid/itemid.inc | 261 | 0 |
+| A | pkg/std/itemid/itemid.src | 77 | 0 |
+| A | pkg/std/itemid/pkg.cfg | 4 | 0 |
+| A | pkg/std/lockpicking/config/icp.cfg | 21 | 0 |
+| A | pkg/std/lockpicking/config/itemdesc.cfg | 12 | 0 |
+| A | pkg/std/lockpicking/config/lockpicking.cfg | 1224 | 0 |
+| A | pkg/std/lockpicking/pkg.cfg | 5 | 0 |
+| A | pkg/std/lockpicking/use/picklock.src | 379 | 0 |
+| A | pkg/std/lumberjacking/itemdesc.cfg | 320 | 0 |
+| A | pkg/std/lumberjacking/lumberjack.src | 423 | 0 |
+| A | pkg/std/lumberjacking/pkg.cfg | 4 | 0 |
+| A | pkg/std/meditation/meditation.src | 142 | 0 |
+| A | pkg/std/meditation/pkg.cfg | 4 | 0 |
+| A | pkg/std/mining/itemdesc.cfg | 972 | 0 |
+| A | pkg/std/mining/mining up to peachblue.rar | n/a | n/a |
+| A | pkg/std/mining/mining.src | 575 | 0 |
+| A | pkg/std/mining/pkg.cfg | 4 | 0 |
+| A | pkg/std/mining/smelting.src | 87 | 0 |
+| A | pkg/std/musicianship/itemdesc.cfg | 50 | 0 |
+| A | pkg/std/musicianship/musicianship.src | 142 | 0 |
+| A | pkg/std/musicianship/pkg.cfg | 4 | 0 |
+| A | pkg/std/peacemaking/peacemaking.src | 120 | 0 |
+| A | pkg/std/peacemaking/pkg.cfg | 2 | 0 |
+| A | pkg/std/poisoning/pkg.cfg | 4 | 0 |
+| A | pkg/std/poisoning/poisoning.src | 369 | 0 |
+| A | pkg/std/provocation/pkg.cfg | 4 | 0 |
+| A | pkg/std/provocation/provocation.src | 151 | 0 |
+| A | pkg/std/removetrap/pkg.cfg | 4 | 0 |
+| A | pkg/std/removetrap/removetrap.src | 51 | 0 |
+| A | pkg/std/runebook/customspells.inc | 473 | 0 |
+| A | pkg/std/runebook/itemdesc.cfg | 26 | 0 |
+| A | pkg/std/runebook/pkg.cfg | 6 | 0 |
+| A | pkg/std/runebook/readme.txt | 62 | 0 |
+| A | pkg/std/runebook/runebook.src | 720 | 0 |
+| A | pkg/std/runebook/runecaninsert.src | 52 | 0 |
+| A | pkg/std/runebook/runeconversion.src | 150 | 0 |
+| A | pkg/std/runebook/runeoninsert.src | 144 | 0 |
+| A | pkg/std/saver/pkg.cfg | 4 | 0 |
+| A | pkg/std/saver/saveopts.inc | 1 | 0 |
+| A | pkg/std/saver/saver.src | 48 | 0 |
+| A | pkg/std/saver/saverchk.src | 32 | 0 |
+| A | pkg/std/saver/start.src | 14 | 0 |
+| A | pkg/std/snooping/itemdesc.cfg | 23 | 0 |
+| A | pkg/std/snooping/pkg.cfg | 4 | 0 |
+| A | pkg/std/snooping/removepack.src | 50 | 0 |
+| A | pkg/std/snooping/snooping.src | 347 | 0 |
+| A | pkg/std/snooping/stealing.src | 194 | 0 |
+| A | pkg/std/snooping/stealitems.cfg | 1010 | 0 |
+| A | pkg/std/snooping/stealme.cfg | 5436 | 0 |
+| A | pkg/std/spells/SpellBook_Can_Insert.src | 47 | 0 |
+| A | pkg/std/spells/SpellBook_Can_Remove.src | 19 | 0 |
+| A | pkg/std/spells/agility.src | 75 | 0 |
+| A | pkg/std/spells/archcure.src | 90 | 0 |
+| A | pkg/std/spells/archprot.src | 66 | 0 |
+| A | pkg/std/spells/blade_spirit.src | 97 | 0 |
+| A | pkg/std/spells/bless timer.src | 70 | 0 |
+| A | pkg/std/spells/bless.src | 65 | 0 |
+| A | pkg/std/spells/chain_lightning.src | 80 | 0 |
+| A | pkg/std/spells/clumsy.src | 94 | 0 |
+| A | pkg/std/spells/create_food.src | 39 | 0 |
+| A | pkg/std/spells/cunning.src | 62 | 0 |
+| A | pkg/std/spells/cure.src | 93 | 0 |
+| A | pkg/std/spells/curse.src | 89 | 0 |
+| A | pkg/std/spells/dispel.src | 149 | 0 |
+| A | pkg/std/spells/dispel_field.src | 68 | 0 |
+| A | pkg/std/spells/earthquake.src | 146 | 0 |
+| A | pkg/std/spells/ebolt.src | 72 | 0 |
+| A | pkg/std/spells/energy_field.src | 101 | 0 |
+| A | pkg/std/spells/explosion.src | 71 | 0 |
+| A | pkg/std/spells/feeblemind.src | 94 | 0 |
+| A | pkg/std/spells/fireball.src | 80 | 0 |
+| A | pkg/std/spells/firefield.src | 79 | 0 |
+| A | pkg/std/spells/fstrike.src | 78 | 0 |
+| A | pkg/std/spells/gate.src | 181 | 0 |
+| A | pkg/std/spells/getspellid.inc | 12 | 0 |
+| A | pkg/std/spells/gheal.src | 85 | 0 |
+| A | pkg/std/spells/harm.src | 75 | 0 |
+| A | pkg/std/spells/heal.src | 89 | 0 |
+| A | pkg/std/spells/incognito.src | 105 | 0 |
+| A | pkg/std/spells/invisibility.src | 62 | 0 |
+| A | pkg/std/spells/itemdesc.cfg | 728 | 0 |
+| A | pkg/std/spells/lightning.src | 72 | 0 |
+| A | pkg/std/spells/magicarrow.src | 80 | 0 |
+| A | pkg/std/spells/magiclock.src | 103 | 0 |
+| A | pkg/std/spells/magictrap.src | 114 | 0 |
+| A | pkg/std/spells/magicuntrap.src | 70 | 0 |
+| A | pkg/std/spells/manadrain.src | 99 | 0 |
+| A | pkg/std/spells/manavamp.src | 106 | 0 |
+| A | pkg/std/spells/mark.src | 95 | 0 |
+| A | pkg/std/spells/masscurse.src | 81 | 0 |
+| A | pkg/std/spells/massdispel.src | 124 | 0 |
+| A | pkg/std/spells/meteor_swarm.src | 100 | 0 |
+| A | pkg/std/spells/mindblast.src | 106 | 0 |
+| A | pkg/std/spells/nightsight.src | 55 | 0 |
+| A | pkg/std/spells/parafield.src | 88 | 0 |
+| A | pkg/std/spells/paralyze.src | 85 | 0 |
+| A | pkg/std/spells/pkg.cfg | 4 | 0 |
+| A | pkg/std/spells/poison.src | 85 | 0 |
+| A | pkg/std/spells/poisonfield.src | 78 | 0 |
+| A | pkg/std/spells/polymorph.src | 210 | 0 |
+| A | pkg/std/spells/protection with timer.src | 70 | 0 |
+| A | pkg/std/spells/protection.src | 70 | 0 |
+| A | pkg/std/spells/reactivearmor.src | 53 | 0 |
+| A | pkg/std/spells/recall.src | 133 | 0 |
+| A | pkg/std/spells/reflect.src | 42 | 0 |
+| A | pkg/std/spells/resurrect.src | 89 | 0 |
+| A | pkg/std/spells/reveal.src | 448 | 0 |
+| A | pkg/std/spells/scroll.src | 68 | 0 |
+| A | pkg/std/spells/spells.cfg | 777 | 0 |
+| A | pkg/std/spells/strength.src | 67 | 0 |
+| A | pkg/std/spells/summon_air.src | 53 | 0 |
+| A | pkg/std/spells/summon_creature.src | 110 | 0 |
+| A | pkg/std/spells/summon_daemon.src | 61 | 0 |
+| A | pkg/std/spells/summon_earth.src | 53 | 0 |
+| A | pkg/std/spells/summon_fire.src | 54 | 0 |
+| A | pkg/std/spells/summon_water.src | 53 | 0 |
+| A | pkg/std/spells/telekinesis.src | 55 | 0 |
+| A | pkg/std/spells/teleport.src | 139 | 0 |
+| A | pkg/std/spells/thaw.src | 13 | 0 |
+| A | pkg/std/spells/unlock.src | 154 | 0 |
+| A | pkg/std/spells/vortex.src | 101 | 0 |
+| A | pkg/std/spells/wallofstone.src | 108 | 0 |
+| A | pkg/std/spells/weaken.src | 93 | 0 |
+| A | pkg/std/spiritspeak/pkg.cfg | 4 | 0 |
+| A | pkg/std/spiritspeak/spiritspeak.src | 26 | 0 |
+| A | pkg/std/stealing/itemdesc.cfg | 0 | 0 |
+| A | pkg/std/stealing/pkg.cfg | 4 | 0 |
+| A | pkg/std/stealing/prestealing.src | 20 | 0 |
+| A | pkg/std/stealing/stealing.src | 195 | 0 |
+| A | pkg/std/stealth/pkg.cfg | 4 | 0 |
+| A | pkg/std/stealth/stealth.src | 52 | 0 |
+| A | pkg/std/tailoring/bridle.src | 46 | 0 |
+| A | pkg/std/tailoring/itemdesc.cfg | 2836 | 0 |
+| A | pkg/std/tailoring/make_cloth_items.src | 583 | 0 |
+| A | pkg/std/tailoring/pkg.cfg | 4 | 0 |
+| A | pkg/std/tailoring/scissors.src | 216 | 0 |
+| A | pkg/std/tailoring/tailoring.cfg | 1033 | 0 |
+| A | pkg/std/tailoring/tailoring.src | 83 | 0 |
+| A | pkg/std/tailoring/unstitch.src | 127 | 0 |
+| A | pkg/std/taming/pkg.cfg | 4 | 0 |
+| A | pkg/std/taming/taming.src | 293 | 0 |
+| A | pkg/std/tasteid/pkg.cfg | 4 | 0 |
+| A | pkg/std/tasteid/tasteid.src | 87 | 0 |
+| A | pkg/std/taunt/enticeai.src | 85 | 0 |
+| A | pkg/std/taunt/pkg.cfg | 3 | 0 |
+| A | pkg/std/taunt/taunt.src | 192 | 0 |
+| A | pkg/std/tinkering/candlemaking.src | 193 | 0 |
+| A | pkg/std/tinkering/itemdesc.cfg | 447 | 0 |
+| A | pkg/std/tinkering/pkg.cfg | 4 | 0 |
+| A | pkg/std/tinkering/tarot.src | 11 | 0 |
+| A | pkg/std/tinkering/tinker.cfg | 1175 | 0 |
+| A | pkg/std/tinkering/tinkering.src | 1131 | 0 |
+| A | pkg/std/tracking/pkg.cfg | 4 | 0 |
+| A | pkg/std/tracking/tracking.cfg | 1382 | 0 |
+| A | pkg/std/tracking/tracking.src | 173 | 0 |
+| A | pkg/std/training/archery_butte.src | 156 | 0 |
+| A | pkg/std/training/dummy.src | 59 | 0 |
+| A | pkg/std/training/dummy_pickpocket.src | 58 | 0 |
+| A | pkg/std/training/itemdesc.cfg | 38 | 0 |
+| A | pkg/std/training/pkg.cfg | 4 | 0 |
+| A | pkg/std/traps/hiddentrap.src | 41 | 0 |
+| A | pkg/std/traps/itemdesc.cfg | 230 | 0 |
+| A | pkg/std/traps/pkg.cfg | 4 | 0 |
+| A | pkg/std/traps/traps.src | 88 | 0 |
+| A | pkg/std/treasuremap/decodemap.src | 161 | 0 |
+| A | pkg/std/treasuremap/digtreasure.src | 276 | 0 |
+| A | pkg/std/treasuremap/guardians.cfg | 144 | 0 |
+| A | pkg/std/treasuremap/itemdesc.cfg | 70 | 0 |
+| A | pkg/std/treasuremap/pkg.cfg | 4 | 0 |
+| A | pkg/std/treasuremap/treasure.cfg | 115 | 0 |
+| A | pkg/std/veterinary/pkg.cfg | 4 | 0 |
+| A | pkg/std/veterinary/vet.src | 423 | 0 |
+| A | pkg/systems/accounts/acctWatcher/acctWatcher.src | 90 | 0 |
+| A | pkg/systems/accounts/commands/dev/eraseEmptyAccounts.src | 57 | 0 |
+| A | pkg/systems/accounts/config/icp.cfg | 18 | 0 |
+| A | pkg/systems/accounts/config/settings.cfg | 86 | 0 |
+| A | pkg/systems/accounts/config/uopacket.cfg | 5 | 0 |
+| A | pkg/systems/accounts/hook/onLogin.src | 282 | 0 |
+| A | pkg/systems/accounts/include/accounts.inc | 320 | 0 |
+| A | pkg/systems/accounts/include/mailSystem.inc | 122 | 0 |
+| A | pkg/systems/accounts/include/settings.inc | 36 | 0 |
+| A | pkg/systems/accounts/logon.src | 45 | 0 |
+| A | pkg/systems/accounts/pkg.cfg | 16 | 0 |
+| A | pkg/systems/accounts/reconnect.src | 26 | 0 |
+| A | pkg/systems/combat/avengingonhit.src | 40 | 0 |
+| A | pkg/systems/combat/balanceddagger.src | 198 | 0 |
+| A | pkg/systems/combat/banishonhit.src | 49 | 0 |
+| A | pkg/systems/combat/banishscript.src | 54 | 0 |
+| A | pkg/systems/combat/blackrockscript.src | 79 | 0 |
+| A | pkg/systems/combat/blindingonhit.src | 41 | 0 |
+| A | pkg/systems/combat/blindingscript.src | 51 | 0 |
+| A | pkg/systems/combat/bouncingonhit.src | 47 | 0 |
+| A | pkg/systems/combat/config/Stuff to add.txt | 300 | 0 |
+| A | pkg/systems/combat/config/enchantableitems.cfg | 338 | 0 |
+| A | pkg/systems/combat/config/hitscriptdesc.cfg | 672 | 0 |
+| A | pkg/systems/combat/config/itemdesc.cfg | 17986 | 0 |
+| A | pkg/systems/combat/config/modenchantdesc.cfg | 1461 | 0 |
+| A | pkg/systems/combat/config/onhitscriptdesc.cfg | 674 | 0 |
+| A | pkg/systems/combat/config/settings.cfg | 38 | 0 |
+| A | pkg/systems/combat/crithit.src | 45 | 0 |
+| A | pkg/systems/combat/deflectiononhit.src | 41 | 0 |
+| A | pkg/systems/combat/dualplanaronhit.src | 74 | 0 |
+| A | pkg/systems/combat/dualplanarscript.src | 94 | 0 |
+| A | pkg/systems/combat/explosionlauncherscript.src | 60 | 0 |
+| A | pkg/systems/combat/guardhitscript.src | 24 | 0 |
+| A | pkg/systems/combat/herd.src | 59 | 0 |
+| A | pkg/systems/combat/include/hitscriptinc.inc | 724 | 0 |
+| A | pkg/systems/combat/invisibleonhit.src | 29 | 0 |
+| A | pkg/systems/combat/lifedrainscript.src | 51 | 0 |
+| A | pkg/systems/combat/mainhit.src | 20 | 0 |
+| A | pkg/systems/combat/manadrainonhit.src | 50 | 0 |
+| A | pkg/systems/combat/manadrainscript.src | 66 | 0 |
+| A | pkg/systems/combat/paralyzehit.src | 53 | 0 |
+| A | pkg/systems/combat/paralyzeonhit.src | 42 | 0 |
+| A | pkg/systems/combat/piercingonhit.src | 36 | 0 |
+| A | pkg/systems/combat/piercingscript.src | 37 | 0 |
+| A | pkg/systems/combat/pkg.cfg | 8 | 0 |
+| A | pkg/systems/combat/poisonhit.src | 42 | 0 |
+| A | pkg/systems/combat/poisononhit.src | 28 | 0 |
+| A | pkg/systems/combat/raceresistonhit.src | 36 | 0 |
+| A | pkg/systems/combat/raxweapon.src | 71 | 0 |
+| A | pkg/systems/combat/reactivearmoronhit.src | 24 | 0 |
+| A | pkg/systems/combat/slayerscript.src | 68 | 0 |
+| A | pkg/systems/combat/sparhit.src | 23 | 0 |
+| A | pkg/systems/combat/spellonhit.src | 60 | 0 |
+| A | pkg/systems/combat/spellstrikescript.src | 91 | 0 |
+| A | pkg/systems/combat/staminadrainonhit.src | 52 | 0 |
+| A | pkg/systems/combat/staminadrainscript.src | 56 | 0 |
+| A | pkg/systems/combat/thiefpoisonhit.src | 37 | 0 |
+| A | pkg/systems/combat/trielementalonhit.src | 71 | 0 |
+| A | pkg/systems/combat/trielementalscript.src | 89 | 0 |
+| A | pkg/systems/combat/voidscript.src | 52 | 0 |
+| A | pkg/systems/crafting/include/craftingfunctions.inc | 274 | 0 |
+| A | pkg/systems/crafting/pkg.cfg | 5 | 0 |
+| A | pkg/systems/email/chardelete.src | 24 | 0 |
+| A | pkg/systems/email/commands/gm/inspectmail.src | 43 | 0 |
+| A | pkg/systems/email/commands/player/email.src | 18 | 0 |
+| A | pkg/systems/email/config/icp.cfg | 17 | 0 |
+| A | pkg/systems/email/email.src | 42 | 0 |
+| A | pkg/systems/email/emailMessage/newEmail.src | 49 | 0 |
+| A | pkg/systems/email/include/email.inc | 570 | 0 |
+| A | pkg/systems/email/include/email_const.inc | 21 | 0 |
+| A | pkg/systems/email/logon.src | 39 | 0 |
+| A | pkg/systems/email/pkg.cfg | 15 | 0 |
+| A | pkg/systems/email/reconnect.src | 39 | 0 |
+| A | pkg/systems/email/webmail/webmail.src | 31 | 0 |
+| A | pkg/systems/onlineCount/cheatCount.src | 60 | 0 |
+| A | pkg/systems/onlineCount/commands/dev/connectBot.src | 21 | 0 |
+| A | pkg/systems/onlineCount/commands/dev/disconnectBot.src | 21 | 0 |
+| A | pkg/systems/onlineCount/commands/dev/restartCheatCount.src | 33 | 0 |
+| A | pkg/systems/onlineCount/config/icp.cfg | 20 | 0 |
+| A | pkg/systems/onlineCount/config/settings.cfg | 88 | 0 |
+| A | pkg/systems/onlineCount/include/bots.inc | 109 | 0 |
+| A | pkg/systems/onlineCount/include/settings.inc | 41 | 0 |
+| A | pkg/systems/onlineCount/pkg.cfg | 19 | 0 |
+| A | pkg/systems/onlineCount/start.src | 13 | 0 |
+| A | pkg/systems/reputation/config/icp.cfg | 17 | 0 |
+| A | pkg/systems/reputation/hook/namedyes.src | 134 | 0 |
+| A | pkg/systems/reputation/pkg.cfg | 19 | 0 |
+| A | pkg/template/pkg.cfg | 70 | 0 |
+| A | pkg/utils/clilocs/commands/test/clilocTest.src | 20 | 0 |
+| A | pkg/utils/clilocs/config/backup_of_clilocs.cfg | 115544 | 0 |
+| A | pkg/utils/clilocs/config/clilocs.cfg | 115544 | 0 |
+| A | pkg/utils/clilocs/config/icp.cfg | 10 | 0 |
+| A | pkg/utils/clilocs/include/clilocs.inc | 90 | 0 |
+| A | pkg/utils/clilocs/pkg.cfg | 19 | 0 |
+| A | pkg/utils/datafile/config/icp.cfg | 17 | 0 |
+| A | pkg/utils/datafile/include/datafile.inc | 131 | 0 |
+| A | pkg/utils/datafile/include/datafile_ex.inc | 95 | 0 |
+| A | pkg/utils/datafile/pkg.cfg | 16 | 0 |
+| A | pkg/utils/gumps/changelog.txt | 40 | 0 |
+| A | pkg/utils/gumps/commands/admin/gumpprompt.src | 12 | 0 |
+| A | pkg/utils/gumps/commands/admin/htmlgump.src | 12 | 0 |
+| A | pkg/utils/gumps/commands/admin/requestgump.src | 17 | 0 |
+| A | pkg/utils/gumps/commands/admin/resizepic.src | 16 | 0 |
+| A | pkg/utils/gumps/commands/admin/samplegump.src | 92 | 0 |
+| A | pkg/utils/gumps/commands/admin/selectiongump.src | 46 | 0 |
+| A | pkg/utils/gumps/commands/admin/yesno.src | 18 | 0 |
+| A | pkg/utils/gumps/config/GumpInfo - Copy.cfg | 82 | 0 |
+| A | pkg/utils/gumps/config/GumpInfo.cfg | 77 | 0 |
+| A | pkg/utils/gumps/config/fontSize.cfg | 36 | 0 |
+| A | pkg/utils/gumps/config/icp.cfg | 18 | 0 |
+| A | pkg/utils/gumps/include/autoClose.inc | 124 | 0 |
+| A | pkg/utils/gumps/include/gumpprompt.inc | 91 | 0 |
+| A | pkg/utils/gumps/include/gumps.inc | 937 | 0 |
+| A | pkg/utils/gumps/include/gumps_ex.inc | 335 | 0 |
+| A | pkg/utils/gumps/include/htmlgump.inc | 50 | 0 |
+| A | pkg/utils/gumps/include/old-gumps.inc | 1415 | 0 |
+| A | pkg/utils/gumps/include/old/old-gumps.inc | 1003 | 0 |
+| A | pkg/utils/gumps/include/playerselectiongump.inc | 81 | 0 |
+| A | pkg/utils/gumps/include/requestgump.inc | 158 | 0 |
+| A | pkg/utils/gumps/include/selectiongump.inc | 241 | 0 |
+| A | pkg/utils/gumps/include/textConsts.inc | 53 | 0 |
+| A | pkg/utils/gumps/include/yesNoSizable.inc | 195 | 0 |
+| A | pkg/utils/gumps/include/yesno.inc | 43 | 0 |
+| A | pkg/utils/gumps/pkg.cfg | 17 | 0 |
+| A | pkg/utils/gumps/scripts/autoClose/autoClose.src | 13 | 0 |
+| A | pkg/utils/gumps/scripts/autoClose/autoCloseOnLeaveArea.src | 30 | 0 |
+| A | pkg/utils/gumps/scripts/autoClose/autoCloseOnMovedCoordinateDistance.src | 24 | 0 |
+| A | pkg/utils/gumps/scripts/autoClose/autoCloseOnMovedDistance.src | 17 | 0 |
+| A | pkg/utils/gumps/scripts/yesNo/yesNoGump.src | 63 | 0 |
+| A | pkg/utils/gumps/scripts/yesNo/yesNoMiniGump.src | 37 | 0 |
+| A | pkg/utils/itemUtils/config/icp.cfg | 18 | 0 |
+| A | pkg/utils/itemUtils/config/offset.cfg | 287151 | 0 |
+| A | pkg/utils/itemUtils/config/sets.cfg | 13576 | 0 |
+| A | pkg/utils/itemUtils/config/stairs.cfg | 201 | 0 |
+| A | pkg/utils/itemUtils/include/canAccess.inc | 52 | 0 |
+| A | pkg/utils/itemUtils/include/colors.inc | 43 | 0 |
+| A | pkg/utils/itemUtils/include/desc.inc | 170 | 0 |
+| A | pkg/utils/itemUtils/include/itemInfo.inc | 79 | 0 |
+| A | pkg/utils/itemUtils/include/itemProps.inc | 68 | 0 |
+| A | pkg/utils/itemUtils/include/itemUtil.inc | 125 | 0 |
+| A | pkg/utils/itemUtils/include/itemUtil_ex.inc | 268 | 0 |
+| A | pkg/utils/itemUtils/include/itemdesc.inc | 242 | 0 |
+| A | pkg/utils/itemUtils/include/itemtypes.inc | 1601 | 0 |
+| A | pkg/utils/itemUtils/include/layers.inc | 32 | 0 |
+| A | pkg/utils/itemUtils/include/offsets.inc | 41 | 0 |
+| A | pkg/utils/itemUtils/include/toolWear.inc | 113 | 0 |
+| A | pkg/utils/itemUtils/pkg.cfg | 14 | 0 |
+| A | pkg/utils/itemUtils/rotate/rotate.src | 17 | 0 |
+| A | pkg/utils/mdgumps/changelog.txt | 40 | 0 |
+| A | pkg/utils/mdgumps/commands/test/gfchart.src | 82 | 0 |
+| A | pkg/utils/mdgumps/commands/test/gumpprompt.src | 11 | 0 |
+| A | pkg/utils/mdgumps/commands/test/htmlgump.src | 10 | 0 |
+| A | pkg/utils/mdgumps/commands/test/requestgump.src | 16 | 0 |
+| A | pkg/utils/mdgumps/commands/test/resizepic.src | 16 | 0 |
+| A | pkg/utils/mdgumps/commands/test/samplegump.src | 91 | 0 |
+| A | pkg/utils/mdgumps/commands/test/selectiongump.src | 45 | 0 |
+| A | pkg/utils/mdgumps/commands/test/yesno.src | 17 | 0 |
+| A | pkg/utils/mdgumps/config/GumpInfo.cfg | 77 | 0 |
+| A | pkg/utils/mdgumps/config/fontSize.cfg | 36 | 0 |
+| A | pkg/utils/mdgumps/config/icp.cfg | 18 | 0 |
+| A | pkg/utils/mdgumps/include/autoClose.inc | 121 | 0 |
+| A | pkg/utils/mdgumps/include/confirmationSizable.inc | 211 | 0 |
+| A | pkg/utils/mdgumps/include/gumpCaching.inc | 230 | 0 |
+| A | pkg/utils/mdgumps/include/gumpPrompt.inc | 94 | 0 |
+| A | pkg/utils/mdgumps/include/gumps.inc | 935 | 0 |
+| A | pkg/utils/mdgumps/include/gumps_ex.inc | 335 | 0 |
+| A | pkg/utils/mdgumps/include/htmlGump.inc | 49 | 0 |
+| A | pkg/utils/mdgumps/include/old-gumps.inc | 1416 | 0 |
+| A | pkg/utils/mdgumps/include/old/old-gumps.inc | 1003 | 0 |
+| A | pkg/utils/mdgumps/include/playerSelectionGump.inc | 95 | 0 |
+| A | pkg/utils/mdgumps/include/requestGump.inc | 157 | 0 |
+| A | pkg/utils/mdgumps/include/selectionGump.inc | 241 | 0 |
+| A | pkg/utils/mdgumps/include/textConsts.inc | 53 | 0 |
+| A | pkg/utils/mdgumps/include/yesNo.inc | 50 | 0 |
+| A | pkg/utils/mdgumps/pkg.cfg | 17 | 0 |
+| A | pkg/utils/mdgumps/scripts/autoClose/autoClose.src | 13 | 0 |
+| A | pkg/utils/mdgumps/scripts/autoClose/autoCloseOnLeaveArea.src | 30 | 0 |
+| A | pkg/utils/mdgumps/scripts/autoClose/autoCloseOnMovedCoordinateDistance.src | 24 | 0 |
+| A | pkg/utils/mdgumps/scripts/autoClose/autoCloseOnMovedDistance.src | 17 | 0 |
+| A | pkg/utils/mdgumps/scripts/yesNo/binaryChoice.src | 89 | 0 |
+| A | pkg/utils/mdgumps/scripts/yesNo/yesNoGump.src | 101 | 0 |
+| A | pkg/utils/mdgumps/scripts/yesNo/yesNoMiniGump.src | 35 | 0 |
+| A | pkg/utils/objClassMethods/config/icp.cfg | 19 | 0 |
+| A | pkg/utils/objClassMethods/config/syshook.cfg | 23 | 0 |
+| A | pkg/utils/objClassMethods/pkg.cfg | 19 | 0 |
+| A | pkg/utils/objClassMethods/scripts/character.src | 50 | 0 |
+| A | pkg/utils/security/config/icp.cfg | 15 | 0 |
+| A | pkg/utils/security/include/attributesReport.inc | 44 | 0 |
+| A | pkg/utils/security/include/commandReport.inc | 47 | 0 |
+| A | pkg/utils/security/include/damageReport.inc | 44 | 0 |
+| A | pkg/utils/security/include/itemReport.inc | 44 | 0 |
+| A | pkg/utils/security/include/report.inc | 62 | 0 |
+| A | pkg/utils/security/include/speechReport.inc | 43 | 0 |
+| A | pkg/utils/security/pkg.cfg | 18 | 0 |
+| A | pkg/utils/timeutils/commands/player/serverTime.src | 19 | 0 |
+| A | pkg/utils/timeutils/commands/test/timetest.src | 32 | 0 |
+| A | pkg/utils/timeutils/config/icp.cfg | 15 | 0 |
+| A | pkg/utils/timeutils/config/settings.cfg | 9 | 0 |
+| A | pkg/utils/timeutils/include/gameTime.inc | 276 | 0 |
+| A | pkg/utils/timeutils/include/settings.inc | 39 | 0 |
+| A | pkg/utils/timeutils/include/time.inc | 47 | 0 |
+| A | pkg/utils/timeutils/pkg.cfg | 18 | 0 |
+| A | pol.cfg | 522 | 0 |
+| A | pol.cfg.example | 526 | 0 |
+| A | pol.exe | n/a | n/a |
+| A | pol.map | 93158 | 0 |
+| A | pol.obj | n/a | n/a |
+| A | pol.pch | n/a | n/a |
+| A | pol.pdb | n/a | n/a |
+| A | pol.res | n/a | n/a |
+| A | poltool.exe | n/a | n/a |
+| A | poltool.pdb | n/a | n/a |
+| A | regions/carrot.cfg | 15 | 0 |
+| A | regions/clay.cfg | 432 | 0 |
+| A | regions/corn.cfg | 16 | 0 |
+| A | regions/cotton.cfg | 16 | 0 |
+| A | regions/fish.cfg | 161 | 0 |
+| A | regions/flax.cfg | 1 | 0 |
+| A | regions/garlic.cfg | 1 | 0 |
+| A | regions/ginseng.cfg | 1 | 0 |
+| A | regions/hops.cfg | 18 | 0 |
+| A | regions/light.cfg | 64 | 0 |
+| A | regions/mandrake.cfg | 1 | 0 |
+| A | regions/nightshade.cfg | 1 | 0 |
+| A | regions/onion.cfg | 15 | 0 |
+| A | regions/ore.cfg | 270 | 0 |
+| A | regions/regions.cfg | 1025 | 0 |
+| A | regions/resource.cfg | 8 | 0 |
+| A | regions/sand.cfg | 212 | 0 |
+| A | regions/turnip.cfg | 18 | 0 |
+| A | regions/weather.cfg | 31 | 0 |
+| A | regions/wheat.cfg | 21 | 0 |
+| A | regions/wood.cfg | 228 | 0 |
+| A | scripts/CustomHpFix.src | 10 | 0 |
+| A | scripts/EquipTemplateValidation.src | 87 | 0 |
+| A | scripts/ai/Pirate.src | 112 | 0 |
+| A | scripts/ai/air.src | 375 | 0 |
+| A | scripts/ai/aloof.src | 180 | 0 |
+| A | scripts/ai/animal.src | 57 | 0 |
+| A | scripts/ai/animaltrainer.src | 802 | 0 |
+| A | scripts/ai/archerkillpcs.src | 132 | 0 |
+| A | scripts/ai/assassinkillpcs.src | 57 | 0 |
+| A | scripts/ai/banker.src | 576 | 0 |
+| A | scripts/ai/bankerold Nov2025.zip | n/a | n/a |
+| A | scripts/ai/bardkillpcs.src | 144 | 0 |
+| A | scripts/ai/bardok.src | 123 | 0 |
+| A | scripts/ai/barker.src | 57 | 0 |
+| A | scripts/ai/barracoon.src | 55 | 0 |
+| A | scripts/ai/cat.src | 46 | 0 |
+| A | scripts/ai/chaosexplosionkillpcs.src | 79 | 0 |
+| A | scripts/ai/chaosfirebreather.src | 60 | 0 |
+| A | scripts/ai/chaoskillpcs.src | 55 | 0 |
+| A | scripts/ai/chaosmultikillpcs.rar | n/a | n/a |
+| A | scripts/ai/chaosmultikillpcs.src | 834 | 0 |
+| A | scripts/ai/chaosspellkillpcs.src | 174 | 0 |
+| A | scripts/ai/chicken.src | 57 | 0 |
+| A | scripts/ai/clocks.src | 127 | 0 |
+| A | scripts/ai/combat/animalcombatevent.inc | 36 | 0 |
+| A | scripts/ai/combat/chaosfight.inc | 312 | 0 |
+| A | scripts/ai/combat/clonecombatevent.inc | 106 | 0 |
+| A | scripts/ai/combat/combatevents.inc | 1 | 0 |
+| A | scripts/ai/combat/defaultcombatevent.inc | 75 | 0 |
+| A | scripts/ai/combat/dgangercombatevent.inc | 166 | 0 |
+| A | scripts/ai/combat/doppelcombatevent.inc | 122 | 0 |
+| A | scripts/ai/combat/explosioncombatevent.inc | 64 | 0 |
+| A | scripts/ai/combat/fight.inc | 305 | 0 |
+| A | scripts/ai/combat/fight.rar | n/a | n/a |
+| A | scripts/ai/combat/firecombatevent.inc | 74 | 0 |
+| A | scripts/ai/combat/healercombatevent.inc | 97 | 0 |
+| A | scripts/ai/combat/poisoncombatevent.inc | 63 | 0 |
+| A | scripts/ai/combat/raidcombatevent.inc | 32 | 0 |
+| A | scripts/ai/combat/raiderfight.inc | 116 | 0 |
+| A | scripts/ai/combat/slimecombatevent.inc | 108 | 0 |
+| A | scripts/ai/combat/spellcombatevent.inc | 83 | 0 |
+| A | scripts/ai/combat/spidercombatevent.inc | 102 | 0 |
+| A | scripts/ai/combat/vortexcombatevent.inc | 58 | 0 |
+| A | scripts/ai/combat/warriorcombatevent.inc | 64 | 0 |
+| A | scripts/ai/crier.src | 85 | 0 |
+| A | scripts/ai/critterhealer.src | 113 | 0 |
+| A | scripts/ai/cstguard.src | 229 | 0 |
+| A | scripts/ai/daves_healer.src | 258 | 0 |
+| A | scripts/ai/doppel.src | 67 | 0 |
+| A | scripts/ai/doppelganger.src | 156 | 0 |
+| A | scripts/ai/dragonking.src | 93 | 0 |
+| A | scripts/ai/dumbkillpcs.src | 56 | 0 |
+| A | scripts/ai/earth.src | 378 | 0 |
+| A | scripts/ai/explosionkillpcs.src | 78 | 0 |
+| A | scripts/ai/fastkillpcs.src | 73 | 0 |
+| A | scripts/ai/fire.src | 374 | 0 |
+| A | scripts/ai/firebreather.rar | n/a | n/a |
+| A | scripts/ai/firebreather.src | 60 | 0 |
+| A | scripts/ai/formationkillpcs.src | 181 | 0 |
+| A | scripts/ai/formationleader.src | 173 | 0 |
+| A | scripts/ai/gambler.src | 776 | 0 |
+| A | scripts/ai/glutton.src | 121 | 0 |
+| A | scripts/ai/goodcaster.src | 103 | 0 |
+| A | scripts/ai/helppcs.src | 58 | 0 |
+| A | scripts/ai/highpriest.src | 676 | 0 |
+| A | scripts/ai/holyshrine.src | 378 | 0 |
+| A | scripts/ai/humuc.src | 547 | 0 |
+| A | scripts/ai/immobile.src | 86 | 0 |
+| A | scripts/ai/instakillguard.src | 121 | 0 |
+| A | scripts/ai/kappa.src | 88 | 0 |
+| A | scripts/ai/killany.src | 94 | 0 |
+| A | scripts/ai/killpcs.src | 57 | 0 |
+| A | scripts/ai/killpcsclock.src | 63 | 0 |
+| A | scripts/ai/legendaryhunter.src | 50 | 0 |
+| A | scripts/ai/listener.src | 75 | 0 |
+| A | scripts/ai/loke.src | 82 | 0 |
+| A | scripts/ai/main/animalsetup.inc | 33 | 0 |
+| A | scripts/ai/main/assassinsleep.inc | 59 | 0 |
+| A | scripts/ai/main/barracoon.inc | 107 | 0 |
+| A | scripts/ai/main/chaoskillpcsloop.inc | 170 | 0 |
+| A | scripts/ai/main/criersetup.inc | 28 | 0 |
+| A | scripts/ai/main/defaultnoncombatevent.inc | 9 | 0 |
+| A | scripts/ai/main/dumbkillpcsloop.inc | 123 | 0 |
+| A | scripts/ai/main/killpcsloop.inc | 165 | 0 |
+| A | scripts/ai/main/loot.inc | 151 | 0 |
+| A | scripts/ai/main/lootblockers.inc | 103 | 0 |
+| A | scripts/ai/main/mainloop.inc | 84 | 0 |
+| A | scripts/ai/main/mainloop.rar | n/a | n/a |
+| A | scripts/ai/main/mainloopanimal.inc | 111 | 0 |
+| A | scripts/ai/main/mainloopbarker.inc | 196 | 0 |
+| A | scripts/ai/main/mainloopcat.inc | 93 | 0 |
+| A | scripts/ai/main/mainloopchicken.inc | 126 | 0 |
+| A | scripts/ai/main/mainloopcrier.inc | 128 | 0 |
+| A | scripts/ai/main/mainloopgood.inc | 99 | 0 |
+| A | scripts/ai/main/mainloophelp.inc | 101 | 0 |
+| A | scripts/ai/main/mainloopimmobile.inc | 77 | 0 |
+| A | scripts/ai/main/mainloopkillany.inc | 99 | 0 |
+| A | scripts/ai/main/mainloopmeek.inc | 104 | 0 |
+| A | scripts/ai/main/mainloopquestie.inc | 217 | 0 |
+| A | scripts/ai/main/mainloopraider.inc | 441 | 0 |
+| A | scripts/ai/main/mainloopsheep.inc | 153 | 0 |
+| A | scripts/ai/main/mainloopslime.inc | 79 | 0 |
+| A | scripts/ai/main/mainloopwolf.inc | 119 | 0 |
+| A | scripts/ai/main/meanloop.inc | 89 | 0 |
+| A | scripts/ai/main/npcinfo.inc | 55 | 0 |
+| A | scripts/ai/main/questiesetup.inc | 365 | 0 |
+| A | scripts/ai/main/setup.inc | 99 | 0 |
+| A | scripts/ai/main/sleepmode.inc | 94 | 0 |
+| A | scripts/ai/main/sleepmode.rar | n/a | n/a |
+| A | scripts/ai/main/vortexloopkill.inc | 110 | 0 |
+| A | scripts/ai/meek.src | 174 | 0 |
+| A | scripts/ai/menogguard.src | 257 | 0 |
+| A | scripts/ai/merchant.src | 1608 | 0 |
+| A | scripts/ai/merchant.zip | n/a | n/a |
+| A | scripts/ai/minstrel.src | 204 | 0 |
+| A | scripts/ai/newbiemultikillpcs.src | 801 | 0 |
+| A | scripts/ai/noble.src | 154 | 0 |
+| A | scripts/ai/performer.src | 129 | 0 |
+| A | scripts/ai/person.src | 214 | 0 |
+| A | scripts/ai/playermerchant.src | 1148 | 0 |
+| A | scripts/ai/poison.src | 374 | 0 |
+| A | scripts/ai/poisonkillpcs.src | 58 | 0 |
+| A | scripts/ai/quagkillpcs.src | 89 | 0 |
+| A | scripts/ai/rikktor.src | 174 | 0 |
+| A | scripts/ai/rockthrower.src | 256 | 0 |
+| A | scripts/ai/setup/animalsetup.inc | 43 | 0 |
+| A | scripts/ai/setup/archersetup.inc | 79 | 0 |
+| A | scripts/ai/setup/criersetup.inc | 42 | 0 |
+| A | scripts/ai/setup/killpcssetup.inc | 81 | 0 |
+| A | scripts/ai/setup/modsetup.inc | 167 | 0 |
+| A | scripts/ai/setup/questiesetup.inc | 377 | 0 |
+| A | scripts/ai/setup/setup.inc | 122 | 0 |
+| A | scripts/ai/setup/sheepsetup.inc | 28 | 0 |
+| A | scripts/ai/setup/spellsetup.inc | 98 | 0 |
+| A | scripts/ai/shadow.src | 374 | 0 |
+| A | scripts/ai/sheep.src | 57 | 0 |
+| A | scripts/ai/slime.src | 60 | 0 |
+| A | scripts/ai/smartcrier.src | 274 | 0 |
+| A | scripts/ai/spellkillpcs.src | 123 | 0 |
+| A | scripts/ai/spiderlord.src | 107 | 0 |
+| A | scripts/ai/spiders.src | 96 | 0 |
+| A | scripts/ai/stormkillpcs.src | 109 | 0 |
+| A | scripts/ai/stygianshrine.src | 403 | 0 |
+| A | scripts/ai/sum.src | 208 | 0 |
+| A | scripts/ai/tamed.src | 1377 | 0 |
+| A | scripts/ai/thor.src | 82 | 0 |
+| A | scripts/ai/titlemaster1.src | 252 | 0 |
+| A | scripts/ai/townguard.src | 375 | 0 |
+| A | scripts/ai/townperson.src | 180 | 0 |
+| A | scripts/ai/triwolf.src | 89 | 0 |
+| A | scripts/ai/vanityvendor.src | 74 | 0 |
+| A | scripts/ai/vendor.src | 44 | 0 |
+| A | scripts/ai/vortexai.src | 61 | 0 |
+| A | scripts/ai/warrior.src | 1617 | 0 |
+| A | scripts/ai/water.src | 488 | 0 |
+| A | scripts/ai/waterdragonking.src | 94 | 0 |
+| A | scripts/ai/wolf.src | 47 | 0 |
+| A | scripts/bankwipe.zip | n/a | n/a |
+| A | scripts/bonecontrol.src | 8 | 0 |
+| A | scripts/console/about.src | 15 | 0 |
+| A | scripts/console/console.cfg | 141 | 0 |
+| A | scripts/console/itemcount.src | 5 | 0 |
+| A | scripts/console/npccount.src | 7 | 0 |
+| A | scripts/console/online.src | 40 | 0 |
+| A | scripts/console/removechars.src | 11 | 0 |
+| A | scripts/console/shutdown.src | 63 | 0 |
+| A | scripts/console/time.src | 10 | 0 |
+| A | scripts/control/applyhitscript.src | 15 | 0 |
+| A | scripts/control/bookinsert.src | 15 | 0 |
+| A | scripts/control/bookremove.src | 15 | 0 |
+| A | scripts/control/can_insert_container.src | 101 | 0 |
+| A | scripts/control/can_remove_container.src | 104 | 0 |
+| A | scripts/control/corpsedecay.src | 79 | 0 |
+| A | scripts/control/energycontrol.src | 78 | 0 |
+| A | scripts/control/firecontrol.src | 55 | 0 |
+| A | scripts/control/keyringdestroy.src | 36 | 0 |
+| A | scripts/control/lockchests.src | 22 | 0 |
+| A | scripts/control/maindestroy.src | 60 | 0 |
+| A | scripts/control/makehitscript.src | 7 | 0 |
+| A | scripts/control/noinsert.src | 14 | 0 |
+| A | scripts/control/packinsert.src | 7 | 0 |
+| A | scripts/control/packremove.src | 12 | 0 |
+| A | scripts/control/paracontrol.src | 58 | 0 |
+| A | scripts/control/poisoncontrol.src | 57 | 0 |
+| A | scripts/control/potionctl.src | 46 | 0 |
+| A | scripts/control/skilladvance.rar | n/a | n/a |
+| A | scripts/control/skilladvancerequip.src | 657 | 0 |
+| A | scripts/control/skilladvancerunequip.src | 384 | 0 |
+| A | scripts/control/spawnbookcase.src | 48 | 0 |
+| A | scripts/control/spiderwebcontrol.src | 10 | 0 |
+| A | scripts/control/testctrl.src | 9 | 0 |
+| A | scripts/control/trashControl.src | 25 | 0 |
+| A | scripts/control/trashInsert.src | 12 | 0 |
+| A | scripts/control/trashRemove.src | 5 | 0 |
+| A | scripts/control/wordofpowergate.src | 59 | 0 |
+| A | scripts/ecompile.cfg.example | 307 | 0 |
+| A | scripts/ecompile.exe | n/a | n/a |
+| A | scripts/ecompile.pdb | n/a | n/a |
+| A | scripts/include/NameChecker.inc | 93 | 0 |
+| A | scripts/include/account.inc | 32 | 0 |
+| A | scripts/include/alchemy.inc | 209 | 0 |
+| A | scripts/include/all.inc | 119 | 0 |
+| A | scripts/include/anchors.inc | 21 | 0 |
+| A | scripts/include/animal.inc | 54 | 0 |
+| A | scripts/include/areas.inc | 720 | 0 |
+| A | scripts/include/arrays.inc | 254 | 0 |
+| A | scripts/include/astralfights.inc | 9 | 0 |
+| A | scripts/include/attributes.inc | 2261 | 0 |
+| A | scripts/include/autoloop.inc | 131 | 0 |
+| A | scripts/include/bard.inc | 86 | 0 |
+| A | scripts/include/bitwise.inc | 420 | 0 |
+| A | scripts/include/buddies.inc | 28 | 0 |
+| A | scripts/include/camouflage.inc | 66 | 0 |
+| A | scripts/include/canAccess.inc | 52 | 0 |
+| A | scripts/include/cfglogging.inc | 11 | 0 |
+| A | scripts/include/change.inc | 87 | 0 |
+| A | scripts/include/chaoseffects.inc | 278 | 0 |
+| A | scripts/include/checkcity.inc | 61 | 0 |
+| A | scripts/include/chests.inc | 84 | 0 |
+| A | scripts/include/classes.inc | 891 | 0 |
+| A | scripts/include/client.inc | 2841 | 0 |
+| A | scripts/include/clock.inc | 143 | 0 |
+| A | scripts/include/constants.inc | 44 | 0 |
+| A | scripts/include/constants/anims.inc | 42 | 0 |
+| A | scripts/include/constants/cfgfiles.inc | 50 | 0 |
+| A | scripts/include/constants/cids.inc | 120 | 0 |
+| A | scripts/include/constants/cmdlevels.inc | 14 | 0 |
+| A | scripts/include/constants/colors.inc | 50 | 0 |
+| A | scripts/include/constants/creaturetypes.inc | 30 | 0 |
+| A | scripts/include/constants/datastorefiles.inc | 8 | 0 |
+| A | scripts/include/constants/eventids.inc | 113 | 0 |
+| A | scripts/include/constants/facings.inc | 15 | 0 |
+| A | scripts/include/constants/fonts.inc | 36 | 0 |
+| A | scripts/include/constants/fxs.inc | 41 | 0 |
+| A | scripts/include/constants/gumpids.inc | 240 | 0 |
+| A | scripts/include/constants/hitscripts.inc | 22 | 0 |
+| A | scripts/include/constants/itemids.inc | 8 | 0 |
+| A | scripts/include/constants/landtiles.inc | 36 | 0 |
+| A | scripts/include/constants/layers.inc | 38 | 0 |
+| A | scripts/include/constants/locations.inc | 48 | 0 |
+| A | scripts/include/constants/merchanttypes.inc | 45 | 0 |
+| A | scripts/include/constants/mountids.inc | 17 | 0 |
+| A | scripts/include/constants/multiids.inc | 33 | 0 |
+| A | scripts/include/constants/npcai.inc | 41 | 0 |
+| A | scripts/include/constants/npcdata.inc | 13 | 0 |
+| A | scripts/include/constants/npctemplates.inc | 69 | 0 |
+| A | scripts/include/constants/objtypes.zip | n/a | n/a |
+| A | scripts/include/constants/onhitscripts.inc | 22 | 0 |
+| A | scripts/include/constants/privilegeids.inc | 18 | 0 |
+| A | scripts/include/constants/propids.inc | 480 | 0 |
+| A | scripts/include/constants/raceids.inc | 17 | 0 |
+| A | scripts/include/constants/resourceids.inc | 12 | 0 |
+| A | scripts/include/constants/scriptids.inc | 43 | 0 |
+| A | scripts/include/constants/settings.inc | 43 | 0 |
+| A | scripts/include/constants/sfxs.inc | 643 | 0 |
+| A | scripts/include/constants/skillids.inc | 58 | 0 |
+| A | scripts/include/constants/skillnames.inc | 57 | 0 |
+| A | scripts/include/constants/statids.inc | 11 | 0 |
+| A | scripts/include/constants/storageareas.zip | n/a | n/a |
+| A | scripts/include/constants/syseventids.inc | 57 | 0 |
+| A | scripts/include/constants/timeids.inc | 59 | 0 |
+| A | scripts/include/constants/usescriptids.inc | 16 | 0 |
+| A | scripts/include/coords.inc | 70 | 0 |
+| A | scripts/include/createnpc.inc | 62 | 0 |
+| A | scripts/include/creatureRoutines.inc | 274 | 0 |
+| A | scripts/include/creature_spellcast.inc | 1225 | 0 |
+| A | scripts/include/damages.inc | 410 | 0 |
+| A | scripts/include/datafile.inc | 130 | 0 |
+| A | scripts/include/difficulty.inc | 15 | 0 |
+| A | scripts/include/dismount.inc | 105 | 0 |
+| A | scripts/include/doors.inc | 43 | 0 |
+| A | scripts/include/dotempmods.inc | 720 | 0 |
+| A | scripts/include/drinkpotion.inc | 86 | 0 |
+| A | scripts/include/eventid.inc | 17 | 0 |
+| A | scripts/include/events.inc | 230 | 0 |
+| A | scripts/include/facings.inc | 230 | 0 |
+| A | scripts/include/fields.inc | 86 | 0 |
+| A | scripts/include/findcity.inc | 305 | 0 |
+| A | scripts/include/fix.inc | 50 | 0 |
+| A | scripts/include/housecheck.inc | 24 | 0 |
+| A | scripts/include/housing.inc | 278 | 0 |
+| A | scripts/include/inncheck.inc | 40 | 0 |
+| A | scripts/include/irc.inc | 28 | 0 |
+| A | scripts/include/itemutil.inc | 865 | 0 |
+| A | scripts/include/jailcheck.inc | 17 | 0 |
+| A | scripts/include/listex.inc | 4 | 0 |
+| A | scripts/include/managers.inc | 278 | 0 |
+| A | scripts/include/math.inc | 614 | 0 |
+| A | scripts/include/mobileutil.inc | 13 | 0 |
+| A | scripts/include/moongate.inc | 59 | 0 |
+| A | scripts/include/moongates.inc | 78 | 0 |
+| A | scripts/include/mrcspawn.inc | 500 | 0 |
+| A | scripts/include/multicommands.inc | 39 | 0 |
+| A | scripts/include/multiutil.inc | 87 | 0 |
+| A | scripts/include/myutil.inc | 72 | 0 |
+| A | scripts/include/names.inc | 72 | 0 |
+| A | scripts/include/namingbyenchant.inc | 403 | 0 |
+| A | scripts/include/npcbackpacks.zip | n/a | n/a |
+| A | scripts/include/npcboosts.inc | 39 | 0 |
+| A | scripts/include/npccast.inc | 848 | 0 |
+| A | scripts/include/npccastspells.inc | 542 | 0 |
+| A | scripts/include/npcutil.inc | 28 | 0 |
+| A | scripts/include/objtype.inc | 1002 | 0 |
+| A | scripts/include/packets.inc | 586 | 0 |
+| A | scripts/include/parsewords.inc | 26 | 0 |
+| A | scripts/include/possess.inc | 272 | 0 |
+| A | scripts/include/privs.inc | 79 | 0 |
+| A | scripts/include/randname.inc | 89 | 0 |
+| A | scripts/include/randname_util.inc | 38 | 0 |
+| A | scripts/include/random.inc | 144 | 0 |
+| A | scripts/include/randomreg.inc | 6 | 0 |
+| A | scripts/include/recalling.inc | 6 | 0 |
+| A | scripts/include/report.inc | 30 | 0 |
+| A | scripts/include/reportmurder.inc | 129 | 0 |
+| A | scripts/include/res.inc | 54 | 0 |
+| A | scripts/include/rituals.zip | n/a | n/a |
+| A | scripts/include/security.inc | 70 | 0 |
+| A | scripts/include/selchar.inc | 134 | 0 |
+| A | scripts/include/shard.inc | 25 | 0 |
+| A | scripts/include/skilllists.inc | 99 | 0 |
+| A | scripts/include/skillpoints.inc | 299 | 0 |
+| A | scripts/include/skilltitles.inc | 91 | 0 |
+| A | scripts/include/snoop.inc | 113 | 0 |
+| A | scripts/include/sounds.inc | 148 | 0 |
+| A | scripts/include/spawn.inc | 10 | 0 |
+| A | scripts/include/spawnnet.inc | 210 | 0 |
+| A | scripts/include/spawnpoint.inc | 732 | 0 |
+| A | scripts/include/speech.inc | 516 | 0 |
+| A | scripts/include/spelldata.inc | 1486 | 0 |
+| A | scripts/include/starteqp.inc | 6101 | 0 |
+| A | scripts/include/statmod.inc | 69 | 0 |
+| A | scripts/include/std.inc | 520 | 0 |
+| A | scripts/include/string.inc | 607 | 0 |
+| A | scripts/include/stringarrays.inc | 23 | 0 |
+| A | scripts/include/sysevent.inc | 14 | 0 |
+| A | scripts/include/teleporters.inc | 1832 | 0 |
+| A | scripts/include/tempmod.inc | 57 | 0 |
+| A | scripts/include/time.inc | 211 | 0 |
+| A | scripts/include/uo_extend.inc | 198 | 0 |
+| A | scripts/include/utility.inc | 142 | 0 |
+| A | scripts/include/vetement.inc | 142 | 0 |
+| A | scripts/include/virtue.inc | 390 | 0 |
+| A | scripts/include/weather.inc | 58 | 0 |
+| A | scripts/items/ale.src | 59 | 0 |
+| A | scripts/items/bladed.src | 715 | 0 |
+| A | scripts/items/burin.src | 41 | 0 |
+| A | scripts/items/coords.src | 6 | 0 |
+| A | scripts/items/dungtele.src | 33 | 0 |
+| A | scripts/items/eat.src | 100 | 0 |
+| A | scripts/items/efields.src | 39 | 0 |
+| A | scripts/items/facewhitener.src | 35 | 0 |
+| A | scripts/items/fires.src | 47 | 0 |
+| A | scripts/items/fletch.src | 52 | 0 |
+| A | scripts/items/frogpotion.inc | 23 | 0 |
+| A | scripts/items/frogpotion.src | 42 | 0 |
+| A | scripts/items/key.zip | n/a | n/a |
+| A | scripts/items/makedtele.src | 21 | 0 |
+| A | scripts/items/mazeGate.src | 48 | 0 |
+| A | scripts/items/mboard.src | 306 | 0 |
+| A | scripts/items/moongate.src | 73 | 0 |
+| A | scripts/items/newbieGate.src | 31 | 0 |
+| A | scripts/items/nopvpgate.src | 45 | 0 |
+| A | scripts/items/pack.src | 48 | 0 |
+| A | scripts/items/peacemaker.src | 14 | 0 |
+| A | scripts/items/pitcher.src | 85 | 0 |
+| A | scripts/items/plank.src | 53 | 0 |
+| A | scripts/items/pvp.src | 462 | 0 |
+| A | scripts/items/pvp2vs2.src | 1198 | 0 |
+| A | scripts/items/questprize.src | 16 | 0 |
+| A | scripts/items/questreg.src | 27 | 0 |
+| A | scripts/items/racegate.src | 35 | 0 |
+| A | scripts/items/resfield.src | 31 | 0 |
+| A | scripts/items/rune.src | 37 | 0 |
+| A | scripts/items/shipdeed.src | 190 | 0 |
+| A | scripts/items/sigilviewer.src | 34 | 0 |
+| A | scripts/items/telescope.src | 60 | 0 |
+| A | scripts/items/time.src | 10 | 0 |
+| A | scripts/items/timedmoongate.src | 152 | 0 |
+| A | scripts/items/torch.src | 10 | 0 |
+| A | scripts/items/treasurechest.src | 54 | 0 |
+| A | scripts/items/use_stuff.src | 177 | 0 |
+| A | scripts/items/walkon_efield.src | 86 | 0 |
+| A | scripts/items/walkon_firefield.src | 83 | 0 |
+| A | scripts/items/walkon_parafield.src | 93 | 0 |
+| A | scripts/items/walkon_pfield.src | 88 | 0 |
+| A | scripts/items/walkonspiderweb.src | 26 | 0 |
+| A | scripts/items/walkonweb.src | 27 | 0 |
+| A | scripts/items/warning.src | 13 | 0 |
+| A | scripts/items/warriorforhire.src | 20 | 0 |
+| A | scripts/items/zapper.src | 23 | 0 |
+| A | scripts/misc/boat.src | 27 | 0 |
+| A | scripts/misc/charprofile.src | 5 | 0 |
+| A | scripts/misc/chrdeath.src | 321 | 0 |
+| A | scripts/misc/dblclickself.src | 23 | 0 |
+| A | scripts/misc/death.src | 251 | 0 |
+| A | scripts/misc/deathgate.src | 90 | 0 |
+| A | scripts/misc/decay.src | 23 | 0 |
+| A | scripts/misc/deleter.src | 13 | 0 |
+| A | scripts/misc/dressme.src | 799 | 0 |
+| A | scripts/misc/guildbutton.src | 16 | 0 |
+| A | scripts/misc/help.src | 6 | 0 |
+| A | scripts/misc/idle.src | 5 | 0 |
+| A | scripts/misc/logoff.src | 242 | 0 |
+| A | scripts/misc/logofftest.src | 28 | 0 |
+| A | scripts/misc/logon.src | 154 | 0 |
+| A | scripts/misc/merchantidentify.src | 248 | 0 |
+| A | scripts/misc/namechanger.src | 74 | 0 |
+| A | scripts/misc/news.rar | n/a | n/a |
+| A | scripts/misc/npcdoor.src | 81 | 0 |
+| A | scripts/misc/oncreate.src | 58 | 0 |
+| A | scripts/misc/questbutton.src | 15 | 0 |
+| A | scripts/misc/reconnect.src | 83 | 0 |
+| A | scripts/misc/rise.src | 58 | 0 |
+| A | scripts/misc/runalways.src | 5 | 0 |
+| A | scripts/misc/skilladv.src | 34 | 0 |
+| A | scripts/misc/skillwin.src | 807 | 0 |
+| A | scripts/modules/attributes.em | 38 | 0 |
+| A | scripts/modules/basic.em | 113 | 0 |
+| A | scripts/modules/basicio.em | 20 | 0 |
+| A | scripts/modules/boat.em | 39 | 0 |
+| A | scripts/modules/cfgfile.em | 61 | 0 |
+| A | scripts/modules/cliloc.em | 34 | 0 |
+| A | scripts/modules/datafile.em | 33 | 0 |
+| A | scripts/modules/file.em | 50 | 0 |
+| A | scripts/modules/guilds.em | 10 | 0 |
+| A | scripts/modules/http.em | 54 | 0 |
+| A | scripts/modules/math.em | 33 | 0 |
+| A | scripts/modules/npc.em | 114 | 0 |
+| A | scripts/modules/os.em | 113 | 0 |
+| A | scripts/modules/party.em | 11 | 0 |
+| A | scripts/modules/polsys.em | 24 | 0 |
+| A | scripts/modules/sql.em | 13 | 0 |
+| A | scripts/modules/storage.em | 13 | 0 |
+| A | scripts/modules/unicode.em | 36 | 0 |
+| A | scripts/modules/uo.em | 422 | 0 |
+| A | scripts/modules/util.em | 20 | 0 |
+| A | scripts/modules/vitals.em | 31 | 0 |
+| A | scripts/playermanager.src | 155 | 0 |
+| A | scripts/poltool.pdb | n/a | n/a |
+| A | scripts/runecl.exe | n/a | n/a |
+| A | scripts/runecl.pdb | n/a | n/a |
+| A | scripts/start.src | 41 | 0 |
+| A | scripts/storagewipe.zip | n/a | n/a |
+| A | scripts/textcmd/admin/admin.src | 668 | 0 |
+| A | scripts/textcmd/admin/akill.src | 71 | 0 |
+| A | scripts/textcmd/admin/buzz.src | 15 | 0 |
+| A | scripts/textcmd/admin/changecolor.src | 24 | 0 |
+| A | scripts/textcmd/admin/changegraphic.src | 24 | 0 |
+| A | scripts/textcmd/admin/checkspeed.src | 245 | 0 |
+| A | scripts/textcmd/admin/class.src | 49 | 0 |
+| A | scripts/textcmd/admin/colorrect.src | 129 | 0 |
+| A | scripts/textcmd/admin/concealhim.src | 62 | 0 |
+| A | scripts/textcmd/admin/concealmobs.src | 28 | 0 |
+| A | scripts/textcmd/admin/createdungteles.src | 12 | 0 |
+| A | scripts/textcmd/admin/createspawnpoint.src | 9 | 0 |
+| A | scripts/textcmd/admin/deathgate.src | 106 | 0 |
+| A | scripts/textcmd/admin/destroymulti.src | 10 | 0 |
+| A | scripts/textcmd/admin/destroyradius.src | 21 | 0 |
+| A | scripts/textcmd/admin/dress.src | 569 | 0 |
+| A | scripts/textcmd/admin/dupe.src | 49 | 0 |
+| A | scripts/textcmd/admin/dyebeard.src | 30 | 0 |
+| A | scripts/textcmd/admin/dyehair.src | 31 | 0 |
+| A | scripts/textcmd/admin/dyerect.src | 132 | 0 |
+| A | scripts/textcmd/admin/equip.src | 129 | 0 |
+| A | scripts/textcmd/admin/eraseglobalprop.src | 16 | 0 |
+| A | scripts/textcmd/admin/eraseobjproperty.src | 28 | 0 |
+| A | scripts/textcmd/admin/flip.zip | n/a | n/a |
+| A | scripts/textcmd/admin/gbs.src | 66 | 0 |
+| A | scripts/textcmd/admin/gcmds.src | 223 | 0 |
+| A | scripts/textcmd/admin/getglobal.src | 12 | 0 |
+| A | scripts/textcmd/admin/globalnoloot.src | 36 | 0 |
+| A | scripts/textcmd/admin/goxyz.src | 95 | 0 |
+| A | scripts/textcmd/admin/hidemobs.src | 28 | 0 |
+| A | scripts/textcmd/admin/identify.src | 11 | 0 |
+| A | scripts/textcmd/admin/ip.src | 55 | 0 |
+| A | scripts/textcmd/admin/iteminfo.src | 350 | 0 |
+| A | scripts/textcmd/admin/listen.src | 12 | 0 |
+| A | scripts/textcmd/admin/lock.src | 12 | 0 |
+| A | scripts/textcmd/admin/makemoongates.src | 62 | 0 |
+| A | scripts/textcmd/admin/makeregs.src | 19 | 0 |
+| A | scripts/textcmd/admin/maxcaps.src | 21 | 0 |
+| A | scripts/textcmd/admin/mazegate.src | 17 | 0 |
+| A | scripts/textcmd/admin/mkaccount.src | 49 | 0 |
+| A | scripts/textcmd/admin/music.src | 44 | 0 |
+| A | scripts/textcmd/admin/removechristmas.src | 26 | 0 |
+| A | scripts/textcmd/admin/removerper.src | 24 | 0 |
+| A | scripts/textcmd/admin/resetpw.src | 19 | 0 |
+| A | scripts/textcmd/admin/restart.src | 19 | 0 |
+| A | scripts/textcmd/admin/savenow.src | 10 | 0 |
+| A | scripts/textcmd/admin/setallskills.src | 21 | 0 |
+| A | scripts/textcmd/admin/setclass.src | 55 | 0 |
+| A | scripts/textcmd/admin/setname.src | 36 | 0 |
+| A | scripts/textcmd/admin/setupchristmas.src | 53 | 0 |
+| A | scripts/textcmd/admin/setupsanta.src | 53 | 0 |
+| A | scripts/textcmd/admin/sfx.src | 36 | 0 |
+| A | scripts/textcmd/admin/spellbook.src | 43 | 0 |
+| A | scripts/textcmd/admin/status.src | 88 | 0 |
+| A | scripts/textcmd/admin/summon.src | 100 | 0 |
+| A | scripts/textcmd/admin/tile.src | 116 | 0 |
+| A | scripts/textcmd/admin/unconcealmobs.src | 30 | 0 |
+| A | scripts/textcmd/admin/unhidemobs.src | 30 | 0 |
+| A | scripts/textcmd/admin/unlock.src | 13 | 0 |
+| A | scripts/textcmd/admin/untile.src | 120 | 0 |
+| A | scripts/textcmd/admin/zulushutdown.src | 45 | 0 |
+| A | scripts/textcmd/coun/chattimeout.src | 35 | 0 |
+| A | scripts/textcmd/coun/commands.src | 42 | 0 |
+| A | scripts/textcmd/coun/concealme.src | 54 | 0 |
+| A | scripts/textcmd/coun/createnpc.src | 48 | 0 |
+| A | scripts/textcmd/coun/cwstone.src | 22 | 0 |
+| A | scripts/textcmd/coun/findtotem.src | 31 | 0 |
+| A | scripts/textcmd/coun/getlooters.src | 41 | 0 |
+| A | scripts/textcmd/coun/go.src | 189 | 0 |
+| A | scripts/textcmd/coun/goob.src | 12 | 0 |
+| A | scripts/textcmd/coun/gorealm.src | 143 | 0 |
+| A | scripts/textcmd/coun/goto.src | 122 | 0 |
+| A | scripts/textcmd/coun/goxyz.src | 95 | 0 |
+| A | scripts/textcmd/coun/home.src | 5 | 0 |
+| A | scripts/textcmd/coun/jail.src | 62 | 0 |
+| A | scripts/textcmd/coun/light.src | 7 | 0 |
+| A | scripts/textcmd/coun/makegate.src | 85 | 0 |
+| A | scripts/textcmd/coun/mazegate.src | 31 | 0 |
+| A | scripts/textcmd/coun/notes.src | 121 | 0 |
+| A | scripts/textcmd/coun/openpack.src | 42 | 0 |
+| A | scripts/textcmd/coun/page.src | 202 | 0 |
+| A | scripts/textcmd/coun/privs.src | 251 | 0 |
+| A | scripts/textcmd/coun/refreshme.src | 16 | 0 |
+| A | scripts/textcmd/coun/release.src | 32 | 0 |
+| A | scripts/textcmd/coun/releaseinfo.src | 139 | 0 |
+| A | scripts/textcmd/coun/res.src | 14 | 0 |
+| A | scripts/textcmd/coun/resme.src | 35 | 0 |
+| A | scripts/textcmd/coun/sayabove.src | 23 | 0 |
+| A | scripts/textcmd/coun/staff.src | 43 | 0 |
+| A | scripts/textcmd/coun/thaw.src | 28 | 0 |
+| A | scripts/textcmd/coun/unconcealme.src | 9 | 0 |
+| A | scripts/textcmd/coun/unparalyze.src | 21 | 0 |
+| A | scripts/textcmd/coun/visit.src | 33 | 0 |
+| A | scripts/textcmd/coun/warning.src | 26 | 0 |
+| A | scripts/textcmd/gm/changename.src | 33 | 0 |
+| A | scripts/textcmd/gm/changesex.src | 30 | 0 |
+| A | scripts/textcmd/gm/chatglobaltimeout.src | 29 | 0 |
+| A | scripts/textcmd/gm/cleartrashlb.src | 24 | 0 |
+| A | scripts/textcmd/gm/create.src | 48 | 0 |
+| A | scripts/textcmd/gm/createstack.src | 31 | 0 |
+| A | scripts/textcmd/gm/createtourneybag.src | 310 | 0 |
+| A | scripts/textcmd/gm/getobjproperty.src | 22 | 0 |
+| A | scripts/textcmd/gm/getprop.src | 32 | 0 |
+| A | scripts/textcmd/gm/goto.src | 110 | 0 |
+| A | scripts/textcmd/gm/gotoserial.src | 15 | 0 |
+| A | scripts/textcmd/gm/kick.src | 21 | 0 |
+| A | scripts/textcmd/gm/lockdown.src | 42 | 0 |
+| A | scripts/textcmd/gm/makekey.src | 30 | 0 |
+| A | scripts/textcmd/gm/moveitem.src | 34 | 0 |
+| A | scripts/textcmd/gm/mx.src | 25 | 0 |
+| A | scripts/textcmd/gm/my.src | 25 | 0 |
+| A | scripts/textcmd/gm/mz.src | 24 | 0 |
+| A | scripts/textcmd/gm/newiteminfo.src | 2673 | 0 |
+| A | scripts/textcmd/gm/openbank.src | 33 | 0 |
+| A | scripts/textcmd/gm/openit.src | 18 | 0 |
+| A | scripts/textcmd/gm/openpack.src | 30 | 0 |
+| A | scripts/textcmd/gm/poo.src | 8 | 0 |
+| A | scripts/textcmd/gm/props.src | 30 | 0 |
+| A | scripts/textcmd/gm/px.src | 21 | 0 |
+| A | scripts/textcmd/gm/py.src | 21 | 0 |
+| A | scripts/textcmd/gm/pz.src | 21 | 0 |
+| A | scripts/textcmd/gm/raiserect.src | 131 | 0 |
+| A | scripts/textcmd/gm/setDestination.src | 47 | 0 |
+| A | scripts/textcmd/gm/setobjproperty.src | 174 | 0 |
+| A | scripts/textcmd/gm/setprop.src | 71 | 0 |
+| A | scripts/textcmd/gm/shave.src | 15 | 0 |
+| A | scripts/textcmd/gm/silence.src | 97 | 0 |
+| A | scripts/textcmd/gm/unconcealhim.src | 22 | 0 |
+| A | scripts/textcmd/gm/unlockdown.src | 42 | 0 |
+| A | scripts/textcmd/player/arm.src | 281 | 0 |
+| A | scripts/textcmd/player/autoloop.src | 36 | 0 |
+| A | scripts/textcmd/player/cast.src | 1064 | 0 |
+| A | scripts/textcmd/player/chat.src | 73 | 0 |
+| A | scripts/textcmd/player/clearmsglog.src | 107 | 0 |
+| A | scripts/textcmd/player/commands.src | 42 | 0 |
+| A | scripts/textcmd/player/consider.src | 39 | 0 |
+| A | scripts/textcmd/player/count.src | 25 | 0 |
+| A | scripts/textcmd/player/disarm.src | 71 | 0 |
+| A | scripts/textcmd/player/dropskills.src | 132 | 0 |
+| A | scripts/textcmd/player/fame.src | 15 | 0 |
+| A | scripts/textcmd/player/gateprompt.src | 14 | 0 |
+| A | scripts/textcmd/player/guards.src | 31 | 0 |
+| A | scripts/textcmd/player/guilds.src | 2685 | 0 |
+| A | scripts/textcmd/player/hairshop.src | 379 | 0 |
+| A | scripts/textcmd/player/hungry.src | 39 | 0 |
+| A | scripts/textcmd/player/infovault.src | 12 | 0 |
+| A | scripts/textcmd/player/move.src | 104 | 0 |
+| A | scripts/textcmd/player/online.src | 190 | 0 |
+| A | scripts/textcmd/player/pagans.src | 226 | 0 |
+| A | scripts/textcmd/player/password.src | 83 | 0 |
+| A | scripts/textcmd/player/prots.src | 226 | 0 |
+| A | scripts/textcmd/player/reags.src | 181 | 0 |
+| A | scripts/textcmd/player/recalltotem.src | 25 | 0 |
+| A | scripts/textcmd/player/removejewels.src | 22 | 0 |
+| A | scripts/textcmd/player/setemail.src | 28 | 0 |
+| A | scripts/textcmd/player/showclasse.src | 414 | 0 |
+| A | scripts/textcmd/player/skills.src | 807 | 0 |
+| A | scripts/textcmd/player/suicide.src | 29 | 0 |
+| A | scripts/textcmd/player/togglebuildmark.src | 13 | 0 |
+| A | scripts/textcmd/player/togglediff.src | 13 | 0 |
+| A | scripts/textcmd/player/trashlb.src | 138 | 0 |
+| A | scripts/textcmd/player/undressme.src | 171 | 0 |
+| A | scripts/textcmd/player/where.src | 40 | 0 |
+| A | scripts/textcmd/player/whereboat.src | 18 | 0 |
+| A | scripts/textcmd/player/wheretotem.src | 19 | 0 |
+| A | scripts/textcmd/seer/action.src | 14 | 0 |
+| A | scripts/textcmd/seer/bank.src | 18 | 0 |
+| A | scripts/textcmd/seer/bc.src | 25 | 0 |
+| A | scripts/textcmd/seer/bow.src | 28 | 0 |
+| A | scripts/textcmd/seer/chatban.src | 30 | 0 |
+| A | scripts/textcmd/seer/createnpc.src | 42 | 0 |
+| A | scripts/textcmd/seer/destroy.src | 26 | 0 |
+| A | scripts/textcmd/seer/distance.src | 15 | 0 |
+| A | scripts/textcmd/seer/findboat.src | 35 | 0 |
+| A | scripts/textcmd/seer/freeze.src | 27 | 0 |
+| A | scripts/textcmd/seer/go.src | 189 | 0 |
+| A | scripts/textcmd/seer/goto.src | 110 | 0 |
+| A | scripts/textcmd/seer/goxyz.src | 95 | 0 |
+| A | scripts/textcmd/seer/info.src | 1397 | 0 |
+| A | scripts/textcmd/seer/kill.src | 37 | 0 |
+| A | scripts/textcmd/seer/makegate.src | 73 | 0 |
+| A | scripts/textcmd/seer/mark.src | 53 | 0 |
+| A | scripts/textcmd/seer/mazegate.src | 25 | 0 |
+| A | scripts/textcmd/seer/mtele.src | 29 | 0 |
+| A | scripts/textcmd/seer/npclist.src | 194 | 0 |
+| A | scripts/textcmd/seer/refresh.src | 21 | 0 |
+| A | scripts/textcmd/seer/sayabove.src | 12 | 0 |
+| A | scripts/textcmd/seer/speedwalk.src | 36 | 0 |
+| A | scripts/textcmd/seer/tame.src | 23 | 0 |
+| A | scripts/textcmd/seer/tele.src | 17 | 0 |
+| A | scripts/textcmd/seer/teleto.src | 45 | 0 |
+| A | scripts/textcmd/seer/thawme.src | 6 | 0 |
+| A | scripts/textcmd/seer/turn.src | 8 | 0 |
+| A | scripts/textcmd/seer/untamable.src | 10 | 0 |
+| A | scripts/textcmd/test/animationtest.src | 52 | 0 |
+| A | scripts/textcmd/test/checksys.src | 67 | 0 |
+| A | scripts/textcmd/test/colorstest.src | 173 | 0 |
+| A | scripts/textcmd/test/dungtele.src | 33 | 0 |
+| A | scripts/textcmd/test/eraseglobalprop.src | 16 | 0 |
+| A | scripts/textcmd/test/extralogin.src | 21 | 0 |
+| A | scripts/textcmd/test/findspnm.src | 20 | 0 |
+| A | scripts/textcmd/test/goteles.src | 31 | 0 |
+| A | scripts/textcmd/test/goxyz.src | 95 | 0 |
+| A | scripts/textcmd/test/killpid.src | 11 | 0 |
+| A | scripts/textcmd/test/listcontents.src | 27 | 0 |
+| A | scripts/textcmd/test/makesigns.src | 19 | 0 |
+| A | scripts/textcmd/test/makestaff.src | 191 | 0 |
+| A | scripts/textcmd/test/restartall.src | 23 | 0 |
+| A | scripts/textcmd/test/sendpacket.src | 9 | 0 |
+| A | scripts/textcmd/test/setglobal.src | 164 | 0 |
+| A | scripts/textcmd/test/skillstest.src | 166 | 0 |
+| A | scripts/textcmd/test/startscript.src | 5 | 0 |
+| A | scripts/textcmd/test/sysload.src | 8 | 0 |
+| A | scripts/textcmd/test/test.src | 9 | 0 |
+| A | scripts/textcmd/test/unbanacc.src | 19 | 0 |
+| A | scripts/textcmd/test/unload.src | 12 | 0 |
+| A | scripts/textcmd/test/unloadall.src | 9 | 0 |
+| A | scripts/textcmd/test/unloadcfg.src | 15 | 0 |
+| A | scripts/textcmd/test/whereat.src | 15 | 0 |
+| A | scripts/textcmd/test/wipebank.zip | n/a | n/a |
+| A | scripts/textcmd/test/wipemods.src | 12 | 0 |
+| A | scripts/util/bank.zip | n/a | n/a |
+| A | scripts/util/buddies.inc | 199 | 0 |
+| A | scripts/util/conflicts.inc | 171 | 0 |
+| A | scripts/util/creature.inc | 104 | 0 |
+| A | scripts/util/homeTurf.inc | 40 | 0 |
+| A | scripts/util/key.zip | n/a | n/a |
+| A | scripts/util/lookForTrouble_AI.inc | 270 | 0 |
+| A | scripts/util/loot.inc | 203 | 0 |
+| A | scripts/util/potion_stuff.inc | 183 | 0 |
+| A | scripts/util/repair.inc | 133 | 0 |
+| A | scripts/util/spawn.inc | 40 | 0 |
+| A | scripts/vcomp120.dll | n/a | n/a |
+| A | scripts/www/webstuff.src | 190 | 0 |
+| A | scripts/www/www.rar | n/a | n/a |
+| A | uoconvert.cfg | 47 | 0 |
+| A | uoconvert.exe | n/a | n/a |
+| A | uoconvert.pdb | n/a | n/a |
+| A | uoconvert.txt | 45 | 0 |
+| A | uotool.exe | n/a | n/a |
+| A | uotool.pdb | n/a | n/a |
+| A | vc120.pdb | n/a | n/a |
+| A | vcomp120.dll | n/a | n/a |
+| A | zho_changelog.txt | 36 | 0 |
 
 ---
 
-## 3. Optional Gameplay Packages
+## Commit Subjects In Range
 
-**Summary:**
-Introduced a large set of optional gameplay systems and content packs, including housing, rituals, books, songs, moongates, spawnpoints, farming, guilds, vanity, seasonal content, and shard-specific gameplay hooks.
-
-**Details:**
-- Added optional content modules that can be enabled per shard ruleset.
-- Expanded roleplay, seasonal, and event-driven systems.
-- Added support packages for moongates, books, rituals, farming, and custom item behaviors.
-
-**Key Files Changed:**
-- pkg/opt/ArtifactSystem/*
-- pkg/opt/astralfights/*
-- pkg/opt/areas/*
-- pkg/opt/alchemyplus/*
-- pkg/opt/botanik/*
-- pkg/opt/champspawns/*
-- pkg/opt/christmas/*
-- pkg/opt/colorwars/*
-- pkg/opt/crafterboost/*
-- pkg/opt/decoratefacets/*
-- pkg/opt/Donator/*
-- pkg/opt/dyteitems/*
-- pkg/opt/earth/*
-- pkg/opt/Events/*
-- pkg/opt/farming/*
-- pkg/opt/guilds/*
-- pkg/opt/holybook/*
-- pkg/opt/karmafame/*
-- pkg/opt/lighting/*
-- pkg/opt/loot/*
-- pkg/opt/lootlottery/*
-- pkg/opt/MagicWands/*
-- pkg/opt/msg/*
-- pkg/opt/moongates/*
-- pkg/opt/moons/*
-- pkg/opt/necro/*
-- pkg/opt/pillar/*
-- pkg/opt/powerhour/*
-- pkg/opt/powerscrolls/*
-- pkg/opt/randomero/*
-- pkg/opt/rituals/*
-- pkg/opt/roleplaying/*
-- pkg/opt/shilhook/*
-- pkg/opt/shilitems/*
-- pkg/opt/songbook/*
-- pkg/opt/spawnpoint/*
-- pkg/opt/Staff/*
-- pkg/opt/summoning/*
-- pkg/opt/sunshine/*
-- pkg/opt/timer/*
-- pkg/opt/townstones/*
-- pkg/opt/vanityshop/*
-- pkg/opt/versebook/*
-- pkg/opt/zulugames/*
-- pkg/opt/zuluitems/*
-
----
-
-## 4. Item Packages
-
-**Summary:**
-Expanded the item package set with containers, deeds, doors, currency, house extras, armor support, and a large catalog of placeable or scripted world items.
-
-**Details:**
-- Added scripted item behaviors for world objects, furnishings, and deployable items.
-- Expanded deed-backed placement and house decoration content.
-- Added container, currency, and key-related item logic.
-
-**Key Files Changed:**
-- pkg/items/abbatoir/*
-- pkg/items/ankh/*
-- pkg/items/anvil/*
-- pkg/items/arcaneCircle/*
-- pkg/items/armor/*
-- pkg/items/beds/*
-- pkg/items/bloodPentagram/*
-- pkg/items/carpets/*
-- pkg/items/containers/*
-- pkg/items/crystalThemePack/*
-- pkg/items/currency/*
-- pkg/items/curtains/*
-- pkg/items/deed/*
-- pkg/items/doors/*
-- pkg/items/elvenFurniture/*
-- pkg/items/houseExtras/*
-- pkg/items/keys/*
-- pkg/items/pentagram/*
-- pkg/items/sysbook/*
+- a1ec62b Merge branch 'Patch-1.0.0' of https://github.com/Andries1985/zuluhotel_omega_3 into Patch-1.0.0
+- 6bb2794 Initial Patch with New Core
+- 9d7fb22 Merge pull request #11 from Andries1985/main
+- ef6dcf7 Merge pull request #9 from Andries1985/misc-fixes-nagash
+- f33ae92 Merge pull request #8 from Andries1985/2025-Winter-Work
+- 71a1cc2 Rename zho_changelog.md to zho_changelog.txt
+- 4aa31ea Create changelog to track project changes
+- 46a9c5e Mount changes
+- 3cd82d8 Merge pull request #7 from Andries1985/develop
+- 4f8e89c Merge pull request #6 from Andries1985/misc-fixes-nagash
+- 58e6a4d Merge pull request #5 from Andries1985/2025-Winter-Work
+- 2d9aeef Merge branch '2025-Winter-Work' of https://github.com/Andries1985/zuluhotel_omega_3 into misc-fixes-nagash
+- 6f828f5 More new Items
+- 68b34a5 Double anim entry
+- fed9852 cyclops added and bugfix in print message .goxyz
+- 2c23180 equipment fix
+- 01d61de Typo
+- 25e3191 Typo changes to customhousedeed
+- 2cafdcd Added items for spawns
+- f2755b2 Free Alchemy for Thieves, Free Magery for Crafters Bunch of new crafting items
+- 54fa203 Large Tinkering, Blacksmithy, Tailoring and Carpentry Changes.  Many deeded items added.  Cliloc changes
+- 61b7aa2 Included Custom housing package, does not work properly Merchants fix.... mdgumps inc loop fix. merchant and banker fixes
+- 46760b5 Merchant print statements removed, decoratefacets fixed
+- 346c8a7 Containers Done, Merchants Fixed, mrcspawn.cfg updated, New items added to tailoring, carp, tinker. flip updated
+- 909490f Rituals in, but not working but compiled, creating mending oil fix
+- d468cc3 Book Shelves added to carpentry
+- b944c3f Bookshelves working, disabled speechhook
+- 413bdf5 More containers added, bookshelf and sysbook package
+- 643e679 More containers updated in lockpicking, flip and carpentry deed and itemdesc, redeed working
+- e450f84 Lockpicking Update, Magic Lock/Unlock update, more containers added, fix for targeting secures with keys, removal of chests package, chest prop ids updated
+- ee62e64 Secure Containers working, backpacks switched over.
+- ff53a29 House Teleporters
+- 4b7efa7 Added House Teleports
+- b6f785b Merchants fully working, speech for merchants fixed.  jobs fixed
+- 13884ab Merchants Talking
+- d79865c Job package
+- b7a0a64 Merchants Initially Working
+- 2cfd90e Boats Finished
+- a1f1d24 Boat fixes, for the new boats.
+- faf757f Housing and boat fixes
+- b6f68a4 Housing and Boats started
+- 0c9f667 Keys working as their own containers
+- 62c3625 Storage areas update, merchant storage areas, snooping fix, key package, itemutils package
+- 588879b Final Banks Fix
+- 8494267 Banker and Merchant wander fixes, area kill command updated to delete corpses, and only kill npcs
+- 7f008a6 Merge pull request #4 from Andries1985/develop
+- f8506ea initial commit
+- edc9657 Merge pull request #3 from Andries1985/main
+- b7184dd initial commit
+- 36dccd4 Merge pull request #2 from Andries1985/develop
+- 3bb33f0 Solutionsfile and project file added
+- 9373d0d Merge pull request #1 from Andries1985/develop
+- 1a30000 Added submodules and updated gitignore
 
 ---
 
-## 5. Standard Skill Packages
-
-**Summary:**
-Added and updated the standard skill and gameplay packages, including spells, crafting skills, gathering, stealth, combat support, training content, and skill-specific item definitions.
-
-**Details:**
-- Implemented the standard spellbook and supporting spell scripts.
-- Added skill packages for gathering, combat utility, crafting, and stealth.
-- Expanded training, treasure map, trap, and veterinary gameplay support.
-
-**Key Files Changed:**
-- pkg/std/alchemy/*
-- pkg/std/animallore/*
-- pkg/std/anatomy/*
-- pkg/std/armslore/*
-- pkg/std/begging/*
-- pkg/std/blacksmithy/*
-- pkg/std/boat.zip
-- pkg/std/camping/*
-- pkg/std/carpentry/*
-- pkg/std/cartography/*
-- pkg/std/cooking/*
-- pkg/std/daynight/*
-- pkg/std/detecthidden/*
-- pkg/std/doors.zip
-- pkg/std/dundee/*
-- pkg/std/evalint/*
-- pkg/std/fishing/*
-- pkg/std/forensicevaluation/*
-- pkg/std/healing/*
-- pkg/std/hiding/*
-- pkg/std/housing.zip
-- pkg/std/inscription/*
-- pkg/std/itemid/*
-- pkg/std/lockpicking/*
-- pkg/std/lumberjacking/*
-- pkg/std/meditation/*
-- pkg/std/mining/*
-- pkg/std/musicianship/*
-- pkg/std/peacemaking/*
-- pkg/std/poisoning/*
-- pkg/std/provocation/*
-- pkg/std/removetrap/*
-- pkg/std/runebook/*
-- pkg/std/saver/*
-- pkg/std/snooping/*
-- pkg/std/stealing/*
-- pkg/std/stealth/*
-- pkg/std/spells/*
-- pkg/std/spiritspeak/*
-- pkg/std/tailoring/*
-- pkg/std/taming/*
-- pkg/std/tasteid/*
-- pkg/std/taunt/*
-- pkg/std/tracking/*
-- pkg/std/traps/*
-- pkg/std/training/*
-- pkg/std/treasuremap/*
-- pkg/std/veterinary/*
-
----
-
-## 6. Utility Packages
-
-**Summary:**
-Updated the shared utility packages that support UI, data handling, item utilities, time helpers, security reports, and gump presentation logic.
-
-**Details:**
-- Added reusable gump and dialog helpers for shared UI flows.
-- Expanded item inspection, class-method, and security reporting utilities.
-- Added time and cliloc helpers used by higher-level gameplay systems.
-
-**Key Files Changed:**
-- pkg/utils/clilocs/*
-- pkg/utils/datafile/*
-- pkg/utils/gumps/*
-- pkg/utils/itemUtils/*
-- pkg/utils/mdgumps/*
-- pkg/utils/objClassMethods/*
-- pkg/utils/security/*
-- pkg/utils/timeutils/*
-
----
-
-## 7. System Packages
-
-**Summary:**
-Added and expanded system-level packages for accounts, combat, email, online-count tracking, and reputation hooks.
-
-**Details:**
-- Added account lifecycle, reconnect, and login hook support.
-- Added email delivery, mail UI, and webmail system hooks.
-- Added online count, cheat count, and reputation integration systems.
-
-**Key Files Changed:**
-- pkg/systems/accounts/*
-- pkg/systems/combat/*
-- pkg/systems/crafting/*
-- pkg/systems/email/*
-- pkg/systems/onlineCount/*
-- pkg/systems/reputation/*
-
----
-
-## 8. AI & NPC Behavior
-
-**Summary:**
-Refined the AI package tree for monsters, vendors, guards, townsfolk, special encounters, and combat-driven NPC behaviors.
-
-**Details:**
-- Added AI scripts for combat, merchant, town, and encounter roles.
-- Expanded setup and behavior variants for specialized NPC types.
-- Added creature-specific scripts for unique encounters and guard logic.
-
-**Key Files Changed:**
-- scripts/ai/combat/*
-- scripts/ai/main/*
-- scripts/ai/setup/*
-- scripts/ai/*.src
-- scripts/ai/*.zip
-- pkg/mobiles/*
-
----
-
-## 9. Shared Scripts & Includes
-
-**Summary:**
-Expanded the shared script layer that supports core runtime behavior, item interactions, creature logic, utility helpers, modules, and general include files used across the shard.
-
-**Details:**
-- Added core include files for rules, math, events, and utility helpers.
-- Expanded item, mobile, spell, spawn, and creature support routines.
-- Added module bindings and executable support scripts used by the runtime.
-
-**Key Files Changed:**
-- scripts/include/*
-- scripts/modules/*
-- scripts/items/*
-- scripts/misc/*
-- scripts/util/*
-- scripts/console/*
-- scripts/www/*
-
----
-
-## 10. Command Trees
-
-**Summary:**
-Implemented and updated the command tree for players, GMs, seers, counselors, admins, and test/debug workflows.
-
-**Details:**
-- Added player-facing commands for common interactions and utilities.
-- Expanded GM and seer command coverage for debugging and world management.
-- Added test commands for packet, script, bank, and system validation.
-
-**Key Files Changed:**
-- scripts/textcmd/admin/*
-- scripts/textcmd/coun/*
-- scripts/textcmd/gm/*
-- scripts/textcmd/player/*
-- scripts/textcmd/seer/*
-- scripts/textcmd/test/*
-- pkg/commands/*
-
----
-
-## 11. World Data & Regions
-
-**Summary:**
-Updated region data, map-generation support files, multis, and packet-hook related assets that drive world layout and placement behavior.
-
-**Details:**
-- Added regional resource and terrain definitions.
-- Updated mapgen outputs for Trammel and related placement passes.
-- Added multis and packet hook assets used by world layout systems.
-
-**Key Files Changed:**
-- mapgen/trammel/*
-- pkg/multis/*
-- pkg/packethooks/*
-- regions/*
-
----
-
-## 12. Root Config, Builds, and Tooling
-
-**Summary:**
-Captured the repository-level configuration, build artifacts, conversion tools, backups, documentation, and generated binaries that were added or refreshed during the initial project import.
-
-**Details:**
-- Added root configuration files and import-time documentation.
-- Included generated binaries, debug artifacts, and tooling outputs.
-- Added backup, conversion, and changelog support files used during setup.
-
-**Key Files Changed:**
-- .gitignore
-- .vscode/settings.json
-- ConfigPath.zip
-- Converted_Used_Colors.txt
-- POLConfigurator.dat
-- README.md
-- README.txt
-- Used Colors.txt
-- ZHO-DataBackup.ps1
-- breaking-changes.txt
-- config/*
-- core-changes.txt
-- libmysql.dll
-- loogroups.txt
-- orphans.txt
-- packets.zip
-- pol.cfg
-- pol.cfg.example
-- pol.exe
-- pol.map
-- pol.obj
-- pol.pch
-- pol.pdb
-- pol.res
-- poltool.exe
-- poltool.pdb
-- uoconvert.cfg
-- uoconvert.exe
-- uoconvert.pdb
-- uoconvert.txt
-- uotool.exe
-- uotool.pdb
-- vc120.pdb
-- vcomp120.dll
-- zho_changelog.txt
+Generated from git diff and git log for exhaustive, file-complete coverage of this range.

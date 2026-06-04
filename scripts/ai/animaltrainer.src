@@ -65,8 +65,6 @@ set_priority( 50 );
 var me := Self();
 
 me.hidden := 0;
-var buyimage  := {0x211b, 0x211c, 0x2121, 0x2124, 0x211f, 0x2120, 0x2126, 0x20f6, 0x211a, 0x2123, 0x2125, 0x2122, 0x211e, 0x211d, 0x2119, 0x20e6, 0x2108, 0x2103, 0x2101, 0x2135, 0x2136, 0x2137, 0x2127};
-var sellimage := {0xc9, 0xd9, 0xcc, 0xc8, 0xe2, 0xe4, 0x123, 0xdc, 0x06, 0xee, 0xcd, 0xe1, 0xd4, 0x05, 0xd6, 0xcf, 0xd1, 0xd8, 0xcb, 0xd2, 0xda, 0xdb, 0x124};
 
 //New Storage Area System
 var shop_sell, shop_buy, shop_resale;
@@ -183,19 +181,21 @@ program animaltrainerai()
       foreach item in EnumerateItemsInContainer(ev.source.backpack )
         petname :=GetObjProperty(item, "animalkind");
         if(petname)
-        newpet := CreateNpcFromTemplate(petname, ev.source.x, ev.source.y, ev.source.z, 0, ev.source.realm);
-        DestroyItem(item);
-        SetObjProperty(newpet, "master", ev.source.serial);
-        SetObjProperty(newpet, "prevtamed", 1);
-        newpet.script := "tamed";
-        RestartScript(newpet);
+          newpet := CreateNpcFromTemplate(petname, ev.source.x, ev.source.y, ev.source.z, 0, ev.source.realm);
+          if (newpet)
+            DestroyItem(item);
+            SetObjProperty(newpet, "master", ev.source.serial);
+            SetObjProperty(newpet, "prevtamed", 1);
+            newpet.script := "tamed";
+            RestartScript(newpet);
+          endif
         endif
       endforeach
       PlaySoundEffect(me, 0x38);
     elseif(ev.type == SYSEVENT_ITEM_GIVEN)
-      if (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN);
+      if (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN)
         Say("Bah, I have no use for this. Be off with ye.");
-        MoveItemToContainer( ev.source.backpack , ev.item );
+        MoveItemToContainer( ev.item, ev.source.backpack );
         //TrainSkill( me , ev.source , ev.item );
       else
         TurnToward (ev.source);
@@ -478,7 +478,60 @@ function Load_Ticket_Data (me, who, ticket)
   var tempdata := 0;
   var newpet := 0;
 
-  if ((ticket.objtype == 0x186E) and (ticket.graphic == 5360))
+  if(ticket.objtype == CInt(0xDF0C))
+    var owner_serial := GetObjProperty(ticket, "owner_serial");
+    if(owner_serial != who.serial)
+      Say("This ticket does not belong to you.");
+      MoveItemToContainer(ticket, who.backpack);
+      return;
+    endif
+
+    var fine := CInt(GetObjProperty(ticket, "confiscation_fine"));
+    var petname := GetObjProperty(ticket, "petname");
+    Say("Your pet " + petname + " was confiscated. The fine is " + fine + " gold.");
+    Sleep(1);
+
+    if(!who.spendgold(fine))
+      Say("You cannot afford the fine of " + fine + " gold.");
+      MoveItemToContainer(ticket, who.backpack);
+      return;
+    endif
+
+    Say("Fine paid. I will get " + petname + " for you. One moment, please.");
+    Sleep(1);
+
+    tempdata := GetObjProperty(ticket, "pettemplate");
+    newpet := CreateNPCFromTemplate(tempdata, me.x, me.y, me.z, 0, me.realm);
+    if (!newpet)
+      Say("I cannot locate your pet right now. Please try again.");
+      MoveItemToContainer(ticket, who.backpack);
+      return;
+    endif
+
+    newpet.name := petname;
+    SetMana(newpet, CInt(GetObjProperty(ticket, "petmana")));
+    newpet.color := GetObjProperty(ticket, "petcolor");
+
+    SetObjProperty(newpet, "master", who.serial);
+    SetObjProperty(newpet, "prevtamed", 1);
+    newpet.script := "tamed";
+    RestartScript(newpet);
+
+    SetObjProperty(newpet, "nocut", 1);
+    SetObjProperty(newpet, "noloot", 1);
+
+    if(GetObjProperty(newpet, "PhysicalProtection") > 100)
+      SetObjProperty(newpet, "PhysicalProtection", 1);
+      EraseObjProperty(newpet, "AttackTypeImmunities");
+    endif
+
+    SetHp(newpet, GetMaxHp(newpet));
+
+    Say("Take care and keep it away from houses!");
+
+    DestroyItem(ticket);
+
+  elseif ((ticket.objtype == 0x186E) and (ticket.graphic == 5360))
 
     tempdata := GetObjProperty(ticket, "petname");
     Say("I will get " + tempdata + " for you. One moment, please.");
@@ -486,9 +539,14 @@ function Load_Ticket_Data (me, who, ticket)
 
     tempdata := GetObjProperty(ticket, "pettemplate");
     newpet := CreateNPCFromTemplate(tempdata, me.x, me.y, me.z, 0, me.realm);
+    if (!newpet)
+      Say("I cannot locate your pet right now. Please try again.");
+      MoveItemToContainer(ticket, who.backpack);
+      return;
+    endif
 
     newpet.name := GetObjProperty(ticket, "petname");
-    SetHp(newpet, CInt(GetObjProperty(ticket, "pethp"))); //doesn't work, no errors trown, some other script influencing?
+    // HP restore from ticket is unreliable here; normalize to max HP below.
     SetMana(newpet, CInt(GetObjProperty(ticket, "petmana")));
     newpet.color := GetObjProperty(ticket, "petcolor");
 
@@ -505,8 +563,7 @@ function Load_Ticket_Data (me, who, ticket)
       EraseObjProperty(newpet, "AttackTypeImmunities");
     endif
 
-    tempdata := CInt(GetObjProperty(ticket, "pethp"));
-    SetHp(newpet, 3);
+    SetHp(newpet, GetMaxHp(newpet));
 
     Say("Take care and be sure to feed it!");
 
@@ -521,6 +578,10 @@ function stable(who)
 	Say("Which pet would you like to Stable");
 
 	var pet := Target (who);
+  if (!pet)
+    SendSysmessage(who, "canceled.");
+    return;
+  endif
 
 	if( GetObjProperty( pet, "DonatorMount") )
 		Say("You cannot stable that!");

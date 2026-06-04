@@ -17,6 +17,8 @@ include "include/randname";
 include "include/npcboosts";
 include ":mdgumps:requestGump";
 
+const UOBJ_BANKERS_ORDER := 0x14000;
+
 
 	var bank;
 	const REACT_THRESHOLD := 8;
@@ -81,39 +83,44 @@ program banker();
 			if(Find(text, "gold note", 1) || Find(text, "gold draft", 1) || Find(text, "gold check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EED);
+				EraseObjProperty(ev.source, "banker_making_check");
 			elseif(Find(text, "silver note", 1) || Find( text, "silver draft", 1) || Find(text, "silver check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EF0);
+				EraseObjProperty(ev.source, "banker_making_check");
 			elseif(Find(text, "copper note", 1) || Find(text, "copper draft", 1) || Find(text, "copper check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EEA);
+				EraseObjProperty(ev.source, "banker_making_check");
 			// elseif(text["balance"])
 			elseif(Find( text, "balance", 1 ))
 				//if(ev.source.criminal == 1)
 					//say("I will not do business with criminals!");
 				//else
 					var bankbox := CP_GetStorageContainerForMobile( ev.source, bank_region, CP_CREATE );
-					var contents := EnumerateItemsInContainer(bankbox);
-					var camt := 0;
-					var samt := 0;
-					var gamt := 0;
-					foreach item in contents
-						case(item.objtype)
-							0x0EEA:	camt := (camt + item.amount);
-							0x0EF0:	samt := (samt + item.amount);
-							0x0EED:	gamt := (gamt + item.amount);
-							default:
-						endcase
-					endforeach
-					ShowBalance(ev.source, AddCommas(gamt), AddCommas(samt), AddCommas(camt));
+					var summary := GetBankCurrencySummary(bankbox);
+					ShowBalance(
+						ev.source,
+						AddCommas(summary.gold_coins),
+						AddCommas(summary.gold_checks),
+						AddCommas(summary.silver_coins),
+						AddCommas(summary.silver_checks),
+						AddCommas(summary.copper_coins),
+						AddCommas(summary.copper_checks)
+					);
 				//endif
 			elseif(Find(text, "bank", 1) || Find(text, "safe", 1))
 				OpenBank(ev.source, bank_region);
 			elseif(Find(text, "deposit", 1))
 				DepositAllBackpackCoins(ev.source, me);
+			elseif(Find(text, "withdraw", 1))
+				WithdrawFromBank(ev.source, me, text);
 			elseif(Find(text, "convert copper", 1))
 				ConvertCopper(ev.source, me);
 			elseif(Find(text, "convert silver", 1))
@@ -264,18 +271,152 @@ function DepositAllBackpackCoins(who, me)
 	return 1;
 endfunction
 
+function GetBankersNoteMax(currency)
+	if(currency == 0x0EED)
+		return 10000000;
+	elseif(currency == 0x0EF0)
+		return 5000000;
+	endif
+
+	return 1000000;
+endfunction
+
+function GetBankCurrencySummary(byref bankbox)
+	var summary := array;
+	summary.+ gold_coins := 0;
+	summary.+ silver_coins := 0;
+	summary.+ copper_coins := 0;
+	summary.+ gold_checks := 0;
+	summary.+ silver_checks := 0;
+	summary.+ copper_checks := 0;
+
+	foreach item in EnumerateItemsInContainer(bankbox)
+		case(item.objtype)
+			UOBJ_COPPER_COIN:
+				summary.copper_coins := summary.copper_coins + item.amount;
+			UOBJ_SILVER_COIN:
+				summary.silver_coins := summary.silver_coins + item.amount;
+			UOBJ_GOLD_COIN:
+				summary.gold_coins := summary.gold_coins + item.amount;
+			UOBJ_BANKERS_ORDER:
+				var check_amt := CInt(GetObjProperty(item, "Amount"));
+				if(check_amt > 0)
+					var check_currency := CInt(GetObjProperty(item, "Currency"));
+					if(check_currency == UOBJ_COPPER_COIN)
+						summary.copper_checks := summary.copper_checks + check_amt;
+					elseif(check_currency == UOBJ_SILVER_COIN)
+						summary.silver_checks := summary.silver_checks + check_amt;
+					elseif(check_currency == UOBJ_GOLD_COIN)
+						summary.gold_checks := summary.gold_checks + check_amt;
+					endif
+				endif
+			default:
+		endcase
+	endforeach
+
+	return summary;
+endfunction
+
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-//	ShowBalance(who, goldamt, unused silveramt, unused copperamt)
+//	WithdrawFromBank(who, me, text)
+//
+//	Classic-style speech withdrawal with multi-currency support:
+//	"withdraw 1000", "withdraw 2500 gold", "withdraw 500 silver", etc.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function WithdrawFromBank(who, me, text)
+	TurnToward(who);
+
+	if(GetObjProperty(who, "banker_making_check"))
+		PrintTextAbove(me, "Please finish creating your Banker's Order first.", 1, 39);
+		return 0;
+	endif
+
+	var words := SplitWords(text);
+	var amt := 0;
+	var coin_type := CInt(currency);
+	var coin_name := "coins";
+	var saw_withdraw := 0;
+	var max_amt := 0;
+
+	foreach word in words
+		if(word == "withdraw")
+			saw_withdraw := 1;
+			continue;
+		endif
+
+		if(word == "gold")
+			coin_type := 0x0EED;
+			coin_name := "gold";
+		elseif(word == "silver")
+			coin_type := 0x0EF0;
+			coin_name := "silver";
+		elseif(word == "copper")
+			coin_type := 0x0EEA;
+			coin_name := "copper";
+		endif
+
+		if(saw_withdraw && !amt)
+			var parsed := CInt(word);
+			if(parsed > 0)
+				amt := parsed;
+			endif
+		endif
+	endforeach
+
+	if(coin_type == 0x0EED)
+		coin_name := "gold";
+	elseif(coin_type == 0x0EF0)
+		coin_name := "silver";
+	elseif(coin_type == 0x0EEA)
+		coin_name := "copper";
+	endif
+
+	if(!amt)
+		PrintTextAbove(me, "Please tell me how much to withdraw, such as: withdraw 1000 gold.", 1, 39);
+		return 0;
+	endif
+
+	max_amt := GetBankersNoteMax(coin_type);
+	if(amt > max_amt)
+		PrintTextAbove(me, "You may not withdraw more than " + AddCommas(max_amt) + " " + coin_name + " at once.", 1, 39);
+		return 0;
+	endif
+
+	var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a bank box, " + who.name, 1, 39);
+		return 0;
+	endif
+
+	if(CountCoins(bankbox, coin_type) < amt)
+		PrintTextAbove(me, "I'm sorry. You don't have enough " + coin_name + " in your bank box.", 1, 39);
+		return 0;
+	endif
+
+	if(!SpendCoin(who, amt, bankbox, coin_type))
+		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
+		return 0;
+	endif
+
+	if(!CreateCoins(who.backpack, coin_type, amt))
+		CreateCoins(bankbox, coin_type, amt);
+		PrintTextAbove(me, "I could not fit those coins in your backpack.", 1, 33);
+		return 0;
+	endif
+
+	PrintTextAbove(me, "Withdrew " + AddCommas(amt) + " " + coin_name + " from thy bank.", 1, 66);
+	return 1;
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	ShowBalance(who, ...)
 //
 //	Purpose:
-//	Displays a gump to the player showing the amount of gold in his or her
-//	bank box.
-//	Note: There is provision for silver and copper currency as well should
-//	a developer wish to implement those coins. To enable display of silver
-//	and copper coin balaances, remove the unused keyords from the function
-//	declaration and look for instructions in the function explaining which
-//	lines to uncomment to display silver and copper balances.
+//	Displays a gump to the player showing coin and cheque totals for each
+//	currency in the bank box.
 //
 //	Parameters:
 //	who::charref
@@ -285,38 +426,17 @@ endfunction
 //	Nothing
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function ShowBalance(who, goldamt, silveramt, copperamt)
+function ShowBalance(who, gold_coins, gold_checks, silver_coins, silver_checks, copper_coins, copper_checks)
+	var parms := array;
+	parms[1] := who;
+	parms[2] := gold_coins;
+	parms[3] := gold_checks;
+	parms[4] := silver_coins;
+	parms[5] := silver_checks;
+	parms[6] := copper_coins;
+	parms[7] := copper_checks;
 
-	var bankBalance := GFCreateGump();
-
-	GFPage(bankBalance, 0);
-
-	//Background 1
-	GFResizePic(bankBalance, 154, 101, 9200, 357, 330);
-	//HTML 1
-	GFHTMLArea(bankBalance, 176, 121, 316, 200, "<BASEFONT size=7>This is a summary of the currency in thy bank box " + who.name + ": </BASEFONT>");
-	//Label 2
-	GFTextLine(bankBalance, 173, 200, 803, "Gold Coins:");
-	//Label 3 - Uncomment the following line to display silver
-	GFTextLine(bankBalance, 173, 250, 803, "Silver Coins:");
-	//Label 4 - Uncomment the following line to display copper
-	GFTextLine(bankBalance, 173, 300, 803, "Copper Coins:");
-	//Item 1
-	GFTilePic(bankBalance, 455, 200, 3823, 0);
-	//Item 2 - Uncomment the following line to display silver
-	GFTilePic(bankBalance, 455, 250, 3826, 0);
-	//Item 3 - Uncomment the following line to display copper
-	GFTilePic(bankBalance, 455, 300, 3823, 1502);
-	//HTML 2
-	GFHTMLArea(bankBalance, 342, 205, 115, 16, "<BASEFONT size=9><div align=right>" +  goldamt + "</div></BASEFONT>");
-	//Copy of HTML 2 - Uncomment the following line to display silver
-	GFHTMLArea(bankBalance, 342, 255, 115, 16, "<BASEFONT size=9><div align=right>" + silveramt + "</div></BASEFONT>");
-	//Copy of HTML 2 - Uncomment the following line to display copper
-	GFHTMLArea(bankBalance, 342, 305, 115, 16, "<BASEFONT size=9><div align=right>" + copperamt + "</div></BASEFONT>");
-	//Button 1
-	GFAddButton(bankBalance, 305, 350, 247, 248, GF_CLOSE_BTN, 0);
-
-	GFSendGump(who, bankBalance);
+	Start_Script("ai/bankerbalancegump", parms);
 
 endfunction
 
@@ -325,10 +445,11 @@ function BuyBankersNote(who, me, currency)
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
 	var amt := 0;
+	var max_amt := GetBankersNoteMax(currency);
 
-	amt := RequestGump(who,"For what amount shall I make the Banker's Order? The coins must be in your bank box.", "The maximum is 1 million coins.");
+	amt := RequestGump(who,"For what amount shall I make the Banker's Order? The coins must be in your bank box.", "The maximum is " + AddCommas(max_amt) + " coins.");
 	amt := CInt(amt);
-	if(!amt || amt > 1000000 || amt == 0)
+	if(!amt || amt > max_amt || amt == 0)
 		PrintTextAbove(me, "Very well then. I see you've changed your mind.", 1, 39);
 		return 0;
 	endif

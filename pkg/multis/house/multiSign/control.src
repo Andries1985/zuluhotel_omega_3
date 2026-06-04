@@ -20,25 +20,9 @@ program SignListener(sign)
 	if(!house)
 		return;
 	endif
-	RegisterForSpeechEvents(sign, 30);
-	var ownerser, who, ev, decaytime;
+	var decaytime;
 	while(sign)
-		ownerser := GetObjProperty(sign,"ownerserial");
-		ev := wait_for_event(120);
-		if(ev)
-			who := ev.source;
-			if(who.multi.serial == house.serial)
-				if(who.serial == ownerser)
-					handle_speech(ev, house, sign, 3);
-				else
-					if(sign.IsInHouseLists(who, 1) == 1)
-						handle_speech(ev, house, sign, 2);
-					elseif(sign.IsInHouseLists(who, 2) == 1)
-						handle_speech(ev, house, sign, 1);
-					endif
-				endif
-			endif
-		endif
+		wait_for_event(120);
 		decaytime := GetObjProperty(sign,"decay");
 		if(decaytime.errortext)
 		  decaytime := (ReadGameClock() + get_abandon_time());
@@ -80,27 +64,27 @@ function cleareventque()
 	until(!(ev := os::wait_for_event(0)));
 endfunction
 
-function handle_speech(event, house, sign, sec)
-	var text := lower(event.text );
-	if((text["i wish to lock this down"]) && (sec >= 2))
-		HouseFunction(sign, event, 1 );
-	elseif((text["i wish to release this"]) && (sec >= 2))
-		HouseFunction(sign, event, 2 );
-	elseif((text["i wish to secure this"]) && (sec >= 2))
-		secure(sign, event );
-	elseif((text["i wish to unsecure this"]) && (sec >= 2))
-		unsecure(sign, event);
-	elseif((text["remove thyself"]) && (sec >= 1))
-		remove(house, sign, event);
-	elseif((text["i ban thee"]) && (sec >= 1))
-		Print("going to house banning.");
-		housebanning(house, event, sign);
-	elseif((text["i wish to place a trash barrel"]) && (sec >= 2))
-		trashbarrel(house, event);
-	elseif(text["reveal thyself"])
-		reveal(sign, event);
-	endif
-endfunction
+// function handle_speech(event, house, sign, sec)
+// 	var text := lower(event.text );
+// 	if((text["i wish to lock this down"]) && (sec >= 2))
+// 		HouseFunction(sign, event, 1 );
+// 	elseif((text["i wish to release this"]) && (sec >= 2))
+// 		HouseFunction(sign, event, 2 );
+// 	elseif((text["i wish to secure this"]) && (sec >= 2))
+// 		secure(sign, event );
+// 	elseif((text["i wish to unsecure this"]) && (sec >= 2))
+// 		unsecure(sign, event);
+// 	elseif((text["remove thyself"]) && (sec >= 1))
+// 		remove(house, sign, event);
+// 	elseif((text["i ban thee"]) && (sec >= 1))
+// 		Print("going to house banning.");
+// 		housebanning(house, event, sign);
+// 	elseif((text["i wish to place a trash barrel"]) && (sec >= 2))
+// 		trashbarrel(house, event);
+// 	elseif(text["reveal thyself"])
+// 		reveal(sign, event);
+// 	endif
+// endfunction
 
 function remove(house, sign, event)
 	  var who := event.source;
@@ -344,7 +328,7 @@ function unsecure(sign, event)
 		SendSysMessageCL(event.source, 1042023, color := 33); // Cancelled.
 		return;
 	endif
-	if (!GetObjProperty(itemt,"secure") ==1)
+	if (GetObjProperty(itemt,"secure") != 1)
 		SendSysMessage(event.source,"You cannot unsecure that.", color := 33);
 		return;
 	endif
@@ -448,16 +432,19 @@ function demolish(sign)
 						endif
 					thing.usescript := oldscript;
 					thing.movable := 1;
+					thing.decayat := ReadGameClock() + 1;
 					EraseObjProperty(thing, "signserial" );
 					EraseObjProperty(thing, "oldscript" );
 				endif
 			elseif ((GetObjProperty(thing, "lockeddown" ) == 1) && (thing.movable == 0))
 				thing.movable := 1;
+				thing.decayat := ReadGameClock() + 1;
 				EraseObjProperty(thing, "signserial");
 				EraseObjProperty(thing, "lockeddown");
 			elseif (thing.movable == 0)
 				if(thing.objtype == 0x1A390)
 					MoveObjectToLocation(thing, thing.x, thing.y, (thing.z - 7), thing.realm, MOVEOBJECT_FORCELOCATION);
+					thing.decayat := ReadGameClock() + 1;
 				else
 					DestroyItem(thing);
 				endif

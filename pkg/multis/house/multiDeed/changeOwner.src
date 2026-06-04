@@ -4,6 +4,7 @@ use cliloc;
 include ":containers:storageAreas";
 include ":keys:key";
 include ":mdgumps:gumpPrompt";
+include ":house:multihouse_settings";
 
 program change_owner(who, deed)
 
@@ -28,7 +29,7 @@ program change_owner(who, deed)
 	var MaxSecures := GetObjProperty(sign, "MaxSecures");
 	SetObjProperty(sign, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(sign, "RemainingSecures", MaxSecures);
-	SetObjProperty(sign,"decay",ReadGameClock()+ 2592000); // Refreshed for 30 days.
+	SetObjProperty(sign,"decay",ReadGameClock() + get_abandon_time()); // Refreshed by configured abandon timeout.
 	SetObjProperty(sign, "owneracct", who.acctname);
 	SetObjProperty(sign, "ownerserial", who.serial);
 	SetObjProperty(sign, "signname", "a house");
@@ -55,15 +56,9 @@ function ReKey(byref sign, byref new_key, byref lock_id)
 
 	var addonitem;
 	var house := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "houseserial")));
-	Print(GetObjProperty(sign, "houseserial"));
-	if(!house)
-		Print("no house found.   " + house.errortext);
-	endif
-	Print("components = " + house.components);
 	new_key.SetLockId(lock_id);
 	foreach item in(house.components)
 		if(item.IsA(POLCLASS_DOOR))
-		Print("It's a dorr.");
 			item.locked := 1;
 			SetObjProperty(item,"LockID",lock_id);
 		endif

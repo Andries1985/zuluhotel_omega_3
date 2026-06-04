@@ -1,0 +1,42 @@
+use uo;
+
+include ":mdgumps:gumps";
+
+program bankerbalancegump(params)
+	var who := params[1];
+	var gold_coins := params[2];
+	var gold_checks := params[3];
+	var silver_coins := params[4];
+	var silver_checks := params[5];
+	var copper_coins := params[6];
+	var copper_checks := params[7];
+
+	var bankBalance := GFCreateGump();
+
+	GFPage(bankBalance, 0);
+
+	// Background
+	GFResizePic(bankBalance, 154, 101, 9200, 357, 296);
+	GFHTMLArea(bankBalance, 176, 121, 316, 200, "<BASEFONT size=7>This is a summary of the currency in thy bank box " + who.name + ": </BASEFONT>");
+	GFTextLine(bankBalance, 270, 180, 803, "Coins");
+	GFTextLine(bankBalance, 365, 180, 803, "Cheques");
+
+	GFTextLine(bankBalance, 173, 200, 803, "Gold:");
+	GFTextLine(bankBalance, 173, 250, 803, "Silver:");
+	GFTextLine(bankBalance, 173, 300, 803, "Copper:");
+
+	GFTilePic(bankBalance, 443, 200, 3823, 0);
+	GFTilePic(bankBalance, 443, 250, 3826, 0);
+	GFTilePic(bankBalance, 443, 300, 3823, 1502);
+
+	GFHTMLArea(bankBalance, 245, 205, 100, 16, "<BASEFONT size=9><div align=right>" + gold_coins + "</div></BASEFONT>");
+	GFHTMLArea(bankBalance, 351, 205, 100, 16, "<BASEFONT size=9><div align=right>" + gold_checks + "</div></BASEFONT>");
+	GFHTMLArea(bankBalance, 245, 255, 100, 16, "<BASEFONT size=9><div align=right>" + silver_coins + "</div></BASEFONT>");
+	GFHTMLArea(bankBalance, 351, 255, 100, 16, "<BASEFONT size=9><div align=right>" + silver_checks + "</div></BASEFONT>");
+	GFHTMLArea(bankBalance, 245, 305, 100, 16, "<BASEFONT size=9><div align=right>" + copper_coins + "</div></BASEFONT>");
+	GFHTMLArea(bankBalance, 351, 305, 100, 16, "<BASEFONT size=9><div align=right>" + copper_checks + "</div></BASEFONT>");
+
+	GFAddButton(bankBalance, 305, 350, 247, 248, GF_CLOSE_BTN, 0);
+
+	DisplayDialogGump(who, bankBalance.layout, bankBalance.data, bankBalance.base.x, bankBalance.base.y);
+endprogram

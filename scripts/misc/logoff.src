@@ -98,6 +98,7 @@ program logoff(who)
 	EraseObjProperty(who, "spelldata");          // cast textcmd spell state
 	EraseObjProperty(who, "DoingVet");           // veterinary in-flight
 	EraseObjProperty(who, "IsMeditating");       // meditation in-flight
+	EraseObjProperty(who, "banker_making_check"); // banker check-creation in-flight
 	EraseObjProperty(who, "StatsState");         // dye stat gump state
 	EraseObjProperty(who, "Detsoob");            // booststone selection state
 	EraseObjProperty(who, "DonatorMounted");     // donator mount in-use flag
