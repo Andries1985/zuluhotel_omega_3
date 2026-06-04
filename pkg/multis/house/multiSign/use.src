@@ -1438,7 +1438,7 @@ function OpenHouseManagementGump(sign, who)
 	GFButtonID(130, 194, 2714, 2715, 1, 222);
 	GFTextLine(165, 194, 0, "Secure container");
 	GFButtonID(130, 216, 2714, 2715, 1, 223);
-	GFTextLine(165, 216, 0, "Unsecure container");
+	GFTextLine(165, 216, 0, "Delete secure container");
 	GFButtonID(130, 238, 2714, 2715, 1, 224);
 	GFTextLine(165, 238, 0, "Eject target");
 	GFButtonID(130, 260, 2714, 2715, 1, 225);
@@ -1656,39 +1656,33 @@ function SecureContainerFromMenu(sign, house, who)
 endfunction
 
 function UnsecureContainerFromMenu(sign, house, who)
-	SendSysMessageCL(who, 502106, color := 88);
+	SendSysMessage(who, "Choose the secure container you wish to delete.", color := 88);
 	var itemt := Target(who);
 	if(!itemt)
 		SendSysMessageCL(who, 1042023, color := 33);
 		return;
 	endif
 	if(GetObjProperty(itemt, "secure") != 1)
-		SendSysMessage(who, "You cannot unsecure that.", color := 33);
+		SendSysMessage(who, "You can only delete a secure container.", color := 33);
 		return;
 	endif
-	EraseObjProperty(itemt, "secure");
 	if(GetObjProperty(itemt, "houseserial") != house.serial)
 		SendSysMessageCL(who, 1005525, color := 33);
 		return;
 	endif
-	var lockdowns := GetObjProperty(sign, "RemainingLockdowns");
-	var oldscript := GetObjProperty(itemt, "oldscript");
-	if(oldscript == error)
-		oldscript := "";
+	if(!confirmationSizable(who, "Are you sure you want to delete this secure container? All items inside will be deleted."))
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
 	endif
-	itemt.usescript := oldscript;
+
+	EraseObjProperty(itemt, "secure");
 	SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "RemainingSecures") + 1);
-	EraseObjProperty(itemt, "signserial");
-	EraseObjProperty(itemt, "oldscript");
-	EraseObjProperty(itemt, "boxserial");
-	if(lockdowns > 0)
-		SetObjProperty(itemt, "lockeddown", 1);
-		SetObjProperty(sign, "RemainingLockdowns", lockdowns - 1);
-		SendSysMessage(who, "The container is locked down and one secure slot was refunded.", color := 66);
-	else
-		itemt.movable := 1;
-		SendSysMessage(who, "The container is no longer secured.", color := 66);
+	if(!DestroyItem(itemt))
+		SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "RemainingSecures") - 1);
+		SendSysMessage(who, "Could not delete that secure container.", color := 33);
+		return;
 	endif
+	SendSysMessage(who, "Secure container deleted. One secure slot was refunded.", color := 66);
 endfunction
 
 function PlaceTrashBarrelFromMenu(house, who)
