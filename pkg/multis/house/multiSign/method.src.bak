@@ -27,14 +27,16 @@ endprogram
 // Returns: 1 if true or 0 if false
 //
 ///////////////////////////////////////////////////////////
-exported function IsHouseSign( byref sign )
-	if(!sign)
+exported function IsHouseSign( byref unused sign )
+
+	var signs := {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA};
+	foreach thing in signs
+		thing := thing; // stops unused warning.
+		if(GetObjProperty(thing, "footage"))
+			return 1;
+		endif
+	endforeach
 		return 0;
-	endif
-	if(sign.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
-		return 1;
-	endif
-	return 0;
 endfunction
 
 ///////////////////////////////////////////////////////////
@@ -50,13 +52,14 @@ endfunction
 //
 // Returns: 1 if true and 0 if false.
 ///////////////////////////////////////////////////////////
-exported function IsStaticHouseSign( byref sign )
-	if(!sign)
-		return 0;
-	endif
-	if(sign.objtype in {CInt(0x20BD1), CInt(0x20BD2), CInt(0x20BCF), CInt(0x20BD0), CInt(0x260FA)})
-		return 1;
-	endif
+exported function IsStaticHouseSign( byref unused sign )
+	var signs := {CInt(0x20BD1), CInt(0x20BD2), CInt(0x20BCF), CInt(0x20BD0), CInt(0x260FA)};
+	foreach thing in signs
+		thing := thing; // stops unused warning.
+		if(GetObjProperty(thing, "footage"))
+			return 1;
+		endif
+	endforeach
 	return 0;
 
 endfunction
@@ -74,13 +77,14 @@ endfunction
 //
 // Returns: 1 if true and 0 if false.
 ///////////////////////////////////////////////////////////
-exported function IsMultiHouseSign( byref sign )
-	if(!sign)
-		return 0;
-	endif
-	if(sign.objtype in {0xBD2, 0xBD0})
-		return 1;
-	endif
+exported function IsMultiHouseSign( byref unused sign )
+	var signs := {0xBD2, 0xBD0};
+	foreach thing in signs
+		thing := thing; // stops unused warning.
+		if(GetObjProperty(thing, "footage"))
+			return 1;
+		endif
+	endforeach
 	return 0;
 
 endfunction
@@ -129,15 +133,21 @@ endfunction
 ///////////////////////////////////////////////////////////
 exported function IsObjectInsideHouse(byref sign, byref object)
 	var fotage := GetObjProperty (sign, "footage");
+	var chk := 0;
 	foreach thing in fotage
 		if ( (object.realm == sign.realm) &&
 			(object.x >= thing[1] && object.x <= thing[4]) &&
 			(object.y >= thing[2] && object.y <= thing[5]) &&
 			(object.z >= thing[3] && object.z <= thing[6]) )
 			return 1;
+			chk := 1;
+			break;
+		endif
+		if(chk)
+			break;
 		endif
 	endforeach
-	return 0;
+	return chk;
 
 endfunction
 
@@ -166,7 +176,7 @@ endfunction
 ///////////////////////////////////////////////
 exported function IsNewHouse( sign )
 
-	return GetObjProperty(sign, "NewHouse") == 1;
+	return GetObjProperty(sign, "NewHouse") == 1;;
 endfunction
 
 ///////////////////////////////////////////////////////////
@@ -342,7 +352,7 @@ endfunction
 //
 ///////////////////////////////////////////////////////////
 exported function AddSecure( sign )
-	var temp := GetSecures(sign);
+	var temp := GetLockdowns(sign);
 	temp := temp + 1;
 	if(temp > GetMaxSecures(sign))
 		temp := GetMaxSecures(sign);
@@ -745,7 +755,6 @@ exported function RemoveCoOwner( sign, byref mobile )
 	endif
 	coowners.erase(index);
 	SetObjProperty(sign, "coowners", coowners);
-	ClearAllFriendPermissions(sign, mobile);
 	return 1;
 
 endfunction
@@ -764,13 +773,7 @@ endfunction
 //
 ///////////////////////////////////////////////////////////
 exported function WipeCoOwnerList( sign )
-	EraseObjProperty( sign, "coowners" );
-	EraseObjProperty( sign, "perm_lockdown" );
-	EraseObjProperty( sign, "perm_secure" );
-	EraseObjProperty( sign, "perm_eject" );
-	EraseObjProperty( sign, "perm_ban" );
-	EraseObjProperty( sign, "perm_teleporter" );
-	return 1;
+	return EraseObjProperty( sign, "coowners" );
 endfunction
 
 
@@ -883,7 +886,6 @@ exported function RemoveFriend( sign, byref mobile )
 	endif
 	friendlist.erase(index);
 	SetObjProperty(sign, "friendlist", friendlist);
-	ClearAllFriendPermissions(sign, mobile);
 	return 1;
 
 endfunction
@@ -919,13 +921,7 @@ endfunction
 //
 ///////////////////////////////////////////////////////////
 exported function WipeFriendList( sign )
-	EraseObjProperty( sign, "friendlist" );
-	EraseObjProperty( sign, "perm_lockdown" );
-	EraseObjProperty( sign, "perm_secure" );
-	EraseObjProperty( sign, "perm_eject" );
-	EraseObjProperty( sign, "perm_ban" );
-	EraseObjProperty( sign, "perm_teleporter" );
-	return 1;
+	return EraseObjProperty( sign, "friendlist" );
 endfunction
 
 // Ban Methods
@@ -944,7 +940,7 @@ endfunction
 ///////////////////////////////////////////////////////////
 exported function IsBanned(sign, byref mobile)
 
-	var nfo := GetObjProperty(sign, "banlist");
+   var nfo := nfo := GetObjProperty(sign, "banlist");
 
   if(mobile.serial in nfo)
     return 1;
@@ -975,7 +971,7 @@ exported function AddBan( sign, byref mobile )
 	endif
 	var arraysize := len(banlist);
 	arraysize := arraysize + 1;
-	if (arraysize > 20)
+	if (arraysize >= 20)
 		return -1;
 	endif
 
@@ -1195,107 +1191,6 @@ exported function GetHouseSize(sign)
 			area := area + x * y;
 	endforeach
 	return area;
-endfunction
-
-function GetPermPropertyName(perm_key)
-	case(perm_key)
-		"lockdown": return "perm_lockdown";
-		"secure": return "perm_secure";
-		"eject": return "perm_eject";
-		"ban": return "perm_ban";
-		"teleporter": return "perm_teleporter";
-		default: return "";
-	endcase
-endfunction
-
-function GetPermList(sign, perm_key)
-	var propname := GetPermPropertyName(perm_key);
-	if(propname == "")
-		return {};
-	endif
-	var permlist := GetObjProperty(sign, propname);
-	if(!permlist)
-		permlist := {};
-	endif
-	return permlist;
-endfunction
-
-exported function SetFriendPermission(sign, byref mobile, perm_key, enabled := 1)
-	var propname := GetPermPropertyName(perm_key);
-	if(propname == "")
-		return 0;
-	endif
-	var permlist := GetPermList(sign, perm_key);
-	var idx := mobile.serial in permlist;
-	if(enabled)
-		if(!idx)
-			permlist.append(mobile.serial);
-		endif
-	else
-		if(idx)
-			permlist.erase(idx);
-		endif
-	endif
-	SetObjProperty(sign, propname, permlist);
-	return 1;
-endfunction
-
-exported function ClearAllFriendPermissions(sign, byref mobile)
-	SetFriendPermission(sign, mobile, "lockdown", 0);
-	SetFriendPermission(sign, mobile, "secure", 0);
-	SetFriendPermission(sign, mobile, "eject", 0);
-	SetFriendPermission(sign, mobile, "ban", 0);
-	SetFriendPermission(sign, mobile, "teleporter", 0);
-	return 1;
-endfunction
-
-exported function GetFriendPermissionProfile(sign, byref mobile)
-	var profile := array(0, 0, 0, 0, 0, 0);
-	if(IsACoOwner(sign, mobile))
-		profile[1] := 1;
-		profile[2] := 1;
-		profile[3] := 1;
-		profile[4] := 1;
-		profile[5] := 1;
-		profile[6] := 1;
-		return profile;
-	endif
-	if(mobile.serial in GetPermList(sign, "lockdown"))
-		profile[2] := 1;
-	endif
-	if(mobile.serial in GetPermList(sign, "secure"))
-		profile[3] := 1;
-	endif
-	if(mobile.serial in GetPermList(sign, "eject"))
-		profile[4] := 1;
-	endif
-	if(mobile.serial in GetPermList(sign, "ban"))
-		profile[5] := 1;
-	endif
-	if(mobile.serial in GetPermList(sign, "teleporter"))
-		profile[6] := 1;
-	endif
-	return profile;
-endfunction
-
-exported function IsFullHouseManager(sign, byref mobile)
-	if((mobile.cmdlevel >= 3) || IsOwner(sign, mobile) || IsACoOwner(sign, mobile))
-		return 1;
-	endif
-	return 0;
-endfunction
-
-exported function HasHousePermission(sign, byref mobile, perm_key)
-	if(IsFullHouseManager(sign, mobile))
-		return 1;
-	endif
-	if(!IsAFriend(sign, mobile))
-		return 0;
-	endif
-	if(mobile.serial in GetPermList(sign, perm_key))
-		return 1;
-	endif
-	return 0;
 endfunction
 
 // The following commented out functions need to be modified to work with the Distro house pricing system.

@@ -20,9 +20,25 @@ program SignListener(sign)
 	if(!house)
 		return;
 	endif
-	var decaytime;
+	RegisterForSpeechEvents(sign, 30);
+	var ownerser, who, ev, decaytime;
 	while(sign)
-		wait_for_event(120);
+		ownerser := GetObjProperty(sign,"ownerserial");
+		ev := wait_for_event(120);
+		if(ev)
+			who := ev.source;
+			if(who.multi.serial == house.serial)
+				if(who.serial == ownerser)
+					handle_speech(ev, house, sign, 3);
+				else
+					if(sign.IsInHouseLists(who, 1) == 1)
+						handle_speech(ev, house, sign, 2);
+					elseif(sign.IsInHouseLists(who, 2) == 1)
+						handle_speech(ev, house, sign, 1);
+					endif
+				endif
+			endif
+		endif
 		decaytime := GetObjProperty(sign,"decay");
 		if(decaytime.errortext)
 		  decaytime := (ReadGameClock() + get_abandon_time());
@@ -328,7 +344,7 @@ function unsecure(sign, event)
 		SendSysMessageCL(event.source, 1042023, color := 33); // Cancelled.
 		return;
 	endif
-	if (GetObjProperty(itemt,"secure") != 1)
+	if (!GetObjProperty(itemt,"secure") ==1)
 		SendSysMessage(event.source,"You cannot unsecure that.", color := 33);
 		return;
 	endif
@@ -432,19 +448,16 @@ function demolish(sign)
 						endif
 					thing.usescript := oldscript;
 					thing.movable := 1;
-					thing.decayat := ReadGameClock() + 1;
 					EraseObjProperty(thing, "signserial" );
 					EraseObjProperty(thing, "oldscript" );
 				endif
 			elseif ((GetObjProperty(thing, "lockeddown" ) == 1) && (thing.movable == 0))
 				thing.movable := 1;
-				thing.decayat := ReadGameClock() + 1;
 				EraseObjProperty(thing, "signserial");
 				EraseObjProperty(thing, "lockeddown");
 			elseif (thing.movable == 0)
 				if(thing.objtype == 0x1A390)
 					MoveObjectToLocation(thing, thing.x, thing.y, (thing.z - 7), thing.realm, MOVEOBJECT_FORCELOCATION);
-					thing.decayat := ReadGameClock() + 1;
 				else
 					DestroyItem(thing);
 				endif

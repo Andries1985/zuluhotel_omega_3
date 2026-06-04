@@ -135,7 +135,6 @@ Item    0x1601E
     newbie            1
     HouseObjType      smallbrickhouse
     VendorSellsFor    43800
-    VendorBuysFor     21900
     cprop numlockdowns i25
     cprop numsecure  i1
 }
@@ -336,34 +335,6 @@ Item    0x16033
     cprop numsecure  i2
 }
 
-Item    0x16034
-{
-    Name             gardenshedsouthdeed
-    Desc             deed to a garden shed (south)
-    Graphic          0x14F0
-    Script           :house:multiDeed/use
-    newbie           1
-    VendorSellsFor   44000
-    VendorBuysFor    22000
-    HouseObjType     gardenshedsouth
-    cprop numlockdowns i25
-    cprop numsecure  i1
-}
-
-Item    0x16035
-{
-    Name             gardenshedeastdeed
-    Desc             deed to a garden shed (east)
-    Graphic          0x14F0
-    Script           :house:multiDeed/use
-    newbie           1
-    VendorSellsFor   44000
-    VendorBuysFor    22000
-    HouseObjType     gardenshedeast
-    cprop numlockdowns i25
-    cprop numsecure  i1
-}
-
 Item    0x14EF
 {
     Name             builtdeed
@@ -374,8 +345,6 @@ Item    0x14EF
 House    0x16060
 {
     Name             smallstoneandplasterhouse
-    Desc             Small Stone and Plaster
-    WalkOnScript     :house:walkOn
     Graphic          0x4064
     MultiID          0x64
 }
@@ -383,7 +352,6 @@ House    0x16060
 House    0x16061
 {
     Name             smallstonehouse
-    Desc             Small Stone
     WalkOnScript     :house:walkOn
     Graphic          0x4066
     MultiID          0x66
@@ -392,7 +360,6 @@ House    0x16061
 House    0x16073
 {
     Name             smallbrickhouse
-    Desc             Small Brick
     WalkOnScript     :house:walkOn
     Graphic          0x4068
     MultiID          0x68
@@ -401,7 +368,6 @@ House    0x16073
 House    0x16062
 {
     Name             smallwoodenhouse
-    Desc             Small Wooden
     WalkOnScript     :house:walkOn
     Graphic          0x406a
     MultiID          0x6a
@@ -410,7 +376,6 @@ House    0x16062
 House    0x16063
 {
     Name             smallplasterhouse
-    Desc             Small Plaster
     WalkOnScript     :house:walkOn
     Graphic          0x406c
     MultiID          0x6c
@@ -419,7 +384,6 @@ House    0x16063
 House    0x16064
 {
     Name             smallwoodandstrawhouse
-    Desc             Small Wood and Straw
     WalkOnScript     :house:walkOn
     Graphic          0x406e
     MultiID          0x6e
@@ -428,7 +392,6 @@ House    0x16064
 House    0x16065
 {
     Name             largebrickhouse
-    Desc             Large Brick
     WalkOnScript     :house:walkOn
     Graphic          0x4074
     MultiID          0x74
@@ -437,7 +400,6 @@ House    0x16065
 House    0x16066
 {
     Name             twostorywoodandplasterhouse
-    Desc             Two Story Wood and Plaster
     WalkOnScript     :house:walkOn
     Graphic          0x4076
     MultiID          0x76
@@ -446,7 +408,6 @@ House    0x16066
 House    0x16068
 {
     Name             twostorystoneandplasterhouse
-    Desc             Two Story Stone and Plaster
     WalkOnScript     :house:walkOn
     Graphic          0x4078
     MultiID          0x78
@@ -455,7 +416,6 @@ House    0x16068
 House    0x16069
 {
     Name             tower
-    Desc             Tower
     WalkOnScript     :house:walkOn
     Graphic          0x407a
     MultiID          0x7a
@@ -464,7 +424,6 @@ House    0x16069
 House    0x16070
 {
     Name             keep
-    Desc             Keep
     WalkOnScript     :house:walkOn
     Graphic          0x407c
     MultiID          0x7c
@@ -473,7 +432,6 @@ House    0x16070
 House    0x16071
 {
     Name             castle
-    Desc             Castle
     WalkOnScript     :house:walkOn
     Graphic          0x407e
     MultiID          0x7e
@@ -482,7 +440,6 @@ House    0x16071
 House    0x16072
 {
     Name             largepatiohouse
-    Desc             Large Patio
     WalkOnScript     :house:walkOn
     Graphic          0x408c
     MultiID          0x8c
@@ -491,7 +448,6 @@ House    0x16072
 House    0x16074
 {
     Name             largemarblepatiohouse
-    Desc             Large Marble Patio
     WalkOnScript     :house:walkOn
     Graphic          0x4096
     MultiID          0x96
@@ -500,7 +456,6 @@ House    0x16074
 House    0x16075
 {
     Name             smalltower
-    Desc             Small Tower
     WalkOnScript     :house:walkOn
     Graphic          0x4098
     MultiID          0x98
@@ -509,7 +464,6 @@ House    0x16075
 House    0x16076
 {
     Name             logcabin
-    Desc             Log Cabin
     WalkOnScript     :house:walkOn
     Graphic          0x409a
     MultiID          0x9a
@@ -518,7 +472,6 @@ House    0x16076
 House    0x16077
 {
     Name             sandstonepatiohouse
-    Desc             Sandstone Patio
     WalkOnScript     :house:walkOn
     Graphic          0x409c
     MultiID          0x9c
@@ -527,7 +480,6 @@ House    0x16077
 House    0x16078
 {
     Name             twostoryvilla
-    Desc             Two Story Villa
     WalkOnScript     :house:walkOn
     Graphic          0x409e
     MultiID          0x9e
@@ -536,7 +488,6 @@ House    0x16078
 House    0x16079
 {
     Name             smallstoneworkshop
-    Desc             Small Stone Workshop
     WalkOnScript     :house:walkOn
     Graphic          0x40a0
     MultiID          0xa0
@@ -545,7 +496,6 @@ House    0x16079
 House    0x1607A
 {
     Name             smallmarbleworkshop
-    Desc             Small Marble Workshop
     WalkOnScript     :house:walkOn
     Graphic          0x40a2
     MultiID          0xa2
@@ -554,7 +504,6 @@ House    0x1607A
 House    0x1607B
 {
     Name             gardenshedsouth
-    Desc             Garden Shed South
     WalkOnScript     :house:walkOn
     Graphic          0x40A4
     MultiID          0x20f3
@@ -563,7 +512,6 @@ House    0x1607B
 House    0x1607C
 {
     Name             gardenshedeast
-    Desc             Garden Shed East
     WalkOnScript     :house:walkOn
     Graphic          0x4BEA
     MultiID          0x20f4
