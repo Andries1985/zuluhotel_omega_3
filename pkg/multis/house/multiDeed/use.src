@@ -66,22 +66,12 @@ function Buildhouse(who, deed)
     return;
   endif
 
-	//var antigate := ListItemsNearLocation(where.x, where.y, where.z, 50, where.realm);
-	var antihouse :=  ListObjectsInBox( where.x-25, where.y-25, where.z-25, where.x+25,where.y+25,where.z+25, where.realm );
-	foreach item in antihouse
-		if (item.objtype == 0xa3c8)
-			SendSysMessage( who, "Anti-House Nearby." );
-			return;
-		endif
-	endforeach
-
-  var systele :=  ListObjectsInBox( where.x-25, where.y-25, where.z-25, where.x+25,where.y+25,where.z+25, where.realm );
-	foreach item in systele
-		if (item.objtype == 0x6200)
-			SendSysMessage( who, "System Teleporter nearby, no house allowed." );
-			return;
-		endif
-	endforeach
+  //var antigate := ListItemsNearLocation(where.x, where.y, where.z, 50, where.realm);
+  var blocked_reason := IsHousePlacementBlockedByNearbySpecialObjects(where);
+  if(blocked_reason)
+    SendSysMessage(who, blocked_reason);
+    return;
+  endif
 
   var landtype := Hex(GetMapInfo( where.x, where.y, where.realm ).landtile);
 
@@ -287,19 +277,9 @@ function IsHousePlacementCandidateAllowed(character, housetype, where)
     return 0;
   endif
 
-  var antihouse := ListObjectsInBox(where.x-25, where.y-25, where.z-25, where.x+25, where.y+25, where.z+25, where.realm);
-  foreach item in antihouse
-    if(item.objtype == 0xa3c8)
-      return 0;
-    endif
-  endforeach
-
-  var systele := ListObjectsInBox(where.x-25, where.y-25, where.z-25, where.x+25, where.y+25, where.z+25, where.realm);
-  foreach item in systele
-    if(item.objtype == 0x6200)
-      return 0;
-    endif
-  endforeach
+  if(IsHousePlacementBlockedByNearbySpecialObjects(where))
+    return 0;
+  endif
 
   var landtype := Hex(GetMapInfo(where.x, where.y, where.realm).landtile);
   if((landtype>=0x9 and landtype<=0x15) or (landtype>=0x150 and landtype<=0x15c))
@@ -409,6 +389,21 @@ function IsHousePlacementBlockedByRegionType(housetype, where, region_type)
   endforeach
 
   return 0;
+endfunction
+
+function IsHousePlacementBlockedByNearbySpecialObjects(where)
+  var nearby := ListObjectsInBox(where.x-25, where.y-25, where.z-25, where.x+25, where.y+25, where.z+25, where.realm);
+  foreach item in nearby
+    if(item.objtype == 0xa3c8)
+      return "Anti-House Nearby.";
+    endif
+
+    if(item.objtype == 0x6200)
+      return "Dungeon teleporter nearby, no house allowed.";
+    endif
+  endforeach
+
+  return "";
 endfunction
 
 function GetHouseFootprintBounds(housetype, x, y)

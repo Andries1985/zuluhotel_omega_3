@@ -268,7 +268,7 @@ program Mulit_House_sign(who, sign)
 	elseif(who.serial in coown)
 		cown := 1;
 	endif
-	if((oserial == who.serial) || (cown))
+	if(oserial == who.serial)
 		SetObjProperty(sign,"decay",(ReadGameClock() + get_abandon_time())); // Refreshed by configured abandon timeout.
 		SendSysMessageCL(who, 1043293, color := 66); // Your house's age and contents have been refreshed.
 	endif

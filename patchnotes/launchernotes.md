@@ -10,9 +10,11 @@ Players should notice more reliable house placement, better handling for garden 
 ## Housing and Placement
 
 - House placement checks were rewritten to use footprint bounds and region types more reliably.
+- House placement is now blocked near anti-house objects and dungeon teleporters.
 - Legacy custom housing files were retired in favor of the main house package.
 - New and refreshed house deed options now include small brick houses and garden sheds.
 - House sign, secure container, and ban tile behavior were tightened for better consistency.
+- Only house owners now refresh decay by using the house sign or ban tiles.
 
 ## Banking and Balance
 
@@ -39,6 +41,7 @@ Players should notice more reliable house placement, better handling for garden 
 If you only want the short version, this patch gives you:
 
 - Better house placement and house access behavior.
+- No building near anti-house objects or dungeon teleporters.
 - New and refreshed house deeds, including garden sheds.
 - Better banker balance and withdrawal support.
 - Cleaner house, region, and housing-boundary behavior overall.
