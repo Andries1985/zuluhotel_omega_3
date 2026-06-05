@@ -7,7 +7,7 @@ include "include/client";
 include "include/recalling";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":statichousing:recallgatehelp";
+//include ":multistatichousing:recallgatehelp";
 
 program cast_recall( caster, spell_id )
 
