@@ -1,6 +1,6 @@
 # Patch Notes - v3.0.1
-**Zuluhotel Omega 3 | Live Shard**  
-**Date: [TBD]**
+**Zuluhotel Omega 3 | Beta Shard**  
+**Date: [June 2, 2026]**
 
 ---
 
