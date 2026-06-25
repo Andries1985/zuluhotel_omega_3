@@ -3,49 +3,33 @@ Always check Discord announcements for all patchnotes.
 
 ## What Changed
 
-Patch 3.0.0 focuses on a major housing-system overhaul. The old custom housing package was folded into the main house package, placement rules were tightened, new deed options were added, and house access, secure, and ban behavior were cleaned up.
+Omega Cache has now been fully integrated into Omega 3 housing and crafting flows.
 
-Players should notice more reliable house placement, better handling for garden shed and small brick deeds, cleaner house sign behavior, and safer banker interactions.
+Players can place and use Omega Cache containers in houses, deposit and withdraw stackable materials, and use `.cache` commands for faster storage access.
 
-## Housing and Placement
+## Omega Cache and Housing
 
-- House placement checks were rewritten to use footprint bounds and region types more reliably.
-- House placement is now blocked near anti-house objects and dungeon teleporters.
-- Legacy custom housing files were retired in favor of the main house package.
-- New and refreshed house deed options now include small brick houses and garden sheds.
-- House sign, secure container, and ban tile behavior were tightened for better consistency.
-- Only house owners now refresh decay by using the house sign or ban tiles.
+- Omega Cache placement and removal now work through house ownership and permissions.
+- House cache slot tracking is active and tied to each house.
+- Cache removal now supports explicit purge-confirmation behavior for non-empty cache stores.
+- Ownership transfer and redeed flows now include cache-aware safety handling.
 
-## Banking and Balance
+## Crafting Integration
 
-- Bankers now show a fuller balance summary for coins and checks.
-- Speech-based withdrawals were improved for gold, silver, and copper.
-- Banker interactions are now better protected against interrupted check creation.
+- Core crafting now supports cache-aware material consumption while keeping normal backpack flow intact.
+- Integrated skills include Blacksmithy, Tailoring, Carpentry, Alchemy, Tinkering, Inscription, Cartography, and Cooking.
+- Edge item flows such as fletching and bladed arrow combinations are also cache-aware.
 
-## World and Region Updates
+## Commands and Quality of Life
 
-- Region metadata was updated so city and dungeon checks work more consistently.
-- Spawn and deed tables were refreshed to match the new housing set.
-- Starter and service configuration were cleaned up for the current shard state.
+- `.cache` command set is available, including open, deposit, list, withdraw, and autodraw controls.
+- `.cache dump` remains staff-only.
+- Command help/synopsis entries were regenerated for the new cache commands.
 
-## Player Quality-of-Life
+## Stability and Integrity
 
-- House ban and walk-on behavior were refined.
-- Pet following around house boundaries was cleaned up.
-- Logoff handling was updated so banker interactions do not get stuck in progress.
-
----
-
-## Player Highlights
-
-If you only want the short version, this patch gives you:
-
-- Better house placement and house access behavior.
-- No building near anti-house objects or dungeon teleporters.
-- New and refreshed house deeds, including garden sheds.
-- Better banker balance and withdrawal support.
-- Cleaner house, region, and housing-boundary behavior overall.
-
----
+- Cache identity rules now preserve gameplay-significant item differences.
+- Blacklist and stacking compatibility rules are enforced consistently in cache deposit behavior.
+- Updated scripts compile clean for all Omega Cache touched files.
 
 Thanks for playing Zuluhotel Omega 3.

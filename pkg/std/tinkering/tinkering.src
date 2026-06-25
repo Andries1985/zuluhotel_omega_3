@@ -19,6 +19,7 @@ include "include/attributes";
 include "include/difficulty";
 //include "include/chests";
 include ":crafting:craftingfunctions";
+include "include/resourcemanager";
 
 const CARPENTER_SOUND	:= 0x23e;
 const UOBJECT_CHEST	:= 0x0e42;
@@ -55,6 +56,7 @@ program MakeTinkerItems( character , tool )
 	var points;
 	var itemname;
 	var sound;
+	var resourceRequest;
 
 	if( !ReserveItem( tool ) )
 		return;
@@ -83,18 +85,20 @@ program MakeTinkerItems( character , tool )
 
 	if( IsLog( use_on ) )
 	   	var cfg := ReadConfigFile( ":carpentry:carpentry" );
+		resourceRequest := MakeBackpackRequest( character, use_on );
 		// resource_diff := cfg[use_on.objtype].Difficulty;
 		// resource_name := cfg[use_on.objtype].Name;
 		// resource_qual := cfg[use_on.objtype].Quality;
-	   	item_to_make := MakeAndProcessMenu( character , use_on , WOOD_ID );
+	   	item_to_make := MakeAndProcessMenu( character , resourceRequest , WOOD_ID );
 	   	sound := CARPENTER_SOUND;
 
 	elseif(IsIngot( use_on ))
 		var cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
+		resourceRequest := MakeBackpackRequest( character, use_on );
 		// resource_diff := cfg[use_on.objtype].Difficulty;
 		// resource_name := cfg[use_on.objtype].Name;
 		// resource_qual := cfg[use_on.objtype].Quality;
-		item_to_make := MakeAndProcessMenu( character , use_on , METAL_ID );
+		item_to_make := MakeAndProcessMenu( character , resourceRequest , METAL_ID );
 		sound := SFX_ANVIL;
 
 	else
@@ -160,12 +164,14 @@ program MakeTinkerItems( character , tool )
 						break;
 
 
-			UOBJ_GLASS:		item_to_make := MakeAndProcessMenu( character , use_on , GLASS_ID );
+			UOBJ_GLASS:		resourceRequest := MakeBackpackRequest( character, use_on );
+					item_to_make := MakeAndProcessMenu( character , resourceRequest , GLASS_ID );
 						sound := SFX_GLASSBREAK4;
 						break;
 
 
-			UOBJ_CLAY:		item_to_make := MakeAndProcessMenu( character , use_on , CLAY_ID );
+			UOBJ_CLAY:		resourceRequest := MakeBackpackRequest( character, use_on );
+					item_to_make := MakeAndProcessMenu( character , resourceRequest , CLAY_ID );
 						sound := SFX_HAMMER;
 						break;
 
@@ -189,7 +195,11 @@ program MakeTinkerItems( character , tool )
 	// 	return;
 	// endif
 
-	TryToMakeItem( character , use_on , item_to_make , sound );
+	if( !resourceRequest )
+		resourceRequest := MakeBackpackRequest( character, use_on );
+	endif
+
+	TryToMakeItem( character , resourceRequest , item_to_make , sound );
 
 endprogram
 
@@ -336,19 +346,19 @@ function _Play_Sound( who , sfx )
 endfunction
 
 
-function MakeAndProcessMenu( who , resource , id )
+function MakeAndProcessMenu( who , resourceRequest , id )
 
 	
 
-	resource_diff := tinker_cfg[resource.objtype].Difficulty;
+	resource_diff := tinker_cfg[resourceRequest.objtype].Difficulty;
 	var skill := GetEffectiveSkill( who , SKILLID_TINKERING );
 	if( skill < resource_diff )
 		SendSysmessage( who, "You aren't skilled enough to make anything with this yet." );
 		return;
 	endif
 
-	resource_name := tinker_cfg[resource.objtype].Name;
-	resource_qual := tinker_cfg[resource.objtype].Quality;
+	resource_name := tinker_cfg[resourceRequest.objtype].Name;
+	resource_qual := tinker_cfg[resourceRequest.objtype].Quality;
 
 	var elemkeys := GetConfigStringKeys( tinker_cfg );
 	var can_make;
@@ -410,7 +420,7 @@ function MakeAndProcessMenu( who , resource , id )
 
 	foreach key in elemkeys
 		if( tinker_cfg[key].Type == choice )
-			if( CanMake( who , key , resource ) )
+			if( CanMake( who , key , resourceRequest ) )
 				AddMenuItem( menu , Cint(key) , tinker_cfg[key].Name );
 				can_make := 1;
 			endif
@@ -427,7 +437,7 @@ function MakeAndProcessMenu( who , resource , id )
 endfunction
 
 
-function CanMake( who , key , resource )
+function CanMake( who , key , resourceRequest )
 
 	var diff := tinker_cfg[key].Skill + Cint( resource_diff / DIVIDER );
 	if( diff < 1 )
@@ -437,7 +447,11 @@ function CanMake( who , key , resource )
 	endif
 
 	if( GetEffectiveSkill( who , SKILLID_TINKERING ) >= ( diff + APPEAR_AT ) )
-		if( resource.amount >= tinker_cfg[key].Material )
+		var material := tinker_cfg[key].Material;
+		if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
+			material := CInt(Ceil(material/2));
+		endif
+		if( GetAvailableResource(who, resourceRequest).total >= material )
 			return 1;
 		endif
 	endif
@@ -448,7 +462,7 @@ function CanMake( who , key , resource )
 endfunction
 
 
-function TryToMakeItem( character , resource , item , sfx )
+function TryToMakeItem( character , resourceRequest , item , sfx )
 
 	var material;
 	var itemname;
@@ -494,8 +508,10 @@ function TryToMakeItem( character , resource , item , sfx )
 
 
 	
+	LeaseResource( character, resourceRequest, material );
+
 	AutoLoop_init( character );
-	while( AutoLoop_more() && resource.amount >= material && NOT character.dead)
+	while( AutoLoop_more() && GetAvailableResource(character, resourceRequest).total >= material && NOT character.dead)
 
 		sendDiff( character , skill );
 
@@ -508,17 +524,17 @@ function TryToMakeItem( character , resource , item , sfx )
 			SendSysmessage( character , "Select a gem for this item." );
 			var thegem := Target( character , TGTOPT_CHECK_LOS );
 			if( !thegem )
-				return;
+				break;
 			endif
 
 			if( (thegem.objtype > 0xf30) or (thegem.objtype < 0xf0f) )
 				SendSysmessage( character , "That is not a gem!" );
-				return;
+				break;
 			endif
 
 			if( !Accessible( character , thegem ) )
 				SendSysmessage( character , "You can't reach that!" );
-				return;
+				break;
 			endif
 
 			var item_cfg := ReadConfigFile( ":*:itemdesc" );
@@ -531,7 +547,7 @@ function TryToMakeItem( character , resource , item , sfx )
 		if( CheckSkill( character , SKILLID_TINKERING , skill , points ) )
 
 			var theitem;
-			var cprops := GetConfigStringArray( tinker_cfg[resource.objtype], "CProp" );
+			var cprops := GetConfigStringArray( tinker_cfg[resourceRequest.objtype], "CProp" );
 			//var randomchance := Random(150);
 			var randomchance := Random(10);
 			Print("Random Chance Roll: " + randomchance + " while Excep Chance is: " + excep_ch);
@@ -542,7 +558,7 @@ function TryToMakeItem( character , resource , item , sfx )
 				if( give_deed )
 					Print("Creating exceptional deed item: ");
 					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, resource, 1, character, SKILLID_TINKERING, deedname);
+					ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 1, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
 					itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem, itemname );
@@ -551,7 +567,7 @@ function TryToMakeItem( character , resource , item , sfx )
 					//Non Deed Item
 					Print("Creating exceptional Non Deed Item");
 					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, resource, 1, character, SKILLID_TINKERING);
+					ApplyMaterialProperties(product_desc, resourceRequest, 1, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );
 				endif
 
@@ -568,7 +584,7 @@ function TryToMakeItem( character , resource , item , sfx )
 				if( give_deed )
 					Print("Creating normal deed item: " + give_deed );
 					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, resource, 0, character, SKILLID_TINKERING, deedname);
+					ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 0, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
 					//itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem, itemname );
@@ -577,7 +593,7 @@ function TryToMakeItem( character , resource , item , sfx )
 					//Non Deed Item
 					Print("Creating Non Deed Normal Item");
 					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, resource, 0, character, SKILLID_TINKERING);
+					ApplyMaterialProperties(product_desc, resourceRequest, 0, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );
 					//itemname := GetObjProperty( theitem , "BaseName" );
 				endif
@@ -666,8 +682,8 @@ function TryToMakeItem( character , resource , item , sfx )
 				// 			SendSysmessage( character , "You create the item and place it in your pack." );
 				// 		endif
 
-			if( resource.objtype != UOBJ_GLASS and resource.objtype != UOBJ_CLAY )
-				if( resource.objtype == UOBJ_GOLD_INGOT )
+			if( resourceRequest.objtype != UOBJ_GLASS and resourceRequest.objtype != UOBJ_CLAY )
+				if( resourceRequest.objtype == UOBJ_GOLD_INGOT )
 					theitem.color := GOLD_COLOR;
 				endif
 			endif
@@ -693,16 +709,15 @@ function TryToMakeItem( character , resource , item , sfx )
 				endif
 			endif
 			//SetObjProperty( theitem , "CraftedWith", resource.objtype );
-			SubtractAmount( resource, material );
+			ConsumeResource( character, resourceRequest, material );
 			//SetObjProperty( theitem, "BaseName", itemname );
 			//SetName( theitem, itemname );
 			//IncRevision(theitem);
 			//else
 			if( !theitem )
-				SubtractAmount( resource, material );
-				AutoLoop_finish();
+				ConsumeResource( character, resourceRequest, material );
 				SendSysmessage( character, "Your backpack is full." );
-				return;
+				break;
 			endif
 			
 			// theitem.hp := theitem.maxhp;
@@ -746,11 +761,16 @@ function TryToMakeItem( character , resource , item , sfx )
 				destroy	:= 1;
 			endif
 			
-			SubtractAmount( resource , destroy );
-			SendSysmessage( character , "You destroyed " + destroy + " " + GetRessourceName( resource ) + "." );
+			ConsumeResource( character , resourceRequest , destroy );
+			SendSysmessage( character , "You destroyed some resources." );
+		endif
+
+		if( !ExtendResourceLease(resourceRequest, character, material) )
+			break;
 		endif
 
 	endwhile
+	ReleaseResourceLease(resourceRequest);
 	AutoLoop_finish();
 
 endfunction

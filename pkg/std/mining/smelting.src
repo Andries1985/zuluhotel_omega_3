@@ -18,6 +18,7 @@ include "include/client";
 include "include/objtype";
 include "include/attributes";
 include "include/difficulty";
+include "include/itemutil";
 
 program smelt_that_ore ( character , ore )
 
