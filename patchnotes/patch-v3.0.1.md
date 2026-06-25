@@ -6,9 +6,21 @@
 
 ## What Changed
 
-Patch 3.0.1 is a focused stability update for resource-gathering and crafting skill flows. It resolves null-resource edge cases that could interrupt normal actions and cause inconsistent skill gain behavior.
+Patch 3.0.1 introduces the new static housing system and includes follow-up stability fixes for resource-gathering and crafting flows.
 
-Players should notice fewer interrupted actions while gathering or crafting and more reliable skill progression in affected systems.
+Players should notice improved static house interaction options, updated housing control behavior, and fewer interrupted actions in affected crafting/resource systems.
+
+## Static Housing System
+
+- Added a dedicated static housing package with new static sign/control flows.
+- Added static housing support commands for staff deed management and player decoration.
+- Added static-house secure container, lock/unlock, transfer deed, and ban tile handling.
+- Added static housing configuration and layout support for owner, co-owner, and friend interaction paths.
+
+## Housing Integration
+
+- Updated existing housing command/sign wiring to align with static housing support paths.
+- Included supporting settings alignments for related house/door integration points.
 
 ## Resource and Skill-Gain Stability
 
@@ -28,6 +40,8 @@ Players should notice fewer interrupted actions while gathering or crafting and 
 
 If you only want the short version, this patch gives you:
 
+- New static housing system support with updated sign/control and decoration workflows.
+- Better static house interaction behavior for ownership/permissions and secure features.
 - Better reliability for camping, smelting, and cartography actions.
 - Fewer null-resource failures during gameplay.
 - More consistent skill-gain behavior in affected crafting/resource flows.
