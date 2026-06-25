@@ -18,7 +18,7 @@ use cfgfile;
  * HE_GetSettingsCfgFile(engine_name)
  *
  * Purpose
- * Reads in :staticHousing:configs/settings.cfg
+ * Reads in :multistatichousing:configs/settings.cfg
  *
  * Parameters
  *
