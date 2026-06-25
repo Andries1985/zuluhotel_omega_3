@@ -8,6 +8,28 @@ include "include/difficulty";
 
 const POINTS_MULTIPLIER := 15;
 
+function SpecialMapMaterialCost( who )
+	var material := 10;
+	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
+		material := Ceil(material/2);
+	endif
+	return material;
+endfunction
+
+function ValidateBlankMap( who, blank )
+	if( !who or !who.backpack )
+		return 0;
+	elseif( !blank or blank.objtype <> 0x6001 )
+		SendSysmessage( who , "You have no blank maps" );
+		return 0;
+	elseif( !IsInContainer( who.backpack, blank ) )
+		SendSysMessage( who, "The blank map must be in your backpack to use it." );
+		return 0;
+	endif
+
+	return 1;
+endfunction
+
 program go_go_gadget_map( who, blank )
 
 	if (blank.objtype<>0x6001)
@@ -19,7 +41,9 @@ program go_go_gadget_map( who, blank )
 	endforeach
 	endif
 
-	if (blank.objtype<>0x6001) SendSysmessage( who , "You have no blank maps" ); return; endif
+	if( !ValidateBlankMap( who, blank ) )
+		return;
+	endif
 	
 	var nextmsg :=CInt(GetObjProperty(who, "nextMap")), secclock:=ReadGameClock();
 	if ( secclock < nextmsg)
@@ -73,6 +97,10 @@ program go_go_gadget_map( who, blank )
 			break;
 		
 		4:	difficulty := 110;
+			if(blank.amount < SpecialMapMaterialCost(who))
+				SendSysMessage(who, "You don't have enough materials to do that.");
+				return;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				makeNewmap( who , blank, 1 );
@@ -87,6 +115,10 @@ program go_go_gadget_map( who, blank )
 			break;
 		
 		5:	difficulty := 110;
+			if(blank.amount < SpecialMapMaterialCost(who))
+				SendSysMessage(who, "You don't have enough materials to do that.");
+				return;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				makeNewmap( who , blank, 2 );
@@ -131,11 +163,7 @@ function makemap( who, mapdef , blank )
 endfunction
 
 function makeNewmap( who, blank, choice )
-	var material := 10;
-	//Require half resources during Crafting PH
-	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
-		material := Ceil(material/2);
-	endif
+	var material := SpecialMapMaterialCost(who);
 	if(blank.amount < material)
 		sendsysmessage(who, "You don't have enough materials to do that.");
 		return;

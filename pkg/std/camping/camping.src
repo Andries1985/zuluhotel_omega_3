@@ -37,6 +37,9 @@ program UseWood( character, wood )
     if (!Accessible( character, wood))
         PrintTextAbovePrivate( wood, "You can't reach that!", character );
         return;
+    elseif( wood.container and (!character.backpack or !IsInContainer( character.backpack, wood )) )
+        SendSysMessage( character, "The kindling must be in your backpack or on the ground." );
+        return;
     endif
 
     /*if (wood.container)
