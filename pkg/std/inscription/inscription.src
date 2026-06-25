@@ -25,6 +25,7 @@ include "include/string";
 include "include/random";
 include "include/autoloop";
 include "include/difficulty";
+include "include/resourcemanager";
 
 
 const SOUND_EFFECT_INSCRIPTION 	:= 0x50;
@@ -1020,7 +1021,7 @@ function CreateRunebook( character , item )
 	var manacost	    := Cint( elem.Manacost );
 	var points	    := idifficulty * POINT_MULTIPLIER;
 	var mage	    := GetObjProperty( character, CLASSEID_MAGE );
-	var the_component := { item };
+	var requests := array{};
 	
 	if( mage )
 		manacost     := Cint( manacost / ClasseBonus( character , CLASSEID_MAGE ) );
@@ -1028,25 +1029,39 @@ function CreateRunebook( character , item )
 	endif
 	
 	foreach thing in needed
-		var found := FindRootItemInContainer( character.backpack , thing );
-		if( !found )
-			SendSysMessage( character , "You don't have all needed components." );
-			return;
-		elseif( thing.objtype == UOBJ_BLANK_SCROLL and found.amount < needed_blank )
-			SendSysMessage( character , "You don't have enough blank scrolls." );
-			return;
-		elseif( !ReserveItem( found ) )
-			return;
-		endif
-		the_component.append( found );
-	endforeach
-	
-	foreach object in the_component
 		var amount := 1;
-		if( object.objtype == UOBJ_BLANK_SCROLL )
+		if( CInt(thing) == UOBJ_BLANK_SCROLL )
 			amount := needed_blank;
 		endif
-		SubtractAmount( object , amount );
+
+		var req := struct{
+			objtype              := CInt(thing),
+			key                  := 0,
+			color                := 0,
+			quality              := 0,
+			preferredSourceOrder := array{ BACKPACK, OMEGA_CACHE },
+			dataFileHandle       := 0,
+			houseSerial          := 0,
+			leaseKey             := 0
+		};
+
+		if( GetAvailableResource(character, req).total < amount )
+			if( CInt(thing) == UOBJ_BLANK_SCROLL )
+				SendSysMessage( character , "You don't have enough blank scrolls." );
+			else
+				SendSysMessage( character , "You don't have all needed components." );
+			endif
+			return;
+		endif
+
+		requests.append( struct{ req := req, amount := amount } );
+	endforeach
+
+	foreach consume_entry in requests
+		if( !ConsumeResource( character , consume_entry.req , consume_entry.amount ) )
+			SendSysMessage( character , "You don't have all needed components." );
+			return;
+		endif
 	endforeach
 	
 	if( GetMana(character) < manacost )
@@ -1135,6 +1150,9 @@ function CreateScroll( character , skill , points , blankscroll , scrollobjtype 
 	if( GetObjProperty( character , CLASSEID_MAGE ) )
 		manacost   := Cint( manacost / ClasseBonus( character , CLASSEID_MAGE ) );
 	endif
+
+	var blankRequest := MakeBackpackRequest( character, blankscroll );
+	LeaseResource( character, blankRequest, 1 );
 	
 	if( magery < difficulty - 20 )
 		SendSysMessage( character , "You aren't skilled enough in the way of magic to make this scroll." );
@@ -1147,8 +1165,9 @@ function CreateScroll( character , skill , points , blankscroll , scrollobjtype 
       while (Autoloop_more ()) 		
 
 	/*** First check if there are at least one scroll. Maybe previous iterations had burned out all the scrolls ***/
-	if( GetAmount ( blankscroll ) == 0 )
+	if( GetAvailableResource(character, blankRequest).total < 1 )
 		SendSysMessage( character , "You don't have any more blank scrolls." );
+		ReleaseResourceLease(blankRequest);
 		Autoloop_finish (); 
 		return;
 	endif	
@@ -1156,6 +1175,7 @@ function CreateScroll( character , skill , points , blankscroll , scrollobjtype 
 	/*** Second check if there's enough mana left ***/
 	if( GetMana(character) < manacost )
 		SendSysMessage( character , "You don't have enough mana." );
+		ReleaseResourceLease(blankRequest);
 		Autoloop_finish ();
 		return;
 	else
@@ -1165,17 +1185,21 @@ function CreateScroll( character , skill , points , blankscroll , scrollobjtype 
 	/*** If inscription failed, autolooping can continue ***/
 	if( !CheckSkill( character , SKILLID_INSCRIPTION , skill , points ) )
 		SendSysmessage( character , "You fail and destroy the scroll" );
-		SubtractAmount( blankscroll , 1 );		
+		ConsumeResource( character, blankRequest, 1 );		
 	else
 	/*** That's ok ***/		
 		CreateItemInBackpack( character , scrollobjtype );
 		PlaySoundEffect( character , SOUND_EFFECT_INSCRIPTION ); 
 		SendSysmessage( character , "You create the scroll and put it in your backpack" );
-		SubtractAmount( blankscroll , 1 );
+		ConsumeResource( character, blankRequest, 1 );
+	endif
+
+	if( !ExtendResourceLease(blankRequest, character, 1) )
+		break;
 	endif
 
    endwhile
-	
+	ReleaseResourceLease(blankRequest);
    Autoloop_finish();
 
 endfunction

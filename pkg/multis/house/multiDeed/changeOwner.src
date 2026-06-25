@@ -4,6 +4,7 @@ use cliloc;
 include ":containers:storageAreas";
 include ":keys:key";
 include ":mdgumps:gumpPrompt";
+include "include/omegacache_utils";
 include ":house:multihouse_settings";
 
 program change_owner(who, deed)
@@ -25,10 +26,17 @@ program change_owner(who, deed)
 	var pack_key := CreateItemInContainer(who.backpack, "goldkey");
 	ReKey(sign, pack_key, new_lock_id);
 	SetName(pack_key, "House Key");
+	var home := SystemFindObjectBySerial(GetObjProperty(sign, "houseserial"));
 	var MaxLockdowns := GetObjProperty(sign, "MaxLockdowns");
 	var MaxSecures := GetObjProperty(sign, "MaxSecures");
+	var MaxOmegaCache := GetObjProperty(sign, "maxnumomegacache");
+	if(MaxOmegaCache == error)
+		MaxOmegaCache := GetMaxOmegaCacheForHouse(CInt(GetObjType(home)));
+	endif
 	SetObjProperty(sign, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(sign, "RemainingSecures", MaxSecures);
+	SetObjProperty(sign, "numomegacache", MaxOmegaCache);
+	SetObjProperty(sign, "maxnumomegacache", MaxOmegaCache);
 	SetObjProperty(sign,"decay",ReadGameClock() + get_abandon_time()); // Refreshed by configured abandon timeout.
 	SetObjProperty(sign, "owneracct", who.acctname);
 	SetObjProperty(sign, "ownerserial", who.serial);
@@ -40,9 +48,10 @@ program change_owner(who, deed)
 	// End sign CProps
 
 	// Begin multi CProps
-	var home := SystemFindObjectBySerial(GetObjProperty(sign, "houseserial"));
 	SetObjProperty(home, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(home, "RemainingSecures", MaxSecures);
+	SetObjProperty(home, "numomegacache", MaxOmegaCache);
+	SetObjProperty(home, "maxnumomegacache", MaxOmegaCache);
 	SetObjProperty(home, "owneracct", who.acctname);
 	SetObjProperty(home, "ownerserial", who.serial);
 	EraseObjProperty(home, "Public");

@@ -5,6 +5,7 @@ include "include/objtype";
 include "include/client";
 include "include/classes";
 include "include/difficulty";
+include "include/resourcemanager";
 
 const POINTS_MULTIPLIER := 15;
 
@@ -52,6 +53,7 @@ program go_go_gadget_map( who, blank )
 	endif
 
 	if(!ReserveItem(blank)) return; endif
+	var blankRequest := MakeBackpackRequest(who, blank);
 
 	var choice := SelectMenuItem2( who , "Cartography");
 
@@ -67,10 +69,10 @@ program go_go_gadget_map( who, blank )
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER)) )
 				props := array( "var" , who.x - 265 , who.y - 260 , who.x + 265 , who.y + 260 , 200 , 200 );
-				makemap( who , props , blank );
+				makemap( who , props , blankRequest );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeResource( who, blankRequest, 1 );
 			endif
 			break;
 		
@@ -78,10 +80,10 @@ program go_go_gadget_map( who, blank )
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				props := array( "regional" , who.x - 850 , who.y - 800 , who.x + 850 , who.y + 800 , 400 , 400 );
-				makemap( who , props , blank );
+				makemap( who , props , blankRequest );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeResource( who, blankRequest, 1 );
 			endif
 			break;
 		
@@ -89,45 +91,45 @@ program go_go_gadget_map( who, blank )
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 	   			props := array( "world" , 0 , 0 , 5119 , 4095 , 500 , 400 );
-				makemap( who , props , blank );
+				makemap( who , props , blankRequest );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeResource( who, blankRequest, 1 );
 			endif
 			break;
 		
 		4:	difficulty := 110;
-			if(blank.amount < SpecialMapMaterialCost(who))
+			if(GetAvailableResource(who, blankRequest).total < SpecialMapMaterialCost(who))
 				SendSysMessage(who, "You don't have enough materials to do that.");
 				return;
 			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
-				makeNewmap( who , blank, 1 );
+				makeNewmap( who , blankRequest, 1 );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
 				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
-					SubtractAmount( blank, 5 );
+					ConsumeResource( who, blankRequest, 5 );
 				else
-					SubtractAmount( blank, 2 );
+					ConsumeResource( who, blankRequest, 2 );
 				endif
 			endif
 			break;
 		
 		5:	difficulty := 110;
-			if(blank.amount < SpecialMapMaterialCost(who))
+			if(GetAvailableResource(who, blankRequest).total < SpecialMapMaterialCost(who))
 				SendSysMessage(who, "You don't have enough materials to do that.");
 				return;
 			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
-				makeNewmap( who , blank, 2 );
+				makeNewmap( who , blankRequest, 2 );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
 				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
-					SubtractAmount( blank, 5 );
+					ConsumeResource( who, blankRequest, 5 );
 				else
-					SubtractAmount( blank, 2 );
+					ConsumeResource( who, blankRequest, 2 );
 				endif
 			endif
 			break;
@@ -138,7 +140,7 @@ program go_go_gadget_map( who, blank )
 	SetObjProperty(who, "nextMap", ReadGameClock() + 3);
 endprogram
 
-function makemap( who, mapdef , blank )
+function makemap( who, mapdef , blankRequest )
 	
 	// Toadstool 19/04/2012
 	// Alteration to allow world maps to stack
@@ -159,16 +161,16 @@ function makemap( who, mapdef , blank )
 	map.gumpwidth := mapdef[6];
 	map.gumpheight := mapdef[7];
 	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
-	SubtractAmount( blank, 1 );
+	ConsumeResource( who, blankRequest, 1 );
 endfunction
 
-function makeNewmap( who, blank, choice )
+function makeNewmap( who, blankRequest, choice )
 	var material := SpecialMapMaterialCost(who);
-	if(blank.amount < material)
+	if(GetAvailableResource(who, blankRequest).total < material)
 		sendsysmessage(who, "You don't have enough materials to do that.");
 		return;
 	endif
-	var remove := SubtractAmount( blank, material );
+	var remove := ConsumeResource( who, blankRequest, material );
 	if(!remove)
 		sendsysmessage(who, "Cancelled.");
 		return;
