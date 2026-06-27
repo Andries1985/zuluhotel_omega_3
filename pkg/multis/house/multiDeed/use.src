@@ -9,6 +9,7 @@ include ":containers:storageAreas";
 include "include/objtype";
 include "include/findcity";
 include "include/canAccess";
+include "include/omegacache_utils";
 include ":house:footagearrays";
 include ":house:multihouse_settings";
 
@@ -110,6 +111,10 @@ function Buildhouse(who, deed)
 
   var lock := GetObjProperty(deed, "numlockdowns");
   var sec  := GetObjProperty(deed, "numsecure");
+  var cache_slots := GetObjProperty(deed, "numomegacache");
+  if(cache_slots == error)
+    cache_slots := GetMaxOmegaCacheForHouse(housetype);
+  endif
   
   if(DestroyItem(deed))
     var LockID := AllocateLockID();
@@ -117,11 +122,15 @@ function Buildhouse(who, deed)
     SetObjProperty(created.builtdeed,		"builtserial",  created.house.serial);
     SetObjProperty(created.builtdeed,		"RemainingLockdowns", lock);
     SetObjProperty(created.builtdeed,		"RemainingSecures",    sec);
+  	SetObjProperty(created.builtdeed,		"numomegacache", cache_slots);
+  	SetObjProperty(created.builtdeed,		"maxnumomegacache", cache_slots);
 	///////////////////////////////
     SetObjProperty(created.packkey,			"LockID",       LockID);
     SetObjProperty(created.bankkey,			"LockID",       LockID);
     SetObjProperty(created.house,			"RemainingLockdowns", lock);
     SetObjProperty(created.house,			"RemainingSecures",    sec);
+  	SetObjProperty(created.house,			"numomegacache", cache_slots);
+  	SetObjProperty(created.house,			"maxnumomegacache", cache_slots);
     SetObjProperty(created.house,			"footage",      created.footage);
     foreach item in(created.house.components)
 		if(item.IsA(POLCLASS_DOOR))
@@ -136,6 +145,8 @@ function Buildhouse(who, deed)
 			SetObjProperty(item,			"MaxLockdowns", lock);
 			SetObjProperty(item,			"RemainingSecures", sec);
 			SetObjProperty(item,			"MaxSecures", sec);
+      SetObjProperty(item,			"numomegacache", cache_slots);
+      SetObjProperty(item,			"maxnumomegacache", cache_slots);
 			SetObjProperty(item,			"footage", created.footage);
 			SetObjProperty(item,			"ownerserial", who.serial);
 			SetObjProperty(item,			"owneracct", who.acctname);
@@ -197,8 +208,14 @@ function CreatehouseKeysAndBuiltDeed2(character, housetype, where, deed)
   map := where.realm;
   SetName(builtdeed, deed.desc + " at " + x + ", " + y + ", " + z + "(built)");
   var ftage := FindBoxArray(housetype, house);
+  var cache_slots := GetObjProperty(deed, "numomegacache");
+  if(cache_slots == error)
+    cache_slots := GetMaxOmegaCacheForHouse(housetype);
+  endif
   SetObjProperty(house,"RemainingLockdowns",GetObjProperty(deed,"RemainingLockdowns"));
   SetObjProperty(house,"RemainingSecures",GetObjProperty(deed,"RemainingSecures"));
+  SetObjProperty(house,"numomegacache", cache_slots);
+  SetObjProperty(house,"maxnumomegacache", cache_slots);
   SetObjProperty(house,"ownerserial",character.serial);
   SetObjProperty(house,"owneracct",character.acctname);
   SetObjProperty(house,"builtdeed",builtdeed.serial);

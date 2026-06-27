@@ -5,7 +5,7 @@ use uo;
 use os;
 
 include "include/housing";
-//include ":staticHousing:settings";
+//include ":multistatichousing:settings";
 include ":multicommands:multicommands";
 include ":house:multihouse_settings";
 

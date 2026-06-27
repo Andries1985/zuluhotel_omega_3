@@ -8,6 +8,7 @@ include ":containers:storageAreas";
 include ":houseExtras:settings";
 include ":house:multihouse_settings";
 include "include/housing";
+include "include/omegacache_utils";
 include ":mdgumps:old-gumps";
 
 const UOBJECT_DOORS_START := 0x0675;
@@ -773,6 +774,10 @@ endfunction
 
 function demolish(house, sign, who, bank_region)
 	sign := sign;
+	if(!IsOmegaCacheEmpty(house.serial))
+		SendSysMessage(who, "You cannot redeed this house while Omega Cache contents are stored.", color := 33);
+		return;
+	endif
 	var lists := GetObjProperty(sign, "footage");
 	var itemlist := {};
 	var holder, chk := 0;
@@ -862,7 +867,10 @@ function demolish(house, sign, who, bank_region)
 			DestroyItem(SystemFindObjectBySerial(thing));
 		endforeach
 		foreach thing in itemlist
-			if (thing.objtype == 0x15000) // House Teleporter
+			if(CInt(thing.objtype) == OMEGACACHE_OBJTYPE)
+				EraseObjProperty(thing, "houseserial");
+				DestroyItem(thing);
+			elseif (thing.objtype == 0x15000) // House Teleporter
 					//Print("Demolishing a house teleporter.");
 					DemolishTeleporter(thing, who);
 			endif
@@ -893,6 +901,7 @@ function demolish(house, sign, who, bank_region)
 				endif
 			endif
 		endforeach
+		CloseOmegaCacheStore(house.serial);
 		DestroyMulti(house);
 	elseif(chk == 2)
 		SendSysMessage(who, "Could not find the built deed, please page a GM.", color := 33);
@@ -1211,6 +1220,7 @@ endfunction
 
 function HouseManagement(sign, house, who)
 	var ok := 1;
+	EnsureOmegaCacheSlots(house, sign);
 	while(ok)
 		GFInitGump();
 		GFNoDispose();
@@ -1246,12 +1256,93 @@ function HouseManagement(sign, house, who)
 			6: RevealLostItemsFromMenu(who, house);
 			7: PlaceHouseTeleporterPair(sign, who);
 			8: RemoveHouseTeleporter(sign, who);
-			9: SendSysMessage(who, "Remove Cache Container is not available in this shard build.", color := 33);
+			9: HouseFunctionRemoveOmegaCache(sign, house, who);
 			13: ok := 0;
 			default: ok := 0;
 		endcase
 		SleepMs(150);
 	endwhile
+endfunction
+
+function EnsureOmegaCacheSlots(house, sign := 0)
+	var max_slots := GetObjProperty(house, "maxnumomegacache");
+	if(max_slots == error)
+		max_slots := GetMaxOmegaCacheForHouse(CInt(GetObjType(house)));
+		SetObjProperty(house, "maxnumomegacache", max_slots);
+	endif
+
+	var remaining := GetObjProperty(house, "numomegacache");
+	if(remaining == error)
+		remaining := max_slots;
+		SetObjProperty(house, "numomegacache", remaining);
+	endif
+
+	if(sign)
+		if(GetObjProperty(sign, "maxnumomegacache") == error)
+			SetObjProperty(sign, "maxnumomegacache", max_slots);
+		endif
+		if(GetObjProperty(sign, "numomegacache") == error)
+			SetObjProperty(sign, "numomegacache", remaining);
+		endif
+	endif
+
+	return array(remaining, max_slots);
+endfunction
+
+function HouseFunctionRemoveOmegaCache(sign, house, who)
+	if(!sign.IsFullHouseManager(who))
+		SendSysMessage(who, "Only owners and co-owners can remove Omega Cache containers.", color := 33);
+		return;
+	endif
+
+	var slots := EnsureOmegaCacheSlots(house, sign);
+	var remaining := CInt(slots[1]);
+	var max_slots := CInt(slots[2]);
+
+	SendSysMessage(who, "Choose the Omega Cache container you wish to remove.", color := 88);
+	var cache := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!cache)
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	if(CInt(cache.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	if(CInt(GetObjProperty(cache, "houseserial")) != CInt(house.serial))
+		SendSysMessageCL(who, 1005525, color := 33);
+		return;
+	endif
+
+	if(!IsOmegaCacheEmpty(house.serial))
+		SendSysMessage(who, "This house Omega Cache still contains stored items. Withdraw them first.", color := 33);
+		return;
+	endif
+
+	if(!confirmationSizable(who, "Remove this Omega Cache container?"))
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	// Avoid destroy script re-credit on manual house-management remove.
+	EraseObjProperty(cache, "houseserial");
+	if(!DestroyItem(cache))
+		SendSysMessage(who, "Could not remove that Omega Cache container.", color := 33);
+		return;
+	endif
+
+	remaining := remaining + 1;
+	if(remaining > max_slots)
+		remaining := max_slots;
+	endif
+	SetObjProperty(house, "numomegacache", remaining);
+	SetObjProperty(sign, "numomegacache", remaining);
+	SetObjProperty(house, "maxnumomegacache", max_slots);
+	SetObjProperty(sign, "maxnumomegacache", max_slots);
+
+	SendSysMessage(who, "Omega Cache container removed. One cache slot was refunded.", color := 66);
 endfunction
 
 function OpenManageHouseFriendsGump(sign, who)

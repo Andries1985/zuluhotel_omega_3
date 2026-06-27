@@ -18,6 +18,7 @@ include "include/client";
 include "include/objtype";
 include "include/attributes";
 include "include/difficulty";
+include "include/itemutil";
 
 program smelt_that_ore ( character , ore )
 
@@ -42,6 +43,9 @@ function SmeltOre( character , ore , ingot , difficulty )
 
 	if( !Accessible( character, ore ) )
 		SendSysmessage( character, "You can't reach that." );
+		return;
+	elseif( !character.backpack or !IsInContainer( character.backpack, ore ) )
+		SendSysMessage( character, "The ore must be in your backpack to smelt." );
 		return;
 	endif
 	

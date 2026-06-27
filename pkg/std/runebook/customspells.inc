@@ -24,7 +24,7 @@ include "include/areas";
 include "include/client";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":statichousing:recallgatehelp";
+//include ":multistatichousing:recallgatehelp";
 
 const RECALL_DELAY_MS	:= 5000;
 const GATE_DELAY_MS	:= 8000;
