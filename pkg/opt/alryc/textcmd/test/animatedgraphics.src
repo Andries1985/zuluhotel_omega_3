@@ -1,10 +1,11 @@
-// Synopsis: Spawn a configured group of animated graphics in a nearby line/grid for visual testing
+// Synopsis: Spawn configured animated graphics groups at a target location from selected group down to 1
 use uo;
 use cfgfile;
 
 const DEFAULT_PER_ROW := 50;
 const MAX_PER_ROW := 50;
 const MAX_SPAWN := 500;
+const GROUP_Y_STEP := 4;
 
 program animatedgraphics(who, text)
     var cfg := ReadConfigFile(":alryc:animatedgraphics");
@@ -38,67 +39,88 @@ program animatedgraphics(who, text)
         return;
     endif
 
-    var elem := FindConfigElem(cfg, group_id);
-    if (!elem)
-        SendSysMessage(who, "Group " + group_id + " was not found in :alryc:animatedgraphics.");
+    var loc := TargetCoordinates(who);
+    if (!loc)
+        SendSysMessage(who, "Targeting canceled.");
         return;
     endif
 
-    var tiles := GetConfigStringArray(elem, "Tile");
-    if (!tiles OR len(tiles) < 1)
-        SendSysMessage(who, "Group " + group_id + " has no Tile entries.");
-        return;
-    endif
-
-    if (len(tiles) > MAX_SPAWN)
-        SendSysMessage(who, "Group is too large (" + len(tiles) + "). Max supported is " + MAX_SPAWN + ".");
-        return;
-    endif
-
-    var start_x := who.x + 1;
-    var start_y := who.y + 1;
-    var z := who.z;
     var created := 0;
+    var groups_spawned := 0;
+    var groups_missing := 0;
+    var groups_empty := 0;
+    var groups_too_large := 0;
+    var group_index := 0;
+    var g;
 
-    var i;
-    for (i := 1; i <= len(tiles); i := i + 1)
-        var tile_id := tiles[i];
-        var objtype := CInt(tile_id);
-        if (objtype <= 0)
+    for (g := group_id; g >= 1; g := g - 1)
+        var elem := FindConfigElem(cfg, g);
+        if (!elem)
+            groups_missing := groups_missing + 1;
+            group_index := group_index + 1;
             continue;
         endif
 
-        var col := (i - 1) % per_row;
-        var row := CInt((i - 1) / per_row);
-        var x := start_x + col;
-        var y := start_y + row;
-
-        var item := CreateItemAtLocation(x, y, z, objtype, 1, who.realm);
-        if (item)
-            created := created + 1;
-            item.movable := 0;
-            SetObjProperty(item, "StaffCreatedSerial", who.serial);
-            SetObjProperty(item, "StaffCreatedName", who.name);
-
-            var tile_elem := 0;
-            var tile_desc := "";
-            if (tiles_cfg)
-                tile_elem := FindConfigElem(tiles_cfg, objtype);
-                if (!tile_elem)
-                    tile_elem := FindConfigElem(tiles_cfg, tile_id);
-                endif
-                if (tile_elem)
-                    tile_desc := GetConfigString(tile_elem, "Desc");
-                endif
-            endif
-
-            if (tile_desc)
-                item.name := "Graphic ID: " + tile_id + " Desc:" + tile_desc;
-            else
-                item.name := "Graphic ID: " + tile_id;
-            endif
+        var tiles := GetConfigStringArray(elem, "Tile");
+        if (!tiles OR len(tiles) < 1)
+            groups_empty := groups_empty + 1;
+            group_index := group_index + 1;
+            continue;
         endif
+
+        if (len(tiles) > MAX_SPAWN)
+            groups_too_large := groups_too_large + 1;
+            group_index := group_index + 1;
+            continue;
+        endif
+
+        var start_x := loc.x;
+        var start_y := loc.y - (group_index * GROUP_Y_STEP);
+        var z := loc.z;
+        var i;
+        for (i := 1; i <= len(tiles); i := i + 1)
+            var tile_id := tiles[i];
+            var objtype := CInt(tile_id);
+            if (objtype <= 0)
+                continue;
+            endif
+
+            var col := (i - 1) % per_row;
+            var row := CInt((i - 1) / per_row);
+            var x := start_x + col;
+            var y := start_y + row;
+
+            var item := CreateItemAtLocation(x, y, z, objtype, 1, loc.realm);
+            if (item)
+                created := created + 1;
+                item.movable := 0;
+                SetObjProperty(item, "StaffCreatedSerial", who.serial);
+                SetObjProperty(item, "StaffCreatedName", who.name);
+
+                var tile_elem := 0;
+                var tile_desc := "";
+                if (tiles_cfg)
+                    tile_elem := FindConfigElem(tiles_cfg, objtype);
+                    if (!tile_elem)
+                        tile_elem := FindConfigElem(tiles_cfg, tile_id);
+                    endif
+                    if (tile_elem)
+                        tile_desc := GetConfigString(tile_elem, "Desc");
+                    endif
+                endif
+
+                if (tile_desc)
+                    item.name := "Graphic ID: " + tile_id + " Desc:" + tile_desc;
+                else
+                    item.name := "Graphic ID: " + tile_id;
+                endif
+            endif
+        endfor
+
+        groups_spawned := groups_spawned + 1;
+        group_index := group_index + 1;
     endfor
 
-    SendSysMessage(who, "Spawned " + created + " items from animated group " + group_id + ".");
+    SendSysMessage(who, "Spawned " + created + " items from groups " + group_id + " down to 1.");
+    SendSysMessage(who, "Groups spawned: " + groups_spawned + ", missing: " + groups_missing + ", empty: " + groups_empty + ", too large: " + groups_too_large + ".");
 endprogram
