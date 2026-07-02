@@ -1,0 +1,35 @@
+// Synopsis: Open a targeted player's account vault
+use uo;
+
+include ":staff:include/staff";
+include ":containers:storageAreas";
+
+program openvault( who )
+
+	var mobile := Target( who );
+	if( !mobile )
+		return;
+	endif
+
+	if( !mobile.isa(POLCLASS_MOBILE) )
+		SendSysMessage( who , "You must target a mobile." );
+		return;
+	endif
+
+	if( mobile.npctemplate )
+		SendSysMessage( who , "You can only use this on players." );
+		return;
+	endif
+
+	if( !mobile.acctname )
+		SendSysMessage( who, "That player does not have an account vault." );
+		return;
+	endif
+
+	var vault := CP_GetPlayerVaultContainerForMobile( mobile, CP_CREATE );
+	if( vault )
+		SendOpenSpecialContainer( who, vault );
+		LogCommand( who, GetProcess(GetPid()).name, mobile.name+"/"+mobile.serial+"/"+mobile.acctname );
+	endif
+
+endprogram

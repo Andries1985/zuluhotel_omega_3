@@ -819,25 +819,7 @@ function demolish(house, sign, who, bank_region)
 				LockIDs.append(id);
 			endif
 		endforeach
-		foreach thing in EnumerateItemsInContainer(who.backpack)
-			id := GetObjProperty(thing, "LockID");
-			if(id)
-				if(id in LockIDs)
-					DestroyItem(thing);
-				endif
-			endif
-		endforeach
-		var bankbox	:= CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
-		if(bankbox)
-		foreach thing in EnumerateItemsInContainer(bankbox)
-			id := GetObjProperty(thing, "LockID");
-			if(id)
-				if(id in LockIDs)
-					DestroyItem(thing);
-				endif
-			endif
-		endforeach
-		endif
+		KP_DestroyOwnedKeysForLockIDs( who, bank_region, LockIDs );
 		case(house.objtype)
 			0x16060: CreateItemInBackpack(who,0x16019,1); //smallstoneandplasterhouse
 			0x16061: CreateItemInBackpack(who,0x1601a,1); //smallstonehouse

@@ -10,6 +10,10 @@ program bankerbalancegump(params)
 	var silver_checks := params[5];
 	var copper_coins := params[6];
 	var copper_checks := params[7];
+	var storage_label := params[8];
+	if(!storage_label)
+		storage_label := "bank box";
+	endif
 
 	var bankBalance := GFCreateGump();
 
@@ -17,7 +21,7 @@ program bankerbalancegump(params)
 
 	// Background
 	GFResizePic(bankBalance, 154, 101, 9200, 357, 296);
-	GFHTMLArea(bankBalance, 176, 121, 316, 200, "<BASEFONT size=7>This is a summary of the currency in thy bank box " + who.name + ": </BASEFONT>");
+	GFHTMLArea(bankBalance, 176, 121, 316, 200, "<BASEFONT size=7>This is a summary of the currency in thy " + storage_label + " " + who.name + ": </BASEFONT>");
 	GFTextLine(bankBalance, 270, 180, 803, "Coins");
 	GFTextLine(bankBalance, 365, 180, 803, "Cheques");
 

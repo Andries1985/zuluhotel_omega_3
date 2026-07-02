@@ -1,0 +1,106 @@
+// Synopsis: Remove all members from a targeted town and clean member name suffixes
+
+use uo;
+use os;
+use datafile;
+
+include ":townstone:tstone";
+
+
+program textcmd_cleartownmembers(who)
+	SendSysMessage(who, "Select the town stone to clear.");
+	var stone := Target(who);
+	if(!stone)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	var town_id := CInt(GetObjProperty(stone, "town"));
+	if(!stone or stone.objtype != TOWNSTONE_OBJTYPE or !town_id)
+		SendSysMessage(who, "That target is not a valid town stone.");
+		return;
+	endif
+
+	var town_name := CStr(GetObjProperty(stone, "regionname"));
+	if(!town_name)
+		town_name := GetTownName(town_id);
+	endif
+	if(!town_name)
+		town_name := "Unknown Town";
+	endif
+
+	var citizens := GetObjProperty(stone, "citizen");
+	if(!citizens)
+		citizens := {};
+	endif
+
+	var scanned := 0;
+	var cleared := 0;
+	var renamed := 0;
+
+	foreach acct_name in ListAccounts()
+		var account := FindAccount(acct_name);
+		if(!account)
+			continue;
+		endif
+
+		var slot := 0;
+		while(slot <= 6)
+			var character := account.GetCharacter(slot);
+			if(character)
+				scanned := scanned + 1;
+				var char_town := CInt(GetObjProperty(character, "town"));
+				if(char_town == town_id or IsCitizenAccount(citizens, character.acctname))
+					EraseObjProperty(character, "town");
+					EraseObjProperty(character, "town_realm");
+					cleared := cleared + 1;
+
+					var cleaned := StripTownSuffix(character.name, town_name);
+					if(cleaned != character.name)
+						character.name := cleaned;
+						renamed := renamed + 1;
+					endif
+				endif
+			endif
+			slot := slot + 1;
+			SleepMS(1);
+		endwhile
+		SleepMS(1);
+	endforeach
+
+	// Destroy any vote runes still in the container.
+	foreach it in EnumerateItemsInContainer(stone)
+		if(it and it.objtype == VOTE_RUNE_OBJTYPE)
+			DestroyItem(it);
+		endif
+	endforeach
+
+	SetObjProperty(stone, "citizen", {});
+	SetObjProperty(stone, "population", 0);
+	SetObjProperty(stone, "candidates", {});
+	SetObjProperty(stone, "votes", 0);
+	SetObjProperty(stone, "votepercent", 0);
+	SetObjProperty(stone, "election_active", 0);
+	EraseObjProperty(stone, "mayor");
+	EraseObjProperty(stone, "mayorserial");
+	EraseObjProperty(stone, "poll_question");
+	EraseObjProperty(stone, "poll_result");
+	EraseObjProperty(stone, "timer");
+	TouchTownstoneRegionEntry(stone);
+
+	SendSysMessage(who, "Town reset complete for " + town_name + ". Members cleared: " + cleared + ", names fixed: " + renamed + ", characters scanned: " + scanned + ".");
+endprogram
+
+
+function IsCitizenAccount(citizens, account_name)
+	if(!citizens or !account_name)
+		return 0;
+	endif
+	var i;
+	for(i := 1; i <= citizens.size(); i := i + 1)
+		if(Lower(CStr(citizens[i])) == Lower(CStr(account_name)))
+			return 1;
+		endif
+	endfor
+	return 0;
+endfunction

@@ -1,0 +1,223 @@
+// Synopsis: Create a new town stone from any city region that has no active stone
+//
+// Lists every region flagged as a city (Type City or legacy City 1) that
+// does not already have a live townstone, from every realm, and places a
+// new townstone at the admin's feet for the selected region.
+
+use uo;
+use os;
+use cfgfile;
+use datafile;
+
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+include ":townstone:tstone";
+
+
+const BTN_PREV := 7001;
+const BTN_NEXT := 7002;
+const BTN_CANCEL := 7003;
+const BTN_PICK_BASE := 8000;
+const REGIONS_PER_PAGE := 10;
+
+
+program textcmd_createtownstone(who)
+	var options := GetAvailableCityRegions();
+	if(!options or !options.size())
+		SendSysMessage(who, "No city regions are available for townstone creation.");
+		return;
+	endif
+
+	var picked := PickRegionFromGump(who, options);
+	if(!picked)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	var region_name := picked.name;
+	var realm := picked.realm;
+
+	if(HasActiveTownstoneForRegion(region_name, realm))
+		SendSysMessage(who, "That region already has an active townstone.");
+		return;
+	endif
+
+	var town_id := RegisterTown(region_name, realm);
+	if(!town_id)
+		SendSysMessage(who, "Failed to register town in the global list.");
+		return;
+	endif
+
+	if(HasLiveTownstoneConflict(region_name, realm, town_id))
+		SendSysMessage(who, "That region already has an active townstone.");
+		return;
+	endif
+
+	var item := CreateItemAtLocation(who.x, who.y, who.z, TOWNSTONE_OBJTYPE, 1, who.realm);
+	if(!item)
+		SendSysMessage(who, "Failed to create townstone.");
+		return;
+	endif
+
+	item.name := item.name + " of " + region_name;
+	SetObjProperty(item, "town", town_id);
+	SetObjProperty(item, "regionname", region_name);
+	SetObjProperty(item, "realm", realm);
+	SetObjProperty(item, "election_active", 0);
+	TouchTownstoneRegionEntry(item);
+
+	SendSysMessage(who, "Created townstone for " + region_name + " [" + realm + "].");
+endprogram
+
+
+function GetAvailableCityRegions()
+	var all_cities := EnumerateCityRegions();
+	if(!all_cities or !all_cities.size())
+		return {};
+	endif
+
+	var available := {};
+	foreach entry in all_cities
+		if(!entry.realm)
+			continue;
+		endif
+		if(HasActiveTownstoneForRegion(entry.name, entry.realm))
+			continue;
+		endif
+		available.append(entry);
+	endforeach
+	return available;
+endfunction
+
+
+function HasActiveTownstoneForRegion(region_name, realm)
+	var df := OpenTownstoneDataFile();
+	if(df)
+		var elem := df.FindElement(MakeRegionKey(realm, region_name));
+		if(elem)
+			var stone_serial := CInt(elem.GetProp("stone_serial"));
+			UnloadDataFile(TOWNSTONE_DATAFILE);
+			if(stone_serial)
+				var stone := SystemFindObjectBySerial(stone_serial);
+				if(stone and stone.objtype == TOWNSTONE_OBJTYPE)
+					return 1;
+				endif
+			endif
+		else
+			UnloadDataFile(TOWNSTONE_DATAFILE);
+		endif
+	endif
+
+	return HasLiveTownstoneConflict(region_name, realm, 0);
+endfunction
+
+
+function HasLiveTownstoneConflict(region_name, realm, town_id)
+	if(!region_name or !realm)
+		return 0;
+	endif
+
+	UnloadConfigFile("regions");
+	var regions_cfg := ReadConfigFile("::regions/regions");
+	var target_range := {};
+	if(regions_cfg)
+		var elem := FindConfigElem(regions_cfg, region_name);
+		if(elem)
+			target_range := GetRegionRange(elem);
+		endif
+	endif
+
+	foreach stone in EnumerateAllTownstones()
+		if(GetStoneRealm(stone) != realm)
+			continue;
+		endif
+		var stone_region := CStr(GetObjProperty(stone, "regionname"));
+		if(stone_region == region_name)
+			return 1;
+		endif
+		var stone_town := CInt(GetObjProperty(stone, "town"));
+		if(town_id and stone_town == CInt(town_id))
+			return 1;
+		endif
+		if(target_range.size() >= 4 and IsPointInRange(stone.x, stone.y, target_range))
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+
+function PickRegionFromGump(who, entries)
+	var total := entries.size();
+	if(!total)
+		return 0;
+	endif
+
+	var page := 1;
+	var total_pages := CInt((total + REGIONS_PER_PAGE - 1) / REGIONS_PER_PAGE);
+
+	while(1)
+		if(page < 1)
+			page := 1;
+		elseif(page > total_pages)
+			page := total_pages;
+		endif
+
+		var start_idx := ((page - 1) * REGIONS_PER_PAGE) + 1;
+		var end_idx := start_idx + REGIONS_PER_PAGE - 1;
+		if(end_idx > total)
+			end_idx := total;
+		endif
+
+		var gump := GFCreateGump(20, 20, 620, 400);
+		GFDisposable(gump, 0);
+		GFMovable(gump, 1);
+		GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 620, 400);
+		GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 590, 370);
+		GFPage(gump, 1);
+
+		GFTextLine(gump, 28, 28, 1153, "Create Townstone - Pick City Region");
+		GFTextLine(gump, 28, 48, 1153, "Only city regions without an active townstone are listed.");
+		GFTextLine(gump, 28, 68, 1153, "Page " + CStr(page) + " of " + CStr(total_pages));
+		GFTextLine(gump, 28, 88, 53, "Region");
+		GFTextLine(gump, 380, 88, 53, "Realm");
+
+		var row := 0;
+		var i;
+		for(i := start_idx; i <= end_idx; i := i + 1)
+			var y := 110 + (row * 24);
+			var entry := entries[i];
+			GFAddButton(gump, 28, y, 2474, 2473, GF_CLOSE_BTN, BTN_PICK_BASE + i);
+			GFTextLine(gump, 63, y + 2, 1153, CStr(entry.name));
+			GFTextLine(gump, 380, y + 2, 1153, CStr(entry.realm));
+			row := row + 1;
+		endfor
+
+		if(page > 1)
+			GFAddButton(gump, 28, 352, 2117, 2118, GF_CLOSE_BTN, BTN_PREV);
+			GFTextLine(gump, 63, 354, 1153, "Previous");
+		endif
+		if(page < total_pages)
+			GFAddButton(gump, 530, 352, 2117, 2118, GF_CLOSE_BTN, BTN_NEXT);
+			GFTextLine(gump, 490, 354, 1153, "Next");
+		endif
+
+		GFAddButton(gump, 280, 352, 2152, 2151, GF_CLOSE_BTN, BTN_CANCEL);
+		GFTextLine(gump, 315, 354, 1153, "Cancel");
+
+		var res := GFSendGump(who, gump);
+		if(!res[0] or res[0] == BTN_CANCEL)
+			return 0;
+		elseif(res[0] == BTN_PREV)
+			page := page - 1;
+			continue;
+		elseif(res[0] == BTN_NEXT)
+			page := page + 1;
+			continue;
+		elseif(res[0] > BTN_PICK_BASE and res[0] <= (BTN_PICK_BASE + total))
+			return entries[res[0] - BTN_PICK_BASE];
+		else
+			return 0;
+		endif
+	endwhile
+endfunction

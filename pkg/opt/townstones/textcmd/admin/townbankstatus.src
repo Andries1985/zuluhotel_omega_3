@@ -1,0 +1,381 @@
+// Synopsis: Display town treasury balances and toggle upgrades / donations per city
+
+use uo;
+use os;
+use basic;
+use datafile;
+use cfgfile;
+
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+include ":townstone:tstone";
+
+
+const BTN_PREV := 7001;
+const BTN_NEXT := 7002;
+const BTN_CLOSE := 7003;
+const BTN_TOGGLE_UPGRADES_BASE := 8000;
+const BTN_TOGGLE_DONATIONS_BASE := 10000;
+const BTN_DELETE_REGION_BASE := 12000;
+const ROWS_PER_PAGE := 10;
+
+
+program textcmd_townbankstatus(who)
+	var town_list := GetGlobalProperty(TOWNLIST_GLOBAL);
+	var datafile_entries := GetTownRegionsFromDatafile();
+
+	if((!town_list or !town_list.size()) and (!datafile_entries or !datafile_entries.size()))
+		Start_Script(":townstone:townlistbootstrap");
+		town_list := GetGlobalProperty(TOWNLIST_GLOBAL);
+		datafile_entries := GetTownRegionsFromDatafile();
+	endif
+
+	var live_entries := GetTownRegionsFromLiveStones();
+	var candidate_entries := MergeCandidates(EnumerateCityRegions(), datafile_entries, live_entries);
+	if(!candidate_entries.size())
+		SendSysMessage(who, "No town regions found.");
+		return;
+	endif
+
+	var rows := {};
+	var total_gold := 0;
+	var seen := dictionary;
+
+	foreach entry in candidate_entries
+		var region_name := Trim(CStr(entry.name));
+		var realm := Trim(CStr(entry.realm));
+		if(!Len(region_name) or !Len(realm))
+			continue;
+		endif
+		var key := realm + "|" + region_name;
+		if(seen[key])
+			continue;
+		endif
+		seen[key] := 1;
+
+		var has_data := HasTownBankRegionData(realm, region_name);
+		var stone := FindLiveStoneForRegion(realm, region_name);
+		var has_stone := stone ? 1 : 0;
+		if(!has_data and !has_stone)
+			continue;
+		endif
+
+		var gold := GetTownBankGold(realm, region_name);
+		total_gold := total_gold + gold;
+
+		var row := struct;
+		row.+region_name    := region_name;
+		row.+realm          := realm;
+		row.+gold           := gold;
+		row.+has_stone      := has_stone;
+		row.+has_data       := has_data;
+		row.+upgrades       := IsTownBankFeatureEnabled(realm, region_name, "allow_upgrades");
+		row.+donations      := IsTownBankFeatureEnabled(realm, region_name, "allow_donations");
+		rows.append(row);
+	endforeach
+
+	if(!rows.size())
+		SendSysMessage(who, "No populated town regions found.");
+		return;
+	endif
+
+	ShowGump(who, rows, total_gold);
+endprogram
+
+
+function MergeCandidates(city_regions, datafile_entries, live_entries)
+	var merged := {};
+	var seen := dictionary;
+
+	if(city_regions)
+		foreach entry in city_regions
+			if(!entry.name or !entry.realm)
+				continue;
+			endif
+			var key := Lower(CStr(entry.realm)) + "|" + Lower(CStr(entry.name));
+			if(seen[key])
+				continue;
+			endif
+			seen[key] := 1;
+			merged.append(entry);
+		endforeach
+	endif
+
+	if(datafile_entries)
+		foreach entry in datafile_entries
+			var key := Lower(CStr(entry.realm)) + "|" + Lower(CStr(entry.name));
+			if(seen[key])
+				continue;
+			endif
+			seen[key] := 1;
+			merged.append(entry);
+		endforeach
+	endif
+
+	if(live_entries)
+		foreach entry in live_entries
+			var key := Lower(CStr(entry.realm)) + "|" + Lower(CStr(entry.name));
+			if(seen[key])
+				continue;
+			endif
+			seen[key] := 1;
+			merged.append(entry);
+		endforeach
+	endif
+	return merged;
+endfunction
+
+
+function GetTownRegionsFromDatafile()
+	var entries := {};
+	var df := OpenTownstoneDataFile();
+	if(!df)
+		return entries;
+	endif
+	var keys := df.Keys();
+	if(!keys)
+		UnloadDataFile(TOWNSTONE_DATAFILE);
+		return entries;
+	endif
+
+	foreach raw in keys
+		var key := Trim(CStr(raw));
+		if(!Len(key))
+			continue;
+		endif
+		var elem := df.FindElement(key);
+		if(!elem)
+			continue;
+		endif
+		var region_name := CStr(elem.GetProp("region_name"));
+		var realm := CStr(elem.GetProp("realm"));
+		if(!region_name or !realm)
+			var colon := Find(key, ":", 1);
+			if(colon > 1)
+				if(!realm)
+					realm := key[1, colon - 1];
+				endif
+				if(!region_name)
+					region_name := key[colon + 1, Len(key) - colon];
+				endif
+			endif
+		endif
+		if(!region_name or !realm)
+			continue;
+		endif
+		var entry := struct;
+		entry.+name  := region_name;
+		entry.+realm := realm;
+		entries.append(entry);
+	endforeach
+	UnloadDataFile(TOWNSTONE_DATAFILE);
+	return entries;
+endfunction
+
+
+function GetTownRegionsFromLiveStones()
+	var entries := {};
+	var seen := dictionary;
+
+	foreach stone in EnumerateAllTownstones()
+		var region_name := CStr(GetObjProperty(stone, "regionname"));
+		var realm := GetStoneRealm(stone);
+		if(!region_name or !realm)
+			continue;
+		endif
+		var key := Lower(realm) + "|" + Lower(region_name);
+		if(seen[key])
+			continue;
+		endif
+		seen[key] := 1;
+		var entry := struct;
+		entry.+name := region_name;
+		entry.+realm := realm;
+		entries.append(entry);
+	endforeach
+	return entries;
+endfunction
+
+
+function HasTownBankRegionData(realm, region_name)
+	var df := OpenTownstoneDataFile();
+	if(!df)
+		return 0;
+	endif
+	var elem := df.FindElement(MakeRegionKey(realm, region_name));
+	UnloadDataFile(TOWNSTONE_DATAFILE);
+	if(elem)
+		return 1;
+	endif
+	return 0;
+endfunction
+
+
+function FindLiveStoneForRegion(realm, region_name)
+	// Fast path via datafile stone_serial.
+	var df := OpenTownstoneDataFile();
+	if(df)
+		var elem := df.FindElement(MakeRegionKey(realm, region_name));
+		if(elem)
+			var serial := CInt(elem.GetProp("stone_serial"));
+			UnloadDataFile(TOWNSTONE_DATAFILE);
+			if(serial)
+				var stone := SystemFindObjectBySerial(serial);
+				if(stone and stone.objtype == TOWNSTONE_OBJTYPE)
+					if(CStr(GetObjProperty(stone, "regionname")) == region_name and GetStoneRealm(stone) == realm)
+						return stone;
+					endif
+				endif
+			endif
+		else
+			UnloadDataFile(TOWNSTONE_DATAFILE);
+		endif
+	endif
+
+	foreach stone in EnumerateAllTownstones()
+		if(CStr(GetObjProperty(stone, "regionname")) == region_name and GetStoneRealm(stone) == realm)
+			return stone;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+
+function ShowGump(who, rows, total_gold)
+	var page := 1;
+	var total := rows.size();
+	var total_pages := CInt((total + ROWS_PER_PAGE - 1) / ROWS_PER_PAGE);
+	if(total_pages < 1)
+		total_pages := 1;
+	endif
+
+	while(1)
+		if(page < 1)
+			page := 1;
+		elseif(page > total_pages)
+			page := total_pages;
+		endif
+
+		var start_idx := ((page - 1) * ROWS_PER_PAGE) + 1;
+		var end_idx := start_idx + ROWS_PER_PAGE - 1;
+		if(end_idx > total)
+			end_idx := total;
+		endif
+
+		var gump := GFCreateGump(20, 20, 960, 400);
+		GFDisposable(gump, 0);
+		GFMovable(gump, 1);
+		GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 960, 400);
+		GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 930, 370);
+		GFPage(gump, 1);
+
+		GFTextLine(gump, 28, 28, 1153, "Town Treasury Status");
+		GFTextLine(gump, 28, 48, 1153, "Page " + CStr(page) + " of " + CStr(total_pages));
+		GFTextLine(gump, 28, 68, 1153, "Total town treasury gold: " + FormatGoldAmount(total_gold));
+		GFTextLine(gump, 28, 88, 1153, "Town");
+		GFTextLine(gump, 240, 88, 1153, "Realm");
+		GFTextLine(gump, 380, 88, 1153, "Treasury");
+		GFTextLine(gump, 520, 88, 53, "Upgrades");
+		GFTextLine(gump, 640, 88, 53, "Donations");
+		GFTextLine(gump, 760, 88, 1153, "Stone");
+		GFTextLine(gump, 840, 88, 38, "Delete");
+
+		var row := 0;
+		var i;
+		for(i := start_idx; i <= end_idx; i := i + 1)
+			var y := 112 + (row * 22);
+			var r := rows[i];
+
+			GFTextLine(gump, 28, y, 1153, TruncateForGump(r.region_name, 26));
+			GFTextLine(gump, 240, y, 1153, TruncateForGump(r.realm, 18));
+			GFTextLine(gump, 380, y, 1153, FormatGoldAmount(r.gold) + " gold");
+
+			GFAddButton(gump, 520, y - 2, 2474, 2473, GF_CLOSE_BTN, BTN_TOGGLE_UPGRADES_BASE + i);
+			GFTextLine(gump, 555, y, r.upgrades ? 63 : 38, r.upgrades ? "On" : "Off");
+
+			GFAddButton(gump, 640, y - 2, 2474, 2473, GF_CLOSE_BTN, BTN_TOGGLE_DONATIONS_BASE + i);
+			GFTextLine(gump, 675, y, r.donations ? 63 : 38, r.donations ? "On" : "Off");
+
+			GFTextLine(gump, 760, y, r.has_stone ? 63 : 38, r.has_stone ? "Yes" : "No");
+
+			if(r.has_data and !r.has_stone)
+				GFAddButton(gump, 840, y - 2, 2474, 2473, GF_CLOSE_BTN, BTN_DELETE_REGION_BASE + i);
+				GFTextLine(gump, 875, y, 38, "Del");
+			else
+				GFTextLine(gump, 875, y, 1153, "-");
+			endif
+			row := row + 1;
+		endfor
+
+		if(page > 1)
+			GFAddButton(gump, 28, 352, 2117, 2118, GF_CLOSE_BTN, BTN_PREV);
+			GFTextLine(gump, 63, 354, 1153, "Previous");
+		endif
+		if(page < total_pages)
+			GFAddButton(gump, 870, 352, 2117, 2118, GF_CLOSE_BTN, BTN_NEXT);
+			GFTextLine(gump, 830, 354, 1153, "Next");
+		endif
+
+		GFAddButton(gump, 280, 352, 2152, 2151, GF_CLOSE_BTN, BTN_CLOSE);
+		GFTextLine(gump, 315, 354, 1153, "Close");
+
+		var res := GFSendGump(who, gump);
+		if(!res[0] or res[0] == BTN_CLOSE)
+			return;
+		elseif(res[0] == BTN_PREV)
+			page := page - 1;
+			continue;
+		elseif(res[0] == BTN_NEXT)
+			page := page + 1;
+			continue;
+		elseif(res[0] > BTN_TOGGLE_UPGRADES_BASE and res[0] <= (BTN_TOGGLE_UPGRADES_BASE + total))
+			var idx := res[0] - BTN_TOGGLE_UPGRADES_BASE;
+			var new_state := rows[idx].upgrades ? 0 : 1;
+			SetTownBankFeatureEnabled(rows[idx].realm, rows[idx].region_name, "allow_upgrades", new_state);
+			rows[idx].upgrades := new_state;
+			continue;
+		elseif(res[0] > BTN_TOGGLE_DONATIONS_BASE and res[0] <= (BTN_TOGGLE_DONATIONS_BASE + total))
+			var idx2 := res[0] - BTN_TOGGLE_DONATIONS_BASE;
+			var new_state2 := rows[idx2].donations ? 0 : 1;
+			SetTownBankFeatureEnabled(rows[idx2].realm, rows[idx2].region_name, "allow_donations", new_state2);
+			rows[idx2].donations := new_state2;
+			continue;
+		elseif(res[0] > BTN_DELETE_REGION_BASE and res[0] <= (BTN_DELETE_REGION_BASE + total))
+			var idx3 := res[0] - BTN_DELETE_REGION_BASE;
+			var row_data := rows[idx3];
+			if(row_data.has_stone)
+				SendSysMessage(who, "Cannot delete data while a live townstone exists for " + row_data.region_name + ".");
+				continue;
+			endif
+			if(!row_data.has_data)
+				SendSysMessage(who, "No datafile entry exists for " + row_data.region_name + ".");
+				continue;
+			endif
+			if(!DeleteTownstoneRegionData(row_data.realm, row_data.region_name))
+				SendSysMessage(who, "Failed to delete datafile entry for " + row_data.region_name + ".");
+				continue;
+			endif
+
+			if(row_data.gold > 0)
+				total_gold := total_gold - CInt(row_data.gold);
+				if(total_gold < 0)
+					total_gold := 0;
+				endif
+			endif
+			rows.erase(idx3);
+			total := rows.size();
+			if(!total)
+				SendSysMessage(who, "Deleted " + row_data.region_name + " from townstone_data. No regions remain.");
+				return;
+			endif
+			total_pages := CInt((total + ROWS_PER_PAGE - 1) / ROWS_PER_PAGE);
+			if(page > total_pages)
+				page := total_pages;
+			endif
+			SendSysMessage(who, "Deleted townbank data for " + row_data.region_name + " [" + row_data.realm + "].");
+			continue;
+		else
+			return;
+		endif
+	endwhile
+endfunction

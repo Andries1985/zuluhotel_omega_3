@@ -1,0 +1,146 @@
+// Background watcher that resolves any townstone election / poll whose timer
+// has expired (or whose poll has reached full participation). Auto-stops when
+// no townstone has an active election / poll.
+//
+// Started at server boot (start.src) and re-launched by tstone.inc's
+// EnsureTownstoneElectionWatcher whenever an election / poll is opened.
+
+use uo;
+use os;
+
+include ":townstone:tstone";
+
+
+const WATCHER_INTERVAL_SECONDS := 5;
+
+
+// File-scope state consumed by the election helpers in tstone.inc.
+var stone;
+var city;
+var realm;
+var mayor;
+var mayorserial;
+var population;
+var election_active;
+var poll_question;
+var candidates;
+var votepercent;
+var votes;
+var timer;
+var poll_result;
+var nextcitizenelection;
+var citizen;
+
+
+function LoadTownstoneState(item)
+	stone := CInt(GetObjProperty(item, "town"));
+	realm := GetStoneRealm(item);
+	city := CStr(GetObjProperty(item, "regionname"));
+	if(!city and stone)
+		city := GetTownName(stone);
+	endif
+
+	mayor := GetObjProperty(item, "mayor");
+	mayorserial := CInt(GetObjProperty(item, "mayorserial"));
+	population := CInt(GetObjProperty(item, "population"));
+	election_active := CInt(GetObjProperty(item, "election_active"));
+	poll_question := GetObjProperty(item, "poll_question");
+	candidates := GetObjProperty(item, "candidates");
+	votepercent := CInt(GetObjProperty(item, "votepercent"));
+	votes := CInt(GetObjProperty(item, "votes"));
+	timer := CInt(GetObjProperty(item, "timer"));
+	poll_result := GetObjProperty(item, "poll_result");
+	nextcitizenelection := CInt(GetObjProperty(item, "nextcitizenelection"));
+	citizen := GetObjProperty(item, "citizen");
+
+	if(!citizen)
+		citizen := {};
+	endif
+	if(!candidates)
+		candidates := {};
+	endif
+	if(!population)
+		population := 0;
+	endif
+	if(!votes)
+		votes := 0;
+	endif
+	if(!votepercent)
+		votepercent := 0;
+	endif
+	if(!mayor or !mayorserial)
+		mayor := "No mayor";
+		mayorserial := 0;
+	endif
+	if(!timer)
+		timer := 0;
+	endif
+	if(!nextcitizenelection)
+		nextcitizenelection := 0;
+	endif
+	if(!poll_result)
+		poll_result := {};
+	endif
+	if(!poll_question or Len(CStr(poll_question)) < 2)
+		poll_question := 0;
+	endif
+endfunction
+
+
+function ProcessActiveTownstones()
+	var stones := EnumerateAllTownstones();
+	if(!stones or !stones.size())
+		return 0;
+	endif
+
+	var now := ReadGameClock();
+	var active_count := 0;
+
+	foreach item in stones
+		if(!item)
+			continue;
+		endif
+		if(!CInt(GetObjProperty(item, "town")))
+			continue;
+		endif
+
+		LoadTownstoneState(item);
+		if(!(election_active or poll_question))
+			continue;
+		endif
+
+		var poll_full := (poll_question and population > 0 and votes >= population);
+		if((timer > 0 and timer <= now) or poll_full)
+			ResolveElection(item);
+			LoadTownstoneState(item);
+		endif
+
+		if(election_active or poll_question)
+			active_count := active_count + 1;
+		endif
+		SleepMS(2);
+	endforeach
+
+	return active_count;
+endfunction
+
+
+program TownstoneElectionWatcher()
+	if(GetGlobalProperty(WATCHER_PROP_NAME))
+		return;
+	endif
+
+	SetGlobalProperty(WATCHER_PROP_NAME, 1);
+	SysLog("[TownstoneElectionWatcher] started");
+
+	while(1)
+		var active_count := ProcessActiveTownstones();
+		if(active_count <= 0)
+			break;
+		endif
+		Sleep(WATCHER_INTERVAL_SECONDS);
+	endwhile
+
+	EraseGlobalProperty(WATCHER_PROP_NAME);
+	SysLog("[TownstoneElectionWatcher] stopped");
+endprogram

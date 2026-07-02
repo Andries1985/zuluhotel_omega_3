@@ -3,6 +3,7 @@ use os;
 use vitals;
 
 include "include/housing";
+include ":keys:key";
 include ":statichousing:include/settings";
 
 var settings := STH_GetSettingsCfgElem("Settings");
@@ -24,6 +25,10 @@ program StaticHouseDestruction(sgn)
 	var accnt := FindAccount(GetObjProperty(sign, "owneraccount"));
 	var ownrserial := CInt(GetObjProperty(sign, "ownerserial"));
 	var who := SystemFindObjectBySerial(ownrserial);
+	if(!who)
+		who := SystemFindObjectBySerial( ownrserial, SYSFIND_SEARCH_OFFLINE_MOBILES );
+	endif
+	var lock_ids := {};
 	if(CInt(settings.HouseValuesCount))
 		hv := DetermineHouseValue(CInt(GetObjProperty(sign, "Price")));
 		if(settings.HouseValueAppliedTo == "Character")
@@ -38,6 +43,16 @@ program StaticHouseDestruction(sgn)
 	var builtdeed := SystemFindObjectBySerial(GetObjProperty(sign, "builtdeed"));
 	DestroyItem(builtdeed);
 	EraseObjProperty(sign, "builtdeed");
+	foreach thing in GetObjProperty(sign, "components")
+		var obj := SystemFindObjectBySerial(thing);
+		if(obj)
+			var id := GetObjProperty(obj, "LockID");
+			if(id)
+				lock_ids.append(id);
+			endif
+		endif
+	endforeach
+	KP_DestroyOwnedKeysForLockIDs( who, CP_BANK_AREA, lock_ids );
 
 	foreach thing in itemlist
 		if(GetObjProperty(thing, "houseserial") == sign.serial)

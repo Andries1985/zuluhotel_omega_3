@@ -1,193 +1,770 @@
+// Townstone container script. Invoked when a player double-clicks a
+// townstone (0xa320). Handles the citizenship gump, election / poll UI,
+// mayor upgrade purchases, and cheque donations.
+
 use uo;
 use os;
+use datafile;
 use cfgfile;
 
-include "/include/math";
-include "tstone";
-
-var layout :={
-	"page 0",
-	"resizepic 160 50 5100 300 390",
-	"text 220 55 0 0",
-	"text 165 90 0 1",
-	"text 300 90 500 2",
-	"text 165 110 0 3",
-	"text 300 110 500 4"
-};
-
-var data := {
-	"Town Stone of ",
-	"Mayor's name",
-	"",
-	"Population",
-	""
-};
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+include ":townstone:tstone";
 
 
-var layout2 :={
-	"text 165 140 90 5",
-	"text 185 160 0 6",
-	"text 185 185 0 7",
-	"button 225 160 2474 2473 1 0 1000",
-	"button 225 185 2152 2151 1 0 0"
-};
-
-var data2 := {
-	"Do want to be citizen of ",
-	"Yes",
-	"No"
-};
-
-
-var layoutx := {
-	"button 325 265 243 242 1 0 0",
-	"button 235 265 248 247 1 0 0"
-};
-
-var layout3 := {
-	"text 165 140 0 5",
-	"text 165 170 0 6",
-	"button 330 135 2474 2473 1 0 2001",
-	"button 330 165 2152 2151 1 0 2002",
-	"text 165 195 0 7",
-	"text 165 213 0 8",
-	"text 320 195 80 9",
-	"text 320 213 80 10"
-};
-
-var data3 := {
-	"Call new poll",
-	"Summon elections",
-	"",
-	"",
-	"",
-	""
-};
-
-
-var layout4 :={
-	"text 165 135 90 5",
-	"text 165 160 0 6",
-	"text 165 185 0 7",
-	"button 205 155 2474 2473 1 0 3000",
-	"button 205 180 2152 2151 1 0 0",
-	"text 165 210 0 8",
-	"text 165 230 0 9"
-};
-
-var data4 := {
-	"Do you want to give up your citizenship?",
-	"Yes",
-	"No",
-	"",
-	""
-};
-
-
-var eleicaolayout := {
-	"text 165 210 0 10",
-	"text 165 230 0 11",
-	"text 320 210 80 12",
-	"text 320 230 80 13",
-
-	"text 165 250 0 14",
-	"text 165 273 0 15",
-
-	"button 255 245 2474 2473 0 2 0",
-	"button 255 270 2152 2151 1 0 4000",
-	"page 1"
-};
-
-var eleicaodata := {
-	"Number of candidates",
-	"How many have voted",
-	"",
-	"",
-	"Vote",
-	"Candidature",
-	"Choose your candidate"
-};
-
-
-var pleibicitolayout := {
-	"text 165 230 0 10",
-	"text 165 250 0 11",
-	"button 210 245 2152 2151 0 2 0",
-	"text 165 210 0 12",
-	"text 320 210 80 13",
-	"page 1"
-};
-
-var pleibicitodata := {
-	"Poll",
-	"Vote",
-	"How many have voted",
-	""
-};
-
+// -- File-scope state (also required by helpers in tstone.inc) --
 var user;
 var stone;
 var citizen;
 var city;
+var realm;
 var mayor;
 var mayorserial;
-var populacao;
-var eleicoes;
-var pleibicito;
-var candidatos;
+var population;
+var election_active;
+var poll_question;
+var candidates;
 var votepercent;
-var votos;
+var votes;
 var timer;
-var Pleibicito_Result;
+var poll_result;
+var nextcitizenelection;
 
-program townstone(who,item)
 
-	if(!ReserveItem(item)) return; endif
-
-	user := GetObjProperty(who, "town");
-	if(!user)
-		user := 0;
+function LoadTownUpgrades()
+	var upgrades := {};
+	var cfg := ReadConfigFile(TOWNSTONE_UPGRADES_CFG);
+	if(!cfg)
+		return upgrades;
 	endif
 
-	stone := GetObjProperty(item, "town");
+	foreach upgrade_key in GetConfigStringKeys(cfg)
+		var elem := FindConfigElem(cfg, upgrade_key);
+		if(!elem)
+			continue;
+		endif
+
+		var name := CStr(GetConfigString(elem, "Name"));
+		var desc := CStr(GetConfigString(elem, "Desc"));
+		var cost := CInt(GetConfigInt(elem, "Cost"));
+		var graphic := CInt(GetConfigInt(elem, "Graphic"));
+
+		if(!name)
+			name := CStr(upgrade_key);
+		endif
+		if(!desc)
+			desc := name;
+		endif
+		if(cost <= 0)
+			continue;
+		endif
+
+		upgrades.append(CStr(upgrade_key));
+		upgrades.append(name);
+		upgrades.append(desc);
+		upgrades.append(cost);
+		upgrades.append(graphic);
+	endforeach
+	return upgrades;
+endfunction
+
+
+function PurchaseTownUpgrade(who, item, upgrades, choice)
+	if(!IsTownUpgradesEnabled(realm, city))
+		SendSysMessage(who, "Town upgrades are disabled for " + city + ".");
+		return;
+	endif
+	if(CInt(GetObjProperty(item, "mayorserial")) != who.serial)
+		SendSysMessage(who, "Only the mayor can purchase town upgrades.");
+		return;
+	endif
+	if(choice < 1)
+		SendSysMessage(who, "Invalid upgrade selection.");
+		return;
+	endif
+
+	var total := CInt(upgrades.size() / 5);
+	if(choice > total)
+		SendSysMessage(who, "Invalid upgrade selection.");
+		return;
+	endif
+
+	var base := ((choice - 1) * 5) + 1;
+	var upgrade_desc := CStr(upgrades[base + 2]);
+	var upgrade_cost := CInt(upgrades[base + 3]);
+	if(upgrade_cost <= 0)
+		SendSysMessage(who, "This upgrade has an invalid cost.");
+		return;
+	endif
+
+	var current_gold := GetTownBankGold(realm, city);
+	if(current_gold < upgrade_cost)
+		SendSysMessage(who, "Not enough town treasury gold. Required: " + FormatGoldAmount(upgrade_cost) + ".");
+		return;
+	endif
+
+	var ticket := CreateItemInBackpack(who, 0x3817, 1);
+	if(!ticket)
+		SendSysMessage(who, "Could not create the upgrade ticket in your backpack.");
+		return;
+	endif
+	ticket.name := "Ticket for " + upgrade_desc;
+
+	SetTownBankGold(realm, city, current_gold - upgrade_cost);
+	TouchTownstoneRegionEntry(item);
+	SendSysMessage(who, "Purchased upgrade ticket: " + upgrade_desc + " for " + FormatGoldAmount(upgrade_cost) + " gold.");
+endfunction
+
+
+function ShowTownUpgradePictureGump(who, upgrades, choice)
+	if(choice < 1)
+		return;
+	endif
+	var total := CInt(upgrades.size() / 5);
+	if(choice > total)
+		return;
+	endif
+
+	var base := ((choice - 1) * 5) + 1;
+	var upgrade_desc := CStr(upgrades[base + 2]);
+	var graphic := CInt(upgrades[base + 4]);
+	if(graphic <= 0)
+		return;
+	endif
+
+	var gump := GFCreateGump(20, 20, 300, 230);
+	GFDisposable(gump, 0);
+	GFMovable(gump, 0);
+	GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 300, 230);
+	GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 270, 200);
+	GFPage(gump, 1);
+
+	GFTextLine(gump, 28, 28, 1153, "Upgrade Preview");
+	GFTextLine(gump, 28, 50, 1153, upgrade_desc);
+	GFTextLine(gump, 28, 72, 1153, "Graphic: " + CStr(graphic));
+	GFTilePic(gump, 120, 110, graphic);
+	GFAddButton(gump, 120, 185, 2152, 2151, GF_CLOSE_BTN, 1);
+	GFTextLine(gump, 155, 187, 1153, "Close");
+
+	GFSendGump(who, gump);
+endfunction
+
+
+function OpenTownUpgradesGump(who, item)
+	const ENTRIES_PER_PAGE_UPGRADES := 10;
+	const BTN_PREV_UPGRADES := 6101;
+	const BTN_NEXT_UPGRADES := 6102;
+	const BTN_CLOSE_UPGRADES := 6103;
+	const BTN_PURCHASE_BASE := 12000;
+	const BTN_PICTURE_BASE := 13000;
+	const TXT_COLOR_UPGRADES := 1153;
+	const TXT_COLOR_UPGRADES_HEADER := 53;
+	const LIST_HEADER_Y := 78;
+	const LIST_START_Y := 102;
+	const LIST_ROW_STEP := 38;
+	const FOOTER_Y := 515;
+
+	if(CInt(GetObjProperty(item, "mayorserial")) != who.serial)
+		SendSysMessage(who, "Only the mayor can purchase town upgrades.");
+		return;
+	endif
+	if(!IsTownUpgradesEnabled(realm, city))
+		SendSysMessage(who, "Town upgrades are disabled for " + city + ".");
+		return;
+	endif
+
+	var upgrades := LoadTownUpgrades();
+	var count := CInt(upgrades.size() / 5);
+	if(count <= 0)
+		SendSysMessage(who, "No upgrades are configured.");
+		return;
+	endif
+
+	var page := 1;
+	var total_pages := CInt((count + ENTRIES_PER_PAGE_UPGRADES - 1) / ENTRIES_PER_PAGE_UPGRADES);
+
+	while(1)
+		if(page < 1)
+			page := 1;
+		elseif(page > total_pages)
+			page := total_pages;
+		endif
+
+		var start_idx := ((page - 1) * ENTRIES_PER_PAGE_UPGRADES) + 1;
+		var end_idx := start_idx + ENTRIES_PER_PAGE_UPGRADES - 1;
+		if(end_idx > count)
+			end_idx := count;
+		endif
+
+		var town_gold := GetTownBankGold(realm, city);
+		var gump := GFCreateGump(20, 20, 800, 560);
+		GFDisposable(gump, 0);
+		GFMovable(gump, 0);
+		GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 800, 560);
+		GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 770, 530);
+		GFPage(gump, 1);
+
+		GFTextLine(gump, 28, 28, TXT_COLOR_UPGRADES, "Town Upgrades for " + city);
+		GFTextLine(gump, 28, 48, TXT_COLOR_UPGRADES, "Treasury: " + FormatGoldAmount(town_gold) + " gold");
+		GFTextLine(gump, 600, 48, TXT_COLOR_UPGRADES, "Page " + CStr(page) + "/" + CStr(total_pages));
+		GFTextLine(gump, 28, LIST_HEADER_Y, TXT_COLOR_UPGRADES_HEADER, "Item");
+		GFTextLine(gump, 190, LIST_HEADER_Y, TXT_COLOR_UPGRADES_HEADER, "Description");
+		GFTextLine(gump, 460, LIST_HEADER_Y, TXT_COLOR_UPGRADES_HEADER, "Cost");
+
+		var row := 0;
+		var i;
+		for(i := start_idx; i <= end_idx; i := i + 1)
+			var base := ((i - 1) * 5) + 1;
+			var upgrade_name := CStr(upgrades[base + 1]);
+			var upgrade_desc := CStr(upgrades[base + 2]);
+			var upgrade_cost := CInt(upgrades[base + 3]);
+			var upgrade_graphic := CInt(upgrades[base + 4]);
+			var line_y := LIST_START_Y + (row * LIST_ROW_STEP);
+
+			GFTextLine(gump, 28, line_y, TXT_COLOR_UPGRADES, TruncateForGump(upgrade_name, 22));
+			GFTextLine(gump, 190, line_y, TXT_COLOR_UPGRADES, upgrade_desc);
+			GFTextLine(gump, 460, line_y, TXT_COLOR_UPGRADES, FormatGoldAmount(upgrade_cost) + " gold");
+			GFAddButton(gump, 620, line_y - 2, 2474, 2473, GF_CLOSE_BTN, BTN_PURCHASE_BASE + i);
+			GFTextLine(gump, 655, line_y, TXT_COLOR_UPGRADES, "Buy");
+			if(upgrade_graphic > 0)
+				GFAddButton(gump, 700, line_y - 2, 2474, 2473, GF_CLOSE_BTN, BTN_PICTURE_BASE + i);
+				GFTextLine(gump, 735, line_y, TXT_COLOR_UPGRADES, "Pic");
+			endif
+			row := row + 1;
+		endfor
+
+		if(page > 1)
+			GFAddButton(gump, 28, FOOTER_Y, 2117, 2118, GF_CLOSE_BTN, BTN_PREV_UPGRADES);
+			GFTextLine(gump, 63, FOOTER_Y + 2, TXT_COLOR_UPGRADES, "Previous");
+		endif
+		if(page < total_pages)
+			GFAddButton(gump, 680, FOOTER_Y, 2117, 2118, GF_CLOSE_BTN, BTN_NEXT_UPGRADES);
+			GFTextLine(gump, 715, FOOTER_Y + 2, TXT_COLOR_UPGRADES, "Next");
+		endif
+
+		GFAddButton(gump, 365, FOOTER_Y, 2152, 2151, GF_CLOSE_BTN, BTN_CLOSE_UPGRADES);
+		GFTextLine(gump, 400, FOOTER_Y + 2, TXT_COLOR_UPGRADES, "Close");
+
+		var res := GFSendGump(who, gump);
+		if(!res[0] or res[0] == BTN_CLOSE_UPGRADES)
+			return;
+		elseif(res[0] == BTN_PREV_UPGRADES)
+			page := page - 1;
+			continue;
+		elseif(res[0] == BTN_NEXT_UPGRADES)
+			page := page + 1;
+			continue;
+		elseif(res[0] > BTN_PICTURE_BASE and res[0] <= (BTN_PICTURE_BASE + count))
+			ShowTownUpgradePictureGump(who, upgrades, res[0] - BTN_PICTURE_BASE);
+			continue;
+		elseif(res[0] > BTN_PURCHASE_BASE and res[0] <= (BTN_PURCHASE_BASE + count))
+			PurchaseTownUpgrade(who, item, upgrades, res[0] - BTN_PURCHASE_BASE);
+			continue;
+		else
+			return;
+		endif
+	endwhile
+endfunction
+
+
+function CanCitizenCallElection()
+	if(election_active or poll_question)
+		return 0;
+	endif
+	if(population < 3)
+		return 0;
+	endif
+	if(!mayorserial)
+		return 1;
+	endif
+	if(!nextcitizenelection)
+		return 1;
+	endif
+	if(ReadGameClock() >= nextcitizenelection)
+		return 1;
+	endif
+	return 0;
+endfunction
+
+
+function GetChequeGoldAmount(item)
+	if(!item)
+		return 0;
+	endif
+	if(item.objtype != CHEQUE_OBJTYPE)
+		return 0;
+	endif
+	var amount := CInt(GetObjProperty(item, "Amount"));
+	if(amount <= 0)
+		amount := CInt(GetObjProperty(item, "checkamount"));
+	endif
+	if(amount < 0)
+		amount := 0;
+	endif
+	return amount;
+endfunction
+
+
+function DonateTownCheque(who, item)
+	if(!IsTownDonationsEnabled(realm, city))
+		SendSysMessage(who, "Cheque donations are disabled for " + city + ".");
+		return;
+	endif
+
+	SendSysMessage(who, "Select the cheque you want to donate to the town.");
+	var cheque := Target(who);
+	if(!cheque)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	var amount := GetChequeGoldAmount(cheque);
+	if(amount <= 0)
+		SendSysMessage(who, "You must target a valid cheque item.");
+		return;
+	endif
+
+	if(!DestroyItem(cheque))
+		SendSysMessage(who, "Failed to consume that cheque.");
+		return;
+	endif
+
+	var current_gold := GetTownBankGold(realm, city);
+	var new_total := current_gold + amount;
+	SetTownBankGold(realm, city, new_total);
+	TouchTownstoneRegionEntry(item);
+	SendSysMessage(who, "You donated " + FormatGoldAmount(amount) + " gold to " + city + ". New town balance: " + FormatGoldAmount(new_total) + " gold.");
+endfunction
+
+
+function IsPlayerCandidate(who)
+	var i;
+	for(i := 1; i <= candidates.size(); i := i + 2)
+		if(candidates[i] == who.serial)
+			return 1;
+		endif
+	endfor
+	return 0;
+endfunction
+
+
+function OpenVoteSelectionGump(who, item)
+	const ENTRIES_PER_PAGE_SEL := 6;
+	const BTN_PREV_SEL := 7001;
+	const BTN_NEXT_SEL := 7002;
+	const BTN_CLOSE_SEL := 7003;
+	const BTN_VOTE_BASE_SEL := 8000;
+	const TXT_COLOR_SEL := 1153;
+
+	var size := (candidates.size() / 2);
+	if(size <= 0)
+		SendSysMessage(who, election_active ? "No candidates available yet." : "No options available yet.");
+		return;
+	endif
+
+	var total_pages := CInt((size + ENTRIES_PER_PAGE_SEL - 1) / ENTRIES_PER_PAGE_SEL);
+	var page := 1;
+
+	while(1)
+		if(page < 1)
+			page := 1;
+		elseif(page > total_pages)
+			page := total_pages;
+		endif
+
+		var start_idx := ((page - 1) * ENTRIES_PER_PAGE_SEL) + 1;
+		var end_idx := start_idx + ENTRIES_PER_PAGE_SEL - 1;
+		if(end_idx > size)
+			end_idx := size;
+		endif
+
+		var gump := GFCreateGump(20, 20, 540, 310);
+		GFDisposable(gump, 0);
+		GFMovable(gump, 0);
+		GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 540, 310);
+		GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 510, 280);
+		GFPage(gump, 1);
+
+		GFTextLine(gump, 28, 28, TXT_COLOR_SEL, election_active ? "Election candidates" : "Poll options");
+		GFTextLine(gump, 28, 48, TXT_COLOR_SEL, "Page " + CStr(page) + " of " + CStr(total_pages));
+
+		var list_start_y := 80;
+		if(!election_active and poll_question)
+			GFTextLine(gump, 28, 66, TXT_COLOR_SEL, "Question:");
+			GFTextLine(gump, 95, 66, TXT_COLOR_SEL, CStr(poll_question));
+			list_start_y := 100;
+		endif
+
+		var i;
+		var row := 0;
+		for(i := start_idx; i <= end_idx; i := i + 1)
+			var textY := list_start_y + (row * 24);
+			GFTextLine(gump, 60, textY, TXT_COLOR_SEL, CStr(candidates[(2 * i)]));
+			GFAddButton(gump, 300, textY - 2, 2474, 2473, GF_CLOSE_BTN, BTN_VOTE_BASE_SEL + i);
+			GFTextLine(gump, 335, textY, TXT_COLOR_SEL, "Vote");
+			row := row + 1;
+		endfor
+
+		if(page > 1)
+			GFAddButton(gump, 28, 260, 2117, 2118, GF_CLOSE_BTN, BTN_PREV_SEL);
+			GFTextLine(gump, 63, 262, TXT_COLOR_SEL, "Previous");
+		endif
+		if(page < total_pages)
+			GFAddButton(gump, 460, 260, 2117, 2118, GF_CLOSE_BTN, BTN_NEXT_SEL);
+			GFTextLine(gump, 420, 262, TXT_COLOR_SEL, "Next");
+		endif
+
+		GFAddButton(gump, 230, 260, 2152, 2151, GF_CLOSE_BTN, BTN_CLOSE_SEL);
+		GFTextLine(gump, 265, 262, TXT_COLOR_SEL, "Close");
+
+		var res := GFSendGump(who, gump);
+		if(!res[0] or res[0] == BTN_CLOSE_SEL)
+			return;
+		elseif(res[0] == BTN_PREV_SEL)
+			page := page - 1;
+			continue;
+		elseif(res[0] == BTN_NEXT_SEL)
+			page := page + 1;
+			continue;
+		elseif(res[0] > BTN_VOTE_BASE_SEL and res[0] <= (BTN_VOTE_BASE_SEL + size))
+			CastVote(who, item, res[0] - BTN_VOTE_BASE_SEL);
+			return;
+		else
+			return;
+		endif
+	endwhile
+endfunction
+
+
+function AddElectionCandidatePages(gump)
+	var size := (candidates.size() / 2);
+	const VOTE_PAGE_COLOR := 1153;
+	const ENTRIES_PER_PAGE := 6;
+
+	GFPage(gump, 2);
+	GFTextLine(gump, 28, 28, VOTE_PAGE_COLOR, election_active ? "Election candidates" : "Poll options");
+	GFAddButton(gump, 28, 190, 2117, 2118, GF_PAGE_BTN, 1);
+	GFTextLine(gump, 63, 190, VOTE_PAGE_COLOR, "Back");
+
+	if(size <= 0)
+		GFTextLine(gump, 60, 70, VOTE_PAGE_COLOR, election_active ? "No candidates available yet." : "No options available yet.");
+		return;
+	endif
+
+	var total_pages := CInt((size + ENTRIES_PER_PAGE - 1) / ENTRIES_PER_PAGE);
+	var page_index;
+	for(page_index := 1; page_index <= total_pages; page_index := page_index + 1)
+		var page_num := page_index + 1;
+		var start_idx := ((page_index - 1) * ENTRIES_PER_PAGE) + 1;
+		var end_idx := start_idx + ENTRIES_PER_PAGE - 1;
+		if(end_idx > size)
+			end_idx := size;
+		endif
+
+		GFPage(gump, page_num);
+		GFTextLine(gump, 28, 28, VOTE_PAGE_COLOR, election_active ? "Election candidates" : "Poll options");
+		GFAddButton(gump, 28, 190, 2117, 2118, GF_PAGE_BTN, page_num - 1);
+		GFTextLine(gump, 63, 190, VOTE_PAGE_COLOR, "Back");
+		if(page_index < total_pages)
+			GFAddButton(gump, 485, 190, 2117, 2118, GF_PAGE_BTN, page_num + 1);
+			GFTextLine(gump, 430, 190, VOTE_PAGE_COLOR, "Next");
+		endif
+
+		var i;
+		var row := 0;
+		for(i := start_idx; i <= end_idx; i := i + 1)
+			var textY := 70 + (row * 20);
+			GFTextLine(gump, 60, textY, VOTE_PAGE_COLOR, candidates[(2 * i)]);
+			GFAddButton(gump, 300, textY - 2, 2474, 2473, GF_CLOSE_BTN, i);
+			GFTextLine(gump, 335, textY, VOTE_PAGE_COLOR, "Vote");
+			row := row + 1;
+		endfor
+	endfor
+endfunction
+
+
+function BuildTownStoneGump(who)
+	var gump := GFCreateGump(20, 20, 540, 410);
+	GFDisposable(gump, 0);
+	GFMovable(gump, 0);
+	GFResizePic(gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 540, 410);
+	GFResizePic(gump, 15, 15, GFGetCfgConst("Defaults", "ForeGround"), 510, 380);
+	GFPage(gump, 1);
+
+	var upgrades_enabled := IsTownUpgradesEnabled(realm, city);
+	var donations_enabled := IsTownDonationsEnabled(realm, city);
+	var show_latest_poll_result := (!poll_question and poll_result and poll_result.size() >= 2);
+	var yshift := 0;
+	if(show_latest_poll_result)
+		yshift := 58;
+	endif
+
+	GFTextLine(gump, 28, 28, 1153, "Town Stone of " + city);
+	GFTextLine(gump, 28, 48, 1153, "Mayor's name: " + mayor);
+	GFTextLine(gump, 28, 68, 1153, "Population: " + CStr(population));
+	if(election_active and timer > ReadGameClock())
+		GFTextLine(gump, 28, 88, 1153, "Election ends in: " + FormatDuration(timer - ReadGameClock()));
+	elseif(mayorserial and nextcitizenelection > ReadGameClock())
+		GFTextLine(gump, 28, 88, 1153, "Mayorship ends in: " + FormatDuration(nextcitizenelection - ReadGameClock()));
+	elseif(mayorserial)
+		GFTextLine(gump, 28, 88, 1153, "Mayorship term has ended.");
+	elseif(poll_question and timer > ReadGameClock())
+		GFTextLine(gump, 28, 88, 1153, "Poll ends in: " + FormatDuration(timer - ReadGameClock()));
+	endif
+
+	if(show_latest_poll_result)
+		var poll_q := TruncateForGump(poll_result[1], 40);
+		var poll_r := TruncateForGump(poll_result[2], 40);
+		GFTextLine(gump, 28, 102, 1153, "Latest poll result:");
+		GFTextLine(gump, 28, 122, 1153, "Question: " + poll_q);
+		GFTextLine(gump, 28, 142, 1153, "Result: " + poll_r);
+	endif
+
+	if(!user)
+		GFTextLine(gump, 28, 102 + yshift, 1153, "Do you want to be citizen of " + city + "?");
+		GFAddButton(gump, 60, 140 + yshift, 2474, 2473, GF_CLOSE_BTN, 1000);
+		GFTextLine(gump, 95, 142 + yshift, 1153, "Yes");
+		GFAddButton(gump, 160, 140 + yshift, 2152, 2151, GF_CLOSE_BTN, 0);
+		GFTextLine(gump, 195, 142 + yshift, 1153, "No");
+	elseif(user == 99)
+		GFTextLine(gump, 28, 102 + yshift, 1153, "You are not a citizen of this town.");
+		GFAddButton(gump, 60, 140 + yshift, 2152, 2151, GF_CLOSE_BTN, 0);
+		GFTextLine(gump, 95, 142 + yshift, 1153, "Close");
+	elseif(mayorserial == who.serial)
+		GFTextLine(gump, 28, 102 + yshift, 1153, "Welcome, Mayor of " + city + ".");
+		GFAddButton(gump, 60, 220 + yshift, 2474, 2473, GF_CLOSE_BTN, 2001);
+		GFTextLine(gump, 95, 222 + yshift, 1153, "Call new poll");
+		if(upgrades_enabled)
+			GFAddButton(gump, 60, 250 + yshift, 2474, 2473, GF_CLOSE_BTN, 2100);
+			GFTextLine(gump, 95, 252 + yshift, 1153, "Purchase upgrades");
+		endif
+		if(election_active)
+			GFTextLine(gump, 28, 125 + yshift, 1153, "Running election: " + votepercent + "% have voted.");
+			GFAddButton(gump, 260, 220 + yshift, 2474, 2473, GF_CLOSE_BTN, 5001);
+			GFTextLine(gump, 295, 222 + yshift, 1153, "View candidates");
+		else
+			GFAddButton(gump, 260, 220 + yshift, 2474, 2473, GF_CLOSE_BTN, 2002);
+			GFTextLine(gump, 295, 222 + yshift, 1153, "Start elections");
+		endif
+		if(poll_question)
+			GFTextLine(gump, 28, 125 + yshift, 1153, "Poll: " + CStr(poll_question));
+			GFTextLine(gump, 28, 145 + yshift, 1153, "Poll running: " + votepercent + "% have voted");
+			if(timer > ReadGameClock())
+				GFTextLine(gump, 28, 165 + yshift, 1153, "Poll ends in: " + FormatDuration(timer - ReadGameClock()));
+			endif
+			GFAddButton(gump, 260, 180 + yshift, 2474, 2473, GF_CLOSE_BTN, 5001);
+			GFTextLine(gump, 295, 182 + yshift, 1153, "View options");
+		endif
+	else
+		GFTextLine(gump, 28, 102 + yshift, 1153, "Welcome, Citizen of " + city + ".");
+		GFAddButton(gump, 60, 140 + yshift, 2474, 2473, GF_CLOSE_BTN, 3000);
+		GFTextLine(gump, 95, 142 + yshift, 1153, "Do you want to give up your citizenship?");
+		GFAddButton(gump, 60, 170 + yshift, 2152, 2151, GF_CLOSE_BTN, 0);
+		GFTextLine(gump, 95, 172 + yshift, 1153, "No");
+		if(election_active or poll_question)
+			GFTextLine(gump, 95, 198 + yshift, 1153, election_active ? "An election is running." : "A poll is running.");
+			if(election_active)
+				if(IsPlayerCandidate(who))
+					GFTextLine(gump, 300, 202 + yshift, 1153, "Already a candidate");
+				else
+					GFAddButton(gump, 260, 198 + yshift, 2474, 2473, GF_CLOSE_BTN, 4000);
+					GFTextLine(gump, 295, 200 + yshift, 1153, "Declare candidacy");
+				endif
+				GFAddButton(gump, 260, 223 + yshift, 2474, 2473, GF_CLOSE_BTN, 5001);
+				GFTextLine(gump, 295, 225 + yshift, 1153, "Vote");
+			else
+				GFTextLine(gump, 95, 218 + yshift, 1153, "Question: " + CStr(poll_question));
+				if(timer > ReadGameClock())
+					GFTextLine(gump, 95, 238 + yshift, 1153, "Poll ends in: " + FormatDuration(timer - ReadGameClock()));
+				endif
+				GFAddButton(gump, 260, 258 + yshift, 2474, 2473, GF_CLOSE_BTN, 5001);
+				GFTextLine(gump, 295, 260 + yshift, 1153, "Vote in poll");
+			endif
+		elseif(CanCitizenCallElection())
+			if(!mayorserial)
+				GFTextLine(gump, 28, 198 + yshift, 1153, "There is no mayor for this town.");
+			else
+				GFTextLine(gump, 28, 198 + yshift, 1153, "Citizens can call an election now.");
+			endif
+			GFAddButton(gump, 60, 220 + yshift, 2474, 2473, GF_CLOSE_BTN, 2002);
+			GFTextLine(gump, 95, 222 + yshift, 1153, "Call an election");
+		elseif(!mayorserial and population < 3)
+			GFTextLine(gump, 28, 198 + yshift, 1153, "There is no mayor for this town.");
+			GFTextLine(gump, 28, 218 + yshift, 1153, "You need at least 3 town members to call an election.");
+		elseif(!mayorserial)
+			GFTextLine(gump, 28, 198 + yshift, 1153, "There is no mayor for this town.");
+			GFTextLine(gump, 28, 218 + yshift, 1153, "Election call is currently unavailable.");
+		elseif(population < 3)
+			GFTextLine(gump, 28, 198 + yshift, 1153, "You need at least 3 town members to call an election.");
+		elseif(nextcitizenelection and ReadGameClock() < nextcitizenelection)
+			GFTextLine(gump, 28, 198 + yshift, 1153, "Citizens may call elections every 2 months.");
+			var seconds_left := nextcitizenelection - ReadGameClock();
+			GFTextLine(gump, 28, 218 + yshift, 1153, "Available in about " + FormatSecondsToDays(seconds_left) + " day(s).");
+		endif
+	endif
+
+	var donation_y := 350 + yshift;
+	if(donation_y > 368)
+		donation_y := 368;
+	endif
+	var town_gold := GetTownBankGold(realm, city);
+	GFTextLine(gump, 260, donation_y - 28, 1153, "Upgrades: " + (upgrades_enabled ? "Enabled" : "Disabled"));
+	GFTextLine(gump, 260, donation_y - 14, 1153, "Donations: " + (donations_enabled ? "Enabled" : "Disabled"));
+	if(donations_enabled)
+		GFAddButton(gump, 28, donation_y - 2, 2474, 2473, GF_CLOSE_BTN, 9001);
+		GFTextLine(gump, 63, donation_y, 1153, "Donate cheque");
+	endif
+	GFTextLine(gump, 260, donation_y + 2, 1153, "Town treasury: " + FormatGoldAmount(town_gold) + " gold");
+
+	AddElectionCandidatePages(gump);
+
+	return gump;
+endfunction
+
+
+function LeaveCitizenship(who, item)
+	var i;
+
+	if(election_active or poll_question)
+		var newlist := {};
+		foreach entry in candidates
+			if(entry != who.serial and entry != who.name)
+				newlist.append(entry);
+			endif
+		endforeach
+		SetObjProperty(item, "candidates", newlist);
+
+		foreach rune in EnumerateItemsInContainer(item)
+			if(rune.objtype == VOTE_RUNE_OBJTYPE and GetObjProperty(rune, "serial") == who.acctname)
+				DestroyItem(rune);
+				votes := votes - 1;
+				if(votes < 0)
+					votes := 0;
+				endif
+				SetObjProperty(item, "votes", votes);
+				UpdateVotePercent(item);
+				break;
+			endif
+		endforeach
+	endif
+
+	who.name := StripTownSuffix(who.name, city);
+
+	set_critical(1);
+	for(i := 1; i <= citizen.size(); i := i + 1)
+		if(citizen[i] == who.acctname)
+			citizen.erase(i);
+			break;
+		endif
+	endfor
+	population := population - 1;
+	if(population < 0)
+		population := 0;
+	endif
+	SetObjProperty(item, "population", population);
+	SetObjProperty(item, "citizen", citizen);
+	EraseObjProperty(who, "town");
+	EraseObjProperty(who, "town_realm");
+	set_critical(0);
+
+	SendSysMessage(who, "You are no longer a citizen of " + city + ".");
+	TouchTownstoneRegionEntry(item);
+endfunction
+
+
+function JoinCitizenship(who, item)
+	set_critical(1);
+	foreach acct in citizen
+		if(acct == who.acctname)
+			SendSysMessage(who, "You can't join more than once.");
+			set_critical(0);
+			return;
+		endif
+	endforeach
+
+	citizen.append(who.acctname);
+	SetObjProperty(item, "citizen", citizen);
+	SetObjProperty(who, "town", CInt(stone));
+	SetObjProperty(who, "town_realm", realm);
+	population := population + 1;
+	SetObjProperty(item, "population", population);
+	set_critical(0);
+
+	var display_city := StrReplace(city, "'", "");
+	who.name := who.name + " of " + display_city;
+
+	SendSysMessage(who, "You are now a citizen of " + city + ".");
+
+	if(election_active or poll_question)
+		UpdateVotePercent(item);
+	endif
+	TouchTownstoneRegionEntry(item);
+endfunction
+
+
+program townstone(who, item)
+	if(!ReserveItem(item))
+		return;
+	endif
+
+	stone := CInt(GetObjProperty(item, "town"));
 	if(!stone)
-		syslog("bad townstone");
+		SysLog("[townstone] bad townstone (serial " + item.serial + "): missing 'town' property.");
 		return 0;
 	endif
 
-	stone := cint(stone);
-	user := cint(user);
-
-	if((user != 0) and (user != stone))
-		user := 99;
+	// Refresh region + realm cache on the stone.
+	var stone_realm := GetStoneRealm(item);
+	if(!GetObjProperty(item, "realm"))
+		SetObjProperty(item, "realm", stone_realm);
+	endif
+	realm := stone_realm;
+	city := CStr(GetObjProperty(item, "regionname"));
+	if(!city)
+		city := GetTownName(stone);
+		if(city)
+			SetObjProperty(item, "regionname", city);
+		endif
 	endif
 
-	city := GetTownName(stone);
+	user := CInt(GetObjProperty(who, "town"));
+	var user_realm := CStr(GetObjProperty(who, "town_realm"));
+	if(user)
+		// Legacy characters with only `town` (no `town_realm`) — accept as-is.
+		if(user_realm and user_realm != realm)
+			user := 99;
+		elseif(user != CInt(stone))
+			user := 99;
+		endif
+	else
+		user := 0;
+	endif
+
+	TouchTownstoneRegionEntry(item);
 	mayor := GetObjProperty(item, "mayor");
-	mayorserial :=cint(GetObjProperty(item, "mayorserial"));
-	populacao := cint(GetObjProperty(item, "populacao"));
-	eleicoes := cint(GetObjProperty(item, "eleicao"));
-	pleibicito := GetObjProperty(item, "pleibicito");
-	candidatos := GetObjProperty(item, "candidatos");
-	votepercent := cint(GetObjProperty(item, "votepercent"));
-	votos := cint(GetObjProperty(item, "votos"));
-	timer := cint(GetObjProperty(item, "timer"));
-	Pleibicito_Result := GetObjProperty(item, "Pleibicito_Result");
+	mayorserial := CInt(GetObjProperty(item, "mayorserial"));
+	population := CInt(GetObjProperty(item, "population"));
+	election_active := CInt(GetObjProperty(item, "election_active"));
+	poll_question := GetObjProperty(item, "poll_question");
+	candidates := GetObjProperty(item, "candidates");
+	votepercent := CInt(GetObjProperty(item, "votepercent"));
+	votes := CInt(GetObjProperty(item, "votes"));
+	timer := CInt(GetObjProperty(item, "timer"));
+	poll_result := GetObjProperty(item, "poll_result");
+	nextcitizenelection := CInt(GetObjProperty(item, "nextcitizenelection"));
 	citizen := GetObjProperty(item, "citizen");
 
-	if (!citizen)
-		citizen := { };
+	if(!citizen)
+		citizen := {};
 	endif
-
-	if(!candidatos)
-		candidatos := { };
+	if(!candidates)
+		candidates := {};
 	endif
-
-	if(!populacao)
-		populacao := 0;
+	if(!population)
+		population := 0;
 	endif
-	if(!votos)
-		votos :=0;
+	if(!votes)
+		votes := 0;
 	endif
 	if(!votepercent)
 		votepercent := 0;
@@ -196,170 +773,84 @@ program townstone(who,item)
 		mayor := "No mayor";
 		mayorserial := 0;
 	endif
-
 	if(!timer)
 		timer := 0;
 	endif
-
-	if(len(pleibicito) < 2 or !pleibicito)
-		pleibicito := 0;
+	if(!nextcitizenelection)
+		nextcitizenelection := 0;
+	endif
+	if(!poll_result)
+		poll_result := {};
+	endif
+	if(!poll_question or Len(CStr(poll_question)) < 2)
+		poll_question := 0;
 	endif
 
-	data[1] := data[1] + city;
-	data[3] := mayor;
-	data[5] := cstr(populacao);
-
-	if(!user)
-		layout := Append_data(layout, layout2);
-		data := Append_data(data, data2);
-		data[6] := data[6] + city +"?";
-	elseif (user == 99)
-		layout := Append_data(layout, layoutx);
-	//nothing for now
-	elseif ( mayorserial == who.serial)
-		SendSysMessage(who, "Welcome mayor");
-		layout := Append_data(layout, layout3);
-		data := Append_data(data, data3);
-			if(eleicoes)
-			data[8] := "Running election";
-			data[10] := votepercent + "% have voted";
-		else
-			data[8] := "No elections running";
-		endif
-		if(pleibicito)
-			data[9] := "Poll running";
-			data[11] := votepercent + "% have voted";
-		else
-			data[9] := "No poll runing";
-		endif
-	else
-		SendSysMessage(who, "Welcome citizen of "+ city);
-		layout := Append_data(layout, layout4);
-		data := Append_data(data, data4);
-		if(eleicoes)
-			EleicoesMenu(who, item);
-		elseif(pleibicito)
-			PleibicitoMenu(who, item);
-		elseif(Pleibicito_Result)
-			data[9] := "Last poll: " + Pleibicito_Result[1];
-			data[10] := Pleibicito_Result[2];
-		else
-			data[9] := "No elections running";
-			data[10] := "No poll runing";
-
-		endif
-
+	if(election_active or poll_question)
+		EnsureTownstoneElectionWatcher();
 	endif
 
+	var poll_full := (poll_question and population > 0 and votes >= population);
+	if((election_active or poll_question) and ((timer > 0 and timer < ReadGameClock()) or poll_full))
+		ResolveElection(item);
 
-	var res := SendDialogGump(who, layout, data);
+		mayor := GetObjProperty(item, "mayor");
+		mayorserial := CInt(GetObjProperty(item, "mayorserial"));
+		election_active := CInt(GetObjProperty(item, "election_active"));
+		poll_question := GetObjProperty(item, "poll_question");
+		candidates := GetObjProperty(item, "candidates");
+		votepercent := CInt(GetObjProperty(item, "votepercent"));
+		votes := CInt(GetObjProperty(item, "votes"));
+		timer := CInt(GetObjProperty(item, "timer"));
+		poll_result := GetObjProperty(item, "poll_result");
+		nextcitizenelection := CInt(GetObjProperty(item, "nextcitizenelection"));
 
-	case (res[0])
-		1000: Citizenship(who, item);
+		if(!mayor or !mayorserial)
+			mayor := "No mayor";
+			mayorserial := 0;
+		endif
+		if(!timer)
+			timer := 0;
+		endif
+		if(!nextcitizenelection)
+			nextcitizenelection := 0;
+		endif
+		if(!poll_result)
+			poll_result := {};
+		endif
+		if(!poll_question or Len(CStr(poll_question)) < 2)
+			poll_question := 0;
+		endif
+	endif
 
-		2001: ConvocarPleibicito(who, item); 
+	// Heal stale election flag left from bugs / old data.
+	if(election_active and !poll_question and timer <= 0 and votes <= 0 and candidates.size() <= 0)
+		election_active := 0;
+		SetObjProperty(item, "election_active", 0);
+		TouchTownstoneRegionEntry(item);
+	endif
 
-		2002: ConvocarEleicoes(who, item); 
+	var gump := BuildTownStoneGump(who);
+	var res := GFSendGump(who, gump);
+	if(res[0] == 0)
+		TouchTownstoneRegionEntry(item);
+		return;
+	endif
 
-		3000: CanselCityzenship(who, item); 
-
-		4000: candidato(who, item);
-
-		default: if( res[0] <= (candidatos.size()/2) and res[0] > 0 )
-				voteto(who, item, res[0]);
-			else
-				sendsysmessage(who, "cya");
+	case(res[0])
+		1000:	JoinCitizenship(who, item);
+		2001:	CallPoll(who, item);
+		2100:	OpenTownUpgradesGump(who, item);
+		2002:	CallElection(who, item);
+		3000:	LeaveCitizenship(who, item);
+		4000:	DeclareCandidate(who, item);
+		5001:	OpenVoteSelectionGump(who, item);
+		9001:	DonateTownCheque(who, item);
+		default:
+			if(res[0] <= (candidates.size() / 2) and res[0] > 0)
+				CastVote(who, item, res[0]);
 			endif
 	endcase
 
-
+	TouchTownstoneRegionEntry(item);
 endprogram
-
-
-
-function CanselCityzenship(who, item)
-
-	var i;
-
-	if(eleicoes or pleibicito)			
-		
-		var newlist := {};
-		foreach serial in candidatos
-			if(serial != who.serial && serial != who.name)
-				newlist.append(serial);
-			endif
-
-		/*	if (serial == who.serial)
-				SendSysMessage(who, "You can't give up citizenship while being a candidade during elections");
-				return;
-			endif*/
-		endforeach
-		SetObjProperty(item, "candidatos", newlist);
-
-		foreach runa in EnumerateItemsInContainer( item )
-			if (runa.objtype == 0xa321)
-				if (GetObjProperty(runa, "serial") == who.serial)
-					destroyitem(runa);
-					votos := votos -1;
-					SetObjProperty(item, "votos", votos);
-					SetVotepercentage(item);
-					break;
-				endif
-			endif
-		endforeach
-	endif
-
-	var result := find(who.name, "of "+city, 1);
-	var name := who.name;
-	result := result-2;
-	name := name[1,result];
-	who.name := name;
-
-	set_critical(1);
-
-	for(i:=1; i<=citizen.size(); i:=i+1)
-		if(citizen[i] == who.acctname)
-			citizen.erase(i);
-			break;
-		endif
-	endfor
-			
-	populacao := populacao -1;
-	SetObjProperty(item, "populacao", populacao);
-	SetObjProperty(item, "citizen", citizen);
-	EraseObjProperty(who, "town");
-	SendSysMessage(who, "You are no longer citizen of " +city);
-
-endfunction
-
-
-function Citizenship(who, item)
-
-	set_critical(1);
-
-	foreach dude in citizen
-		if (dude == who.acctname)
-			SendSysMessage(who, "You can't join more than once");
-			return;
-		endif
-	endforeach
-
-	citizen.append(who.acctname);
-	SetObjProperty(item, "citizen", citizen);
-	SetObjProperty(who, "town", cint(stone));
-	populacao := populacao +1;
-	SetObjProperty(item, "populacao", populacao);
-
-	set_critical(0);
-
-	city := StrReplace(city, "'", "");
-
-	who.name := who.name + " of " + city;
-
-	sendsysmessage(who, "Now you are citizen of " + city);
-
-	if(eleicoes or pleibicito)
-		SetVotepercentage(item);
-	endif
-
-endfunction
