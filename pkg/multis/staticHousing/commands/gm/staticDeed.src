@@ -62,10 +62,10 @@ program textcmd_staticdeed(character)
 		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 		return;
 	elseif( ret[1] )
-		signobjtype := 0x0bd1;
+		signobjtype := 0x20bd1;
 		signgraphic := 0x0bd1;
 	elseif( ret[2] )
-		signobjtype := 0x0bcf;
+		signobjtype := 0x20bcf;
 		signgraphic := 0x0bcf;
 	endif
 
@@ -215,7 +215,7 @@ function makesign(x, y, z)
 		default: postgraphic := 0xb98;
 	endcase
 	if(!signobjtype)
-		signobjtype := 0x0bcf;
+		signobjtype := 0x20bcf;
 		signgraphic := 0x0bcf;
 	endif
 	var hsign := CreateItemAtLocation(x, y, z, signobjtype, 1, who.realm);

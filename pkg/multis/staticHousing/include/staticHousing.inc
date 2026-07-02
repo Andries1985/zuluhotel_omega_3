@@ -46,6 +46,13 @@ function FindStaticHouseForLocation (x, y, z, map)
 		case (item.objtype)
 			0x0BD1:
 			0x0BCF:
+			0x0BD0:
+			0x0BD2:
+			0x20BD1:
+			0x20BCF:
+			0x20BD0:
+			0x20BD2:
+			0x260FA:
 				if (IsLocationWithinStaticHouseSign (item, x, y, z))
 					STHIncDebug("FindStaticHouseForLocation hit sign=" + item.serial + " @" + x + "," + y + "," + z + " realm=" + map);
 					return item;

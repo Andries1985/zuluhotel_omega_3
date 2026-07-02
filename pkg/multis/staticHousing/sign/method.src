@@ -28,16 +28,14 @@ endprogram
 // Returns: 1 if true or 0 if false
 //
 ///////////////////////////////////////////////////////////
-exported function IsHouseSign( byref unused sign )
-
-	var signs := {0xBD0, 0xBD2, 0x0BD1, 0x0BCF};
-	foreach thing in signs
-		thing := thing; // stops unused warning.
-		if(GetObjProperty(thing, "footage"))
-			return 1;
-		endif
-	endforeach
+exported function IsHouseSign( byref sign )
+	if(!sign)
 		return 0;
+	endif
+	if(sign.objtype in {0xBD0, 0xBD2, 0x0BD1, 0x0BCF, 0x20BD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x260FA})
+		return 1;
+	endif
+	return 0;
 endfunction
 
 ///////////////////////////////////////////////////////////
@@ -53,14 +51,13 @@ endfunction
 //
 // Returns: 1 if true and 0 if false.
 ///////////////////////////////////////////////////////////
-exported function IsStaticHouseSign( byref unused sign )
-	var signs := {0x0BD1, 0x0BCF};
-	foreach thing in signs
-		thing := thing; // stops unused warning.
-		if(GetObjProperty(thing, "footage"))
-			return 1;
-		endif
-	endforeach
+exported function IsStaticHouseSign( byref sign )
+	if(!sign)
+		return 0;
+	endif
+	if(sign.objtype in {0x0BD1, 0x0BCF, 0x0BD0, 0x0BD2, 0x20BD1, 0x20BCF, 0x20BD0, 0x20BD2, 0x260FA})
+		return 1;
+	endif
 	return 0;
 
 endfunction
@@ -78,14 +75,13 @@ endfunction
 //
 // Returns: 1 if true and 0 if false.
 ///////////////////////////////////////////////////////////
-exported function IsMultiHouseSign( byref unused sign )
-	var signs := {0xBD2, 0xBD0};
-	foreach thing in signs
-		thing := thing; // stops unused warning.
-		if(GetObjProperty(thing, "footage"))
-			return 1;
-		endif
-	endforeach
+exported function IsMultiHouseSign( byref sign )
+	if(!sign)
+		return 0;
+	endif
+	if(sign.objtype in {0xBD2, 0xBD0})
+		return 1;
+	endif
 	return 0;
 
 endfunction
