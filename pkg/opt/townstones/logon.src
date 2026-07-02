@@ -1,0 +1,63 @@
+// On login, notify the player about any active election / poll in their town.
+
+use uo;
+use os;
+
+include ":townstone:tstone";
+
+
+program Logon(who)
+	var town_id := CInt(GetObjProperty(who, "town"));
+	if(!town_id)
+		return 1;
+	endif
+
+	var region_name := GetTownName(town_id);
+	if(!region_name)
+		return 1;
+	endif
+
+	var realm := CStr(GetObjProperty(who, "town_realm"));
+	if(!realm)
+		realm := GetTownRealm(town_id);
+	endif
+	if(!realm)
+		return 1;
+	endif
+
+	var df := OpenTownstoneDataFile();
+	if(!df)
+		return 1;
+	endif
+
+	var elem := df.FindElement(MakeRegionKey(realm, region_name));
+	if(!elem)
+		UnloadDataFile(TOWNSTONE_DATAFILE);
+		return 1;
+	endif
+
+	var election_active := CInt(elem.GetProp("election_active"));
+	var poll_question := elem.GetProp("poll_question");
+	var timer := CInt(elem.GetProp("timer"));
+	var votepercent := CInt(elem.GetProp("votepercent"));
+	UnloadDataFile(TOWNSTONE_DATAFILE);
+
+	if(election_active)
+		SendSysMessage(who, "Town notice: An election is running in " + region_name + ".");
+		SendSysMessage(who, "Current participation: " + CStr(votepercent) + "%.");
+		if(timer > ReadGameClock())
+			SendSysMessage(who, "Election ends in " + FormatDuration(timer - ReadGameClock()) + ".");
+		endif
+	endif
+
+	if(poll_question and Len(CStr(poll_question)) >= 2)
+		SendSysMessage(who, "Town notice: A poll is running in " + region_name + ".");
+		SendSysMessage(who, "Poll question: " + CStr(poll_question));
+		SendSysMessage(who, "Current participation: " + CStr(votepercent) + "%.");
+		if(timer > ReadGameClock())
+			SendSysMessage(who, "Poll ends in " + FormatDuration(timer - ReadGameClock()) + ".");
+		endif
+	endif
+
+	return 1;
+endprogram

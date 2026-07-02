@@ -1,0 +1,52 @@
+// Synopsis: Reset poll data on a targeted town stone without resetting the whole stone
+
+use uo;
+use os;
+use datafile;
+
+include ":townstone:tstone";
+
+
+program textcmd_resetpoll(who)
+	SendSysMessage(who, "Select the townstone to reset poll data.");
+	var stone := Target(who);
+	if(!stone)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+	if(!stone or stone.objtype != TOWNSTONE_OBJTYPE or !CInt(GetObjProperty(stone, "town")))
+		SendSysMessage(who, "That target is not a valid town stone.");
+		return;
+	endif
+
+	// Only wipe vote runes if there's no active election running.
+	if(!CInt(GetObjProperty(stone, "election_active")))
+		foreach it in EnumerateItemsInContainer(stone)
+			if(it and it.objtype == VOTE_RUNE_OBJTYPE)
+				DestroyItem(it);
+			endif
+		endforeach
+	endif
+
+	var had_poll := GetObjProperty(stone, "poll_question");
+	var had_result := GetObjProperty(stone, "poll_result");
+
+	EraseObjProperty(stone, "poll_question");
+	EraseObjProperty(stone, "poll_result");
+	SetObjProperty(stone, "candidates", {});
+	SetObjProperty(stone, "votes", 0);
+	SetObjProperty(stone, "votepercent", 0);
+
+	// Polls and elections are mutually exclusive. Keep timer if an election is running.
+	if(!CInt(GetObjProperty(stone, "election_active")))
+		EraseObjProperty(stone, "timer");
+	endif
+
+	TouchTownstoneRegionEntry(stone);
+
+	if(had_poll or had_result)
+		SendSysMessage(who, "Poll data has been reset for this town stone.");
+	else
+		SendSysMessage(who, "No active poll data was found, but poll fields were reset.");
+	endif
+endprogram

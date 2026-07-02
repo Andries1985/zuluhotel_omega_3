@@ -4,7 +4,7 @@ use os;
 use util;
 use polsys;
 
-include "../pkg/mobiles/npcs/include/NPCBackpacks";
+include ":keys:key";
 
 program fix_key_ring( mobile )
 	SendSysMessage( mobile, "Which keyring would you like to fix?", 0x3, 0x42 );
@@ -28,7 +28,7 @@ function DuplicateKeyRing( mobile, keyring )
 		key_desc := 0,
 		key := 0;
 
-	var insidering := FindMyPack( keyring.serial );
+	var insidering := FindMyKey( keyring.serial );
 	foreach otherkey in EnumerateItemsInContainer( insidering )
 		Sleepms( 5 );
 		LockID := GetObjProperty( otherkey, "LockID" );

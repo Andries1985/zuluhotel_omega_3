@@ -1,0 +1,129 @@
+// Synopsis: Remove a targeted character from their current town membership and sync townstone data
+
+use uo;
+use os;
+use datafile;
+
+include ":townstone:tstone";
+
+
+program textcmd_removetownmember(who)
+	SendSysMessage(who, "Select the character to remove from their town.");
+	var target_char := Target(who);
+	if(!target_char)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+	if(!target_char.acctname)
+		SendSysMessage(who, "That target is not a player character.");
+		return;
+	endif
+
+	var town_id := CInt(GetObjProperty(target_char, "town"));
+	if(!town_id)
+		SendSysMessage(who, target_char.name + " is not a member of any town.");
+		return;
+	endif
+
+	var town_name := GetTownName(town_id);
+	var stone := FindTownstoneByTownId(town_id);
+	if(!stone)
+		SendSysMessage(who, "Could not locate a townstone for town id " + CStr(town_id) + ".");
+		return;
+	endif
+	if(!town_name)
+		town_name := CStr(GetObjProperty(stone, "regionname"));
+	endif
+
+	var citizens := GetObjProperty(stone, "citizen");
+	if(!citizens)
+		citizens := {};
+	endif
+	var removed := RemoveCitizenAccount(citizens, target_char.acctname);
+	if(removed)
+		SetObjProperty(stone, "citizen", citizens);
+	endif
+
+	var population := CInt(GetObjProperty(stone, "population"));
+	if(population < 0)
+		population := 0;
+	endif
+	if(removed and population > 0)
+		population := population - 1;
+		SetObjProperty(stone, "population", population);
+	endif
+
+	CleanupElectionMembership(stone, target_char, population);
+
+	EraseObjProperty(target_char, "town");
+	EraseObjProperty(target_char, "town_realm");
+
+	var cleaned := StripTownSuffix(target_char.name, town_name);
+	if(cleaned != target_char.name)
+		target_char.name := cleaned;
+	endif
+
+	TouchTownstoneRegionEntry(stone);
+
+	SendSysMessage(target_char, "You are no longer a citizen of " + town_name + ".");
+	SendSysMessage(who, "Removed " + target_char.name + " from " + town_name + ".");
+endprogram
+
+
+function CleanupElectionMembership(stone, target_char, population)
+	var election_active := CInt(GetObjProperty(stone, "election_active"));
+	var poll_question := GetObjProperty(stone, "poll_question");
+	if(!election_active and !poll_question)
+		return;
+	endif
+
+	var candidates := GetObjProperty(stone, "candidates");
+	if(!candidates)
+		candidates := {};
+	endif
+
+	var newlist := {};
+	foreach entry in candidates
+		if(entry != target_char.serial and entry != target_char.name)
+			newlist.append(entry);
+		endif
+	endforeach
+	SetObjProperty(stone, "candidates", newlist);
+
+	var votes := CInt(GetObjProperty(stone, "votes"));
+	if(votes < 0)
+		votes := 0;
+	endif
+
+	foreach rune in EnumerateItemsInContainer(stone)
+		if(rune.objtype == VOTE_RUNE_OBJTYPE and GetObjProperty(rune, "serial") == target_char.acctname)
+			DestroyItem(rune);
+			if(votes > 0)
+				votes := votes - 1;
+			endif
+			break;
+		endif
+	endforeach
+
+	SetObjProperty(stone, "votes", votes);
+	if(population > 0)
+		SetObjProperty(stone, "votepercent", CInt((votes * 100) / population));
+	else
+		SetObjProperty(stone, "votepercent", 0);
+	endif
+endfunction
+
+
+function RemoveCitizenAccount(citizens, account_name)
+	if(!citizens or !account_name)
+		return 0;
+	endif
+	var i;
+	for(i := 1; i <= citizens.size(); i := i + 1)
+		if(Lower(CStr(citizens[i])) == Lower(CStr(account_name)))
+			citizens.erase(i);
+			return 1;
+		endif
+	endfor
+	return 0;
+endfunction

@@ -98,23 +98,17 @@ program banker();
 				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EEA);
 				EraseObjProperty(ev.source, "banker_making_check");
+			elseif(Find( text, "vault", 1 ) && Find( text, "balance", 1 ))
+				ShowStorageBalance( ev.source, CP_PLAYER_VAULT_AREA, "vault" );
+			elseif(Find(text, "vault", 1) && Find(text, "deposit", 1))
+				DepositAllBackpackCoins(ev.source, me, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "vault", 1) && Find(text, "withdraw", 1))
+				WithdrawFromBank(ev.source, me, text, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "vault", 1))
+				OpenBank(ev.source, CP_PLAYER_VAULT_AREA, "vault");
 			// elseif(text["balance"])
 			elseif(Find( text, "balance", 1 ))
-				//if(ev.source.criminal == 1)
-					//say("I will not do business with criminals!");
-				//else
-					var bankbox := CP_GetStorageContainerForMobile( ev.source, bank_region, CP_CREATE );
-					var summary := GetBankCurrencySummary(bankbox);
-					ShowBalance(
-						ev.source,
-						AddCommas(summary.gold_coins),
-						AddCommas(summary.gold_checks),
-						AddCommas(summary.silver_coins),
-						AddCommas(summary.silver_checks),
-						AddCommas(summary.copper_coins),
-						AddCommas(summary.copper_checks)
-					);
-				//endif
+				ShowStorageBalance( ev.source, bank_region, "bank box" );
 			elseif(Find(text, "bank", 1) || Find(text, "safe", 1))
 				OpenBank(ev.source, bank_region);
 			elseif(Find(text, "deposit", 1))
@@ -177,21 +171,29 @@ function IsNearestBanker(me, speaker)
 	return 1;
 endfunction
 
+function GetBankerStorageContainer( who, storage_area_name, create := CP_CREATE )
+	if( storage_area_name == CP_PLAYER_VAULT_AREA )
+		return CP_GetPlayerVaultContainerForMobile( who, create );
+	endif
+
+	return CP_GetStorageContainerForMobile( who, storage_area_name, create );
+endfunction
+
 // Using 'new' StorageAreas.inc
-function OpenBank(you, bank_region)
+function OpenBank(you, storage_area_name, storage_label := "bank box")
 	var item_word := "items";
   TurnToward(you);
-  var bankbox := CP_GetStorageContainerForMobile( you, bank_region, CP_CREATE );
+	var bankbox := GetBankerStorageContainer( you, storage_area_name, CP_CREATE );
   //var bankbox := FindBankBox( you );
   if(bankbox)
     var contents := EnumerateItemsInContainer( bankbox, ENUMERATE_ROOT_ONLY );
 		if( contents.Size() == 1 )
 			item_word := "item";
 		endif
-    PrintTextAbovePrivate(me, "Your bank box holds " + contents.Size() + " " + item_word + ".", you);
+		PrintTextAbovePrivate(me, "Your " + storage_label + " holds " + contents.Size() + " " + item_word + ".", you);
     SendOpenSpecialContainer(you, bankbox);
   else
-    say("You don't seem to have a bank box, "+ you.name);
+		say("You don't seem to have a " + storage_label + ", "+ you.name);
   endif
 endfunction
 
@@ -203,11 +205,11 @@ endfunction
 //	storage container. Inspired by ZH2.5's "deposit" command, adapted to our
 //	three-tier currency.
 //////////////////////////////////////////////////////////////////////////////////////////
-function DepositAllBackpackCoins(who, me)
+function DepositAllBackpackCoins(who, me, storage_area_name := CP_DEFAULT_AREA, storage_label := "bank")
 	TurnToward(who);
-	var bank := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	var bank := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
 	if(!bank)
-		PrintTextAbove(me, "You don't seem to have a bank box, " + who.name, 1, 39);
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
 		return 0;
 	endif
 
@@ -239,7 +241,7 @@ function DepositAllBackpackCoins(who, me)
 	endforeach
 
 	if(!placed)
-		PrintTextAbove(me, "I could not fit any of those coins in your bank box.", 1, 33);
+		PrintTextAbove(me, "I could not fit any of those coins in your " + storage_label + ".", 1, 33);
 		return 0;
 	endif
 
@@ -267,7 +269,28 @@ function DepositAllBackpackCoins(who, me)
 		i := i + 1;
 	endwhile
 
-	PrintTextAbove(me, "Deposited " + summary + " into thy bank.", 1, 66);
+	PrintTextAbove(me, "Deposited " + summary + " into thy " + storage_label + ".", 1, 66);
+	return 1;
+endfunction
+
+function ShowStorageBalance(who, storage_area_name, storage_label)
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	var summary := GetBankCurrencySummary(bankbox);
+	ShowBalance(
+		who,
+		AddCommas(summary.gold_coins),
+		AddCommas(summary.gold_checks),
+		AddCommas(summary.silver_coins),
+		AddCommas(summary.silver_checks),
+		AddCommas(summary.copper_coins),
+		AddCommas(summary.copper_checks),
+		storage_label
+	);
 	return 1;
 endfunction
 
@@ -325,7 +348,7 @@ endfunction
 //	"withdraw 1000", "withdraw 2500 gold", "withdraw 500 silver", etc.
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function WithdrawFromBank(who, me, text)
+function WithdrawFromBank(who, me, text, storage_area_name := CP_DEFAULT_AREA, storage_label := "bank box")
 	TurnToward(who);
 
 	if(GetObjProperty(who, "banker_making_check"))
@@ -384,19 +407,19 @@ function WithdrawFromBank(who, me, text)
 		return 0;
 	endif
 
-	var bankbox := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
 	if(!bankbox)
-		PrintTextAbove(me, "You don't seem to have a bank box, " + who.name, 1, 39);
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
 		return 0;
 	endif
 
 	if(CountCoins(bankbox, coin_type) < amt)
-		PrintTextAbove(me, "I'm sorry. You don't have enough " + coin_name + " in your bank box.", 1, 39);
+		PrintTextAbove(me, "I'm sorry. You don't have enough " + coin_name + " in your " + storage_label + ".", 1, 39);
 		return 0;
 	endif
 
 	if(!SpendCoin(who, amt, bankbox, coin_type))
-		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
+		SendSysMessage(who, "There was a problem extracting the coins from your " + storage_label + ".", 1, 33);
 		return 0;
 	endif
 
@@ -406,7 +429,7 @@ function WithdrawFromBank(who, me, text)
 		return 0;
 	endif
 
-	PrintTextAbove(me, "Withdrew " + AddCommas(amt) + " " + coin_name + " from thy bank.", 1, 66);
+	PrintTextAbove(me, "Withdrew " + AddCommas(amt) + " " + coin_name + " from thy " + storage_label + ".", 1, 66);
 	return 1;
 endfunction
 
@@ -426,7 +449,7 @@ endfunction
 //	Nothing
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function ShowBalance(who, gold_coins, gold_checks, silver_coins, silver_checks, copper_coins, copper_checks)
+function ShowBalance(who, gold_coins, gold_checks, silver_coins, silver_checks, copper_coins, copper_checks, storage_label := "bank box")
 	var parms := array;
 	parms[1] := who;
 	parms[2] := gold_coins;
@@ -435,6 +458,7 @@ function ShowBalance(who, gold_coins, gold_checks, silver_coins, silver_checks, 
 	parms[5] := silver_checks;
 	parms[6] := copper_coins;
 	parms[7] := copper_checks;
+	parms[8] := storage_label;
 
 	Start_Script("ai/bankerbalancegump", parms);
 

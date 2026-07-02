@@ -140,7 +140,7 @@ function HouseLockUnlockItem (sign, character, item)
 		return;
 	endif
 
-	if (item == sign || item.objtype == 0x0bd1 || item.objtype == 0x0bcf)
+	if (item == sign || item.IsStaticHouseSign())
 		SHDebug("Lock/release denied sign target item=" + item.serial);
 		SendSysMessage(character, "Canceled.");
 		return;
@@ -232,7 +232,7 @@ function HouseSecureReleaseContainer (sign, character, item)
 		return;
 	endif
 
-	if (item == sign or item.objtype == 0x0bcf || item.objtype == 0x0bd1)
+	if (item == sign or item.IsStaticHouseSign())
 		SendSysmessage( character, "Canceled." );
 		return;
 	endif
@@ -337,7 +337,7 @@ function HouseDisplayItem(sign, character, item)
 	endif
 
 
-	if (item == sign or item.objtype == 0x0bcf || item.objtype == 0x0bd1)
+	if (item == sign or item.IsStaticHouseSign())
 		SendSysmessage( character, "Canceled.", 1, 33 );
 		return;
 	endif
@@ -422,7 +422,7 @@ function HouseRaiseItem (sign, character, item)
 		endif
 	endif
 
-	if (item == sign or item.objtype == 0x0bcf || item.objtype == 0x0bd1)
+	if (item == sign or item.IsStaticHouseSign())
 		SendSysMessage(character, "You can't move the house sign!");
 		return;
 	endif
@@ -462,7 +462,7 @@ function HouseLowerItem (sign, character, item);
 		endif
 	endif
 
-	if (item == sign or item.objtype == 0x0bcf || item.objtype == 0x0bd1)
+	if (item == sign or item.IsStaticHouseSign())
 		SendSysMessage(character, "You can't move the house sign!");
 		return;
 	endif

@@ -3,7 +3,7 @@
 ///////////////////
 function ChangeHouseSign (who, sign)
 	var offset := 0;
-	if (sign.objtype == 0x0bd1 || sign.objtype == 0x0bcf)
+	if (sign.objtype == 0x0bd1 || sign.objtype == 0x0bcf || sign.objtype == 0x20bd1 || sign.objtype == 0x20bcf)
 		offset := 1;
 	elseif (GetObjProperty (sign, "originalgraphic") == 0x0bcf)
 		offset := 1;

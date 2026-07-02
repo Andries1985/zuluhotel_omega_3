@@ -1,6 +1,7 @@
 use uo;
 use os;
-use storage;
+
+include ":keys:key";
 
 program keydestroy( item )
 
@@ -22,15 +23,5 @@ endprogram
 
 
 function destroykey(myserial)
-
-    var mybank := FindStorageArea( "Tamed Storage" );
-
-    var bank_obj_name := "Bankbox  " + hex(myserial);
-
-    var bankbox := FindRootItemInStorageArea( mybank, bank_obj_name );
-
-    if( DestroyRootItemInStorageArea( mybank, "Bankbox  " + hex(myserial)) )
-       //print("keystorage successful removed");
-    endif
-
+	DestroyMyKey( myserial );
 endfunction

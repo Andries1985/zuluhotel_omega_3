@@ -1,20 +1,51 @@
 // Synopsis: Repair or reset a targeted town stone
+//
+// Wipes the mutable election / poll / mayor / citizenship state on the stone,
+// destroys any vote runes still in its container, and re-syncs the datafile.
+
 use uo;
+use os;
+use datafile;
 
-program textcmd_fixstone( who )
+include ":townstone:tstone";
 
-    Sendsysmessage( who , "Select townstone to clear." );
-    var stone := Target( who );
 
-    eraseobjproperty (stone,"mayor");
-    eraseobjproperty (stone,"mayorserial");
-    eraseobjproperty (stone,"pleibicito");
-    eraseobjproperty (stone,"mayorserial");
-    eraseobjproperty (stone,"Pleibicito_Result");
-    eraseobjproperty (stone,"timer");
-    eraseobjproperty (stone,"populacao");
-    eraseobjproperty (stone,"votepercent");
-    eraseobjproperty (stone,"votos");
-    setobjproperty (stone,"eleicao",1);
+program textcmd_fixstone(who)
+	SendSysMessage(who, "Select the townstone to reset.");
+	var stone := Target(who);
+	if(!stone)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+	if(!stone or stone.objtype != TOWNSTONE_OBJTYPE or !CInt(GetObjProperty(stone, "town")))
+		SendSysMessage(who, "That target is not a valid town stone.");
+		return;
+	endif
 
+	// Destroy vote runes still inside the stone container.
+	foreach it in EnumerateItemsInContainer(stone)
+		if(it and it.objtype == VOTE_RUNE_OBJTYPE)
+			DestroyItem(it);
+		endif
+	endforeach
+
+	EraseObjProperty(stone, "mayor");
+	EraseObjProperty(stone, "mayorserial");
+	EraseObjProperty(stone, "poll_question");
+	EraseObjProperty(stone, "poll_result");
+	EraseObjProperty(stone, "timer");
+	EraseObjProperty(stone, "nextcitizenelection");
+	SetObjProperty(stone, "population", 0);
+	SetObjProperty(stone, "votes", 0);
+	SetObjProperty(stone, "votepercent", 0);
+	SetObjProperty(stone, "candidates", {});
+	SetObjProperty(stone, "citizen", {});
+	SetObjProperty(stone, "election_active", 0);
+
+	if(!GetObjProperty(stone, "realm"))
+		SetObjProperty(stone, "realm", stone.realm);
+	endif
+
+	TouchTownstoneRegionEntry(stone);
+	SendSysMessage(who, "Town stone reset.");
 endprogram

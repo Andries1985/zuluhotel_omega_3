@@ -1,0 +1,72 @@
+// Synopsis: Withdraw gold from a targeted townstone treasury into a cheque
+
+use uo;
+use os;
+use datafile;
+
+include ":townstone:tstone";
+
+
+program textcmd_gettowngold(who)
+	SendSysMessage(who, "Select the townstone to withdraw from.");
+	var stone := Target(who);
+	if(!stone)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	var town_id := CInt(GetObjProperty(stone, "town"));
+	if(!stone or stone.objtype != TOWNSTONE_OBJTYPE or !town_id)
+		SendSysMessage(who, "That target is not a valid townstone.");
+		return;
+	endif
+
+	var region_name := CStr(GetObjProperty(stone, "regionname"));
+	if(!region_name)
+		region_name := GetTownName(town_id);
+	endif
+	var realm := GetStoneRealm(stone);
+	if(!region_name or !realm)
+		SendSysMessage(who, "Could not determine region / realm for this townstone.");
+		return;
+	endif
+
+	var current_gold := GetTownBankGold(realm, region_name);
+	if(current_gold <= 0)
+		SendSysMessage(who, "Town treasury has no gold available.");
+		return;
+	endif
+
+	var amount_text := SendTextEntryGump(who, "Withdraw how much gold? Available: " + FormatGoldAmount(current_gold), 12);
+	if(!amount_text)
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	var amount := CInt(amount_text);
+	if(amount <= 0)
+		SendSysMessage(who, "Withdrawal amount must be greater than zero.");
+		return;
+	endif
+	if(amount > current_gold)
+		SendSysMessage(who, "Not enough gold in treasury. Available: " + FormatGoldAmount(current_gold) + ".");
+		return;
+	endif
+
+	var cheque := CreateItemInBackpack(who, CHEQUE_OBJTYPE, 1);
+	if(!cheque)
+		SendSysMessage(who, "Could not create cheque in your backpack.");
+		return;
+	endif
+
+	SetObjProperty(cheque, "Amount", amount);
+	SetObjProperty(cheque, "checkamount", amount);
+	SetObjProperty(cheque, "CreatedBy", "Townstone Treasury");
+	cheque.color := 51;
+	cheque.name := "A Treasury Cheque for " + FormatGoldAmount(amount) + " Gold (" + region_name + ").";
+
+	SetTownBankGold(realm, region_name, current_gold - amount);
+	TouchTownstoneRegionEntry(stone);
+
+	SendSysMessage(who, "Withdrew " + FormatGoldAmount(amount) + " gold from " + region_name + ". Remaining: " + FormatGoldAmount(current_gold - amount) + " gold.");
+endprogram

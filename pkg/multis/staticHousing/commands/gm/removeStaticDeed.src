@@ -23,7 +23,7 @@ program textcmd_removestaticdeed(who)
 		return 0;
 	endif
 
-	if(target_item.objtype != 0x0bd1 && target_item.objtype != 0x0bcf)
+	if(!target_item.IsStaticHouseSign())
 		SendSysMessage(who, "That is not a static house sign.", color := 33);
 		return 0;
 	endif
