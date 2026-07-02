@@ -40,7 +40,7 @@ function RainDownAnimations(props, loc, anim)
     for (i := 0; i <= 198; i := i + 2)
         tile := GetMapInfo(loc.x+i, loc.y-i, loc.realm);
         if(tile)
-            var newitem := CreateNpcFromTemplate( "skeleton", loc.x+i, loc.y-i, loc.z, props, loc.realm);
+            var newitem := CreateNpcFromTemplate( "animationtest", loc.x+i, loc.y-i, loc.z, props, loc.realm);
             newitem.graphic := (ianim + j);
             newitem.name := "Graphic is : " + CStr(newitem.Graphic);
             newitem.frozen := 1;
