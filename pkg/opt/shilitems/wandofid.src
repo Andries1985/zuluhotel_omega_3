@@ -3,6 +3,7 @@ use os;
 
 include "include/client";
 include "include/namingbyenchant";
+include "include/constants/propids";
 
 const DELAY_BETWEEN_USE	:= 2;
 
