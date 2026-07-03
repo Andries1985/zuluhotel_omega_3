@@ -265,7 +265,7 @@ function GetClasseSkills( classeid )
 						 SKILLID_EVALINT		,
 						 SKILLID_MEDITATION	,
 						 SKILLID_MAGICRESISTANCE,
-						 SKILLID_HIDING	};
+						 SKILLID_MACEFIGHTING	};
 
 		CLASSEID_RANGER:		
 				return { SKILLID_ANIMALLORE	,

@@ -255,6 +255,10 @@ program chrdeath(corpse,ghost)
 		Dismount(ghost,mount); 
 	endif
 
+	if( GetObjProperty( ghost, "DonatorMounted" ) )
+		EraseObjProperty( ghost, "DonatorMounted" );
+	endif
+
 	SetPlayerWarMode(ghost, 0);
 	SleepMS(200);
 	SetPlayerWarMode(ghost, 1);

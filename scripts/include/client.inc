@@ -2839,3 +2839,12 @@ const MAX_SONG_SPELL		:= 197;
 
 
 //////////////////////////////////////END OF SPELLS///////////////////////////////////
+
+////////////////////////
+//      Highest       //
+////////////////////////
+
+const UOBJ_GARGOYLE_MALE	:= 0x29A;
+const UOBJ_GARGOYLE_FEMALE	:= 0x29B;
+const UOBJ_ELF_MALE		:= 0x25D;
+const UOBJ_ELF_FEMALE	:= 0x25E;

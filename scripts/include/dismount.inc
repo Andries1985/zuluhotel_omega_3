@@ -67,6 +67,10 @@ function dismount( me, mount := 0 )
 		SetMana(animal, Getobjproperty(mount,"petmana"));
 	endif
 
+	if (Getobjproperty(mount,"petstamina"))
+		SetStamina(animal, Getobjproperty(mount,"petstamina"));
+	endif
+
 	if (Getobjproperty(mount,"DMountStoneSerial"))
 		SetObjProperty(animal,"DMountStoneSerial", Getobjproperty(mount,"DMountStoneSerial"));
 	endif

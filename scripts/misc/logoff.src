@@ -101,7 +101,6 @@ program logoff(who)
 	EraseObjProperty(who, "banker_making_check"); // banker check-creation in-flight
 	EraseObjProperty(who, "StatsState");         // dye stat gump state
 	EraseObjProperty(who, "Detsoob");            // booststone selection state
-	EraseObjProperty(who, "DonatorMounted");     // donator mount in-use flag
 	EraseObjProperty(who, "#TryAddVerse");       // versescroll add-verse pending response
 
 	// #3 / #4 Poison residue: poison_heal.src tracks active poison ticks
