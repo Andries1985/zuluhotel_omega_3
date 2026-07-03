@@ -9,6 +9,8 @@
 use uo;
 use os;
 
+include "getspellid";
+
 
 
 program Spellbook_CanInsertScript(who, container, movetype, inserttype,item, existing_stack, amount_to_add)
@@ -19,6 +21,16 @@ endif
 
 if (movetype != 0)
 	return 1;
+endif
+
+if (item.objtype >= 0x1f2d && item.objtype <= 0x1f6c)
+	var spellid := GetSpellId(item);
+	foreach spell in (container.Spells())
+		if (CInt(spell) == spellid)
+			SendSysMessage(who, "That spell is already in this spellbook.");
+			return 0;
+		endif
+	endforeach
 endif
 //NOTE: Item is already considered inserted at this point!!!!
 

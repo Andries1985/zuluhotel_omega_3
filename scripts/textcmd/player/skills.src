@@ -629,8 +629,10 @@ program skillwindow( who )
 
 			// Perform skill
 			elseif( res >= PERFORM_SKILL )
-			
-				
+				var skill_to_perform := res - PERFORM_SKILL;
+				if( skill_to_perform == SKILLID_ITEMID )
+					start_script( ":itemid:itemid" , who );
+				endif
 			endif
 		endif
 

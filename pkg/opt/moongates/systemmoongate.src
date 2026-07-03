@@ -85,8 +85,8 @@ program walk_on_moongate(mobile, moongate)
 	GFTextLine(res, 235, 85, TEXT_COLOR_TITLE, "Select Your Destination");
 	//GFTextLine(res, 135, 175, TEXT_COLOR_TITLE, "Felucca");
 	GFTextLine(res, 135, 175, TEXT_COLOR_TITLE, "Sosaria");
-	GFTextLine(res, 265, 175, TEXT_COLOR_TITLE, "Malas");
-	GFTextLine(res, 265, 275, TEXT_COLOR_TITLE, "Tokuno");
+	GFTextLine(res, 265, 175, TEXT_COLOR_TITLE, "Tokuno");
+	GFTextLine(res, 265, 275, TEXT_COLOR_TITLE, "Malas");
 	GFTextLine(res, 395, 175, TEXT_COLOR_TITLE, "Termur");
 	GFTextLine(res, 395, 275, TEXT_COLOR_TITLE, "Ilshenar");
 	
