@@ -1933,6 +1933,40 @@ function CreateTeleporters()
     return nbrOfTeleporters;
 endfunction
 
+function DeleteTeleporters()
+
+    var fromX;
+    var fromY;
+    var fromZ;
+    var fromR;
+
+    var nbrDeleted := 0;
+
+    foreach tele in teleporters
+
+       fromX := cint(tele[1]);
+       fromY := cint(tele[2]);
+       fromZ := cint(tele[3]);
+       fromR := tele[7];
+
+       // check -255.
+       if ( fromZ == -255 )
+           fromZ := GetWorldHeight( fromX, fromY, fromR );
+       endif
+
+       foreach item in ListItemsNearLocation( fromX, fromY, fromZ, 25, fromR )
+           if( item.name == "systemteleporter" && item.x == fromX && item.y == fromY )
+               if( DestroyItem( item ) )
+                   nbrDeleted := nbrDeleted + 1;
+               endif
+           endif
+       endforeach
+
+    endforeach
+
+    return nbrDeleted;
+endfunction
+
 function GoTeleporters(who, startat := 0)
     var fromX;
     var fromY;
