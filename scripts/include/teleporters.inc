@@ -955,7 +955,7 @@ var teleporters := {
     { 5331, 415, 0, 5541, 77, 0, "britannia_alt", "britannia_alt" }, //Society of Mages to Unnamed Dungeon
     { 5332, 415, 0, 5542, 77, 0, "britannia_alt", "britannia_alt" }, //Society of Mages to Unnamed Dungeon
 
-    //Recently added by Nagash
+    //Recently added by Nagash (July 4th 2026)
     { 1386, 2489, 13, 6876, 2542, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
     { 1386, 2490, 13, 6876, 2543, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
     { 1386, 2491, 13, 6876, 2544, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
