@@ -1,0 +1,13 @@
+// Synopsis: Delete all generated system dungeon teleporters from config
+use uo;
+use os;
+
+include "include/teleporters";
+
+program deldungteles(who)
+
+    var howmany := DeleteTeleporters();
+    SendSysMessage(who, howmany+" Teleporters deleted.");
+
+return;
+endprogram
