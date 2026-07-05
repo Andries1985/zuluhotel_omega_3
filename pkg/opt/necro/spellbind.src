@@ -28,6 +28,7 @@ program cast_spellbind( parms )
 	if (parms[1] == "#MOB")
 		caster := parms[2];
         if(IsInSafeArea(caster))
+			SendSysmessage( caster, "You cannot cast Spellbind while in a safe zone." );
             return;
         endif
 		cast_on := parms[3];
@@ -44,12 +45,29 @@ program cast_spellbind( parms )
 			EraseObjProperty( caster , "#Casting" );
 			return;
 		endif
+		if( IsInSafeArea(caster) )
+			SendSysmessage( caster, "You cannot select a Spellbind target while in a safe zone." );
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
 		SendSysmessage( caster , "What do you wish to take the control of?" );
 		cast_on := CanTargetSpell( caster , circle , TGTOPT_CHECK_LOS + TGTOPT_HARMFUL );
 		if( !cast_on )
 			EraseObjProperty( caster , "#Casting" );
 			return;
 		endif
+	endif
+
+	if( IsInSafeArea(caster) )
+		SendSysmessage( caster, "You cannot use Spellbind while in a safe zone." );
+		EraseObjProperty( caster , "#Casting" );
+		return;
+	endif
+
+	if( IsInSafeArea(cast_on) )
+		SendSysmessage( caster, "You cannot target creatures in a safe zone with Spellbind." );
+		EraseObjProperty( caster , "#Casting" );
+		return;
 	endif
 	
 	if( !fromhit )

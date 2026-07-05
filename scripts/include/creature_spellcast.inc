@@ -1181,7 +1181,7 @@ case (thespell)
         "harm": cast_harm(me, onwho);
         "mindblast": cast_magicarrow(me, onwho);
         "magicarrow": cast_magicarrow(me, onwho);
-        "meteorswarm": cast_meteor(me, onwho);
+        "meteor_swarm": cast_meteor(me, onwho);
         "summonskel" : cast_summon_skel(me, onwho);
         "summonfire" : cast_summon_fire(me, onwho);
         "summonwater": cast_summon_water(me, onwho);

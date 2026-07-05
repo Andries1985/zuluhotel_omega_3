@@ -232,38 +232,50 @@ function CreateSpawnPointContainer( byref point, byref pt_data )
 	
 	//SetObjProperty( chest, PROPID_CHEST_TREASURE_CHEST, 1 );
 	SetObjProperty( chest, PROPID_CHEST_SPAWNPOINT_CHEST, 1 );
-	
-	var lootdata	:= SplitWords(pt_data[5]);
-	var lootgroup	:= Cint(lootdata[1]);
-	if( !lootgroup )
-		lootgroup := RandomDiceRoll(lootdata[1]);
-	endif
-	
-	if( !lootgroup )
+
+	// Only fire loot logic if pt_data[5] is exactly 300
+	if( Cint(pt_data[5]) != 300 )
 		DestroyItem(chest);
 		return 0;
 	endif
-	
-	var magic_chance := Cint(lootdata[2]);
-	if( !magic_chance )
-		magic_chance := RandomDiceRoll(lootdata[2]);
+
+	// Weighted loot group roll (301-307) out of 1000:
+	// 307: 2%  306: 10%  305: 12%  304: 15%  303: 18%  302: 21%  301: 22%
+	var roll := RandomInt(1000);
+	var lootgroup;
+	if( roll < 20 )
+		lootgroup := 307;
+	elseif( roll < 120 )
+		lootgroup := 306;
+	elseif( roll < 240 )
+		lootgroup := 305;
+	elseif( roll < 390 )
+		lootgroup := 304;
+	elseif( roll < 570 )
+		lootgroup := 303;
+	elseif( roll < 780 )
+		lootgroup := 302;
+	else
+		lootgroup := 301;
 	endif
-	
-	if( !magic_chance )
-		magic_chance := 0;
+
+	var magic_chance;
+	var magic_level;
+	var lock_difficulty;
+	if( lootgroup == 307 )
+		magic_level  := 10;
+		magic_chance := 80 + RandomInt(20);  // 80-99
+		lock_difficulty := 140 + RandomInt(11); // 140-150
+	elseif( lootgroup == 306 )
+		magic_level  := 9;
+		magic_chance := 70 + RandomInt(30);  // 70-99
+		lock_difficulty := 120 + RandomInt(21); // 120-140
+	else
+		magic_level  := 1 + RandomInt(9);    // 1-9
+		magic_chance := 30 + RandomInt(70);  // 30-99
+		lock_difficulty := 50 + RandomInt(71); // 50-120
 	endif
-	
-	var magic_level := Cint(lootdata[3]);
-	if( !magic_level )
-		magic_level := RandomDiceRoll(lootdata[3]);
-	endif
-	
-	if( !magic_chance )
-		magic_level := 0;
-	endif
-	//Print("Creating loot for chest: "+chest.serial);
-	//Print("Lootgroup: "+lootgroup+" Magic Chance: "+magic_chance+" Magic Level: "+magic_level);
-	
+
 	MakeLoot( chest, lootgroup, magic_chance, magic_level );
 	
 	var x		:= point.x;
@@ -301,12 +313,13 @@ function CreateSpawnPointContainer( byref point, byref pt_data )
 	
 	chest.movable := 0;
 	chest.locked := 1;
-	
-	SetObjProperty( chest, PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY, RandomInt(101)+50 );
+
+	SetObjProperty( chest, PROPID_CHEST_SPAWNPOINT_LOCK_DIFFICULTY, lock_difficulty );
 
 	if( PROPID_CHEST_SPAWNPOINT_CHEST )
 		SetObjProperty( chest, PROPID_CHEST_TRAP_TYPE, RandomInt(3)+1 );
-		SetObjProperty( chest, PROPID_CHEST_TRAP_STRENGTH, RandomInt(8)+1 );
+		SetObjProperty( chest, PROPID_CHEST_TRAP_STRENGTH, CInt(magic_level + 1) );
+		SetObjProperty( chest, PROPID_CHEST_TRAPPED_BY, "Spawnpoint" );
 		chest.usescript := USESCRIPTID_TRAPPED_CONTAINER;
 	endif
 	

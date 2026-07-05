@@ -60,49 +60,65 @@ var onhitcfg;
 var unique_items_created := {};
 var corpsetype;
 var lootgroupglob;
+var creating_starter_all_group := 0;
 
 set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
 
+//Touched by Dev Alryc 04-11-2026
 function MakeLoot( corpse , lootgroup := 0, magic_chance_default := 0, magic_level_default := 0 )
 
+	UnloadConfigFile( "::nlootgroup" );
 	starteqp_cfg := ReadConfigFile( "::nlootgroup" );
 	
 	if( lootgroup )
-		if ( (lootgroup >= 5) and (lootgroup <= 9) )
-			magicspawnchance := lootgroup * 10;
-			magiclevel := lootgroup - 3;
-			basechance := magicspawnchance;
-			baselevel  := magiclevel;
-		endif
 
-		if ( (lootgroup == 100))
-			magicspawnchance := (lootgroup - 91 ) * 10;
-			magiclevel := lootgroup - 91;
-			basechance := magicspawnchance;
-			baselevel  := magiclevel;
-		endif
+		//This fires if it isnt a death related event.
+		//In death.src it is just MakeLoot( corpse ) and lootgroup is set to 0, so it goes to the 'else' part of this function.
 
-		if ( (lootgroup >= 101) and (lootgroup <= 105) )
-			magicspawnchance := (lootgroup - 96 ) * 10;
-			magiclevel := (lootgroup - 96);
-			basechance := magicspawnchance;
-			baselevel  := magiclevel;
-		endif
 
+		//Treasure chests for Tmaps
+		//Seems to be set in digtreasure.src, so commenting out for now
+		// if ( (lootgroup >= 5) and (lootgroup <= 10) )
+		// 	magicspawnchance := lootgroup * 9;
+		// 	magiclevel := lootgroup - 3;
+		// 	basechance := magicspawnchance;
+		// 	baselevel  := magiclevel;
+		// endif
+
+		//Not sure where this is called as it not defined atm in nlootgroup, commenting out for now
+		// if ( (lootgroup == 100))
+		// 	magicspawnchance := (lootgroup - 91 ) * 10;
+		// 	magiclevel := lootgroup - 91;
+		// 	basechance := magicspawnchance;
+		// 	baselevel  := magiclevel;
+		// endif
+
+		//Not sure what uses this, commenting out for now
+		// if ( (lootgroup >= 101) and (lootgroup <= 105) )
+		// 	Print("In lootgroup 101-105 for MakeLoot");
+		// 	magicspawnchance := (lootgroup - 96 ) * 10;
+		// 	magiclevel := (lootgroup - 96);
+		// 	basechance := magicspawnchance;
+		// 	baselevel  := magiclevel;
+		// endif
+
+		//No longer used, commenting out
 		//spawnchests are lootgroups 109 through 119
-		if ( (lootgroup >= 109) and (lootgroup <= 119) )
-			magicspawnchance := lootgroup - 75;
-			magiclevel := Cint((lootgroup - 109) / 3); 
-			basechance := magicspawnchance;
-			baselevel  := magiclevel;
-		endif
+		// if ( (lootgroup >= 109) and (lootgroup <= 119) )
+		// 	magicspawnchance := lootgroup - 75;
+		// 	magiclevel := Cint((lootgroup - 109) / 3); 
+		// 	basechance := magicspawnchance;
+		// 	baselevel  := magiclevel;
+		// endif
 		
 		if( magic_chance_default )
+			//Print("In magic_chance_default for MakeLoot");
 			magicspawnchance := magic_chance_default;
 			basechance := magicspawnchance;
 		endif
 		
 		if( magic_level_default )
+			//Print("In magic_level_default for MakeLoot");
 			magiclevel := magic_level_default; 
 			baselevel  := magiclevel;
 		endif
@@ -110,15 +126,12 @@ function MakeLoot( corpse , lootgroup := 0, magic_chance_default := 0, magic_lev
 		CreateFromGroup( corpse , Cint(lootgroup) );
 		
 	else
+		//Print("In corpse loot for MakeLoot");
 		var npcdesc := ReadConfigFile( "::npcdesc" );
 		var elem := FindConfigElem( npcdesc, GetObjProperty( corpse, "npctemplate" ) );
 		var mprop;
 		var mlevel;
 		var lootgroups;
-		var randomlootgroup;
-
-
-
 
 		// Custom Loot, best be carefull with this, don't want bad people changing loot levels/
 		// * added a check in customnpc script so only admin+ can set custom loot
@@ -128,24 +141,9 @@ function MakeLoot( corpse , lootgroup := 0, magic_chance_default := 0, magic_lev
 			mlevel := CInt(cloot[2]);
 			lootgroups := {cloot[3]};
 		elseif( elem )
-			//New code to randomize lootgroup
-			/*
-			randomlootgroup := GetConfigInt(elem, "lootgrouptype");
-			Print( "Random loot group number is: " + randomlootgroup);
-			if (randomlootgroup == 1)
-				mprop  := GetConfigInt( elem, "Magicitemchance");
-				mlevel := GetConfigInt( elem, "Magicitemlevel");
-				lootgroups := GetConfigInt( elem, "lootgroup" );
-				lootgroups := lootgroups + Random(3);
-				//lootgroups := CStr(lootgroups);
-				Print("Lootgroup is Random! "+lootgroups+", "+mprop+", "+mlevel);
-			else
-			*/
-				mprop  := GetConfigInt( elem, "Magicitemchance");
-				mlevel := GetConfigInt( elem, "Magicitemlevel");
-				lootgroups := GetConfigStringArray( elem, "lootgroup" );
-				//Print("Normal Lootgroup: "+lootgroups);
-			//endif
+			mprop  := GetConfigInt( elem, "Magicitemchance");
+			mlevel := GetConfigInt( elem, "Magicitemlevel");
+			lootgroups := GetConfigStringArray( elem, "lootgroup" );
 		endif
 
 		if( mprop )
@@ -160,19 +158,14 @@ function MakeLoot( corpse , lootgroup := 0, magic_chance_default := 0, magic_lev
 
 		// Almost ALWAYS just 1 lootgroup, although multiple can be used. So this function
 		// runs only once.
-		//New code to randomize lootgroup
-		//if(randomlootgroup == 1)
-		//	CreateFromGroup( corpse, lootgroups);
-		//else
         	foreach str in lootgroups
-            	CreateFromGroup( corpse , cint(str) );
+            		CreateFromGroup( corpse , cint(str) );
         	endforeach
-		//endif
 	endif
 	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function CreateStartingEquipment( who, skillids )
 
     	starteqp_cfg := ReadConfigFile( "::starteqp" );
@@ -182,14 +175,16 @@ function CreateStartingEquipment( who, skillids )
         	CreateFromGroup( who.backpack, skillname );
     	endforeach
 
-        CreateFromGroup(who.backpack, "all");
-        
+		creating_starter_all_group := 1;
+		CreateFromGroup(who.backpack, "all");
+		creating_starter_all_group := 0;
+
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function CreateFromGroup( who, group )
 
-    	var elem := starteqp_cfg[ group ];
+    var elem := starteqp_cfg[ group ];
 	if(!elem)
 		return;
 	endif
@@ -210,22 +205,20 @@ function CreateFromGroup( who, group )
         	CreateFromUniqueString( who, str );
     	endforeach
 
-    	foreach str in GetConfigStringArray( elem, "Group" )
-        	CreateFromGroup( who, str );
-    	endforeach
+		//Commenting out as this is a recursive call to this function, and there is no 'Group' entry in the config file for any group, so it serves no purpose.
+    	// foreach str in GetConfigStringArray( elem, "Group" )
+        // CreateFromGroup( who, str );
+    	// endforeach
 
 endfunction
 
-
-
+//Touched by Dev Alryc 04-11-2026
 function GetSkillName( skillid )
 
     	var cfg := ReadConfigFile( ":shilhook:skillsdef" );
     	return cfg[skillid].name;
     	
 endfunction
-
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -244,6 +237,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function CreateFromItemString( who, str )
 
 	var params := SplitWords( str );
@@ -283,7 +277,7 @@ function CreateFromItemString( who, str )
 		endif
 	else
 
-// It's a definite drop
+	// It's a definite drop
 		chance := 100;
 	endif
 
@@ -303,13 +297,15 @@ function CreateFromItemString( who, str )
   		if( Random(100) < chance )
 			var item := CreateItemInContainer( who, objname );
 			var ismagic;
+			if (creating_starter_all_group && lower(objname) == "dagger")
+				item.newbie := 1;
+			endif
 			if (GetObjProperty(item, "IsGMItem"))
 				AddName(item);
 			endif
 			if ( CInt(params[3]) )
         		item.color := CInt( params[3] );
     		endif
-
 
 			// Is it a magic item? if this isn't caught then it will be a normal item
 			// ie, 'a katana'. And it's possible it can happen on ANY level monster
@@ -333,26 +329,13 @@ function CreateFromItemString( who, str )
 			if( ismagic )
 				var canbemagic := MagicAllowedandType( objname ); //for magic items!
 
-			// OLD WAY
-			// enchant type is based on magical level again. look into it
-			// Example: level 6
-			// 		between 26-100			4 = max of 300	5 = max of 351 (with below addition) 6 = max of 400
-			//
-			//var enchant := Random(75)+26) * magiclevel/2 + 1;
-			//
-			//
-			// lvl 5 loot gets a bonus.
-			//if (magiclevel == 5)
-			//	enchant := enchant + 51;
-			//endif
-
-
 				case (canbemagic)
-					WEAPON: 
+
+				WEAPON: 
 					ApplyWeaponModNew(who, item);	
 					break;
 					
-					ARMOR: 
+				ARMOR: 
 					ApplyArmourModNew(who, item);	
 					break;
 	
@@ -387,7 +370,7 @@ function CreateFromItemString( who, str )
   	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function RegisterItem(who, item)
 
 	if (IsStackable(item, item))
@@ -405,43 +388,24 @@ function RegisterItem(who, item)
 
 endfunction
 
-//########################################################################## New functions - tedious #############################################################################################\\
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // ApplyWeaponModNew() - Chooses what to put on a weapon
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplyWeaponModNew(who, item)
 
-	/* This is the OLD way
-	Min lvl 1 - 26		Max lvl 1 - 100
-	Min lvl 2 - 52		Max lvl 2 - 200
-	Min lvl 3 - 52		Max lvl 3 - 200
-	Min lvl 4 - 78		Max lvl 4 - 300
-	Min lvl 5 - 78		Max lvl 5 - 300 <----- Both these values got +51 after, bandaid solution
-	Min lvl 6 - 104		Max lvl 6 - 400
-	Min lvl 7 - 104		Max lvl 7 - 400
-	Min lvl 8 - 130		Max lvl 8 - 500
-	Min lvl 9 - 130		Max lvl 9 - 500
-	Min lvl 10 - 156	Max lvl 10 - 600
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	// ApplyHPMod - adds a HP mod to the item - Least Desirable
+	// ApplyWeapSkillMod - adds a skill mod to the item - Semi Desirable
+	// ApplyDmgMod - adds a damage mod to the item - Most Desirable
+	// ApplyWeapHitscript - adds a hitscript mod to the item - Most Desirable
+	//
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if(enchant < 50)
-		ApplyHPMod( item ); // Impossible for 2+ (durable broadsword) no other chance of mods in function
-
-	elseif(enchant < 60)
-		ApplyWeapSkillMod( item ); // impossible for 4+ (arms masters broadsword) gets a chance of obtaining applyhpmod at end (arms master durable broadsword)
-
-	elseif(enchant < 485)
-		ApplyDmgMod ( item ); // Any lootgroup (+dmg!) gets chance of above mods, 25% more chance of HPmod though (arms masters broadsword of power) or (durable broadsword of power)
-
-	else
-		ApplyWeapHitscript ( who , item ); //lvl 8+ // No chance of other mods - this used to be lvl 5+.....
-	endif
-	AddName( item );
-	*/
-
-	// No need for anything higher
 	var chance := RandomInt(10000);
 
 	if (magiclevel == 0)
@@ -524,10 +488,10 @@ function ApplyWeaponModNew(who, item)
 		// .5% chance
 		elseif (chance < 70)
 			ApplyWeapSkillMod( item ); 
-		// 92.3% chance
+		// 89.3% chance
 		elseif (chance < 9000)
 			ApplyDmgMod( item );
-		// 7% chance
+		// 10% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -541,10 +505,10 @@ function ApplyWeaponModNew(who, item)
 		// .2% chance
 		elseif (chance < 30)
 			ApplyWeapSkillMod( item ); 
-		// 79.7% chance
+		// 84.7% chance
 		elseif (chance < 8500)
 			ApplyDmgMod( item );
-		// 20% chance
+		// 15% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -552,10 +516,10 @@ function ApplyWeaponModNew(who, item)
 	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 77%
+		// 85% chance
 		if (chance < 8500)
 			ApplyDmgMod( item );
-		// 23% chance
+		// 15% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -563,10 +527,10 @@ function ApplyWeaponModNew(who, item)
 	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 74%
+		// 82% chance
 		if (chance < 8200)
 			ApplyDmgMod( item );
-		// 26% chance
+		// 18% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -574,10 +538,10 @@ function ApplyWeaponModNew(who, item)
 	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 71%
+		// 79% chance
 		if (chance < 7900)
 			ApplyDmgMod( item );
-		// 29% chance
+		// 21% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -585,20 +549,32 @@ function ApplyWeaponModNew(who, item)
 	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 68%
-		if (chance < 9000)
+		// 76% chance
+		if (chance < 7600)
 			ApplyDmgMod( item );
-		// 32% chance
+		// 24% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
+		// 70% chance
+		if (chance < 7000)
+			ApplyDmgMod( item );
+		// 30% chance
+		else
+			ApplyWeapHitscript( who , item );
+		endif
+
+	// Level ?? Loot	
 	else
 
-		// 65%
-		if (chance < 9000)
+		// 50% chance
+		if (chance < 5000)
 			ApplyDmgMod( item );
-		// 35% chance
+		// 50% chance
 		else
 			ApplyWeapHitscript( who , item );
 		endif
@@ -614,190 +590,223 @@ endfunction
 // ApplyArmourModNew() - Chooses what to put on armour
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function ApplyArmourModNew(who, item)
 
-/* This is the OLD way
-Min lvl 1 - 26		Max lvl 1 - 100
-Min lvl 2 - 52		Max lvl 2 - 200
-Min lvl 3 - 52		Max lvl 3 - 200
-Min lvl 4 - 78		Max lvl 4 - 300
-Min lvl 5 - 78		Max lvl 5 - 300 <----- Both these values got +51 after, bandaid solution
-Min lvl 6 - 104		Max lvl 6 - 400
-Min lvl 7 - 104		Max lvl 7 - 400
-Min lvl 8 - 130		Max lvl 8 - 500
-Min lvl 9 - 130		Max lvl 9 - 500
-Min lvl 10 - 156	Max lvl 10 - 600
+//Touched by Dev Alryc 04-11-2026
+function ApplyArmourModNew( unused who, item )
 
-if(enchant < 50)
-ApplyHPMod( item );	// durable, woah!	
-				
-elseif(enchant < 100)
-	ApplyArSkillMod( item ); // sets hiding or magic resistance as the skill... weird
-	
-elseif(enchant < 350)
-	ApplyARMod( item );	// of fortification etc
-	
-else
-	ApplyOnHitScript ( who , item );	// slayer type, spell on hit, gm armour etc. This ISN'T anywhere near as good as weapons. give more
-endif
-AddName( item );
-*/
+	// No need for anything higher
+	var chance := RandomInt(10000);
 
-// No need for anything higher
-var chance := RandomInt(10000);
+	if (magiclevel == 0)
+		return 0;
 
-if (magiclevel == 0)
-	return 0;
+	// Level 1 loot
+	elseif (magiclevel == 1)
+		
+		// 20% chance 
+		if (chance < 2000)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 5000)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 9000)
+			ApplyARMod( item );
+		// 10% chance
+		else
+			ApplyOnHitScript( item );
+		endif
 
-// Level 1 loot
-elseif (magiclevel == 1)
-	
-	// 20% chance 
-	if (chance < 2000)
-		ApplyHPMod( item );
-	// 30% chance
-	elseif (chance < 5000)
-		ApplyArSkillMod( item ); 
-	// 40% chance
-	elseif (chance < 9000)
-		ApplyARMod( item );
-	// 10% chance
+	// Level 2 loot
+	elseif (magiclevel == 2)
+		
+		// 19% chance 
+		if (chance < 1900)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4900)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 8900)
+			ApplyARMod( item );
+		// 11% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 3 loot
+	elseif (magiclevel == 3)
+		
+		// 18% chance 
+		if (chance < 1800)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4800)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 8800)
+			ApplyARMod( item );
+		// 12% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 4 loot
+	elseif (magiclevel == 4)
+		
+		// 17% chance 
+		if (chance < 1700)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4700)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 8700)
+			ApplyARMod( item );
+		// 13% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 5 loot
+	elseif (magiclevel == 5)
+		
+		// 16% chance 
+		if (chance < 1600)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4600)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 8600)
+			ApplyARMod( item );
+		// 14% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 6 loot
+	elseif (magiclevel == 6)
+		
+		// 15% chance 
+		if (chance < 1500)
+			ApplyHPMod( item );
+		// 29% chance
+		elseif (chance < 4400)
+			ApplyArSkillMod( item ); 
+		// 41% chance
+		elseif (chance < 8500)
+			ApplyARMod( item );
+		// 15% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 7 loot
+	elseif (magiclevel == 7)
+		
+		// 14% chance 
+		if (chance < 1400)
+			ApplyHPMod( item );
+		// 29% chance
+		elseif (chance < 4300)
+			ApplyArSkillMod( item ); 
+		// 41% chance
+		elseif (chance < 8400)
+			ApplyARMod( item );
+		// 16% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 8 loot
+	elseif (magiclevel == 8)
+		
+		// 13% chance 
+		if (chance < 1300)
+			ApplyHPMod( item );
+		// 27% chance
+		elseif (chance < 4000)
+			ApplyArSkillMod( item ); 
+		// 43.5% chance
+		elseif (chance < 8350)
+			ApplyARMod( item );
+		// 16.5% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 9 loot
+	elseif (magiclevel == 9)
+
+		// 12% chance 
+		if (chance < 1200)
+			ApplyHPMod( item );
+		// 28% chance
+		elseif (chance < 4000)
+			ApplyArSkillMod( item ); 
+		// 40% chance
+		elseif (chance < 8000)
+			ApplyARMod( item );
+		// 20% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 10 loot
+	elseif (magiclevel == 10)
+
+		// 10% chance 
+		if (chance < 1000)
+			ApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4000)
+			ApplyArSkillMod( item ); 
+		// 39% chance
+		elseif (chance < 7900)
+			ApplyARMod( item );
+		// 21% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+
+		// 8% chance 
+		if (chance < 800)
+			ApplyHPMod( item );
+		// 32% chance
+		elseif (chance < 4000)
+			ApplyArSkillMod( item ); 
+		// 38% chance
+		elseif (chance < 7800)
+			ApplyARMod( item );
+		// 22% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
+	// Level ?? Loot
 	else
-		ApplyOnHitScript ( who , item );
+
+		// 5% chance 
+		if (chance < 500)
+			ApplyHPMod( item );
+		// 35% chance
+		elseif (chance < 4000)
+			ApplyArSkillMod( item ); 
+		// 35% chance
+		elseif (chance < 7500)
+			ApplyARMod( item );
+		// 25% chance
+		else
+			ApplyOnHitScript( item );
+		endif
+
 	endif
 
-// Level 2 loot
-elseif (magiclevel == 2)
-	
-	// 10% chance 
-	if (chance < 1000)
-		ApplyHPMod( item );
-	// 20% chance
-	elseif (chance < 3000)
-		ApplyArSkillMod( item ); 
-	// 55% chance
-	elseif (chance < 8500)
-		ApplyARMod( item );
-	// 15% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-
-// Level 3 loot
-elseif (magiclevel == 3)
-	
-	// 1% chance 
-	if (chance < 100)
-		ApplyHPMod( item );
-	// 2% chance
-	elseif (chance < 300)
-		ApplyArSkillMod( item ); 
-	// 77% chance
-	elseif (chance < 8000)
-		ApplyARMod( item );
-	// 20% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 4 loot
-elseif (magiclevel == 4)
-	
-	// .7% chance 
-	if (chance < 70)
-		ApplyHPMod( item );
-	// 1.8% chance
-	elseif (chance < 250)
-		ApplyArSkillMod( item ); 
-	// 75.5% chance
-	elseif (chance < 7800)
-		ApplyARMod( item );
-	// 22% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 5 loot
-elseif (magiclevel == 5)
-	
-	// .5% chance 
-	if (chance < 50)
-		ApplyHPMod( item );
-	// 1.5% chance
-	elseif (chance < 200)
-		ApplyArSkillMod( item ); 
-	// 73% chance
-	elseif (chance < 7000)
-		ApplyARMod( item );
-	// 25% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 6 loot
-elseif (magiclevel == 6)
-	
-	// .1% chance 
-	if (chance < 10)
-		ApplyHPMod( item );
-	// 1% chance
-	elseif (chance < 110)
-		ApplyArSkillMod( item ); 
-	// 68.9% chance
-	elseif (chance < 7000)
-		ApplyARMod( item );
-	// 30% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 7 loot
-elseif (magiclevel == 7)
-	
-	// 68% chance
-	if (chance < 6800)
-		ApplyARMod( item );
-	// 32% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 8 loot
-elseif (magiclevel == 8)
-	
-	// 66% chance
-	if (chance < 6600)
-		ApplyARMod( item );
-	// 34% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 9 loot
-elseif (magiclevel == 9)
-	
-	// 64% chance
-	if (chance < 6400)
-		ApplyARMod( item );
-	// 36% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-
-// Level 10 loot
-elseif (magiclevel == 10)
-	
-	// 62% chance
-	if (chance < 6200)
-		ApplyARMod( item );
-	// 38% chance
-	else
-		ApplyOnHitScript ( who , item );
-	endif
-endif
-
-AddName( item );
+	AddName( item );
 
 endfunction
 
@@ -806,186 +815,179 @@ endfunction
 // ApplyShieldModNew() - Chooses what to put on a shield
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function ApplyShieldModNew(who, item)
 
-/* This is the OLD way
-Min lvl 1 - 26		Max lvl 1 - 100
-Min lvl 2 - 52		Max lvl 2 - 200
-Min lvl 3 - 52		Max lvl 3 - 200
-Min lvl 4 - 78		Max lvl 4 - 300
-Min lvl 5 - 78		Max lvl 5 - 300 <----- Both these values got +51 after, bandaid solution
-Min lvl 6 - 104		Max lvl 6 - 400
-Min lvl 7 - 104		Max lvl 7 - 400
-Min lvl 8 - 130		Max lvl 8 - 500
-Min lvl 9 - 130		Max lvl 9 - 500
-Min lvl 10 - 156	Max lvl 10 - 600
+//Touched by Dev Alryc 04-11-2026
+function ApplyShieldModNew(unused who, item)
 
-if(enchant < 100)
-	ApplyHPMod( item ); // durable, etc
+	// No need for anything higher
+	var chance := RandomInt(10000);
 
-elseif(enchant < 200)
-	ApplyArSkillMod( item ); // hiding or magic resist only
-else
-	ApplyARMod( item ); // fortification, invul etc
-endif
-AddName( item );
-*/
+	if (magiclevel == 0)
+		return 0;
 
-// No need for anything higher
-var chance := RandomInt(10000);
+	// Level 1 loot
+	elseif (magiclevel == 1)
+		
+		// 70% chance 
+		if (chance < 7000)
+			ShieldApplyHPMod( item );
+		// 20% chance
+		elseif (chance < 9000)
+			ShieldApplyArSkillMod( item ); 
+		// 10% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
 
-if (magiclevel == 0)
-	return 0;
+	// Level 2 loot
+	elseif (magiclevel == 2)
+		
+		// 60% chance 
+		if (chance < 6000)
+			ShieldApplyHPMod( item );
+		// 20% chance
+		elseif (chance < 8000)
+			ShieldApplyArSkillMod( item ); 
+		// 20% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
 
-// Level 1 loot
-elseif (magiclevel == 1)
-	
-	// 70% chance 
-	if (chance < 7000)
-		ApplyHPMod( item );
-	// 20% chance
-	elseif (chance < 9000)
-		ApplyArSkillMod( item ); 
-	// 10% chance
+
+	// Level 3 loot
+	elseif (magiclevel == 3)
+		
+		// 50% chance 
+		if (chance < 5000)
+			ShieldApplyHPMod( item );
+		// 25% chance
+		elseif (chance < 7500)
+			ShieldApplyArSkillMod( item ); 
+		// 25% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 4 loot
+	elseif (magiclevel == 4)
+		
+		// 40% chance 
+		if (chance < 4000)
+			ShieldApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 7000)
+			ShieldApplyArSkillMod( item ); 
+		// 30% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 5 loot
+	elseif (magiclevel == 5)
+		
+		// 30% chance 
+		if (chance < 3000)
+			ShieldApplyHPMod( item );
+		// 35% chance
+		elseif (chance < 6500)
+			ShieldApplyArSkillMod( item ); 
+		// 35% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 6 loot
+	elseif (magiclevel == 6)
+		
+		// 20% chance 
+		if (chance < 2000)
+			ShieldApplyHPMod( item );
+		// 40% chance
+		elseif (chance < 6000)
+			ShieldApplyArSkillMod( item ); 
+		// 40% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 7 loot
+	elseif (magiclevel == 7)
+		
+		// 10% chance 
+		if (chance < 1000)
+			ShieldApplyHPMod( item );
+		// 45% chance
+		elseif (chance < 5500)
+			ShieldApplyArSkillMod( item ); 
+		// 45% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 8 loot
+	elseif (magiclevel == 8)
+		
+		// 10% chance 
+		if (chance < 1000)
+			ShieldApplyHPMod( item );
+		// 40% chance
+		elseif (chance < 5000)
+			ShieldApplyArSkillMod( item ); 
+		// 50% chance
+		else 
+			ShieldApplyARMod( item );
+		endif	
+
+	// Level 9 loot
+	elseif (magiclevel == 9)
+		
+		// 20% chance 
+		if (chance < 2000)
+			ShieldApplyHPMod( item );
+		// 25% chance
+		elseif (chance < 4500)
+			ShieldApplyArSkillMod( item ); 
+		// 55% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 10 loot
+	elseif (magiclevel == 10)
+		
+		// 10% chance 
+		if (chance < 1000)
+			ShieldApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 4000)
+			ShieldApplyArSkillMod( item ); 
+		// 60% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 0% chance 
+		if (chance < 0)
+			ShieldApplyHPMod( item );
+		// 30% chance
+		elseif (chance < 3000)
+			ShieldApplyArSkillMod( item ); 
+		// 70% chance
+		else 
+			ShieldApplyARMod( item );
+		endif
+
+	// Level ?? loot
 	else 
-		ApplyARMod( item );
+		// 100% chance
+		ShieldApplyARMod( item );
+
 	endif
 
-// Level 2 loot
-elseif (magiclevel == 2)
-	
-	// 50% chance 
-	if (chance < 5000)
-		ApplyHPMod( item );
-	// 30% chance
-	elseif (chance < 8000)
-		ApplyArSkillMod( item ); 
-	// 20% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-
-// Level 3 loot
-elseif (magiclevel == 3)
-	
-	// 20% chance 
-	if (chance < 2000)
-		ApplyHPMod( item );
-	// 30% chance
-	elseif (chance < 5000)
-		ApplyArSkillMod( item ); 
-	//50% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 4 loot
-elseif (magiclevel == 4)
-	
-	// 5% chance 
-	if (chance < 500)
-		ApplyHPMod( item );
-	// 30% chance
-	elseif (chance < 3500)
-		ApplyArSkillMod( item ); 
-	// 65% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 5 loot
-elseif (magiclevel == 5)
-	
-	// 2% chance 
-	if (chance < 200)
-		ApplyHPMod( item );
-	// 28% chance
-	elseif (chance < 3000)
-		ApplyArSkillMod( item ); 
-	// 70% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 6 loot
-elseif (magiclevel == 6)
-	
-	// 1% chance 
-	if (chance < 100)
-		ApplyHPMod( item );
-	// 24% chance
-	elseif (chance < 2500)
-		ApplyArSkillMod( item ); 
-	// 75% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 7 loot
-elseif (magiclevel == 7)
-	
-	// .05% chance 
-	if (chance < 50)
-		ApplyHPMod( item );
-	// 19.5% chance
-	elseif (chance < 8000)
-		ApplyArSkillMod( item ); 
-	// 80% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 8 loot
-elseif (magiclevel == 8)
-	
-	// .02% chance 
-	if (chance < 20)
-		ApplyHPMod( item );
-	// 14.98% chance
-	elseif (chance < 7500)
-		ApplyArSkillMod( item ); 
-	// 85% chance
-	else 
-		ApplyARMod( item );
-	endif	
-
-// Level 9 loot
-elseif (magiclevel == 9)
-	
-	// .01% chance 
-	if (chance < 10)
-		ApplyHPMod( item );
-	// 9.99% chance
-	elseif (chance < 9000)
-		ApplyArSkillMod( item ); 
-	// 90% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level 10 loot
-elseif (magiclevel == 10)
-	
-	// .005% chance 
-	if (chance < 5)
-		ApplyHPMod( item );
-	// 4.995% chance
-	elseif (chance < 9500)
-		ApplyArSkillMod( item ); 
-	// 95% chance
-	else 
-		ApplyARMod( item );
-	endif
-
-// Level ?? loot
-else 
-	// 100% chance
-	ApplyARMod( item );
-
-endif
-
-AddName( item );
+	AddName( item );
 
 endfunction
 
@@ -994,28 +996,9 @@ endfunction
 // ApplyClothingModNew() - Chooses what to put on clothing
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function ApplyClothingModNew(who, item)
 
-	/* This is the OLD way
-	Min lvl 1 - 26		Max lvl 1 - 100
-	Min lvl 2 - 52		Max lvl 2 - 200
-	Min lvl 3 - 52		Max lvl 3 - 200
-	Min lvl 4 - 78		Max lvl 4 - 300
-	Min lvl 5 - 78		Max lvl 5 - 300 <----- Both these values got +51 after, bandaid solution
-	Min lvl 6 - 104		Max lvl 6 - 400
-	Min lvl 7 - 104		Max lvl 7 - 400
-	Min lvl 8 - 130		Max lvl 8 - 500
-	Min lvl 9 - 130		Max lvl 9 - 500
-	Min lvl 10 - 156	Max lvl 10 - 600
-
-	if(enchant < 300)
-		ApplyMiscSkillMod( item );  // applies a skill and has a chance to add a stat mod
-	else
-		ApplyMiscArMod ( item ); // was only lvl 5+ loot. just adds armour to clothing, but has a chance of running the above function for skill/stats
-	endif
-	AddName( item );
-	AddRandomColor( item );
-	*/
+//Touched by Dev Alryc 04-11-2026
+function ApplyClothingModNew( unused who, item )
 
 	// No need for anything higher
 	var chance := RandomInt(10000);
@@ -1115,6 +1098,17 @@ function ApplyClothingModNew(who, item)
 	// Level 9 loot
 	elseif (magiclevel == 9)
 		
+		// 45% chance 
+		if (chance < 4500)
+			ApplyMiscSkillMod( item );
+		// 55% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
+
+	// Level 10 loot
+	elseif (magiclevel == 10)
+		
 		// 40% chance 
 		if (chance < 4000)
 			ApplyMiscSkillMod( item );
@@ -1123,23 +1117,23 @@ function ApplyClothingModNew(who, item)
 			ApplyMiscArMod( item );
 		endif
 
-	// Level 10 loot
-	elseif (magiclevel == 10)
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 30% chance 
-		if (chance < 3000)
+		// 35% chance 
+		if (chance < 3500)
 			ApplyMiscSkillMod( item );
-		// 70% chance
+		// 65% chance
 		else 
 			ApplyMiscArMod( item );
 		endif
 
 	// Level ?? loot
 	else 
-		// 20% chance 
-		if (chance < 2000)
+		// 30% chance 
+		if (chance < 3000)
 			ApplyMiscSkillMod( item );
-		// 80% chance
+		// 70% chance
 		else 
 			ApplyMiscArMod( item );
 		endif
@@ -1155,211 +1149,192 @@ endfunction
 //
 // ApplyMiscModNew() - Chooses what to put on misc? Misc appears to be jewels! Judging from apply enchant 
 //			
-//
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplyMiscModNew(who, item)
 
-/* This is the OLD way
-Min lvl 1 - 26		Max lvl 1 - 100
-Min lvl 2 - 52		Max lvl 2 - 200
-Min lvl 3 - 52		Max lvl 3 - 200
-Min lvl 4 - 78		Max lvl 4 - 300
-Min lvl 5 - 78		Max lvl 5 - 300 <----- Both these values got +51 after, bandaid solution
-Min lvl 6 - 104		Max lvl 6 - 400
-Min lvl 7 - 104		Max lvl 7 - 400
-Min lvl 8 - 130		Max lvl 8 - 500
-Min lvl 9 - 130		Max lvl 9 - 500
-Min lvl 10 - 156	Max lvl 10 - 600
+	// No need for anything higher
+	var chance := RandomInt(10000);
 
-if(enchant < 100 )
+	if (magiclevel == 0)
+		return 0;
 
-	ApplyMiscSkillMod( item ); // adds a random skill and chance at skill mod
+	// Level 1 loot
+	elseif (magiclevel == 1)
+		
+		// 92% chance 
+		if (chance < 9200)
+			ApplyMiscSkillMod( item );
+		// 7% chance
+		elseif (chance < 9900)
+			ApplyEnchant( who , item );
+		// 1% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-elseif(enchant < 200 )
+	// Level 2 loot
+	elseif (magiclevel == 2)
+		
+		// 88% chance 
+		if (chance < 8800)
+			ApplyMiscSkillMod( item );
+		// 10% chance
+		elseif (chance < 9800)
+			ApplyEnchant( who , item );
+		// 2% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-	ApplyEnchant( who , item );
 
-elseif(enchant < 400 )
+	// Level 3 loot
+	elseif (magiclevel == 3)
+		
+		// 82% chance 
+		if (chance < 8200)
+			ApplyMiscSkillMod( item );
+		// 15% chance
+		elseif (chance < 9700)
+			ApplyEnchant( who , item );
+		// 3% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-	ApplyMiscSkillMod( item ); // adds a random skill and chance at skill mod
+	// Level 4 loot
+	elseif (magiclevel == 4)
+		
+		// 71% chance 
+		if (chance < 7100)
+			ApplyMiscSkillMod( item );
+		// 25% chance
+		elseif (chance < 9600)
+			ApplyEnchant( who , item );
+		// 4% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-elseif(enchant < 575 )
+	// Level 5 loot
+	elseif (magiclevel == 5)
+		
+		// 65% chance 
+		if (chance < 6500)
+			ApplyMiscSkillMod( item );
+		// 30% chance
+		elseif (chance < 9500)
+			ApplyEnchant( who , item );
+		// 5% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-	ApplyEnchant( who , item );
-else
-	ApplyMiscArMod( item ); // only run on lvl 10+ adds an armour, ie fortifications, and has a chance of applymiscskillmod to run
-endif
+	// Level 6 loot
+	elseif (magiclevel == 6)
+		
+		// 59% chance 
+		if (chance < 5900)
+			ApplyMiscSkillMod( item );
+		// 35% chance
+		elseif (chance < 9400)
+			ApplyEnchant( who , item );
+		// 6% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-						
-AddName( item );
-*/
+	// Level 7 loot
+	elseif (magiclevel == 7)
+		
+		// 53% chance 
+		if (chance < 5300)
+			ApplyMiscSkillMod( item );
+		// 40% chance
+		elseif (chance < 9300)
+			ApplyEnchant( who , item );
+		// 7% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-// No need for anything higher
-var chance := RandomInt(10000);
+	// Level 8 loot
+	elseif (magiclevel == 8)
+		
+		// 47% chance 
+		if (chance < 4700)
+			ApplyMiscSkillMod( item );
+		// 45% chance
+		elseif (chance < 9200)
+			ApplyEnchant( who , item );
+		// 8% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-if (magiclevel == 0)
-	return 0;
+	// Level 9 loot
+	elseif (magiclevel == 9)
+		
+		// 41% chance 
+		if (chance < 4100)
+			ApplyMiscSkillMod( item );
+		// 50% chance
+		elseif (chance < 9100)
+			ApplyEnchant( who , item );
+		// 9% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
 
-// Level 1 loot
-elseif (magiclevel == 1)
-	
-	// 92% chance 
-	if (chance < 9200)
-		ApplyMiscSkillMod( item );
-	// 7% chance
-	elseif (chance < 9900)
-		ApplyEnchant( who , item );
-	// 1% chance
+	// Level 10 loot
+	elseif (magiclevel == 10)
+		
+		// 45% chance 
+		if (chance < 4500)
+			ApplyMiscSkillMod( item );
+		// 45% chance
+		elseif (chance < 9000)
+			ApplyEnchant( who , item );
+		// 10% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 40% chance 
+		if (chance < 4000)
+			ApplyMiscSkillMod( item );
+		// 40% chance
+		elseif (chance < 8000)
+			ApplyEnchant( who , item );
+		// 20% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
+
+	// Level ?? loot
 	else 
-		ApplyMiscArMod( item );
+
+		// 37.5% chance 
+		if (chance < 3750)
+			ApplyMiscSkillMod( item );
+		// 37.5% chance
+		elseif (chance < 7500)
+			ApplyEnchant( who , item );
+		// 25% chance
+		else 
+			ApplyMiscArMod( item );
+		endif
+
 	endif
 
-// Level 2 loot
-elseif (magiclevel == 2)
-	
-	// 88% chance 
-	if (chance < 8800)
-		ApplyMiscSkillMod( item );
-	// 10% chance
-	elseif (chance < 9800)
-		ApplyEnchant( who , item );
-	// 2% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-
-// Level 3 loot
-elseif (magiclevel == 3)
-	
-	// 82% chance 
-	if (chance < 8200)
-		ApplyMiscSkillMod( item );
-	// 15% chance
-	elseif (chance < 9700)
-		ApplyEnchant( who , item );
-	// 3% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 4 loot
-elseif (magiclevel == 4)
-	
-	// 71% chance 
-	if (chance < 7100)
-		ApplyMiscSkillMod( item );
-	// 25% chance
-	elseif (chance < 9600)
-		ApplyEnchant( who , item );
-	// 4% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 5 loot
-elseif (magiclevel == 5)
-	
-	// 65% chance 
-	if (chance < 6500)
-		ApplyMiscSkillMod( item );
-	// 30% chance
-	elseif (chance < 9500)
-		ApplyEnchant( who , item );
-	// 5% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 6 loot
-elseif (magiclevel == 6)
-	
-	// 59% chance 
-	if (chance < 5900)
-		ApplyMiscSkillMod( item );
-	// 35% chance
-	elseif (chance < 9400)
-		ApplyEnchant( who , item );
-	// 6% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 7 loot
-elseif (magiclevel == 7)
-	
-	// 53% chance 
-	if (chance < 5300)
-		ApplyMiscSkillMod( item );
-	// 40% chance
-	elseif (chance < 9300)
-		ApplyEnchant( who , item );
-	// 7% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 8 loot
-elseif (magiclevel == 8)
-	
-	// 47% chance 
-	if (chance < 4700)
-		ApplyMiscSkillMod( item );
-	// 45% chance
-	elseif (chance < 9200)
-		ApplyEnchant( who , item );
-	// 8% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 9 loot
-elseif (magiclevel == 9)
-	
-	// 41% chance 
-	if (chance < 4100)
-		ApplyMiscSkillMod( item );
-	// 50% chance
-	elseif (chance < 9100)
-		ApplyEnchant( who , item );
-	// 9% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level 10 loot
-elseif (magiclevel == 10)
-	
-	// 35% chance 
-	if (chance < 3500)
-		ApplyMiscSkillMod( item );
-	// 55% chance
-	elseif (chance < 9000)
-		ApplyEnchant( who , item );
-	// 10% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-// Level ?? loot
-else 
-
-	// 29% chance 
-	if (chance < 2900)
-		ApplyMiscSkillMod( item );
-	// 60% chance
-	elseif (chance < 8900)
-		ApplyEnchant( who , item );
-	// 11% chance
-	else 
-		ApplyMiscArMod( item );
-	endif
-
-endif
-
-AddName( item );
+	AddName( item );
 
 endfunction
+
 /////////////////////////////////////////////////////////////////////////////
 //
 //  A 'Random' string follows the following form:
@@ -1381,6 +1356,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function CreateFromRandomString( who, desc )
 
 	// Desc looks like this atm etc { 1d5,Jewelry,65 }
@@ -1502,6 +1478,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function CreateFromUniqueString( who, str )
 
     	var objtype := GetObjtypeByName( str );
@@ -1536,6 +1513,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function CreateFromStackString( who, str )
 
     var params := SplitWords( str );
@@ -1592,10 +1570,13 @@ function CreateFromStackString( who, str )
 
 endfunction
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Checks to see if that item is allowed to be magic and returns the type
+//			
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////
-//Checks to see if that item is allowed to be magic and returns the type
-////
+//Touched by Dev Alryc 04-11-2026
 function MagicAllowedandType( objname )
 
 	if( !magiccfg )
@@ -1649,246 +1630,291 @@ endfunction
 //
 // Picks and assigns a damagemod and a suffix for the item
 ///////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplyDmgMod( item )
 
-var power := RandomInt(100000)+1;
-var n;
+	var power := RandomInt(100000);
+	var n;
 
-// Nothing with this should get here 	
+	// Nothing with this should get here 	
 	if (magiclevel <= 0)
 			n := 1;
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
-		
-		// 98% chance of ruin
+
+		// 98% chance
 		if (power < 98000)
 			n := 1;
 
-		// 1.9% chance of might
+		// 2% chance
 		else
 			n := 2;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of ruin
+		// 82% chance
 		if (power < 82000)
 			n := 1;
 
-		// 17.5% chance of might
+		// 17.5% chance
 		elseif (power < 99500)
 			n := 2;
 
-		// .49% chance of force
+		// 0.5% chance
 		else
 			n := 3;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of ruin
+		// 30% chance
 		if (power < 30000)
 			n := 1;
 
-		// 80% chance of might
+		// 60% chance
 		elseif (power < 90000)
 			n := 2;
 
-		// 9.499% chance of force
+		// 10% chance
 		else
 			n := 3;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of ruin
+		// 20% chance
 		if (power < 20000)
 			n := 1;
 
-		// 64.497% chance of might
+		// 45% chance
 		elseif (power < 64997)
 			n := 2;
 
-		// 25% chance of force
+		// 30% chance
 		elseif (power < 94997)
 			n := 3;
 		
-		// 10% chance of power
+		// 5% chance
 		else
 			n := 4;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of ruin
+		// 15% chance
 		if (power < 15000)
 			n := 1;
 
-		// 34.999% chance of might
+		// 30% chance
 		elseif (power < 44999)
 			n := 2;
 
-		// 45% chance of force
+		// 46% chance
 		elseif (power < 90999)
 			n := 3;
 		
-		// 18% chance of power
+		// 9% chance
 		else
 			n := 4;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of ruin
+		// 3% chance
 		if (power < 3000)
 			n := 1;
 
-		// 0% chance of might
+		// 15% chance
 		elseif (power < 18000)
 			n := 2;
 
-		// 24% chance of force
+		// 30% chance
 		elseif (power < 48000)
 			n := 3;
 		
-		// 55% chance of power
+		// 35% chance
 		elseif (power < 83000)
 			n := 4;
 
-		// 20% chance of vanq
+		// 14% chance
 		elseif (power < 97000)
 			n := 5;
-		// 1% chance of dev
+		// 3% chance
 		else
 			n := 6;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of ruin
+		// 0% chance
 		if (power < 0)
 			n := 1;
 
-		// 0% chance of might
+		// 0% chance
 		elseif (power < 0)
 			n := 2;
 
-		// 24% chance of force
+		// 38% chance
 		elseif (power < 38000)
 			n := 3;
 		
-		// 55% chance of power
+		// 40% chance
 		elseif (power < 78000)
 			n := 4;
 
-		// 20% chance of vanq
+		// 18% chance
 		elseif (power < 96000)
 			n := 5;
-		// 1% chance of dev
+		// 4% chance
 		else
 			n := 6;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of ruin
+		// 0% chance
 		if (power < 0)
 			n := 1;
 
-		// 0% chance of might
+		// 0% chance
 		elseif (power < 0)
 			n := 2;
 
-		// 7% chance of force
+		// 18% chance
 		elseif (power < 18000)
 			n := 3;
 		
-		// 60% chance of power
+		// 55% chance
 		elseif (power < 73000)
 			n := 4;
 
-		// 30% chance of vanq
+		// 17% chance
 		elseif (power < 90000)
 			n := 5;
-		// 3% chance of dev
+
+		// 10% chance
 		else
 			n := 6;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of ruin
+		// 0% chance
 		if (power < 0)
 			n := 1;
 
-		// 0% chance of might
+		// 0% chance
 		elseif (power < 0)
 			n := 2;
 
-		// 0% chance of force
+		// 15% chance
 		elseif (power < 15000)
 			n := 3;
 		
-		// 55% chance of power
-		elseif (power < 68000)
-			n := 4;
-
-		// 40% chance of vanq
-		elseif (power < 86000)
-			n := 5;
-		// 5% chance of dev
-		else
-			n := 6;
-		endif
-
-	elseif (magiclevel == 10)
-		
-		// 0% chance of ruin
-		if (power < 0)
-			n := 1;
-
-		// 0% chance of might
-		elseif (power < 0)
-			n := 2;
-
-		// 0% chance of force
-		elseif (power < 25000)
-			n := 3;
-		
-		// 40% chance of power
+		// 50% chance
 		elseif (power < 65000)
 			n := 4;
 
-		// 50% chance of vanq
+		// 20% chance
 		elseif (power < 85000)
 			n := 5;
-		// 10% chance of dev
+
+		// 15% chance
 		else
 			n := 6;
 		endif
 
-	// Higher than 10
-	else
+	// Level 10 loot
+	elseif (magiclevel == 10)
 		
-		// 0% chance of ruin
+		// 0% chance
 		if (power < 0)
 			n := 1;
 
-		// 0% chance of might
+		// 0% chance
 		elseif (power < 0)
 			n := 2;
 
-		// 0% chance of force
-		elseif (power < 15000)
+		// 10% chance
+		elseif (power < 10000)
 			n := 3;
 		
-		// 25% chance of power
-		elseif (power < 50000)
+		// 45% chance
+		elseif (power < 55000)
 			n := 4;
 
-		// 60% chance of vanq
+		// 25% chance
 		elseif (power < 80000)
 			n := 5;
-		// 15% chance of dev
+
+		// 20% chance
+		else
+			n := 6;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 0% chance
+		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 40% chance
+		elseif (power < 30000)
+			n := 5;
+
+		// 40% chance
+		else
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance
+		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 40000)
+			n := 5;
+
+		// 60% chance
 		else
 			n := 6;
 		endif
@@ -1911,8 +1937,8 @@ var n;
 		endif
 	endif
 	
-	// Toadstool: Every level has a 10% extra chance of hititng this
-   	if( (Random(100)+1) <= (10 * magiclevel) )
+	// Equal per-level scaling: +1/11 per level, level 11 is 100%.
+   	if( (RandomInt(11)+1) <= magiclevel )
        	if ((Random(100)+1) <= 75) // 75% chance of adding a hp mod
        		ApplyHPMod( item );
 		else
@@ -1922,873 +1948,893 @@ var n;
 
 endfunction
 
-
-//////////////////////////////////////////////////////////////
-// Toadstool
-//
-// Altered function to work on a % level
-//
-// Picks and assigns a new HP and prefix for the item
-//////////////////////////////////////////////////////////////
+//Touched by Dev Alryc 04-11-2026
 function ApplyHPMod( item )
 
- 
-   	/*
-  	var numb := (Random(50)+1) * magiclevel * 2;
-   	case( Cint(magiclevel / 3) )
-		0:	break;
-		1:	if( numb < 75 )
-				numb := 75;
-			endif
-			break;
-			
-		2:	if( numb < 150 )
-				numb := 150;
-			endif
-			break;
-	endcase
+	var power := RandomInt(100000);
+	var n;
 
-   	if( numb < 75 )
-		hp := 10;
-   	elseif( numb < 125 )
-		hp := 20;
-   	elseif( numb < 200 )
-		hp := 30;
-   	elseif( numb < 300 )
-		hp := 40;
-   	elseif( numb < 450 )
-		hp := 50;
-	else
-		hp := 60;
-   	endif
-*/
-
-var power := RandomInt(100000)+1;
-var n;
-
-// Nothing with this should get here 	
+	// Nothing with this should get here 	
 	if (magiclevel <= 0)
-			n := 5;
-	elseif (magiclevel == 1)
-		
-		// 98% chance of durable
-		if (power < 98000)
-			n := 5;
+			n := 1;
 
-		// 1.9% chance of substantial
+	// Level 1 loot
+	elseif (magiclevel == 1)
+
+		// 98% chance
+		if (power < 98000)
+			n := 1;
+
+		// 2% chance
 		else
-			n := 10;
+			n := 2;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of durable
+		// 82% chance
 		if (power < 82000)
-			n := 5;
+			n := 1;
 
-		// 17.5% chance of substantial
+		// 17.5% chance
 		elseif (power < 99500)
-			n := 10;
+			n := 2;
 
-		// .49% chance of massive
+		// 0.5% chance
 		else
-			n := 15;
+			n := 3;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of durable
+		// 30% chance
 		if (power < 30000)
-			n := 5;
+			n := 1;
 
-		// 80% chance of substantial
+		// 60% chance
 		elseif (power < 90000)
-			n := 10;
+			n := 2;
 
-		// 9.499% chance of massive
+		// 10% chance
 		else
-			n := 15;
+			n := 3;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of durable
+		// 20% chance
 		if (power < 20000)
-			n := 5;
+			n := 1;
 
-		// 64.497% chance of substantial
+		// 45% chance
 		elseif (power < 64997)
-			n := 10;
+			n := 2;
 
-		// 25% chance of massive
+		// 30% chance
 		elseif (power < 94997)
-			n := 15;
+			n := 3;
 		
-		// 10% chance of fortified
+		// 5% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of durable
+		// 15% chance
 		if (power < 15000)
-			n := 5;
+			n := 1;
 
-		// 34% chance of substantial
+		// 30% chance
 		elseif (power < 44999)
-			n := 10;
+			n := 2;
 
-		// 45% chance of massive
+		// 46% chance
 		elseif (power < 90999)
-			n := 15;
+			n := 3;
 		
-		// 18% chance of fortified
+		// 9% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of durable
+		// 3% chance
 		if (power < 3000)
-			n := 5;
+			n := 1;
 
-		// 0% chance of substantial
+		// 15% chance
 		elseif (power < 18000)
-			n := 10;
+			n := 2;
 
-		// 17% chance of massive
+		// 30% chance
 		elseif (power < 48000)
-			n := 15;
+			n := 3;
 		
-		// 50% chance of fortified
-		elseif (power < 77000)
-			n := 20;
+		// 35% chance
+		elseif (power < 83000)
+			n := 4;
 
-		// 25% chance of tempered
+		// 14% chance
 		elseif (power < 97000)
-			n := 25;
-		// 8% chance of indestructible
+			n := 5;
+		// 3% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of durable
-		if (power < 3000)
-			n := 5;
+		// 0% chance
+		if (power < 0)
+			n := 1;
 
-		// 0% chance of substantial
-		elseif (power < 18000)
-			n := 10;
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
 
-		// 17% chance of massive
-		elseif (power < 48000)
-			n := 15;
+		// 38% chance
+		elseif (power < 38000)
+			n := 3;
 		
-		// 50% chance of fortified
-		elseif (power < 77000)
-			n := 20;
+		// 40% chance
+		elseif (power < 78000)
+			n := 4;
 
-		// 25% chance of tempered
-		elseif (power < 97000)
-			n := 25;
-		// 8% chance of indestructible
+		// 18% chance
+		elseif (power < 96000)
+			n := 5;
+		// 4% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of durable
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 18% chance
+		elseif (power < 18000)
+			n := 3;
+		
+		// 55% chance
+		elseif (power < 73000)
+			n := 4;
+
+		// 17% chance
+		elseif (power < 90000)
 			n := 5;
 
-		// 0% chance of substantial
-		elseif (power < 0)
-			n := 10;
-
-		// 4% chance of massive
-		elseif (power < 38000)
-			n := 15;
-		
-		// 40% chance of fortified
-		elseif (power < 68000)
-			n := 20;
-
-		// 45% chance of tempered
-		elseif (power < 95000)
-			n := 25;
-		// 11% chance of indestructible
+		// 10% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of durable
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 15% chance
+		elseif (power < 15000)
+			n := 3;
+		
+		// 50% chance
+		elseif (power < 65000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 85000)
 			n := 5;
 
-		// 0% chance of substantial
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of massive
-		elseif (power < 28000)
-			n := 15;
-		
-		// 26% chance of fortified
-		elseif (power < 63000)
-			n := 20;
-
-		// 60% chance of tempered
-		elseif (power < 90000)
-			n := 25;
-		// 14% chance of indestructible
+		// 15% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of durable
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 3;
+		
+		// 45% chance
+		elseif (power < 55000)
+			n := 4;
+
+		// 25% chance
+		elseif (power < 80000)
 			n := 5;
 
-		// 0% chance of substantial
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of massive
-		elseif (power < 20000)
-			n := 15;
-		
-		// 13% chance of fortified
-		elseif (power < 60000)
-			n := 20;
-
-		// 70% chance of tempered
-		elseif (power < 86000)
-			n := 25;
-		// 17% chance of indestructible
+		// 20% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
-	// Higher than 10
-	else
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 0% chance of durable
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 40% chance
+		elseif (power < 30000)
 			n := 5;
 
-		// 0% chance of substantial
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of massive
-		elseif (power < 15000)
-			n := 15;
-		
-		// 5% chance of fortified
-		elseif (power < 50000)
-			n := 20;
-
-		// 75% chance of tempered
-		elseif (power < 70000)
-			n := 25;
-		// 20% chance of indestructible
+		// 40% chance
 		else
-			n := 30;
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance
+		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 40000)
+			n := 5;
+
+		// 60% chance
+		else
+			n := 6;
 		endif
 	endif
 
-   	item.maxhp_mod := n;
+   	item.maxhp_mod := CInt(n*5);
    	item.hp := item.maxhp;
 
 endfunction
 
-
-
-///////////////////////////////////////////////////////////////////////
-// Toadstool
-// 
-// Altered to use a % system
-//
-// Picks a AR mod and suffix for the item
-////////////////////////////////////////////////////////////////////////
+//Touched by Dev Alryc 04-11-2026
 function ApplyARMod( item )
 
-	/*
-   	var numb := (Random(50)+1) * magiclevel * 2;
-   	
-	case( Cint(magiclevel / 3) )
-		0:	break;
-		1:	if( numb < 150 )
-				numb := 150;
-			endif
-			break;
-			
-		2:	if( numb < 300 )
-				numb := 300;
-			endif
-			break;
-	endcase
-	
-   	if( numb < 50 )
-       		item.ar_mod := 5;
-   	elseif( numb < 100 )
-       		item.ar_mod := 10;
-   	elseif( numb < 350 )
-       		item.ar_mod := 15;
-   	elseif( numb < 550 )
-       		item.ar_mod := 20;
-   	elseif( numb < 650 )
-       		item.ar_mod := 25;
-	else
-		item.ar_mod := 30;
-   	endif
-*/
-var power := RandomInt(100000)+1;
-var n;
+	var power := RandomInt(100000);
+	var n;
 
-// Nothing with this should get here 	
+	// Nothing with this should get here 	
 	if (magiclevel <= 0)
-			n := 5;
-	elseif (magiclevel == 1)
-		
-		// 98% chance of defence
-		if (power < 98000)
-			n := 5;
+			n := 1;
 
-		// 1.9% chance of guarding
+	// Level 1 loot
+	elseif (magiclevel == 1)
+
+		// 98% chance
+		if (power < 98000)
+			n := 1;
+
+		// 2% chance
 		else
-			n := 10;
+			n := 2;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of defence
+		// 82% chance
 		if (power < 82000)
-			n := 5;
+			n := 1;
 
-		// 17.5% chance of guarding
+		// 17.5% chance
 		elseif (power < 99500)
-			n := 10;
+			n := 2;
 
-		// .49% chance of hardening
+		// 0.5% chance
 		else
-			n := 15;
+			n := 3;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of defence
+		// 30% chance
 		if (power < 30000)
-			n := 5;
+			n := 1;
 
-		// 80% chance of guarding
+		// 60% chance
 		elseif (power < 90000)
-			n := 10;
+			n := 2;
 
-		// 9.499% chance of hardening
+		// 10% chance
 		else
-			n := 15;
+			n := 3;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of defence
+		// 20% chance
 		if (power < 20000)
-			n := 5;
+			n := 1;
 
-		// 64.497% chance of guarding
+		// 45% chance
 		elseif (power < 64997)
-			n := 10;
+			n := 2;
 
-		// 25% chance of hardening
+		// 30% chance
 		elseif (power < 94997)
-			n := 15;
+			n := 3;
 		
-		// 10% chance of fortification
+		// 5% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of defence
+		// 15% chance
 		if (power < 15000)
-			n := 5;
+			n := 1;
 
-		// 34% chance of guarding
+		// 30% chance
 		elseif (power < 44999)
-			n := 10;
+			n := 2;
 
-		// 45% chance of hardening
+		// 46% chance
 		elseif (power < 90999)
-			n := 15;
+			n := 3;
 		
-		// 18% chance of fortification
+		// 9% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
-			n := 5;
+			n := 1;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
-			n := 10;
+			n := 2;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
-			n := 15;
+			n := 3;
 		
-		// 50% chance of fortification
-		elseif (power < 77000)
-			n := 20;
+		// 35% chance
+		elseif (power < 83000)
+			n := 4;
 
-		// 25% chance of invulnerability
+		// 14% chance
 		elseif (power < 97000)
-			n := 25;
-		// 8% chance of invincibility
+			n := 5;
+		// 3% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of defence
-		if (power < 2000)
-			n := 5;
+		// 0% chance
+		if (power < 0)
+			n := 1;
 
-		// 0% chance of guarding
-		elseif (power < 18000)
-			n := 10;
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
 
-		// 17% chance of hardening
-		elseif (power < 48000)
-			n := 15;
+		// 38% chance
+		elseif (power < 38000)
+			n := 3;
 		
-		// 50% chance of fortification
-		elseif (power < 77000)
-			n := 20;
+		// 40% chance
+		elseif (power < 78000)
+			n := 4;
 
-		// 25% chance of invulnerability
-		elseif (power < 97000)
-			n := 25;
-		// 8% chance of invincibility
+		// 18% chance
+		elseif (power < 96000)
+			n := 5;
+		// 4% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 18% chance
+		elseif (power < 18000)
+			n := 3;
+		
+		// 55% chance
+		elseif (power < 73000)
+			n := 4;
+
+		// 17% chance
+		elseif (power < 90000)
 			n := 5;
 
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 4% chance of hardening
-		elseif (power < 38000)
-			n := 15;
-		
-		// 40% chance of fortification
-		elseif (power < 68000)
-			n := 20;
-
-		// 45% chance of invulnerability
-		elseif (power < 95000)
-			n := 25;
-		// 11% chance of invincibility
+		// 10% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 15% chance
+		elseif (power < 15000)
+			n := 3;
+		
+		// 50% chance
+		elseif (power < 65000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 85000)
 			n := 5;
 
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
-		elseif (power < 28000)
-			n := 15;
-		
-		// 26% chance of fortification
-		elseif (power < 63000)
-			n := 20;
-
-		// 60% chance of invulnerability
-		elseif (power < 90000)
-			n := 25;
-		// 14% chance of invincibility
+		// 15% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 3;
+		
+		// 45% chance
+		elseif (power < 55000)
+			n := 4;
+
+		// 25% chance
+		elseif (power < 80000)
 			n := 5;
 
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
-		elseif (power < 20000)
-			n := 15;
-		
-		// 13% chance of fortification
-		elseif (power < 60000)
-			n := 20;
-
-		// 70% chance of invulnerability
-		elseif (power < 96000)
-			n := 25;
-		// 17% chance of invincibility
+		// 20% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
-	// Higher than 10
-	else
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 40% chance
+		elseif (power < 30000)
 			n := 5;
 
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
-		elseif (power < 15000)
-			n := 15;
-		
-		// 5% chance of fortification
-		elseif (power < 50000)
-			n := 20;
-
-		// 75% chance of invulnerability
-		elseif (power < 80000)
-			n := 25;
-		// 20% chance of invincibility
+		// 40% chance
 		else
-			n := 30;
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance
+		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 40000)
+			n := 5;
+
+		// 60% chance
+		else
+			n := 6;
 		endif
 	endif
-
-	item.ar_mod := n;
+		
+	item.ar_mod := CInt(n);
 
 	//Check for another enchantment
-	// Toadstool: Again well done, every level has a 10% chance of hitting this, with 10 AWLAYS hitting
-   	if( (Random(100)+1) <= (10 * magiclevel) )
+	// Equal per-level scaling: +1/11 per level, level 11 is 100%.
+   	if( (RandomInt(11)+1) <= magiclevel )
        	if ((Random(100)+1) <= 75) // 75% of adding a hp mod
-       			ApplyHPMod( item );
+       		ApplyHPMod( item );
 		else
 			ApplyArSkillMod( item ); // 25% chance of adding a ar skill mod
 		endif
    	endif
 
-
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyMiscArMod( item )
 
-	var amount;
-	/*
-	var numb := (Random(50)+1) * magiclevel * 2;
-	case( Cint(magiclevel / 3) )
-		0:	break;
-		1:	if( numb < 200 )
-				numb := 200;
-			endif
-			break;
-			
-		2:	if( numb < 350 )
-				numb := 350;
-			endif
-			break;
-	endcase
+	var power := RandomInt(100000);
+	var n;
 
-   	if( numb < 50 )
-       		amount := 1;
-   	elseif( numb < 150 )
-       		amount := 2;
-   	elseif( numb < 350 )
-       		amount := 3;
-   	elseif( numb < 500 )
-       		amount := 4;
-   	elseif( numb < 600 )
-       		amount := 5;
-	else
-		amount := 6;
-   	endif
-   	*/
-
-var power := RandomInt(100000)+1;
-var n;
-
-// Nothing with this should get here 	
+	// Nothing with this should get here 	
 	if (magiclevel <= 0)
-			n := 5;
-	elseif (magiclevel == 1)
-		
-		// 98% chance iron
-		if (power < 98000)
-			n := 5;
+			n := 1;
 
-		// 1.9% chance steel
+	// Level 1 loot
+	elseif (magiclevel == 1)
+
+		// 98% chance
+		if (power < 98000)
+			n := 1;
+
+		// 2% chance
 		else
-			n := 10;
+			n := 2;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of iron
+		// 82% chance
 		if (power < 82000)
-			n := 5;
+			n := 1;
 
-		// 17.5% chance of steel
+		// 17.5% chance
 		elseif (power < 99500)
-			n := 10;
+			n := 2;
 
-		// .49% chance of met steel
+		// 0.5% chance
 		else
-			n := 15;
+			n := 3;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of iron
+		// 30% chance
 		if (power < 30000)
-			n := 5;
+			n := 1;
 
-		// 80% chance of steel
+		// 60% chance
 		elseif (power < 90000)
-			n := 10;
+			n := 2;
 
-		// 9.499% chance of met steel
+		// 10% chance
 		else
-			n := 15;		
+			n := 3;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of iron
+		// 20% chance
 		if (power < 20000)
-			n := 5;
+			n := 1;
 
-		// 64.497% chance of steel
+		// 45% chance
 		elseif (power < 64997)
-			n := 10;
+			n := 2;
 
-		// 25% chance of met steel
+		// 30% chance
 		elseif (power < 94997)
-			n := 15;
+			n := 3;
 		
-		// 10% chance of obsidian
+		// 5% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of iron
+		// 15% chance
 		if (power < 15000)
-			n := 5;
+			n := 1;
 
-		// 34% chance of steel
+		// 30% chance
 		elseif (power < 44999)
-			n := 10;
+			n := 2;
 
-		// 45% chance of met steel
+		// 46% chance
 		elseif (power < 90999)
-			n := 15;
+			n := 3;
 		
-		// 18% chance of obsidian
+		// 9% chance
 		else
-			n := 20;
+			n := 4;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of iron
+		// 3% chance
 		if (power < 3000)
-			n := 5;
+			n := 1;
 
-		// 0% chance of steel
+		// 15% chance
 		elseif (power < 18000)
-			n := 10;
+			n := 2;
 
-		// 17% chance of met steel
+		// 30% chance
 		elseif (power < 48000)
-			n := 15;
+			n := 3;
 		
-		// 50% chance of obsidian
-		elseif (power < 77000)
-			n := 20;
+		// 35% chance
+		elseif (power < 83000)
+			n := 4;
 
-		// 25% chance of onynx
+		// 14% chance
 		elseif (power < 97000)
-			n := 25;
-		// 8% chance of adamantium
+			n := 5;
+		// 3% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of iron
-		if (power < 3000)
-			n := 5;
+		// 0% chance
+		if (power < 0)
+			n := 1;
 
-		// 0% chance of steel
-		elseif (power < 18000)
-			n := 10;
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
 
-		// 17% chance of met steel
-		elseif (power < 48000)
-			n := 15;
+		// 38% chance
+		elseif (power < 38000)
+			n := 3;
 		
-		// 50% chance of obsidian
-		elseif (power < 77000)
-			n := 20;
+		// 40% chance
+		elseif (power < 78000)
+			n := 4;
 
-		// 25% chance of onynx
-		elseif (power < 97000)
-			n := 25;
-		// 8% chance of adamantium
+		// 18% chance
+		elseif (power < 96000)
+			n := 5;
+		// 4% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of iron
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 18% chance
+		elseif (power < 18000)
+			n := 3;
+		
+		// 55% chance
+		elseif (power < 73000)
+			n := 4;
+
+		// 17% chance
+		elseif (power < 90000)
 			n := 5;
 
-		// 0% chance of steel
-		elseif (power < 0)
-			n := 10;
-
-		// 4% chance of met steel
-		elseif (power < 38000)
-			n := 15;
-		
-		// 40% chance of obsidian
-		elseif (power < 68000)
-			n := 20;
-
-		// 45% chance of onynx
-		elseif (power < 95000)
-			n := 25;
-		// 11% chance of adamantium
+		// 10% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of iron
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 15% chance
+		elseif (power < 15000)
+			n := 3;
+		
+		// 50% chance
+		elseif (power < 65000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 85000)
 			n := 5;
 
-		// 0% chance of steel
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of met steel
-		elseif (power < 28000)
-			n := 15;
-		
-		// 26% chance of obsidian
-		elseif (power < 63000)
-			n := 20;
-
-		// 60% chance of onynx
-		elseif (power < 90000)
-			n := 25;
-		// 14% chance of adamantium
+		// 15% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of iron
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 3;
+		
+		// 45% chance
+		elseif (power < 55000)
+			n := 4;
+
+		// 25% chance
+		elseif (power < 80000)
 			n := 5;
 
-		// 0% chance of steel
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of met steel
-		elseif (power < 20000)
-			n := 15;
-		
-		// 13% chance of obsidian
-		elseif (power < 60000)
-			n := 20;
-
-		// 70% chance of onynx
-		elseif (power < 96000)
-			n := 25;
-		// 17% chance of adamantium
+		// 20% chance
 		else
-			n := 30;
+			n := 6;
 		endif
 
-	// Higher than 10
-	else
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 0% chance of iron
+		// 0% chance
 		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 40% chance
+		elseif (power < 30000)
 			n := 5;
 
-		// 0% chance of steel
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of met steel
-		elseif (power < 15000)
-			n := 15;
-		
-		// 5% chance of obsidian
-		elseif (power < 50000)
-			n := 20;
-
-		// 75% chance of onynx
-		elseif (power < 80000)
-			n := 25;
-		// 20% chance of adamantium
+		// 40% chance
 		else
-			n := 30;
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance
+		if (power < 0)
+			n := 1;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 3;
+		
+		// 20% chance
+		elseif (power < 20000)
+			n := 4;
+
+		// 20% chance
+		elseif (power < 40000)
+			n := 5;
+
+		// 60% chance
+		else
+			n := 6;
 		endif
 	endif
-	
-	// So i'm lazy!
-	n := n/5;
+
+	n := CInt(n);
 
    	SetObjProperty( item , "ArBonus" , n );
    	
@@ -2817,33 +2863,17 @@ endfunction
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-function ApplyWeapHitscript( who , item )
+//Touched by Dev Alryc 04-11-2026
+function ApplyWeapHitscript( unused who , item )
 
 	CountAvailHitscripts();
-/*
-	var scripttype := (Random(94)+1) + (magiclevel * 2);
-	if (scripttype <= 30)
-		ApplySpellHitscript( item ); // Spell on hit
-	elseif (scripttype <= 50)
-		ApplySlayerHitscript( item ); // slayer weapons
-	elseif (scripttype <= 90)
-		ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
-
-	elseif (scripttype <= 110) 
-		DestroyItem( item );
-		CreateFromRandomString( who , "GMWeapon" ); // gm weps
-	else
-		ApplyGreaterHitscript( item ); // only lvl 8+ loot could hit this, brock, void, ele fury
-	endif
-
-	Note: Remember, only level 8+ loot could even get here. So ApplySpellHitscript would barely get hit...
-*/
-
 	var power := RandomInt(100000);
 	// 1% == 1000
 
  	if (magiclevel <= 0)
 			ApplySpellHitscript( item ); // Spell on hit
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
 		// 70% chance of spell
@@ -2853,9 +2883,9 @@ function ApplyWeapHitscript( who , item )
 		// 30% chance slayer
 		else
 			ApplySlayerHitscript( item ); // slayer weapons
-
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
 		// 60% chance of spell
@@ -2865,9 +2895,9 @@ function ApplyWeapHitscript( who , item )
 		// 40% chance slayer
 		else
 			ApplySlayerHitscript( item ); // slayer weapons
-
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
 		// 48% chance of spell
@@ -2878,59 +2908,62 @@ function ApplyWeapHitscript( who , item )
 		elseif (power < 96000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 3% chance effect
+		// 3.9% chance effect
 		elseif (power < 99900)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 1% chance br void elefury
+		// 0.1% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
 		// 46% chance of spell
 		if (power < 46000)
 			ApplySpellHitscript( item ); // Spell on hit
 
-		// 47% chance slayer
+		// 46% chance slayer
 		elseif (power < 92000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 7% chance effect
+		// 7.9% chance effect
 		elseif (power < 99900)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 1% chance gm
+		// 0.1% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 45% chance of spell
+		// 44% chance of spell
 		if (power < 44000)
 			ApplySpellHitscript( item ); // Spell on hit
 
-		// 45% chance slayer
+		// 44% chance slayer
 		elseif (power < 88000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 10% chance effect
+		// 11.5% chance effect
 		elseif (power < 99500)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 2% chance gm
+		// 0.5% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
 		// 42% chance of spell
@@ -2941,17 +2974,18 @@ function ApplyWeapHitscript( who , item )
 		elseif (power < 84000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 14% chance effect
+		// 15.5% chance effect
 		elseif (power < 99500)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 2% chance gm
+		// 0.5% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
 		// 40% chance of spell
@@ -2962,17 +2996,18 @@ function ApplyWeapHitscript( who , item )
 		elseif (power < 80000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 17% chance effect
+		// 19.2% chance effect
 		elseif (power < 99200)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 3% chance gm
+		// 0.8% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
 		// 37% chance of spell
@@ -2983,17 +3018,18 @@ function ApplyWeapHitscript( who , item )
 		elseif (power < 74000) 
 			ApplySlayerHitscript( item ); // slayer weapons
 		
-		// 22% chance effect
+		// 25.2% chance effect
 		elseif (power < 99200)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 4% chance gm
+		// 0.8% chance greater
 		else
 			ApplyGreaterHitscript( item ); //brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
 		// 35% chance of spell
@@ -3004,55 +3040,78 @@ function ApplyWeapHitscript( who , item )
 		elseif (power < 70000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 25% chance effect
+		// 29% chance effect
 		elseif (power < 99000)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 5% chance gm
+		// 1% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif	
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 34% chance of spell
-		if (power < 34000)
+		// 30% chance of spell
+		if (power < 30000)
 			ApplySpellHitscript( item ); // Spell on hit
 
-		// 34% chance slayer
-		elseif (power < 68000)
+		// 30% chance slayer
+		elseif (power < 60000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 26% chance effect
-		elseif (power < 98000)
+		// 37% chance effect
+		elseif (power < 97000)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 6% chance gm
+		// 3% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
 		endif
 
-	// Higher than 10
-	else
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 32% chance of spell
-		if (power < 30000)
+		// 25% chance of spell
+		if (power < 25000)
 			ApplySpellHitscript( item ); // Spell on hit
 
-		// 32% chance slayer
-		elseif (power < 60000)
+		// 25% chance slayer
+		elseif (power < 50000)
 			ApplySlayerHitscript( item ); // slayer weapons
 
-		// 29% chance effect
-		elseif (power < 97000)
+		// 25% chance effect
+		elseif (power < 75000)
 			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
 			SetObjProperty(item, "isRare", 1);
 
-		// 7% chance gm
+		// 25% chance greater
+		else
+			ApplyGreaterHitscript( item ); // brock, void, ele fury
+			SetObjProperty(item, "isRare", 1);
+		endif
+
+	// Level ?? loot
+	else
+		
+		// 25% chance of spell
+		if (power < 25000)
+			ApplySpellHitscript( item ); // Spell on hit
+
+		// 25% chance slayer
+		elseif (power < 50000)
+			ApplySlayerHitscript( item ); // slayer weapons
+
+		// 25% chance effect
+		elseif (power < 75000)
+			ApplyEffectHitscript( item ); // blinding/stam,mana, life drain/pzn/banish/piercing
+			SetObjProperty(item, "isRare", 1);
+
+		// 25% chance greater
 		else
 			ApplyGreaterHitscript( item ); // brock, void, ele fury
 			SetObjProperty(item, "isRare", 1);
@@ -3062,7 +3121,7 @@ function ApplyWeapHitscript( who , item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplySpellHitscript( item )
 
 	set_critical( 1 );
@@ -3076,72 +3135,69 @@ function ApplySpellHitscript( item )
 	
 	//Set the spell power
 	var ascircle := 1;
-	var rand := RandomInt(100000)+1;
+	var rand := RandomInt(100000);
 
 	//1000 == 1%
 	if (magiclevel == 0)
 		ascircle := 1;
 	
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		//95% 1st circle
+		//98% 1st circle
 		if (rand < 98000)
-		
 			ascircle := 1;
 	
-		//4% 2nd circle
+		//2% 2nd circle
 		else
 
 			ascircle := 2;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		//90% 1st circle
+		//82% 1st circle
 		if (rand < 82000)
-		
 			ascircle := 1;
 	
-		//8% 2nd circle
+		//17.5% 2nd circle
 		elseif (rand < 99500)
-
 			ascircle := 2;
 
-		//2% 3rd circle
+		//0.5% 3rd circle
 		else
 			ascircle := 3;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		//60% 1st circle
+		//30% 1st circle
 		if (rand < 30000)
-		
 			ascircle := 1;
 	
-		//30% 2nd circle
+		//60% 2nd circle
 		elseif (rand < 90000)
-
 			ascircle := 2;
 
-		//8% 3rd circle
+		//10% 3rd circle
 		else
 			ascircle := 3;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		//40% 1st circle
+		//20% 1st circle
 		if (rand < 20000)
-		
 			ascircle := 1;
 	
-		//40% 2nd circle
+		//45% 2nd circle
 		elseif (rand < 64997)
-
 			ascircle := 2;
 
-		//15% 3rd circle
+		//30% 3rd circle
 		elseif (rand < 94997)
 			ascircle := 3;
 
@@ -3150,235 +3206,278 @@ function ApplySpellHitscript( item )
 			ascircle := 4;
 		endif
 		
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		//20% 1st circle
+		//15% 1st circle
 		if (rand < 15000)
-		
 			ascircle := 1;
 	
-		//20% 2nd circle
+		//30% 2nd circle
 		elseif (rand < 44999)
-
 			ascircle := 2;
 
-		//30% 3rd circle
+		//46% 3rd circle
 		elseif (rand < 90999)
 			ascircle := 3;
 
-		//15% 4th circle
+		//9% 4th circle
 		else
 			ascircle := 4;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		//0% 1st circle
+		//1% 1st circle
 		if (rand < 1000)
-		
 			ascircle := 1;
 	
-		//0% 2nd circle
+		//15% 2nd circle
 		elseif (rand < 16000)
-
 			ascircle := 2;
 
-		//20% 3rd circle
+		//30% 3rd circle
 		elseif (rand < 46000)
 			ascircle := 3;
 
-		//30% 4th circle
+		//28% 4th circle
 		elseif (rand < 74000)
 			ascircle := 4;
 
-		//30% 5th circle
+		//20% 5th circle
 		elseif (rand < 94000)
 			ascircle := 5;
 
-		//15% 6th circle
+		//6% 6th circle
 		else
 			ascircle := 6;
 		endif
 	
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		//0% 1st circle
+		//1% 1st circle
 		if (rand < 1000)
-		
 			ascircle := 1;
 	
-		//0% 2nd circle
+		//15% 2nd circle
 		elseif (rand < 16000)
-
 			ascircle := 2;
 
-		//20% 3rd circle
+		//30% 3rd circle
 		elseif (rand < 46000)
 			ascircle := 3;
 
-		//30% 4th circle
+		//28% 4th circle
 		elseif (rand < 74000)
 			ascircle := 4;
 
-		//30% 5th circle
+		//20% 5th circle
 		elseif (rand < 94000)
 			ascircle := 5;
 
-		//15% 6th circle
+		//6% 6th circle
 		else
 			ascircle := 6;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
 		//0% 1st circle
 		if (rand < 0)
-		
 			ascircle := 1;
 	
 		//0% 2nd circle
 		elseif (rand < 0)
-
 			ascircle := 2;
 
-		//5% 3rd circle
+		//61% 3rd circle
 		elseif (rand < 61000)
 			ascircle := 3;
 
-		//15% 4th circle
+		//9% 4th circle
 		elseif (rand < 70000)
 			ascircle := 4;
 
-		//40% 5th circle
+		//15% 5th circle
 		elseif (rand < 85000)
 			ascircle := 5;
 
-		//30% 6th circle
+		//10% 6th circle
 		elseif (rand < 95000)
 			ascircle := 6;
 
-		//30% 6th circle
+		//5% 7th circle
 		else
 			ascircle := 7;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
 		//0% 1st circle
 		if (rand < 0)
-		
 			ascircle := 1;
 	
 		//0% 2nd circle
 		elseif (rand < 0)
-
 			ascircle := 2;
 
-		//0% 3rd circle
+		//26% 3rd circle
 		elseif (rand < 26000)
 			ascircle := 3;
 
-		//10% 4th circle
+		//35% 4th circle
 		elseif (rand < 61000)
 			ascircle := 4;
 
-		//40% 5th circle
+		//9% 5th circle
 		elseif (rand < 70000)
 			ascircle := 5;
 
-		//35% 6th circle
+		//15% 6th circle
 		elseif (rand < 85000)
 			ascircle := 6;
 
-		//15% 7th circle
+		//10% 7th circle
 		elseif (rand < 95000)
 			ascircle := 7;
 
-		//15% 7th circle
+		//5% 8th circle
 		else
 			ascircle := 8;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
 		//0% 1st circle
 		if (rand < 0)
-		
 			ascircle := 1;
 	
 		//0% 2nd circle
 		elseif (rand < 0)
-
 			ascircle := 2;
 
-		//0% 3rd circle
-		elseif (rand < 26000)
-			ascircle := 3;
-
-		//10% 4th circle
-		elseif (rand < 61000)
-			ascircle := 4;
-
-		//40% 5th circle
-		elseif (rand < 70000)
-			ascircle := 5;
-
-		//35% 6th circle
-		elseif (rand < 85000)
-			ascircle := 6;
-
-		//15% 7th circle
-		elseif (rand < 95000)
-			ascircle := 7;
-
-		//15% 7th circle
-		elseif (rand < 97000)
-			ascircle := 8;
-
-		else 
-			ascircle := 9;
-		endif
-
-	elseif (magiclevel > 10)
-		
-		//0% 1st circle
-		if (rand < 0)
-		
-			ascircle := 1;
-	
-		//0% 2nd circle
-		elseif (rand < 0)
-
-			ascircle := 2;
-
-		//0% 3rd circle
+		//20% 3rd circle
 		elseif (rand < 20000)
 			ascircle := 3;
 
-		//10% 4th circle
+		//35% 4th circle
 		elseif (rand < 55000)
 			ascircle := 4;
 
-		//40% 5th circle
+		//10% 5th circle
 		elseif (rand < 65000)
 			ascircle := 5;
 
-		//35% 6th circle
+		//15% 6th circle
 		elseif (rand < 80000)
 			ascircle := 6;
 
-		//15% 7th circle
-		elseif (rand < 92000)
+		//11% 7th circle
+		elseif (rand < 91000)
 			ascircle := 7;
 
-		//15% 7th circle
-		elseif (rand < 95000)
+		//3% 8th circle
+		elseif (rand < 94000)
 			ascircle := 8;
 
-		//15% 7th circle
+		//3% 9th circle
 		elseif (rand < 97000)
 			ascircle := 9;
 
+		//3% 10th circle
+		else 
+			ascircle := 10;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		//0% 1st circle
+		if (rand < 0)
+			ascircle := 1;
+	
+		//0% 2nd circle
+		elseif (rand < 0)
+			ascircle := 2;
+
+		//20% 3rd circle
+		elseif (rand < 0)
+			ascircle := 3;
+
+		//35% 4th circle
+		elseif (rand < 0)
+			ascircle := 4;
+
+		//25% 5th circle
+		elseif (rand < 25000)
+			ascircle := 5;
+
+		//30% 6th circle
+		elseif (rand < 55000)
+			ascircle := 6;
+
+		//30% 7th circle
+		elseif (rand < 85000)
+			ascircle := 7;
+
+		//5% 8th circle
+		elseif (rand < 90000)
+			ascircle := 8;
+
+		//5% 9th circle
+		elseif (rand < 95000)
+			ascircle := 9;
+
+		//5% 10th circle
+		else 
+			ascircle := 10;
+		endif
+
+	// Level 11+ loot
+	else
+
+		//0% 1st circle
+		if (rand < 0)
+			ascircle := 1;
+	
+		//0% 2nd circle
+		elseif (rand < 0)
+			ascircle := 2;
+
+		//20% 3rd circle
+		elseif (rand < 0)
+			ascircle := 3;
+
+		//35% 4th circle
+		elseif (rand < 0)
+			ascircle := 4;
+
+		//25% 5th circle
+		elseif (rand < 25000)
+			ascircle := 5;
+
+		//30% 6th circle
+		elseif (rand < 55000)
+			ascircle := 6;
+
+		//30% 7th circle
+		elseif (rand < 85000)
+			ascircle := 7;
+
+		//5% 8th circle
+		elseif (rand < 90000)
+			ascircle := 8;
+
+		//5% 9th circle
+		elseif (rand < 95000)
+			ascircle := 9;
+
+		//5% 10th circle
 		else 
 			ascircle := 10;
 		endif
@@ -3399,8 +3498,8 @@ function ApplySpellHitscript( item )
 	// cap max effect to 95
 	if (chanceofeffect <= 0)
 		chanceofeffect := 5;
-	elseif (chanceofeffect > 80)
-		chanceofeffect := 80;
+	//elseif (chanceofeffect > 80)
+	//	chanceofeffect := 80;
 	endif
 
 	SetObjProperty( item , "ChanceOfEffect" , chanceofeffect );
@@ -3410,7 +3509,6 @@ function ApplySpellHitscript( item )
 
 endfunction
 
-
 ////////////////////////////////////////////////////////
 //
 // Toadstool - Left this function as is.
@@ -3419,12 +3517,14 @@ endfunction
 // So now we should see a lot of the lower slayers...
 //
 ////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplySlayerHitscript( item )
 
 	set_critical( 1 );
 	
 	var multiplier := 15;
-	var newRoll := magiclevel + 2;
+	var newRoll := magiclevel + 1;
 	if(newRoll > 10)
 		newRoll := 10;
 	endif
@@ -3485,7 +3585,7 @@ function ApplySlayerHitscript( item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyEffectHitscript( item )
 
 	set_critical( 1 );
@@ -3509,7 +3609,7 @@ function ApplyEffectHitscript( item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyGreaterHitscript ( item )
 
 	set_critical( 1 );
@@ -3538,10 +3638,12 @@ endfunction
 // Directly below this function are others that are copied and
 // pasted.  tweak them as needed
 ///////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplyWeapSkillMod( item )
 
 	var chance := Random(1000)+1;
-	if(chance <= 20)
+	if(chance <= 40)
 		ApplyStatMod( item );
 		SetObjProperty(item, "isRare", 1);
 		return;
@@ -3549,243 +3651,288 @@ function ApplyWeapSkillMod( item )
 
 	var amount;
 
-	var power := RandomInt(100000)+1;
+	var power := RandomInt(100000);
 	var n;
 
 	if (magiclevel <= 0)
 			n := 5;
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		// 98% chance of defence
+		// 98% chance
 		if (power < 98000)
 			n := 5;
 
-		// 1.9% chance of guarding
+		// 2% chance
 		else
 			n := 10;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of defence
+		// 82% chance
 		if (power < 82000)
 			n := 5;
 
-		// 17.5% chance of guarding
+		// 17.5% chance
 		elseif (power < 99500)
 			n := 10;
 
-		// .49% chance of hardening
+		// 0.5% chance
 		else
 			n := 15;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of defence
+		// 30% chance
 		if (power < 30000)
 			n := 5;
 
-		// 80% chance of guarding
+		// 60% chance
 		elseif (power < 90000)
 			n := 10;
 
-		// 9.499% chance of hardening
+		// 10% chance
 		else
 			n := 15;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of defence
+		// 20% chance
 		if (power < 20000)
 			n := 5;
 
-		// 64.497% chance of guarding wtf
-		elseif (power < 64997)
+		// 45% chance
+		elseif (power < 65000)
 			n := 10;
 
-		// 25% chance of hardening
-		elseif (power < 94997)
+		// 30% chance
+		elseif (power < 95000)
 			n := 15;
 		
-		// 10% chance of fortification
+		// 5% chance
 		else
 			n := 20;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of defence
+		// 15% chance
 		if (power < 15000)
 			n := 5;
 
-		// 34% chance of guarding
-		elseif (power < 44999)
+		// 30% chance
+		elseif (power < 45000)
 			n := 10;
 
-		// 45% chance of hardening
-		elseif (power < 90999)
+		// 46% chance
+		elseif (power < 91000)
 			n := 15;
 		
-		// 18% chance of fortification
+		// 9% chance
 		else
 			n := 20;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of defence
+		// 2% chance
 		if (power < 2000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 16% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 4% chance of hardening
+		// 38% chance
 		elseif (power < 38000)
 			n := 15;
 		
-		// 40% chance of fortification
+		// 30% chance
 		elseif (power < 68000)
 			n := 20;
 
-		// 45% chance of invulnerability
+		// 22% chance
 		elseif (power < 90000)
 			n := 25;
-		// 11% chance of invincibility
+
+		// 10% chance
 		else
 			n := 30;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
-		elseif (power < 28000)
+		// 25% chance
+		elseif (power < 25000)
 			n := 15;
 		
-		// 26% chance of fortification
+		// 38% chance
 		elseif (power < 63000)
 			n := 20;
 
-		// 60% chance of invulnerability
-		elseif (power < 85000)
+		// 25% chance
+		elseif (power < 88000)
 			n := 25;
-		// 14% chance of invincibility
+
+		// 12% chance
 		else
 			n := 30;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
-		elseif (power < 20000)
-			n := 15;
-		
-		// 13% chance of fortification
-		elseif (power < 60000)
-			n := 20;
-
-		// 70% chance of invulnerability
-		elseif (power < 96000)
-			n := 25;
-		// 17% chance of invincibility
-		else
-			n := 30;
-		endif
-
-	// Higher than 10
-	else
-		
-		// 0% chance of defence
-		if (power < 0)
-			n := 5;
-
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
+		// 15% chance
 		elseif (power < 15000)
 			n := 15;
 		
-		// 5% chance of fortification
-		elseif (power < 50000)
+		// 40% chance
+		elseif (power < 55000)
 			n := 20;
 
-		// 75% chance of invulnerability
+		// 30% chance
+		elseif (power < 85000)
+			n := 25;
+
+		// 15% chance
+		else
+			n := 30;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 15;
+		
+		// 35% chance
+		elseif (power < 45000)
+			n := 20;
+
+		// 35% chance
 		elseif (power < 80000)
 			n := 25;
-		// 20% chance of invincibility
+
+		// 20% chance
+		else
+			n := 30;
+		endif
+
+	// Level ?? loot
+	else
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 15;
+		
+		// 30% chance
+		elseif (power < 30000)
+			n := 20;
+
+		// 45% chance
+		elseif (power < 75000)
+			n := 25;
+
+		// 25% chance
 		else
 			n := 30;
 		endif
@@ -3823,7 +3970,7 @@ function ApplyWeapSkillMod( item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyArSkillMod( item )
 
 	var chance := Random(1000)+1;
@@ -3834,274 +3981,288 @@ function ApplyArSkillMod( item )
 
 	var skillid;
 	var amount;
-/*
-	var numb := (Random(50)+1) * magiclevel * 2;
-	
-	case( Cint(magiclevel / 3) )
-		0:	break;
-		1:	if( numb < 200 )
-				numb := 200;
-			endif
-			break;
-			
-		2:	if( numb < 300 )
-				numb := 300;
-			endif
-			break;
-	endcase
-	
-   	if( numb < 200 )
-		amount := 1;
-   	elseif( numb < 300 )
-		amount := 2;
-   	elseif( numb < 400 )
-		amount := 3;
-   	elseif( numb < 500 )
-		amount := 4;
-   	elseif( numb < 600 )
-		amount := 5;
-	else
-		amount := 6;
-   	endif
-	*/
-
-var power := RandomInt(100000)+1;
-var n;
+	var power := RandomInt(100000);
+	var n;
 
 	if (magiclevel <= 0)
 			n := 5;
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		// 98% chance of defence
+		// 98% chance
 		if (power < 98000)
 			n := 5;
 
-		// 1.9% chance of guarding
+		// 2% chance
 		else
 			n := 10;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of defence
+		// 82% chance
 		if (power < 82000)
 			n := 5;
 
-		// 17.5% chance of guarding
+		// 17.5% chance
 		elseif (power < 99500)
 			n := 10;
 
-		// .49% chance of hardening
+		// 0.5% chance
 		else
 			n := 15;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of defence
+		// 30% chance
 		if (power < 30000)
 			n := 5;
 
-		// 80% chance of guarding
+		// 60% chance
 		elseif (power < 90000)
 			n := 10;
 
-		// 9.499% chance of hardening
+		// 10% chance
 		else
 			n := 15;
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of defence
+		// 20% chance
 		if (power < 20000)
 			n := 5;
 
-		// 64.497% chance of guarding
+		// 44.997% chance
 		elseif (power < 64997)
 			n := 10;
 
-		// 25% chance of hardening
+		// 30% chance
 		elseif (power < 94997)
 			n := 15;
 		
-		// 10% chance of fortification
+		// 5.003% chance
 		else
 			n := 20;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of defence
+		// 15% chance
 		if (power < 15000)
 			n := 5;
 
-		// 34% chance of guarding
+		// 29.999% chance
 		elseif (power < 44999)
 			n := 10;
 
-		// 45% chance of hardening
+		// 46% chance
 		elseif (power < 90999)
 			n := 15;
 		
-		// 18% chance of fortification
+		// 9.001% chance
 		else
 			n := 20;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 4% chance of hardening
+		// 38% chance
 		elseif (power < 38000)
 			n := 15;
 		
-		// 40% chance of fortification
+		// 30% chance
 		elseif (power < 68000)
 			n := 20;
 
-		// 45% chance of invulnerability
+		// 22% chance
 		elseif (power < 90000)
 			n := 25;
-		// 11% chance of invincibility
+
+		// 10% chance
 		else
 			n := 30;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
+		// 28% chance
 		elseif (power < 28000)
 			n := 15;
 		
-		// 26% chance of fortification
+		// 35% chance
 		elseif (power < 63000)
 			n := 20;
 
-		// 60% chance of invulnerability
+		// 22% chance
 		elseif (power < 85000)
 			n := 25;
-		// 14% chance of invincibility
+
+		// 15% chance
 		else
 			n := 30;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
-		elseif (power < 20000)
-			n := 15;
-		
-		// 13% chance of fortification
-		elseif (power < 60000)
-			n := 20;
-
-		// 70% chance of invulnerability
-		elseif (power < 96000)
-			n := 25;
-		// 17% chance of invincibility
-		else
-			n := 30;
-		endif
-
-	// Higher than 10
-	else
-		
-		// 0% chance of defence
-		if (power < 0)
-			n := 5;
-
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
+		// 15% chance
 		elseif (power < 15000)
 			n := 15;
 		
-		// 5% chance of fortification
+		// 35% chance
 		elseif (power < 50000)
 			n := 20;
 
-		// 75% chance of invulnerability
+		// 30% chance
 		elseif (power < 80000)
 			n := 25;
-		// 20% chance of invincibility
+
+		// 20% chance
+		else
+			n := 30;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 15;
+		
+		// 35% chance
+		elseif (power < 45000)
+			n := 20;
+
+		// 30% chance
+		elseif (power < 75000)
+			n := 25;
+
+		// 25% chance
+		else
+			n := 30;
+		endif
+
+	// Level 11+ loot
+	else
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 10% chance
+		elseif (power < 10000)
+			n := 15;
+		
+		// 30% chance
+		elseif (power < 40000)
+			n := 20;
+
+		// 30% chance
+		elseif (power < 70000)
+			n := 25;
+
+		// 30% chance
 		else
 			n := 30;
 		endif
@@ -4139,6 +4300,7 @@ endfunction
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function ApplyMiscSkillMod( item )
 
 	// So far stat mod is PURE chance, .5% chance to be a stat mod
@@ -4151,291 +4313,310 @@ function ApplyMiscSkillMod( item )
 
 	var skillid;
 	var amount;
-
-	/*
-	var numb := (Random(50)+1) * magiclevel * 2;
-	
-		NUMB
-	lvl 1 min : 2	lvl 1 max: 100
-	lvl 2 min : 4 	lvl 2 max: 200
-	lvl 3 min : 6 	lvl 3 max: 300
-	lvl 4 min : 8	lvl 4 max: 400
-	etc etc
-
-
-	// This part just makes sure higher levels can't be below that number - making low drops impossible
-	case( Cint(magiclevel / 3) )
-		0:	break;
-		1:	if( numb < 200 )
-				numb := 200;
-			endif
-			break;
-			
-		2:	if( numb < 300 )
-				numb := 300;
-			endif
-			break;
-	endcase
-	
-	// Starts off at +2!!??
-   	if( numb < 50 )
-		amount := 2;
-   	elseif( numb < 300 )
-		amount := 2;
-   	elseif( numb < 450 )
-		amount := 3;
-   	elseif( numb < 700 )
-		amount := 4;
-   	elseif( numb < 799 )
-		amount := 5;
-	else
-		amount := 6;
-   	endif
-	*/
-	var power := RandomInt(100000)+1;
+	var power := RandomInt(100000);
 	var n;
 
 	if (magiclevel <= 0)
 			n := 5;
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		// 98% chance of defence
+		// 98% chance
 		if (power < 98000)
 			n := 5;
 
-		// 1.9% chance of guarding
+		// 2% chance
 		else
 			n := 10;
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
-		// 82% chance of defence
+		// 82% chance
 		if (power < 82000)
 			n := 5;
 
-		// 17.5% chance of guarding
+		// 17.5% chance
 		elseif (power < 99500)
 			n := 10;
 
-		// .49% chance of hardening
+		// 0.5% chance
 		else
 			n := 15;
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 10% chance of defence
+		// 30% chance
 		if (power < 30000)
 			n := 5;
 
-		// 80% chance of guarding
+		// 60% chance
 		elseif (power < 90000)
 			n := 10;
 
-		// 9.499% chance of hardening
+		// 10% chance
 		else
 			n := 15;
 				
 		endif
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// .5% chance of defence
+		// 20% chance
 		if (power < 20000)
 			n := 5;
 
-		// 64.497% chance of guarding
+		// 44.997% chance
 		elseif (power < 64997)
 			n := 10;
 
-		// 25% chance of hardening
+		// 30% chance
 		elseif (power < 94997)
 			n := 15;
 		
-		// 10% chance of fortification
+		// 5.003% chance
 		else
 			n := 20;
 		endif
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
-		// 0% chance of defence
+		// 15% chance
 		if (power < 15000)
 			n := 5;
 
-		// 34% chance of guarding
+		// 29.999% chance
 		elseif (power < 44999)
 			n := 10;
 
-		// 45% chance of hardening
+		// 46% chance
 		elseif (power < 90999)
 			n := 15;
 		
-		// 18% chance of fortification
+		// 9.001% chance
 		else
 			n := 20;
 		endif
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
-		// 0% chance of defence
+		// 3% chance
 		if (power < 3000)
 			n := 5;
 
-		// 0% chance of guarding
+		// 15% chance
 		elseif (power < 18000)
 			n := 10;
 
-		// 17% chance of hardening
+		// 30% chance
 		elseif (power < 48000)
 			n := 15;
 		
-		// 50% chance of fortification
+		// 29% chance
 		elseif (power < 77000)
 			n := 20;
 
-		// 25% chance of invulnerability
+		// 20% chance
 		elseif (power < 97000)
 			n := 25;
-		// 8% chance of invincibility
+
+		// 3% chance
 		else
 			n := 30;
 		endif
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 4% chance of hardening
+		// 36% chance
 		elseif (power < 36000)
 			n := 15;
 		
-		// 40% chance of fortification
+		// 30% chance
 		elseif (power < 66000)
 			n := 20;
 
-		// 45% chance of invulnerability
+		// 24% chance
 		elseif (power < 90000)
 			n := 25;
-		// 11% chance of invincibility
+
+		// 10% chance
 		else
 			n := 30;
 
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
+		// 26% chance
 		elseif (power < 26000)
 			n := 15;
 		
-		// 26% chance of fortification
+		// 35% chance
 		elseif (power < 61000)
 			n := 20;
 
-		// 60% chance of invulnerability
+		// 24% chance
 		elseif (power < 85000)
 			n := 25;
-		// 14% chance of invincibility
-		else
+
+		// 14.95% chance
+		elseif (power < 99950)
 			n := 30;
 
+		// 0.05% chance
+		else
+		 	n := 50;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-		// 0% chance of defence
+		// 0% chance
 		if (power < 0)
 			n := 5;
 
-		// 0% chance of guarding
+		// 0% chance
 		elseif (power < 0)
 			n := 10;
 
-		// 0% chance of hardening
+		// 20% chance
 		elseif (power < 20000)
 			n := 15;
 		
-		// 13% chance of fortification
-		elseif (power < 60000)
+		// 35% chance
+		elseif (power < 55000)
 			n := 20;
 
-		// 70% chance of invulnerability
-		elseif (power < 96000)
-			n := 25;
-
-		// 14% chance of invincibility
-		else
-			n := 30;
-
-		endif
-	// Higher than 10
-	else
-		
-		// 0% chance of defence
-		if (power < 0)
-			n := 5;
-
-		// 0% chance of guarding
-		elseif (power < 0)
-			n := 10;
-
-		// 0% chance of hardening
-		elseif (power < 15000)
-			n := 15;
-		
-		// 5% chance of fortification
-		elseif (power < 50000)
-			n := 20;
-
-		// 75% chance of invulnerability
+		// 25% chance
 		elseif (power < 80000)
 			n := 25;
 
-		// 14% chance of invincibility
-		else
+		// 19.9% chance
+		elseif (power < 99900)
 			n := 30;
+
+		// 0.1% chance
+		else
+			n := 50;
+
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11)
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 15% chance
+		elseif (power < 15000)
+			n := 15;
+		
+		// 35% chance
+		elseif (power < 50000)
+			n := 20;
+
+		// 25% chance
+		elseif (power < 75000)
+			n := 25;
+
+		// 24% chance
+		elseif (power < 99000)
+			n := 30;
+
+		// 1% chance
+		else
+			n := 50;
+
+		endif
+
+	// Level 11+ loot
+	else
+		
+		// 0% chance
+		if (power < 0)
+			n := 5;
+
+		// 0% chance
+		elseif (power < 0)
+			n := 10;
+
+		// 15% chance
+		elseif (power < 15000)
+			n := 15;
+		
+		// 35% chance
+		elseif (power < 50000)
+			n := 20;
+
+		// 25% chance
+		elseif (power < 75000)
+			n := 25;
+
+		// 24.8% chance
+		elseif (power < 99800)
+			n := 30;
+
+		// 0.2% chance
+		else
+			n := 50;
 
 		endif
 
@@ -4445,6 +4626,8 @@ function ApplyMiscSkillMod( item )
 		SetObjProperty(item, "isUncommon", 1);
 	elseif(n == 30)
 		SetObjProperty(item, "isRare", 1);
+	elseif(n == 50)
+		SetObjProperty(item, "isLegendary", 1);
 	endif
 
 	amount := n/5;
@@ -4464,14 +4647,13 @@ function ApplyMiscSkillMod( item )
 	SetObjProperty( item , "skilladv" , skillid );
 	SetObjProperty( item , "skilladvamount" , amount );
 
-//if(n == 50)
-//	if(skillid == SKILLID_ALCHEMY or skillid == SKILLID_MAGERY or skillid == SKILLID_ITEMID or skillid == SKILLID_EVALINT or skillid == SKILLID_INSCRIPTION or skillid == SKILLID_MAGICRESISTANCE or skillid == SKILLID_MEDITATION or skillid == SKILLID_SPIRITSPEAK)
-//		EraseObjProperty( item , "ArBonus");
-//	endif
-//endif
+	//	if(n == 50)
+	//		if(skillid == SKILLID_ALCHEMY or skillid == SKILLID_MAGERY or skillid == SKILLID_ITEMID or skillid == SKILLID_EVALINT or skillid == SKILLID_INSCRIPTION or skillid == SKILLID_MAGICRESISTANCE or skillid == SKILLID_MEDITATION or skillid == SKILLID_SPIRITSPEAK)
+	//			EraseObjProperty( item , "ArBonus");
+	//		endif
+	//	endif
 
 endfunction
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
@@ -4481,16 +4663,18 @@ endfunction
 // Just copy pasted from weap
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////
-function ApplyOnHitScript ( who , item )
+
+//Touched by Dev Alryc 04-11-2026
+function ApplyOnHitScript( item )
 
 	CountAvailOnHitscripts();
 
-	var power := RandomInt(100000)+1;
-
-	// 1% == 1000
+	var power := RandomInt(100000);
 
  	if (magiclevel <= 0)
 			ApplySpellOnHitscript( item ); // Spell on hit
+
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
 		// 80% chance of spell
@@ -4503,6 +4687,7 @@ function ApplyOnHitScript ( who , item )
 
 		endif
 
+	// Level 2 loot
 	elseif (magiclevel == 2)
 		
 		// 60% chance of spell
@@ -4515,36 +4700,39 @@ function ApplyOnHitScript ( who , item )
 
 		endif
 
+	// Level 3 loot
 	elseif (magiclevel == 3)
 		
-		// 50% chance of spell
+		// 40% chance of spell
 		if (power < 40000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 45% chance slayer
+		// 55% chance slayer
 		elseif (power < 95000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 4% chance effect
+		// 5% chance effect
 		else 
 			ApplyEffectOnHitscript( item ); // 
 		endif	
 
+	// Level 4 loot
 	elseif (magiclevel == 4)
 		
-		// 45% chance of spell
+		// 40% chance of spell
 		if (power < 40000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 45% chance slayer
+		// 50% chance slayer
 		elseif (power < 90000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 8% chance effect
+		// 10% chance effect
 		else 
 			ApplyEffectOnHitscript( item ); // 
 		endif	
 
+	// Level 5 loot
 	elseif (magiclevel == 5)
 		
 		// 45% chance of spell
@@ -4555,11 +4743,12 @@ function ApplyOnHitScript ( who , item )
 		elseif (power < 85000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 12% chance effect
+		// 15% chance effect
 		else
 			ApplyEffectOnHitscript( item ); // 
 		endif	
 
+	// Level 6 loot
 	elseif (magiclevel == 6)
 		
 		// 40% chance of spell
@@ -4570,11 +4759,12 @@ function ApplyOnHitScript ( who , item )
 		elseif (power < 75000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 20% chance effect
+		// 25% chance effect
 		else
 			ApplyEffectOnHitscript( item ); // 
 		endif	
 
+	// Level 7 loot
 	elseif (magiclevel == 7)
 		
 		// 30% chance of spell
@@ -4585,78 +4775,116 @@ function ApplyOnHitScript ( who , item )
 		elseif (power < 65000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 30% chance effect
+		// 35% chance effect
 		else
 			ApplyEffectOnHitscript( item ); // 
 		endif		
 
+	// Level 8 loot
 	elseif (magiclevel == 8)
 		
 		// 30% chance of spell
 		if (power < 30000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 33% chance slayer
-		elseif (power < 63000)
+		// 32.5% chance slayer
+		elseif (power < 62500)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 31% chance effect
-		else
+		// 32.5% chance effect
+		elseif (power < 95000)
 			ApplyEffectOnHitscript( item ); // 
+		
+		// 5% chance greater effect
+		else
+			ApplyGreaterOnHitscript( item ); //
 		endif	
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
 		// 30% chance of spell
 		if (power < 30000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 31% chance slayer
-		elseif (power < 61000)
+		// 30% chance slayer
+		elseif (power < 60000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 32% chance effect
-		else
+		// 30% chance effect
+		elseif (power < 90000)
 			ApplyEffectOnHitscript( item ); // 
+		
+		// 10% chance greater effect
+		else
+			ApplyGreaterOnHitscript( item ); //
 		endif	
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
-			// 29% chance of spell
-		if (power < 29000)
+		// 30% chance of spell
+		if (power < 30000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 30% chance slayer
-		elseif (power < 59000)
+		// 10% chance slayer
+		elseif (power < 40000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 33% chance effect
-		else
+		// 30% chance effect
+		elseif (power < 70000)
 			ApplyEffectOnHitscript( item ); // 
+		
+		// 30% chance greater effect
+		else
+			ApplyGreaterOnHitscript( item ); //
 		endif
 
-	// Higher than 10
-	else
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
-		// 28% chance of spell
-		if (power < 28000)
+		// 30% chance of spell
+		if (power < 30000)
 			ApplySpellOnHitscript( item ); // Spell on hit
 
-		// 28% chance slayer
-		elseif (power < 56000)
+		// 20% chance slayer
+		elseif (power < 50000)
 			ApplyResistantOnHitscript( item ); // 
 
-		// 35% chance effect
-		else
+		// 25% chance effect
+		elseif (power < 75000)
 			ApplyEffectOnHitscript( item ); // 
-		endif	
+		
+		// 25% chance greater effect
+		else
+			ApplyGreaterOnHitscript( item ); //
+		endif
+
+	// Level 11+ loot
+	else
+		
+		// 30% chance of spell
+		if (power < 30000)
+			ApplySpellOnHitscript( item ); // Spell on hit
+
+		// 10% chance slayer
+		elseif (power < 40000)
+			ApplyResistantOnHitscript( item ); // 
+
+		// 30% chance effect
+		elseif (power < 70000)
+			ApplyEffectOnHitscript( item ); // 
+		
+		// 30% chance greater effect
+		else
+			ApplyGreaterOnHitscript( item ); //
+		endif
 	endif
 endfunction
 
-
-
+//Touched by Dev Alryc 04-11-2026
 function ApplySpellOnHitscript( item )
-
+	
 	set_critical( 1 );
 	
 	var multiplier := 10;
@@ -4669,159 +4897,175 @@ function ApplySpellOnHitscript( item )
 	//Set the spell power
 	var ascircle;
 
-	var rand := RandomInt(100000)+1;
+	var rand := RandomInt(100000);
 
 	//1000 == 1%
 
 	if (magiclevel == 0)
 		ascircle := 1;
+
+	// Level 1 loot
 	
 	elseif (magiclevel == 1)
 		
-		//95% 1st circle
+		//98% chance
 		if (rand < 98000)
 		
 			ascircle := 1;
 	
-		//4% 2nd circle
+		//2% chance
 		else
 
 			ascircle := 2;
 		endif
 
+	// Level 2 loot
+
 	elseif (magiclevel == 2)
 		
-		//90% 1st circle
+		//82% chance
 		if (rand < 82000)
 		
 			ascircle := 1;
 	
-		//8% 2nd circle
+		//17.5% chance
 		elseif (rand < 99500)
 
 			ascircle := 2;
 
-		//2% 3rd circle
+		//0.5% chance
 		else
 			ascircle := 3;
 		endif
 
+	// Level 3 loot
+
 	elseif (magiclevel == 3)
 		
-		//60% 1st circle
+		//30% chance
 		if (rand < 30000)
 		
 			ascircle := 1;
 	
-		//30% 2nd circle
+		//60% chance
 		elseif (rand < 90000)
 
 			ascircle := 2;
 
-		//8% 3rd circle
+		//10% chance
 		else
 			ascircle := 3;
 		endif
 
+	// Level 4 loot
+
 	elseif (magiclevel == 4)
 		
-		//40% 1st circle
+		//20% chance
 		if (rand < 20000)
 		
 			ascircle := 1;
 	
-		//40% 2nd circle
+		//44.997% chance
 		elseif (rand < 64997)
 
 			ascircle := 2;
 
-		//15% 3rd circle
+		//30% chance
 		elseif (rand < 94997)
 			ascircle := 3;
 
-		//5% 4th circle
+		//5.003% chance
 		else
 			ascircle := 4;
 		endif
+
+	// Level 5 loot
 		
 	elseif (magiclevel == 5)
 		
-		//20% 1st circle
+		//15% chance
 		if (rand < 15000)
 		
 			ascircle := 1;
 	
-		//20% 2nd circle
+		//29.999% chance
 		elseif (rand < 44999)
 
 			ascircle := 2;
 
-		//30% 3rd circle
+		//46% chance
 		elseif (rand < 90999)
 			ascircle := 3;
 
-		//15% 4th circle
+		//9.001% chance
 		else
 			ascircle := 4;
 		endif
+
+	// Level 6 loot
 
 	elseif (magiclevel == 6)
 		
-		//0% 1st circle
+		//1% chance
 		if (rand < 1000)
 		
 			ascircle := 1;
 	
-		//0% 2nd circle
+		//15% chance
 		elseif (rand < 16000)
 
 			ascircle := 2;
 
-		//20% 3rd circle
+		//30% chance
 		elseif (rand < 46000)
 			ascircle := 3;
 
-		//30% 4th circle
+		//29% chance
 		elseif (rand < 75000)
 			ascircle := 4;
 
-		//30% 5th circle
+		//20% chance
 		elseif (rand < 95000)
 			ascircle := 5;
 
-		//15% 6th circle
+		//5% chance
 		else
 			ascircle := 6;
 		endif
+
+	// Level 7 loot
 	
 	elseif (magiclevel == 7)
 		
-		//0% 1st circle
+		//1% chance
 		if (rand < 1000)
 		
 			ascircle := 1;
 	
-		//0% 2nd circle
+		//15% chance
 		elseif (rand < 16000)
 
 			ascircle := 2;
 
-		//20% 3rd circle
+		//30% chance
 		elseif (rand < 46000)
 			ascircle := 3;
 
-		//30% 4th circle
+		//29% chance
 		elseif (rand < 75000)
 			ascircle := 4;
 
-		//30% 5th circle
+		//20% chance
 		elseif (rand < 95000)
 			ascircle := 5;
 
-		//15% 6th circle
+		//5% chance
 		else
 			ascircle := 6;
 		endif
+
+	// Level 8 loot
 
 	elseif (magiclevel == 8)
 		
@@ -4835,64 +5079,64 @@ function ApplySpellOnHitscript( item )
 
 			ascircle := 2;
 
-		//5% 3rd circle
+		//61% chance
 		elseif (rand < 61000)
 			ascircle := 3;
 
-		//15% 4th circle
+		//9% chance
 		elseif (rand < 70000)
 			ascircle := 4;
 
-		//40% 5th circle
+		//15% chance
 		elseif (rand < 85000)
 			ascircle := 5;
 
-		//30% 6th circle
+		//10% chance
 		elseif (rand < 95000)
 			ascircle := 6;
 
-		//30% 6th circle
+		//5% chance
 		else
 			ascircle := 7;
 		endif
 
+	// Level 9 loot
 	elseif (magiclevel == 9)
 		
 		//0% 1st circle
 		if (rand < 0)
-		
 			ascircle := 1;
 	
 		//0% 2nd circle
 		elseif (rand < 0)
-
 			ascircle := 2;
 
-		//0% 3rd circle
+		//26% chance
 		elseif (rand < 26000)
 			ascircle := 3;
 
-		//10% 4th circle
+		//35% chance
 		elseif (rand < 61000)
 			ascircle := 4;
 
-		//40% 5th circle
+		//9% chance
 		elseif (rand < 70000)
 			ascircle := 5;
 
-		//35% 6th circle
+		//15% chance
 		elseif (rand < 85000)
 			ascircle := 6;
 
-		//15% 7th circle
+		//10% chance
 		elseif (rand < 95000)
 			ascircle := 7;
 
-		//15% 7th circle
+		//5% chance
 		else
 			ascircle := 8;
 		endif
 
+	// Level 10 loot
 	elseif (magiclevel == 10)
 		
 		//0% 1st circle
@@ -4905,74 +5149,123 @@ function ApplySpellOnHitscript( item )
 
 			ascircle := 2;
 
-		//0% 3rd circle
-		elseif (rand < 26000)
+		//0% chance
+		elseif (rand < 0)
 			ascircle := 3;
 
-		//10% 4th circle
-		elseif (rand < 61000)
+		//35% chance
+		elseif (rand < 35000)
 			ascircle := 4;
 
-		//40% 5th circle
-		elseif (rand < 70000)
+		//30% chance
+		elseif (rand < 65000)
 			ascircle := 5;
 
-		//35% 6th circle
-		elseif (rand < 85000)
+		//15% chance
+		elseif (rand < 80000)
 			ascircle := 6;
 
-		//15% 7th circle
-		elseif (rand < 95000)
+		//12% chance
+		elseif (rand < 92000)
 			ascircle := 7;
 
-		//15% 7th circle
+		//5% chance
 		elseif (rand < 97000)
 			ascircle := 8;
 
-		else 
+		//1% chance
+		elseif (rand < 98000)
 			ascircle := 9;
+
+		//2% chance
+		else 
+			ascircle := 10;
 		endif
 
-	elseif (magiclevel > 10)
+	// Level 11 loot
+	elseif (magiclevel == 11)
 		
 		//0% 1st circle
 		if (rand < 0)
-		
 			ascircle := 1;
 	
 		//0% 2nd circle
 		elseif (rand < 0)
-
 			ascircle := 2;
 
-		//0% 3rd circle
-		elseif (rand < 20000)
+		//0% chance
+		elseif (rand < 0)
 			ascircle := 3;
 
-		//10% 4th circle
-		elseif (rand < 55000)
+		//0% chance
+		elseif (rand < 0)
 			ascircle := 4;
 
-		//40% 5th circle
-		elseif (rand < 65000)
+		//50% chance
+		elseif (rand < 50000)
 			ascircle := 5;
 
-		//35% 6th circle
-		elseif (rand < 80000)
+		//20% chance
+		elseif (rand < 70000)
 			ascircle := 6;
 
-		//15% 7th circle
-		elseif (rand < 92000)
+		//15% chance
+		elseif (rand < 85000)
 			ascircle := 7;
 
-		//15% 7th circle
+		//10% chance
 		elseif (rand < 95000)
 			ascircle := 8;
 
-		//15% 7th circle
-		elseif (rand < 97000)
+		//3% chance
+		elseif (rand < 98000)
 			ascircle := 9;
 
+		//2% chance
+		else 
+			ascircle := 10;
+		endif
+
+	// Level 11+ loot
+	else
+		
+		//0% 1st circle
+		if (rand < 0)
+			ascircle := 1;
+	
+		//0% 2nd circle
+		elseif (rand < 0)
+			ascircle := 2;
+
+		//0% chance
+		elseif (rand < 0)
+			ascircle := 3;
+
+		//0% chance
+		elseif (rand < 0)
+			ascircle := 4;
+
+		//40% chance
+		elseif (rand < 40000)
+			ascircle := 5;
+
+		//22.5% chance
+		elseif (rand < 62500)
+			ascircle := 6;
+
+		//17.5% chance
+		elseif (rand < 80000)
+			ascircle := 7;
+
+		//15% chance
+		elseif (rand < 95000)
+			ascircle := 8;
+
+		//3% chance
+		elseif (rand < 98000)
+			ascircle := 9;
+
+		//2% chance
 		else 
 			ascircle := 10;
 		endif
@@ -4986,7 +5279,7 @@ function ApplySpellOnHitscript( item )
 
 	if (ascircle <= 0)
 		ascircle := 1;
-	elseif(ascircle > 5)
+	elseif(ascircle > 7)
 		SetObjProperty(item, "isRare", 1);
 	endif
 
@@ -4998,22 +5291,21 @@ function ApplySpellOnHitscript( item )
 	if (chanceofeffect <= 0)
 		chanceofeffect := 5;
 	elseif (chanceofeffect > 80)
-		chanceofeffect := 80;
+		SetObjProperty(item, "isRare", 1);
+	//	chanceofeffect := 80;
 	endif
 
 	SetObjProperty( item , "ChanceOfEffect" , chanceofeffect );
-
 	SetOnHitscript( item , n , multiplier );
-
 	set_critical( 0 );
 	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyResistantOnHitscript( item )
 
 	set_critical( 1 );
-	
+
 	var multiplier := 15;
 	
 	var newRoll := magiclevel + 1;
@@ -5061,7 +5353,7 @@ function ApplyResistantOnHitscript( item )
 	endif
 
 	if(n > 15)
-		SetObjProperty(item, "isRare", 1);
+		SetObjProperty(item, "isUncommon", 1);
 	endif
 
 	var type := onhitcfg[n].Type;
@@ -5073,9 +5365,9 @@ function ApplyResistantOnHitscript( item )
 	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyEffectOnHitscript( item )
-
+	
 	set_critical( 1 );
 	
 	var multiplier := 10;
@@ -5089,18 +5381,20 @@ function ApplyEffectOnHitscript( item )
 	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function ApplyGreaterOnHitscript( item )
-	
+	//Print("Applying greater on hit script");
 	set_critical( 1 );
-	
+
 	var multiplier := 2;
 	
 	//Find the good script
 	var i := RandomDiceStr( "1d"+availgreateronhit.Size());
+	//Print("Greater on hit script number: " + i);
 	var n := availgreateronhit[i];
 
 	SetOnHitscript( item , n , multiplier );
+	SetObjProperty(item, "isRare", 1);
 
 	set_critical( 0 );
 	
@@ -5114,84 +5408,68 @@ endfunction
 // Currently it's exactly the same as elemental mods, copy paste
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function ApplyStatMod ( item )
 
-/*
-	var numb := (Random(100)+1) * (magiclevel - 3);
-	var amount;
-   	if( numb < 200 )    // Any loot below 5 will be +5. Level 5 loot has a 99.5% of +5
-		amount := 2;
-   	elseif( numb < 450 ) 
-		amount := 4;
-   	elseif( numb < 550 ) 
-		amount := 6;
-   	elseif( numb < 700 ) 
-		amount := 8;
-   	elseif( numb < 750 )
-		amount := 10;
-	else
-		amount := 12;
-   	endif
-*/
-
-	var power := RandomInt(100000)+1;
+	var power := RandomInt(100000);
 	var n;
 
 	// Nothing with this should get here 	
 	if (magiclevel <= 0)
 			n := 1;
-	// Level 1: orc cleric, lizardmanshaman, shade, zulu, spectre, ettin, ogre 
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		// 98.9% chance of level 1
+		// 80% chance
 		if (power < 80000)
 			n := 1;
 
-		// 1.09% chance of level 2
+		// 20% chance
 		else
 			n := 2;
 		endif
 
-	// Level 2: winged avenger, beholder, frost/flame/stone garg, evil warlock, adept mage
+	// Level 2 loot
 	elseif (magiclevel == 2)
 	
-		// 90% chance of level 1
+		// 70% chance
 		if (power < 70000)
 			n := 1;
 
-		// 9% chance of level 2
+		// 20% chance
 		elseif (power < 90000)
 			n := 2;
 
-		// 1% chance of level 3
+		// 10% chance
 		else
 			n := 3;
 		endif
 
-	// Level 3: Corrupt Terethen, lesser shadow, nightmare, necromancer
+	// Level 3 loot
 	elseif (magiclevel == 3)
 	
-		// 60% chance of level 1
+		// 30% chance
 		if (power < 30000)
 			n := 1;
 
-		// 35% chance of level 2
+		// 50% chance
 		elseif (power < 80000)
 			n := 2;
 
-		// 4.75% chance of level 3
+		// 20% chance
 		else
 			n := 3;
 		endif
 
-	// Level 4: abonible snowman, ebony horror, orc necromancer, ice ele lord, evis carc
+	// Level 4 loot
 	elseif (magiclevel == 4)
 
-		// 35% chance of level 1
+		// 20% chance
 		if (power < 20000)
 			n := 1;
 
-		// 54.5% chance of level 2
+		// 50% chance
 		elseif (power < 70000)
 			n := 2;
 
@@ -5199,146 +5477,89 @@ function ApplyStatMod ( item )
 		elseif (power < 80000)
 			n := 3;
 		
-		// .5% chance of level 4
+		// 20% chance
 		else
 			n := 4;
 		endif
 
-	// Level 5: black wisp, golden drake, dark rider, bezerker, twister animation
+	// Level 5 loot
 	elseif (magiclevel == 5)
 
-		// 8.99% chance of level 1
+		// 15% chance
 		if (power < 15000)
 			n := 1;
 
-		// 60% chance of level 2
-		elseif (power < 44999)
+		// 30% chance
+		elseif (power < 45000)
 			n := 2;
 
-		// 29% chance of level 3
+		// 45% chance
 		elseif (power < 90000)
 			n := 3;
 		
-		// 2% chance of level 4
+		// 10% chance
 		else
 			n := 4;
 		endif
 	
-	//Level 6: Undead flayer, sand dragon, dragon lord, dracoliche, fallenangel
+	// Level 6 loot
 	elseif (magiclevel == 6)
 
-		// 3% chance of level 1
+		// 4% chance
 		if (power < 4000)
 			n := 1;
 
-		// 34.5% chance of level 2
+		// 35% chance
 		elseif (power < 39000)
 			n := 2;
 
-		// 55% chance of level 3
+		// 40% chance
 		elseif (power < 79000)
 			n := 3;
 		
-		// 5% chance of level 4
+		// 16% chance
 		elseif (power < 95000)
 			n := 4;
 
-		// 2% chance of level 5
+		// 3% chance
 		elseif (power < 98000)
 			n := 5;			
 		
-		// .5% chance of level 6
+		// 2% chance
 		else
 			n := 6;
 		endif
 
-	// Level 7: Behemoth, umbral flicker
+	// Level 7 loot
 	elseif (magiclevel == 7)
 
-		// 3% chance of level 1
+		// 4% chance
 		if (power < 4000)
 			n := 1;
 
-		// 34.5% chance of level 2
+		// 30% chance
 		elseif (power < 34000)
 			n := 2;
 
-		// 55% chance of level 3
+		// 40% chance
 		elseif (power < 74000)
 			n := 3;
 		
-		// 5% chance of level 4
+		// 20% chance
 		elseif (power < 94000)
 			n := 4;
 
-		// 2% chance of level 5
+		// 4% chance
 		elseif (power < 98000)
 			n := 5;			
 		
-		// .5% chance of level 6
+		// 2% chance
 		else
 			n := 6;
 		endif
 
-	// Level 8: balron, Balron general, silver dragqueen, flaming bally
+	// Level 8 loot
 	elseif (magiclevel == 8)
-
-		// 0% chance of level 1
-		if (power < 0)
-			n := 1;
-
-		// 14% chance of level 2
-		elseif (power < 0)
-			n := 2;
-
-		// 40% chance of level 3
-		elseif (power < 35000)
-			n := 3;
-		
-		// 40% chance of level 4
-		elseif (power < 65000)
-			n := 4;
-
-		// 5% chance of level 5
-		elseif (power < 95000)
-			n := 5;			
-		
-		// 1% chance of level 6
-		else
-			n := 6;
-		endif
-
-	// Level 9: nemesis, archangel (and soon sunshine)
-	elseif (magiclevel == 9)
-	
-		// 0% chance of level 1
-		if (power < 0)
-			n := 1;
-
-		// 5% chance of level 2
-		elseif (power < 0)
-			n := 2;
-
-		// 30% chance of level 3
-		elseif (power < 30000)
-			n := 3;
-		
-		// 50% chance of level 4
-		elseif (power < 60000)
-			n := 4;
-
-		// 10% chance of level 5
-		elseif (power < 90000)
-			n := 5;			
-		
-		// 5% chance of level 6
-		else
-			n := 6;
-		endif
-			
-
-	// Anything higher than level 9, cap.
-	elseif (magiclevel > 9) 
 
 		// 0% chance of level 1
 		if (power < 0)
@@ -5348,19 +5569,131 @@ function ApplyStatMod ( item )
 		elseif (power < 0)
 			n := 2;
 
-		// 20% chance of level 3
-		elseif (power < 25000)
+		// 35% chance
+		elseif (power < 35000)
 			n := 3;
 		
-		// 50% chance of level 4
-		elseif (power < 50000)
+		// 30% chance
+		elseif (power < 65000)
 			n := 4;
 
-		// 20% chance of level 5
-		elseif (power < 80000)
+		// 30% chance
+		elseif (power < 95000)
+			n := 5;			
+		
+		// 5% chance
+		else
+			n := 6;
+		endif
+
+	// Level 9 loot
+	elseif (magiclevel == 9)
+	
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 30% chance of level 3
+		elseif (power < 30000)
+			n := 3;
+		
+		// 30% chance of level 4
+		elseif (power < 60000)
+			n := 4;
+
+		// 30% chance of level 5
+		elseif (power < 90000)
 			n := 5;			
 		
 		// 10% chance of level 6
+		else
+			n := 6;
+		endif
+	
+	// Level 10 loot
+	elseif (magiclevel == 10) 
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 10% chance of level 3
+		elseif (power < 10000)
+			n := 3;
+		
+		// 37.5% chance
+		elseif (power < 47500)
+			n := 4;
+
+		// 37.5% chance
+		elseif (power < 85000)
+			n := 5;			
+		
+		// 15% chance
+		else
+			n := 6;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11) 
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance of level 3
+		elseif (power < 0)
+			n := 3;
+		
+		// 40% chance
+		elseif (power < 40000)
+			n := 4;
+
+		// 40% chance
+		elseif (power < 80000)
+			n := 5;			
+		
+		// 20% chance
+		else
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance of level 3
+		elseif (power < 0)
+			n := 3;
+		
+		// 30% chance
+		elseif (power < 30000)
+			n := 4;
+
+		// 30% chance
+		elseif (power < 60000)
+			n := 5;			
+		
+		// 40% chance
 		else
 			n := 6;
 		endif
@@ -5393,7 +5726,7 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool - 21/04/2012
 //
-// ApplyEnchant() - Function to create protection Items.
+// 			ApplyEnchant - Function to create protection Items.
 //		    3 Main Groups lowest to highest - Charge Items, Elemental Prots, Immunity Prots (brock/moon/pzn)
 //			
 //		    The group chance is based purely on magiclevel, the quality of the drop is also based purely on item level.
@@ -5403,22 +5736,25 @@ endfunction
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////			
 
-function ApplyEnchant( who , item )
+//Touched by Dev Alryc 04-11-2026
+function ApplyEnchant( unused who , item )
 
 	var rand := RandomInt(100);
 	var choice := 0;
 
 	case (magiclevel)
-		1: if (rand < 80) choice := 1; elseif (rand < 95) choice := 2; else choice := 3; endif // 80%-C 15%-E 05%-I
- 		2: if (rand < 70) choice := 1; elseif (rand < 93) choice := 2; else choice := 3; endif // 70%-C 23%-E 07%-I
-		3: if (rand < 60) choice := 1; elseif (rand < 90) choice := 2; else choice := 3; endif // 60%-C 30%-E 10%-I
-		4: if (rand < 45) choice := 1; elseif (rand < 87) choice := 2; else choice := 3; endif // 45%-C 42%-E 13%-I
-		5: if (rand < 35) choice := 1; elseif (rand < 85) choice := 2; else choice := 3; endif // 35%-C 50%-E 15%-I
-		6: if (rand < 25) choice := 1; elseif (rand < 80) choice := 2; else choice := 3; endif // 25%-C 55%-E 20%-I
-		7: if (rand < 20) choice := 1; elseif (rand < 75) choice := 2; else choice := 3; endif // 20%-C 55%-E 25%-I
-		8: if (rand < 15) choice := 1; elseif (rand < 65) choice := 2; else choice := 3; endif // 15%-C 50%-E 35%-I
-		9: if (rand < 10) choice := 1; elseif (rand < 60) choice := 2; else choice := 3; endif // 10%-C 50%-E 40%-I
-		10: if (rand < 5) choice := 1; elseif (rand < 55) choice := 2; else choice := 3; endif // 05%-C 50%-E 45%-I
+		1: if (rand < 85) choice := 1; elseif (rand < 96) choice := 2; else choice := 3; endif // 85%-C 11%-E 04%-I
+	 	2: if (rand < 75) choice := 1; elseif (rand < 93) choice := 2; else choice := 3; endif // 75%-C 18%-E 07%-I
+		3: if (rand < 65) choice := 1; elseif (rand < 90) choice := 2; else choice := 3; endif // 65%-C 25%-E 10%-I
+		4: if (rand < 55) choice := 1; elseif (rand < 87) choice := 2; else choice := 3; endif // 55%-C 32%-E 13%-I
+		5: if (rand < 45) choice := 1; elseif (rand < 84) choice := 2; else choice := 3; endif // 45%-C 39%-E 16%-I
+		6: if (rand < 35) choice := 1; elseif (rand < 81) choice := 2; else choice := 3; endif // 35%-C 46%-E 19%-I
+		7: if (rand < 25) choice := 1; elseif (rand < 78) choice := 2; else choice := 3; endif // 25%-C 53%-E 22%-I
+		8: if (rand < 20) choice := 1; elseif (rand < 75) choice := 2; else choice := 3; endif // 20%-C 55%-E 25%-I
+		9: if (rand < 15) choice := 1; elseif (rand < 70) choice := 2; else choice := 3; endif // 15%-C 55%-E 30%-I
+		10: if (rand < 10) choice := 1; elseif (rand < 65) choice := 2; else choice := 3; endif // 10%-C 55%-E 35%-I
+		11: if (rand < 5) choice := 1; elseif (rand < 60) choice := 2; else choice := 3; endif // 05%-C 55%-E 40%-I
+		default: if (rand < 5) choice := 1; elseif (rand < 50) choice := 2; else choice := 3; endif // 05%-C 45%-E 50%-I
 	endcase
 
 	case (choice)
@@ -5451,214 +5787,158 @@ endfunction
 //			      immunities/elemental/charges prots. It's based purely on the magiclevel
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-   	
-function DetermineImmunityLevel(item, isimmun := 0, modifier := 0)
+
+//Touched by Dev Alryc 04-11-2026
+function DetermineImmunityLevel( unused item, unused isimmun := 0, unused modifier := 0)
 
 	var n;
-	var power := RandomInt(100000)+1;
+	var power := RandomInt(100000);
 
 	// Nothing with this should get here 	
 	if (magiclevel <= 0)
 			n := 1;
-	// Level 1: orc cleric, lizardmanshaman, shade, zulu, spectre, ettin, ogre 
+	// Level 1 loot
 	elseif (magiclevel == 1)
 		
-		// 98.9% chance of level 1
+		// 98% chance of level 1
 		if (power < 98000)
 			n := 1;
 
-		// 1.09% chance of level 2
+		// 2% chance of level 2
 		else
 			n := 2;
 		endif
 
-	// Level 2: winged avenger, beholder, frost/flame/stone garg, evil warlock, adept mage
+	// Level 2 loot
 	elseif (magiclevel == 2)
 	
-		// 90% chance of level 1
+		// 82% chance of level 1
 		if (power < 82000)
 			n := 1;
 
-		// 9% chance of level 2
+		// 17.5% chance of level 2
 		elseif (power < 99500)
 			n := 2;
 
-		// 1% chance of level 3
+		// 0.5% chance of level 3
 		else
 			n := 3;
 		endif
 
-	// Level 3: Corrupt Terethen, lesser shadow, nightmare, necromancer
+	// Level 3 loot
 	elseif (magiclevel == 3)
 	
-		// 60% chance of level 1
+		// 30% chance of level 1
 		if (power < 30000)
 			n := 1;
 
-		// 35% chance of level 2
+		// 60% chance of level 2
 		elseif (power < 90000)
-			n := 2;
-
-		// 4.75% chance of level 3
-		else
-			n := 3;
-		endif
-
-	// Level 4: abonible snowman, ebony horror, orc necromancer, ice ele lord, evis carc
-	elseif (magiclevel == 4)
-
-		// 35% chance of level 1
-		if (power < 20000)
-			n := 1;
-
-		// 54.5% chance of level 2
-		elseif (power < 64997)
 			n := 2;
 
 		// 10% chance of level 3
-		elseif (power < 94997)
-			n := 3;
-		
-		// .5% chance of level 4
 		else
-			n := 4;
+			n := 3;
 		endif
 
-	// Level 5: black wisp, golden drake, dark rider, bezerker, twister animation
-	elseif (magiclevel == 5)
+	// Level 4 loot
+	elseif (magiclevel == 4)
 
-		// 8.99% chance of level 1
-		if (power < 15000)
+		// 20% chance of level 1
+		if (power < 20000)
 			n := 1;
 
-		// 60% chance of level 2
-		elseif (power < 44999)
-			n := 2;
-
-		// 29% chance of level 3
-		elseif (power < 90000)
-			n := 3;
-		
-		// 2% chance of level 4
-		else
-			n := 4;
-		endif
-	
-	//Level 6: Undead flayer, sand dragon, dragon lord, dracoliche, fallenangel
-	elseif (magiclevel == 6)
-
-		// 3% chance of level 1
-		if (power < 4000)
-			n := 1;
-
-		// 34.5% chance of level 2
-		elseif (power < 39000)
-			n := 2;
-
-		// 55% chance of level 3
-		elseif (power < 79000)
-			n := 3;
-		
-		// 5% chance of level 4
-		elseif (power < 95000)
-			n := 4;
-
-		// 2% chance of level 5
-		elseif (power < 98000)
-			n := 5;			
-		
-		// .5% chance of level 6
-		else
-			n := 6;
-		endif
-
-	// Level 7: Behemoth, umbral flicker
-	elseif (magiclevel == 7)
-
-		// 3% chance of level 1
-		if (power < 4000)
-			n := 1;
-
-		// 34.5% chance of level 2
-		elseif (power < 34000)
-			n := 2;
-
-		// 55% chance of level 3
-		elseif (power < 74000)
-			n := 3;
-		
-		// 5% chance of level 4
-		elseif (power < 94000)
-			n := 4;
-
-		// 2% chance of level 5
-		elseif (power < 98000)
-			n := 5;			
-		
-		// .5% chance of level 6
-		else
-			n := 6;
-		endif
-
-	// Level 8: balron, Balron general, silver dragqueen, flaming bally
-	elseif (magiclevel == 8)
-
-		// 0% chance of level 1
-		if (power < 0)
-			n := 1;
-
-		// 14% chance of level 2
-		elseif (power < 0)
-			n := 2;
-
-		// 40% chance of level 3
+		// 45% chance of level 2
 		elseif (power < 65000)
-			n := 3;
-		
-		// 40% chance of level 4
-		elseif (power < 85000)
-			n := 4;
-
-		// 5% chance of level 5
-		elseif (power < 95000)
-			n := 5;			
-		
-		// 1% chance of level 6
-		else
-			n := 6;
-		endif
-
-	// Level 9: nemesis, archangel (and soon sunshine)
-	elseif (magiclevel == 9)
-	
-		// 0% chance of level 1
-		if (power < 0)
-			n := 1;
-
-		// 5% chance of level 2
-		elseif (power < 0)
 			n := 2;
 
 		// 30% chance of level 3
-		elseif (power < 60000)
+		elseif (power < 95000)
 			n := 3;
 		
-		// 50% chance of level 4
-		elseif (power < 80000)
+		// 5% chance of level 4
+		else
+			n := 4;
+		endif
+
+	// Level 5 loot
+	elseif (magiclevel == 5)
+
+		// 15% chance of level 1
+		if (power < 15000)
+			n := 1;
+
+		// 30% chance of level 2
+		elseif (power < 45000)
+			n := 2;
+
+		// 45% chance of level 3
+		elseif (power < 90000)
+			n := 3;
+		
+		// 10% chance of level 4
+		else
+			n := 4;
+		endif
+	
+	// Level 6 loot
+	elseif (magiclevel == 6)
+
+		// 4% chance of level 1
+		if (power < 4000)
+			n := 1;
+
+		// 35% chance of level 2
+		elseif (power < 39000)
+			n := 2;
+
+		// 40% chance of level 3
+		elseif (power < 79000)
+			n := 3;
+		
+		// 16% chance of level 4
+		elseif (power < 95000)
 			n := 4;
 
-		// 10% chance of level 5
-		elseif (power < 90000)
+		// 3% chance of level 5
+		elseif (power < 98000)
 			n := 5;			
 		
-		// 5% chance of level 6
+		// 2% chance of level 6
 		else
 			n := 6;
 		endif
-			
 
-	// Anything higher than level 9, cap.
-	elseif (magiclevel > 9) 
+	// Level 7 loot
+	elseif (magiclevel == 7)
+
+		// 4% chance of level 1
+		if (power < 4000)
+			n := 1;
+
+		// 30% chance of level 2
+		elseif (power < 34000)
+			n := 2;
+
+		// 40% chance of level 3
+		elseif (power < 74000)
+			n := 3;
+		
+		// 20% chance of level 4
+		elseif (power < 94000)
+			n := 4;
+
+		// 4% chance of level 5
+		elseif (power < 98000)
+			n := 5;			
+		
+		// 2% chance of level 6
+		else
+			n := 6;
+		endif
+
+	// Level 8 loot
+	elseif (magiclevel == 8)
 
 		// 0% chance of level 1
 		if (power < 0)
@@ -5668,37 +5948,150 @@ function DetermineImmunityLevel(item, isimmun := 0, modifier := 0)
 		elseif (power < 0)
 			n := 2;
 
-		// 20% chance of level 3
-		elseif (power < 30000)
+		// 65% chance of level 3
+		elseif (power < 65000)
 			n := 3;
 		
-		// 50% chance of level 4
-		elseif (power < 60000)
+		// 20% chance of level 4
+		elseif (power < 85000)
 			n := 4;
 
-		// 20% chance of level 5
+		// 10% chance of level 5
+		elseif (power < 95000)
+			n := 5;			
+		
+		// 5% chance of level 6
+		else
+			n := 6;
+		endif
+
+	// Level 9 loot
+	elseif (magiclevel == 9)
+	
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 60% chance of level 3
+		elseif (power < 60000)
+			n := 3;
+		
+		// 20% chance of level 4
 		elseif (power < 80000)
+			n := 4;
+
+		// 10% chance of level 5
+		elseif (power < 90000)
 			n := 5;			
 		
 		// 10% chance of level 6
 		else
 			n := 6;
 		endif
+			
+	// Level 10 loot
+	elseif (magiclevel == 10) 
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 15% chance of level 3
+		elseif (power < 15000)
+			n := 3;
+		
+		// 45% chance of level 4
+		elseif (power < 60000)
+			n := 4;
+
+		// 25% chance of level 5
+		elseif (power < 85000)
+			n := 5;			
+		
+		// 15% chance of level 6
+		else
+			n := 6;
+		endif
+
+	// Level 11 loot
+	elseif (magiclevel == 11) 
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 10% chance of level 3
+		elseif (power < 10000)
+			n := 3;
+		
+		// 40% chance of level 4
+		elseif (power < 50000)
+			n := 4;
+
+		// 30% chance of level 5
+		elseif (power < 80000)
+			n := 5;			
+		
+		// 20% chance of level 6
+		else
+			n := 6;
+		endif
+
+	// Level 11+ loot
+	else
+
+		// 0% chance of level 1
+		if (power < 0)
+			n := 1;
+
+		// 0% chance of level 2
+		elseif (power < 0)
+			n := 2;
+
+		// 0% chance of level 3
+		elseif (power < 0)
+			n := 3;
+		
+		// 40% chance of level 4
+		elseif (power < 40000)
+			n := 4;
+
+		// 35% chance of level 5
+		elseif (power < 75000)
+			n := 5;			
+		
+		// 25% chance of level 6
+		else
+			n := 6;
+		endif
 
 	endif
 	
-return n;
+	return n;
 
 endfunction
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool - 21/04/2012
 //
-// ApplyProtection() - This is the core function of determining the level for
-//			      immunities/elemental prots. It's based purely on the magiclevel
+// 				ApplyProtection - This is the core function of determining the level for
+//			    immunities/elemental prots. It's based purely on the magiclevel
 //
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function ApplyProtection( item )
 
 	var num := DetermineImmunityLevel(item);
@@ -5733,7 +6126,6 @@ function ApplyProtection( item )
 	
 endfunction
 
-
 /////////////////////////////////////////////////////////////////////////////////
 // Toadstool - 21/04/2012
 //
@@ -5743,6 +6135,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function ApplyImmunity( item )
 
 	var itype;
@@ -5770,7 +6163,6 @@ function ApplyImmunity( item )
 	
 endfunction
 
-
 /////////////////////////////////////////////////////////////////////////////////
 // Toadstool - 21/04/2012
 //
@@ -5780,6 +6172,7 @@ endfunction
 //
 /////////////////////////////////////////////////////////////////////////////////
 
+//Touched by Dev Alryc 04-11-2026
 function ApplyElementalImmunity( item )
 
 	var element;
@@ -5799,6 +6192,11 @@ function ApplyElementalImmunity( item )
 			break;
 		
 		5:	element := "NecroProtection";
+			if(power == 4)
+				SetObjProperty(item, "isUncommonProt", 1);
+			elseif(power > 4)
+				SetObjProperty(item, "isRareProt", 1);
+			endif
 			break;
 		
 		6:	element := "FreeAction";
@@ -5824,44 +6222,35 @@ function ApplyElementalImmunity( item )
 				SetObjProperty(item, "isRareProt", 1);
 			endif
 	endcase
-/*  Old system
-	// It's a ele protection - they give 25% protection each level
-	if (ran < 6 || ran == 8)
-		power := power * 25;
-		if (power > 149)
-			power := 150; // can't go over 150 for these base items!
-		endif
-	endif
-	 */
 
 	// New system to calculate protection levels.
 	if (ran < 6 || ran == 8)
 		case(power)
 		// Level 1 protection (Bane)
-		1:	power := 15;
+		1:	power := 25;
 			break;
 		
 		// Level 2 protection (Warding)
-		2:	power := 25;
+		2:	power := 50;
 			break;
 
 		// Level 3 protection (Protection)
-		3:	power := 35;
+		3:	power := 65;
 			SetObjProperty(item, "isUncommonProt", 1);
 			break;
 		
 		// Level 4 protection (Immunity)
-		4:	power := 45;
+		4:	power := 75;
 			SetObjProperty(item, "isUncommonProt", 1);
 			break;
 		
 		// Level 5 protection (Attunement)
-		5:	power := 55;
+		5:	power := 85;
 			SetObjProperty(item, "isRareProt", 1);
 			break;
 		
 		// Level 6 protection (Absorbsion)
-		6:	power := 65;
+		6:	power := 95;
 			SetObjProperty(item, "isRareProt", 1);
 			break;
 		endcase
@@ -5870,11 +6259,15 @@ function ApplyElementalImmunity( item )
 	SetObjProperty( item , element , power );
 	
 endfunction
-	
 
-////
-//Adds "a magic " to the beginning of the item's desc.
-////
+/////////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+// Adds "a magic " to the beginning of the item's desc.
+//
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function AddName( item )
 
    	var currdesc := item.desc;
@@ -5909,7 +6302,7 @@ function AddName( item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function AddRandomColor( item )
 
 	SetObjProperty( item , "Undyeable" , 1 );
@@ -5924,8 +6317,12 @@ function AddRandomColor( item )
 
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function CountAvailHitscripts()
+
+	availeffects := {};
+	availspells := {};
+	availgreaters := {};
 
 	hitscriptcfg := ReadConfigFile( ":combat:hitscriptdesc" );
 	var all_keys := GetConfigIntKeys(hitscriptcfg);
@@ -5941,11 +6338,14 @@ function CountAvailHitscripts()
 			availgreaters.append(key);
 		endif
 	endforeach
-
+	//Print("Available on hit scripts: " + availspellonhit.Size() + " spells, " + availeffectonhit.Size() + " effects, " + availgreateronhit.Size() + " greaters.");
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function CountAvailOnHitscripts()
+	availeffectonhit := {};
+	availspellonhit := {};
+	availgreateronhit := {};
 
 	onhitcfg 		:= ReadConfigFile( ":combat:onhitscriptdesc" );
 	var all_keys := GetConfigIntKeys(onhitcfg);
@@ -5960,7 +6360,7 @@ function CountAvailOnHitscripts()
 			availgreateronhit.append(key);
 		endif
 	endforeach
-	
+	//Print("Available on hit scripts: " + availspellonhit.Size() + " spells, " + availeffectonhit.Size() + " effects, " + availgreateronhit.Size() + " greaters.");
 endfunction
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -5969,6 +6369,8 @@ endfunction
 // Below 2 function not altered at all.  See how they go.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////
+
+//Touched by Dev Alryc 04-11-2026
 function SetHitscript( item , n , multiplier )
 
 	set_critical( 1 );
@@ -6034,7 +6436,7 @@ function SetHitscript( item , n , multiplier )
 	
 endfunction
 
-
+//Touched by Dev Alryc 04-11-2026
 function SetOnHitscript( item , n , multiplier )
 
 	set_critical( 1 );
@@ -6098,4 +6500,265 @@ function SetOnHitscript( item , n , multiplier )
 	
 	set_critical( 0 );
 
-endfunction                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+endfunction
+
+//Touched by Dev Alryc 04-11-2026
+// Shared shield table for HP/AR/ArSkill rolls.
+// Keep this in sync with ShieldApplyHPMod percentages.
+function ShieldRollModTierFromHPTable()
+
+	var power := RandomInt(100000)+1;
+	var n;
+
+	if (magiclevel <= 0)
+		n := 5;
+
+	elseif (magiclevel == 1)
+		if (power < 98000)
+			n := 5;
+		else
+			n := 10;
+		endif
+
+	elseif (magiclevel == 2)
+		if (power < 82000)
+			n := 5;
+		elseif (power < 99500)
+			n := 10;
+		else
+			n := 15;
+		endif
+
+	elseif (magiclevel == 3)
+		if (power < 30000)
+			n := 5;
+		elseif (power < 90000)
+			n := 10;
+		else
+			n := 15;
+		endif
+
+	elseif (magiclevel == 4)
+		if (power < 20000)
+			n := 5;
+		elseif (power < 65000)
+			n := 10;
+		elseif (power < 95000)
+			n := 15;
+		else
+			n := 20;
+		endif
+
+	elseif (magiclevel == 5)
+		if (power < 15000)
+			n := 5;
+		elseif (power < 45000)
+			n := 10;
+		elseif (power < 91000)
+			n := 15;
+		else
+			n := 20;
+		endif
+
+	elseif (magiclevel == 6)
+		if (power < 3000)
+			n := 5;
+		elseif (power < 18000)
+			n := 10;
+		elseif (power < 48000)
+			n := 15;
+		elseif (power < 77000)
+			n := 20;
+		elseif (power < 97000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	elseif (magiclevel == 7)
+		if (power < 3000)
+			n := 5;
+		elseif (power < 18000)
+			n := 10;
+		elseif (power < 48000)
+			n := 15;
+		elseif (power < 77000)
+			n := 20;
+		elseif (power < 97000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	elseif (magiclevel == 8)
+		if (power < 0)
+			n := 5;
+		elseif (power < 0)
+			n := 10;
+		elseif (power < 38000)
+			n := 15;
+		elseif (power < 68000)
+			n := 20;
+		elseif (power < 95000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	elseif (magiclevel == 9)
+		if (power < 0)
+			n := 5;
+		elseif (power < 0)
+			n := 10;
+		elseif (power < 28000)
+			n := 15;
+		elseif (power < 63000)
+			n := 20;
+		elseif (power < 85000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	elseif (magiclevel == 10)
+		if (power < 0)
+			n := 5;
+		elseif (power < 0)
+			n := 10;
+		elseif (power < 0)
+			n := 15;
+		elseif (power < 40000)
+			n := 20;
+		elseif (power < 80000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	elseif (magiclevel == 11)
+		if (power < 0)
+			n := 5;
+		elseif (power < 0)
+			n := 10;
+		elseif (power < 0)
+			n := 15;
+		elseif (power < 25000)
+			n := 20;
+		elseif (power < 75000)
+			n := 25;
+		else
+			n := 30;
+		endif
+
+	else
+		if (power < 0)
+			n := 5;
+		elseif (power < 0)
+			n := 10;
+		elseif (power < 0)
+			n := 15;
+		elseif (power < 20000)
+			n := 20;
+		elseif (power < 70000)
+			n := 25;
+		else
+			n := 30;
+		endif
+	endif
+
+	return n;
+
+endfunction
+
+//Touched by Dev Alryc 04-11-2026
+function ShieldApplyHPMod( item )
+
+	var n := ShieldRollModTierFromHPTable();
+
+	item.maxhp_mod := n;
+	item.hp := item.maxhp;
+
+endfunction
+
+//Touched by Dev Alryc 04-11-2026
+function ShieldApplyARMod( item )
+
+	var n := ShieldRollModTierFromHPTable();
+
+	item.ar_mod := n;
+
+	//Check for another enchantment
+	// Equal per-level scaling: +1/11 per level, level 11 is 100%.
+	if( (RandomInt(11)+1) <= magiclevel )
+		if ((Random(100)+1) <= 50) // 50% of adding a hp mod
+			ShieldApplyHPMod( item );
+		else
+			ShieldApplyArSkillMod( item ); // 50% chance of adding a ar skill mod
+		endif
+	endif
+
+endfunction
+
+//Touched by Dev Alryc 04-11-2026
+function ShieldApplyStatMod( item )
+
+	var n := CInt( ShieldRollModTierFromHPTable() / 5 );
+
+	// So I'm lazy again!! :P
+	n := n * 2;
+		
+	var id := Random(5)+1;
+	if( id < 3 )
+		SetObjProperty( item , "str" , n );
+		SetObjProperty(item, "isRare", 1);
+	elseif( id < 4 )
+		SetObjProperty( item , "int" , n );
+		SetObjProperty(item, "isRare", 1);
+	else
+		SetObjProperty( item , "dex" , n );
+		SetObjProperty(item, "isRare", 1);
+	endif
+
+	//Check for another enchantment,
+	// Add a HP mod,  each level gets an extra 5% chance
+	if ((Random(100)+1) <= 5 * magiclevel)
+		ShieldApplyHPMod( item );
+	endif
+
+endfunction
+
+//Touched by Dev Alryc 04-11-2026
+function ShieldApplyArSkillMod( item )
+
+	var chance := Random(100);
+	if(chance <= 20)
+		ShieldApplyStatMod( item );
+		return;
+	endif
+
+	var skillid;
+	var amount;
+	var n := ShieldRollModTierFromHPTable();
+
+	if(n == 30 || n == 25)
+		SetObjProperty(item, "isRare", 1);
+	endif
+
+	amount := CInt( n / 2 );
+
+	// Shield/armor skill mods use melee weapon skills plus parry.
+	// Archery, Hiding and Magic Resistance are intentionally excluded.
+	var skillpool := { SKILLID_FENCING, SKILLID_MACEFIGHTING, SKILLID_SWORDSMANSHIP, SKILLID_TACTICS, SKILLID_PARRY, SKILLID_WRESTLING };
+	var skillroll := RandomDiceStr( "1d" + len(skillpool) );
+	skillid := skillpool[skillroll];
+
+	SetObjProperty( item , "ShieldAdv", 1 );
+	SetObjProperty( item , "skilladv" , skillid );
+	SetObjProperty( item , "skilladvamount" , amount );
+
+	//Check for another enchantment
+	if ((Random(100)+1) <= (5 * magiclevel))
+		ShieldApplyHPMod( item );
+	endif
+
+endfunction

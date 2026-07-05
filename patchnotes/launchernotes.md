@@ -3,45 +3,35 @@ Always check Discord announcements for all patchnotes.
 
 ## What Changed
 
-Patch 3.0.2 introduces full Omega Cache support for housing and crafting, plus follow-up updates for Townstones, vault storage, and housing/key reliability.
+Patch 3.0.3 is a major parity and stability pass across combat, classes, teleporters, and world interaction scripts.
 
-Players can now place and manage cache containers in houses, use `.cache` commands for fast material control, and craft directly with cache-aware resource handling.
+This update focuses on cleaner combat outcomes, stronger mount/character lifecycle handling, more reliable item identification behavior, and expanded teleporter maintenance tools.
 
-## Omega Cache and Housing
+## Combat and Spell Consistency
 
-- Cache placement and removal are now tied to house ownership and permission checks.
-- House cache slot tracking is active and persists with the house state.
-- Ownership transfer and redeed flows include cache-aware safeguards.
-- Cache cleanup now supports controlled handling for non-empty stores.
+- Restored and tuned multiple combat and hit-script paths for better parity.
+- Added/fixed critical stamina-hit and related on-hit behavior integrations.
+- Improved several spell/skill safety and targeting consistency paths.
+- Applied follow-up party/pet/no-PK safety handling improvements.
 
-## Townstones and Vault Storage
+## Character, Mount, and Class Flow
 
-- Townstone admin/member management was expanded with improved city control paths.
-- Town treasury tooling now includes improved status and withdrawal support paths.
-- Shared account vault support was added with dedicated command handling.
+- Updated class/race/start-state handling for parity behavior.
+- Revised starting equipment and related setup rules.
+- Tightened mount lifecycle behavior around death/logoff/dismount scenarios.
+- Included class/title/world interaction follow-up fixes.
 
-## Housing and Key Handling
+## Teleporters, Items, and Utilities
 
-- Static housing sign behavior received follow-up fixes.
-- Key storage handling was moved to a dedicated storage area flow.
-- Key cleanup during house demolish paths was tightened.
+- Expanded teleporter include/system coverage.
+- Added admin cleanup command support for dungeon teleporters (`.deletedungteles`).
+- Applied item identification and merchant-identify reliability fixes.
+- Added supporting world utility content and script updates.
 
-## Crafting Integration
+## Systems Follow-up
 
-- Major crafting systems now support cache-aware material consumption while preserving backpack behavior.
-- Integrated skills include Blacksmithy, Tailoring, Carpentry, Alchemy, Tinkering, Inscription, Cartography, and Cooking.
-- Related fletching and bladed material flows are cache-aware.
-
-## Commands and Quality of Life
-
-- `.cache` command support includes open, list, deposit, withdraw, and autodraw workflows.
-- `.cache dump` remains staff-only for maintenance use.
-- Added and refreshed additional admin/test command support, including townstone tools plus `gotomulti` and `mounttest`.
-
-## Stability and Consistency
-
-- Cache identity rules preserve gameplay-relevant item differences.
-- Blacklist and stacking-ignore controls are enforced in cache deposit behavior.
-- Command synopsis and include-layer integrations were updated for the expanded command set.
+- Townstone election/start/admin/treasury flows received another reliability pass.
+- Additional parity maintenance was applied across supporting combat, spawn, and utility systems.
+- Command synopsis coverage was refreshed for the current command surface.
 
 Thanks for playing Zuluhotel Omega 3.

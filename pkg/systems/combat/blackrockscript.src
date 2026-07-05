@@ -7,6 +7,7 @@ include "include/spelldata";
 include "include/dotempmods";
 include "include/areas";
 include "include/random";
+include "include/constants/locations";
 
 program blackrockscript(attacker, defender, weapon, armor, basedamage, rawdamage)
 

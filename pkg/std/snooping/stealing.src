@@ -15,7 +15,7 @@ include "include/utility";
 include "include/eventid";
 include "include/attributes";
 include "include/random";
-include "../pkg/opt/karmafame/karmafame";
+include ":karmafame:karmafame";
 
 
 program stealing(who)
@@ -66,12 +66,12 @@ program stealing(who)
 
 		AwardKarma(who, lossKarma);
 
-		var fame:=Getfame(who);
+		var fame:=GetFame(who);
 		var lossfame:=0;
 		if (fame>-625)
 			lossfame:=0-(Random(200)+1);
 		endif
-		Awardfame(who, lossfame);
+		AwardFame(who, lossfame);
 
 		return;
 
@@ -93,12 +93,12 @@ program stealing(who)
 
 		AwardKarma(who, lossKarma2);
 
-		var fame2:=Getfame(who);
+		var fame2:=GetFame(who);
 		var lossfame2:=0;
 		if (fame2>-625)
 			lossfame2:=0-(Random(200)+1);
 		endif
-		Awardfame(who, lossfame2);
+		AwardFame(who, lossfame2);
 
 		return;
 	endif
