@@ -1,118 +1,89 @@
-// Rebuilds the global `townlist` and `townrealms` from the townstone
-// datafile (preferred) or by scanning every realm for live townstones.
-// Runs once at server boot after `start.src` starts it.
-
 use uo;
 use os;
+use datafile;
 
-include ":townstone:tstone";
+const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
+const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_SEARCH_RANGE := 10000;
 
+program BootstrapTownList()
+	var existing := GetGlobalProperty("townlist");
+	if(existing and existing.size())
+		return;
+	endif
 
-function BuildFromDatafile()
-	var namelist := {};
-	var realmlist := {};
+	var town_list := BuildTownListFromDatafile();
+	if(!town_list or !town_list.size())
+		town_list := BuildTownListFromLiveStones();
+	endif
 
-	var df := OpenTownstoneDataFile();
+	if(town_list and town_list.size())
+		SetGlobalProperty("townlist", town_list);
+		SysLog("[Townstones] Rebuilt townlist with " + CStr(town_list.size()) + " entries.");
+	else
+		SysLog("[Townstones] Could not rebuild townlist (no townstone data found).");
+	endif
+endprogram
+
+function BuildTownListFromDatafile()
+	var df := OpenDataFile(TOWNSTONE_DATAFILE);
 	if(!df)
-		return { namelist, realmlist };
+		return {};
 	endif
 
 	var keys := df.Keys();
 	if(!keys or !keys.size())
 		UnloadDataFile(TOWNSTONE_DATAFILE);
-		return { namelist, realmlist };
+		return {};
 	endif
 
-	foreach key in keys
-		if(!key)
+	var town_list := {};
+	foreach region_name in keys
+		if(!region_name)
 			continue;
 		endif
-		var elem := df.FindElement(key);
+
+		var elem := df.FindElement(region_name);
 		if(!elem)
 			continue;
 		endif
 
 		var town_id := CInt(elem.GetProp("town_id"));
-		if(town_id <= 0)
-			continue;
-		endif
-		var region_name := CStr(elem.GetProp("region_name"));
-		var realm := CStr(elem.GetProp("realm"));
-		if(!region_name or !realm)
-			// Fallback: parse legacy or split-key entries.
-			var colon := Find(CStr(key), ":", 1);
-			if(colon > 1)
-				if(!realm)
-					realm := CStr(key)[1, colon - 1];
-				endif
-				if(!region_name)
-					region_name := CStr(key)[colon + 1, Len(CStr(key)) - colon];
-				endif
-			endif
-		endif
-		if(!region_name or !realm)
-			continue;
-		endif
-
-		if(!namelist[town_id])
-			namelist[town_id] := region_name;
-			realmlist[town_id] := realm;
+		if(town_id > 0 and !town_list[town_id])
+			town_list[town_id] := CStr(region_name);
 		endif
 	endforeach
 
 	UnloadDataFile(TOWNSTONE_DATAFILE);
-	return { namelist, realmlist };
+	return town_list;
 endfunction
 
+function BuildTownListFromLiveStones()
+	var town_list := {};
+	var stones := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, "britannia");
+	if(!stones or !stones.size())
+		return town_list;
+	endif
 
-function BuildFromLiveStones()
-	var namelist := {};
-	var realmlist := {};
+	foreach stone in stones
+		if(!stone or stone.objtype != TOWNSTONE_OBJTYPE)
+			continue;
+		endif
 
-	foreach stone in EnumerateAllTownstones()
 		var town_id := CInt(GetObjProperty(stone, "town"));
 		if(town_id <= 0)
 			continue;
 		endif
+
 		var region_name := CStr(GetObjProperty(stone, "regionname"));
 		if(!region_name)
 			continue;
 		endif
-		var stone_realm := GetStoneRealm(stone);
-		if(!stone_realm)
-			continue;
-		endif
 
-		if(!namelist[town_id])
-			namelist[town_id] := region_name;
-			realmlist[town_id] := stone_realm;
+		if(!town_list[town_id])
+			town_list[town_id] := region_name;
 		endif
 	endforeach
-	return { namelist, realmlist };
+
+	return town_list;
 endfunction
-
-
-program BootstrapTownList()
-	var existing := GetGlobalProperty(TOWNLIST_GLOBAL);
-	if(existing and existing.size())
-		return;
-	endif
-
-	var pair := BuildFromDatafile();
-	var namelist := pair[1];
-	var realmlist := pair[2];
-
-	if(!namelist or !namelist.size())
-		pair := BuildFromLiveStones();
-		namelist := pair[1];
-		realmlist := pair[2];
-	endif
-
-	if(namelist and namelist.size())
-		SetGlobalProperty(TOWNLIST_GLOBAL, namelist);
-		SetGlobalProperty(TOWNREALMS_GLOBAL, realmlist);
-		SysLog("[Townstones] Rebuilt townlist with " + CStr(namelist.size()) + " entries.");
-	else
-		SysLog("[Townstones] Could not rebuild townlist (no townstone data found).");
-	endif
-endprogram

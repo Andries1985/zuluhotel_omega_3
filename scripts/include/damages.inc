@@ -37,6 +37,10 @@ const MAX_SERIAL_IN_HITLIST := 5;
 
 function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 
+	//Print("In ApplyTheDamage with damage: " + dmg);
+	var olddmg := 0;
+	var newdmg := 0;
+
 	dmg := Cint(dmg);
 	if( !who.IsA(POLCLASS_MOBILE) )
 		return 0;
@@ -50,6 +54,18 @@ function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 
 	if (Getobjproperty(who, "LottoDrops"))
 		StoreDamage(by_who, who, dmg);
+	endif
+
+	//================================= Global changes ===================================\\
+	// Global PvP slowdown.
+	if( !by_who.isA(POLCLASS_NPC) && !who.isA(POLCLASS_NPC))
+		//if( !defender.isA(POLCLASS_NPC))
+		//Print("Applying Overall PvP reduction. Damage is: " + dmg);
+		olddmg := CInt(dmg);
+		dmg := CInt( dmg * 0.6);
+		newdmg := CInt(dmg);
+		//Print("Damage after Overall PvP reduction is: " + dmg);
+		//endif
 	endif
 	
 	var factor := 1.0;
@@ -160,6 +176,7 @@ function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 		PrintTextAbovePrivate( by_who , "I've dealt this much damage: " +dmg, by_who );
 		PrintTextAbovePrivate( who , "I received this much damage: " +dmg, who );
 	endif
+	//Print("In applythedamage: Old damage was : " + olddmg + " New damage is: " + newdmg + " damage is being applied to " + who.name + " by " + by_who.name + " with attack type " + Hex(attack_type));
 
 	return ApplyRawDamage( who, dmg );
 

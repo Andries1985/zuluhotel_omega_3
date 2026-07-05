@@ -35,6 +35,33 @@ function OmegaCacheDebug(msg)
 	endif
 endfunction
 
+function OmegaCacheAudit(who, action, objtype, amount, key := "", destination := 0, house := 0)
+	var msg := "[OmegaCache] action=" + action
+		+ " who_serial=" + who.serial
+		+ " who_name='" + who.name + "'"
+		+ " objtype=" + Hex(objtype)
+		+ " amount=" + CInt(amount);
+
+	if(key and key != "")
+		msg := msg + " key='" + key + "'";
+	endif
+
+	if(house)
+		msg := msg + " house=" + house.serial;
+	endif
+
+	if(destination)
+		msg := msg + " dest_serial=" + destination.serial + " dest_objtype=" + Hex(destination.objtype);
+		var root := destination;
+		while(root.container)
+			root := root.container;
+		endwhile
+		msg := msg + " dest_root_serial=" + root.serial + " dest_root_objtype=" + Hex(root.objtype);
+	endif
+
+	SysLog(msg);
+endfunction
+
 // Builds the effective ignored-CProps set used for cache key generation.
 // Baseline: config/stacking.cfg IgnoreCprops (engine physical stacking policy)
 // Extensions: :omegacache:stacking_ignore IgnoreCProps
@@ -912,6 +939,7 @@ function DepositSingleItem(who, df, item)
 	var amt := item.amount;
 	var name := GetItemDisplayName(item.objtype);
 	DepositItem(df, key, item);
+	OmegaCacheAudit(who, "deposit", item.objtype, amt, key);
 	DestroyItem(item);
 	SendSysMessage(who, "Deposited: " + FormatNumber(amt) + " " + name);
 	return 1;
@@ -940,6 +968,7 @@ function DepositFromContainer(who, df, container)
 		var amt := thing.amount;
 
 		DepositItem(df, key, thing);
+		OmegaCacheAudit(who, "deposit", thing.objtype, amt, key);
 		DestroyItem(thing);
 
 		if(!deposited[display_name])
@@ -974,6 +1003,100 @@ function DepositFromContainer(who, df, container)
 	endif
 
 	return total_deposited;
+endfunction
+
+function ValidateWithdrawDestination(who, access, dest)
+	if(!dest or !dest.isa(POLCLASS_CONTAINER))
+		SendSysMessage(who, "That is not a container.");
+		return 0;
+	endif
+
+	if(dest.objtype == OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "You cannot withdraw into an Omega Cache container.");
+		return 0;
+	endif
+
+	if(dest.isa(POLCLASS_CORPSE))
+		SendSysMessage(who, "You cannot withdraw into a corpse.");
+		return 0;
+	endif
+
+	var check := dest.container;
+	while(check)
+		if(check.isa(POLCLASS_CORPSE))
+			SendSysMessage(who, "You cannot withdraw items into a corpse.");
+			return 0;
+		endif
+		check := check.container;
+	endwhile
+
+	if(!Accessible(who, dest))
+		SendSysMessage(who, "You can't reach that container.");
+		return 0;
+	endif
+
+	var world_obj := dest;
+	while(world_obj.container)
+		world_obj := world_obj.container;
+	endwhile
+	if(Distance(who, world_obj) > 2)
+		SendSysMessage(who, "That container is too far away.");
+		return 0;
+	endif
+
+	if(world_obj.isa(POLCLASS_MOBILE) and world_obj.serial != who.serial)
+		SendSysMessage(who, "You can only withdraw to containers on yourself or in this house.");
+		return 0;
+	endif
+
+	if(!who.backpack)
+		SendSysMessage(who, "You have no backpack to receive items.");
+		return 0;
+	endif
+
+	check := dest;
+	while(check)
+		if(check.serial == who.backpack.serial)
+			return 1;
+		endif
+		check := check.container;
+	endwhile
+
+	if(!who.multi or who.multi.serial != access.house.serial)
+		SendSysMessage(who, "You must be inside the house to withdraw to that container.");
+		return 0;
+	endif
+
+	var in_house := 0;
+	check := dest;
+	while(check)
+		if(check.multi and check.multi.serial == access.house.serial)
+			in_house := 1;
+			break;
+		endif
+		check := check.container;
+	endwhile
+	if(!in_house)
+		SendSysMessage(who, "You can only withdraw to your backpack or to containers in this house.");
+		return 0;
+	endif
+
+	check := dest;
+	while(check)
+		if(check.usescript == ":house:secureCont")
+			var owner_serial := GetObjProperty(access.house, "ownerserial");
+			if(who.serial != owner_serial and !IsCowner(who, access.house))
+				if(!IsFriend(who, access.house, ADD_TO_SECURE))
+					SendSysMessage(who, "You don't have permission to add items to that secure container.");
+					return 0;
+				endif
+			endif
+			break;
+		endif
+		check := check.container;
+	endwhile
+
+	return 1;
 endfunction
 
 // Deposit with targeting loop.
@@ -1149,6 +1272,10 @@ endfunction
 // Withdraws items from the cache to a destination container.
 function DoWithdraw(who, df, key, amount, destination)
 	_debug_who := who;
+	if(!destination or !destination.isa(POLCLASS_CONTAINER))
+		SendSysMessage(who, "Invalid withdrawal destination.");
+		return 0;
+	endif
 
 	var elem := df.FindElement(key);
 	if(!elem)
@@ -1238,6 +1365,7 @@ function DoWithdraw(who, df, key, amount, destination)
 	if(total_withdrawn > 0)
 		var item_name := GetItemDisplayName(objtype, desc_info);
 		var stacks_created := CInt(Ceil(CDbl(total_withdrawn) / CDbl(stack_limit)));
+		OmegaCacheAudit(who, "withdraw", objtype, total_withdrawn, key, destination, who.multi);
 		if(stacks_created > 1)
 			SendSysMessage(who, "Withdrawn: " + FormatNumber(total_withdrawn) + " " + item_name + " (" + stacks_created + " stacks).");
 		else
@@ -1249,14 +1377,13 @@ function DoWithdraw(who, df, key, amount, destination)
 endfunction
 
 // Prompts for a destination container. Returns 0 on cancel.
-function PromptDestination(who)
+function PromptDestination(who, access)
 	SendSysMessage(who, "Target a container to receive items, or press ESC to cancel.");
 	var dest := Target(who);
 	if(!dest)
 		SendSysMessage(who, "Cancelled.");
 		return 0;
-	elseif(!dest.isa(POLCLASS_CONTAINER))
-		SendSysMessage(who, "That is not a container.");
+	elseif(!ValidateWithdrawDestination(who, access, dest))
 		return 0;
 	endif
 	return dest;
@@ -1750,7 +1877,7 @@ function RunOmegaCacheGump(who, access)
 					var amount := ParseDecimal(amount_str);
 					if(amount > 0)
 						if(!dest)
-							dest := PromptDestination(who);
+							dest := PromptDestination(who, access);
 							if(!dest)
 								break;
 							endif
@@ -1790,8 +1917,11 @@ function RunOmegaCacheGump(who, access)
 						var dest;
 						if(to_backpack)
 							dest := who.backpack;
+							if(!ValidateWithdrawDestination(who, access, dest))
+								dest := 0;
+							endif
 						else
-							dest := PromptDestination(who);
+							dest := PromptDestination(who, access);
 						endif
 						if(dest)
 							DoWithdraw(who, df, key, amount, dest);

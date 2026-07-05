@@ -212,6 +212,14 @@ function GetShieldGraphicsThief()
 
 endfunction
 
+function GetGraphicsCrafter()
+
+	// This helper is referenced by classes restrictions; keep default empty set
+	// until explicit crafter-only graphic restrictions are defined.
+	return {};
+
+endfunction
+
 function GetGraphicsBladesinger()
 
 	return { 0x1f02, 0x9B10 };

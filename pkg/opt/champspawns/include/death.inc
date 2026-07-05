@@ -1,13 +1,9 @@
-include ":champspawns:include/rewards";
+include ":champspawns:rewards";
 
 function ProcessChampSpawnCorpse(corpse)
-  if(!GetObjProperty(corpse, "iChampSpawn"))
-    return;
-  endif
 
   RegisterChampionSpawnKill(corpse);
-  Sleep(2);
-  DestroyItem(corpse);
+
 endfunction
 
 function ProcessChampionCorpse(corpse)

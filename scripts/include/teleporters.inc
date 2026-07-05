@@ -1087,6 +1087,106 @@ var teleporters := {
     { 5995, 1811, 0, 6058, 1756, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl1 -> Grove of the Ancients Lvl2
     { 6057, 1757, 0, 5994, 1812, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl2 -> Grove of the Ancients Lvl1
     { 6058, 1757, 0, 5995, 1812, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl2 -> Grove of the Ancients Lvl1
+    { 5882, 850, -15, 5836, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5883, 850, -15, 5837, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5884, 850, -15, 5838, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5836, 1746, 17, 5882, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 5837, 1746, 17, 5883, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 5838, 1746, 17, 5884, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 1358, 644, 0, 7074, 2330, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 1358, 645, 0, 7074, 2331, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 1358, 646, 0, 7074, 2332, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 7075, 2330, 0, 1359, 644, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7075, 2331, 0, 1359, 645, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7075, 2332, 0, 1359, 646, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7011, 2206, 0, 6815, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 7012, 2206, 0, 6816, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 7013, 2206, 0, 6817, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 6815, 2259, 0, 7011, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6816, 2259, 0, 7012, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6817, 2259, 0, 7013, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6707, 2304, 0, 6580, 2299, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6707, 2305, 0, 6580, 2300, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6707, 2306, 0, 6580, 2301, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6581, 2299, 0, 6708, 2304, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 6581, 2300, 0, 6708, 2305, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 6581, 2301, 0, 6708, 2306, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 178, 398, 22, 6735, 3966, 7, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 178, 397, 22, 6735, 3967, 7, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 6736, 3966, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6737, 3966, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6737, 3967, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6736, 3967, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 7058, 3953, 6, 6938, 1103, 8, "britannia_alt", "britannia_alt" }, //Underworld -> Wayfarer’s Abyss
+    { 7059, 3953, 7, 6939, 1103, 8, "britannia_alt", "britannia_alt" }, //Underworld -> Wayfarer’s Abyss
+    { 6938, 1102, 11, 7058, 3952, 6, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Underworld
+    { 6939, 1102, 11, 7059, 3952, 6, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Underworld
+    { 6127, 3168, 0, 7073, 3842, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 6127, 3169, 0, 7073, 3843, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 6127, 3169, 0, 7073, 3844, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 7072, 3842, 0, 6126, 3168, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    { 7072, 3843, 0, 6126, 3169, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    { 7072, 3844, 0, 6126, 3170, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    { 2210, 1097, 1, 6311, 3003, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    { 2211, 1097, 3, 6312, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    { 2212, 1097, 4, 6313, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    { 6311, 3004, 2, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6312, 3004, 3, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6313, 3004, 3, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6312, 2985, 3, 6277, 2998, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6313, 2985, 3, 6278, 2998, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6277, 2999, 0, 6312, 2986, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6278, 2999, 0, 6313, 2986, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6354, 2947, 3, 6217, 3924, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6354, 2948, 3, 6217, 3925, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6216, 3924, 0, 6353, 2947, 3, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6216, 3925, 0, 6353, 2948, 3, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6341, 2947, 3, 6206, 2789, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6341, 2948, 3, 6206, 2790, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6207, 2789, 0, 6342, 2947, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6207, 2790, 0, 6342, 2948, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6778, 1071, 0, 6323, 2972, 3, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Mine
+    { 6778, 1072, 0, 6323, 2973, 3, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Mine
+    { 6322, 2972, 3, 6777, 1071, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
+    { 6322, 2973, 3, 6777, 1072, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
+    { 5793, 457, 1, 5490, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    { 5794, 457, 1, 5491, 64, 0, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    { 5795, 457, 0, 5492, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    { 5489, 63, 0, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5490, 63, -1, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5491, 63, 0, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5492, 63, 1, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 6532, 3772, 35, 5596, 141, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Underdark
+    { 6532, 3773, 35, 5596, 142, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Underdark
+    { 5597, 141, 0, 6533, 3772, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5597, 142, 0, 6533, 3773, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5597, 143, 0, 6533, 3773, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5664, 428, 1, 6636, 1589, 0, "britannia_alt", "britannia_alt" }, //Ley-Forge Sanctum -> Runebound Sanctum Lvl1
+    { 6645, 1589, 0, 5642, 453, 47, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Ley-Forge Sanctum
+    { 5448, 3564, 0, 5642, 451, 47, "britannia_alt", "britannia_alt" }, //Tartarus -> Ley-Forge Sanctum
+    { 5642, 452, 50, 5449, 3565, 0, "britannia_alt", "britannia_alt" }, //Ley-Forge Sanctum -> Tartarus
+    { 6653, 1436, 5, 6556, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
+    { 6650, 1436, 5, 6552, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
+    { 6555, 1538, 0, 6650, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6553, 1538, 0, 6653, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6488, 1617, 0, 6496, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
+    { 6491, 1617, 0, 6499, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
+    { 6496, 1503, 5, 6489, 1613, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl2
+    { 6499, 1503, 5, 6490, 1613, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl2
+    { 6480, 1599, 0, 6469, 1599, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl2
+    { 6470, 1599, 0, 6482, 1599, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl2
+    { 6630, 1475, 0, 6631, 1488, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl1
+    { 6631, 1487, 0, 6630, 1473, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl1
+    { 6483, 1563, 0, 6470, 1563, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl3
+    { 6471, 1563, 0, 6485, 1563, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl3
+    { 6545, 1522, 5, 6510, 1471, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Boss
+    { 6548, 1522, 5, 6513, 1471, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Boss
+    { 6510, 1470, 5, 6545, 1525, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Boss -> Runebound Sanctum Lvl3
+    { 6513, 1470, 5, 6548, 1525, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Boss -> Runebound Sanctum Lvl3
+    { 6641, 1592, 0, 5355, 3210, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Tartarus
+    { 6642, 1592, 0, 5356, 3210, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Tartarus
+    { 5355, 3209, 0, 6641, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
+    { 5356, 3209, 0, 6642, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
 
     ////////////////////////////////
     ////////////////////////////////

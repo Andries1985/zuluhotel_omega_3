@@ -7,10 +7,10 @@ function RainDownMoney(corpse)
   for (i := -10; i <= 10 ; i := i + 1)
     var j;
     for (j := -10; j <= 10; j := j + 1)
-      tile := GetMapInfo(i, j, corpse.realm);
+      tile := GetMapInfo(i, j);
       if(tile)
 		blocked := 0;
-		var altar := ListItemsAtLocation( corpse.x+i, corpse.y+j, corpse.z, corpse.realm );
+		var altar := ListItemsAtLocation( corpse.x+i, corpse.y+j, corpse.z );
 		foreach item in altar
 			if(item.color == 1157)
 				blocked := 1;
@@ -18,14 +18,14 @@ function RainDownMoney(corpse)
 		endforeach
 		if(!blocked)
 			if(CheckLosBetween( corpse.x+i, corpse.y+j, corpse.z, corpse.x, corpse.y, corpse.z+5, corpse.realm) && CheckLosAt( corpse, corpse.x+i, corpse.y+j, corpse.z+5 ) )
-				CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z, "goldcoin", RandomInt(2000)+500, corpse.realm);
-				PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z, 0x36b0, 7, 0, 1, corpse.realm);
+				CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z, "goldcoin", RandomInt(2000)+500);
+				PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z, 0x36b0, 7, 0, 1);
 			else
-				CreateItemAtLocation( corpse.x, corpse.y, corpse.z, "goldcoin", RandomInt(2000)+500, corpse.realm);
+				CreateItemAtLocation( corpse.x, corpse.y, corpse.z, "goldcoin", RandomInt(2000)+500);
 			endif
 		else
-			CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z+6, "goldcoin", RandomInt(2000)+500, corpse.realm);
-			PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z+6, 0x36b0, 7, 0, 1, corpse.realm);
+			CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z+6, "goldcoin", RandomInt(2000)+500);
+			PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z+6, 0x36b0, 7, 0, 1);
 		endif
         sleepms(50);
       endif

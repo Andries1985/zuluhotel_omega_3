@@ -6,6 +6,7 @@ include "include/damages";
 include ":combat:hitscriptinc";
 include "include/dotempmods";
 include "include/areas";
+include "include/constants/locations";
 
 program banishscript(attacker, defender, weapon, armor, basedamage, rawdamage)
 

@@ -208,40 +208,43 @@ function CreateTreasureChest( lvl , x , y , z, r )
 	var chest := CreateItemAtLocation( x , y , z , UOBJECT_TREASURE_CHEST , 1, r );
 	var lootgroup;
 	var magiclevelup;
-	var magicchanse;
+	var magicchance;
 
 	case( lvl )
-		1: lootgroup := 5;	 break;
-		2: lootgroup := 6;	 break;
-		3: lootgroup := 7;	 break;
-		4: lootgroup := 8; break;
-		5: lootgroup := 9; break;
-		6: lootgroup := 10; break;		
-		default: lootgroup := 5;
+		1: lootgroup := 201;	 break;
+		2: lootgroup := 202;	 break;
+		3: lootgroup := 203;	 break;
+		4: lootgroup := 204;	 break;
+		5: lootgroup := 205;	 break;
+		6: lootgroup := 206;	 break;
+		7: lootgroup := 207;	 break;
+		default: lootgroup := 201;		break;
 	endcase
 
-		case( lvl )
-		1: magicchanse := 30;	break;
-		2: magicchanse := 50;	break;
-		3: magicchanse := 70;	break;
-		4: magicchanse := 100;	break;
-		5: magicchanse := 100;	break;
-		6: magicchanse := 100; break;		
-		default: magicchanse := 5;
+	case( lvl )
+		1: magicchance := CInt(Random(25) + 75);		break;
+		2: magicchance := CInt(Random(25) + 75);		break;
+		3: magicchance := CInt(Random(25) + 75);		break;
+		4: magicchance := CInt(Random(25) + 75);		break;
+		5: magicchance := CInt(Random(20) + 80);		break;
+		6: magicchance := CInt(Random(15) + 85);		break;
+		7: magicchance := CInt(Random(10) + 90);		break;
+		default: magicchance := 50;		break;
 	endcase
 	
-		case( lvl )
-		1: magiclevelup := 2;	break;
-		2: magiclevelup := 3;	break;
-		3: magiclevelup := 4;	break;
+	case( lvl )
+		1: magiclevelup := 4;	break;
+		2: magiclevelup := 5;	break;
+		3: magiclevelup := 6;	break;
 		4: magiclevelup := 7;	break;
-		5: magiclevelup := 9; break;
-		6: magiclevelup := 9; break;		
-		default: magiclevelup := 2;
+		5: magiclevelup := 8;	break;
+		6: magiclevelup := 9;	break;
+		7: magiclevelup := 10;	break;
+		default: magiclevelup := 4;		break;
 	endcase
 
 	chest.movable := 0;
-	MakeLoot( chest , Cint(lootgroup), Cint(magicchanse), Cint(magiclevelup));
+	MakeLoot( chest , Cint(lootgroup), Cint(magicchance), CInt(magiclevelup));
 
 	return chest;
 
