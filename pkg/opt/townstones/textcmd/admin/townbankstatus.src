@@ -5,6 +5,7 @@ use basic;
 use datafile;
 use cfgfile;
 include ":gumps:gumps";
+include ":gumps:gumps_ex";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const TOWNSTONE_OBJTYPE := 0xa320;

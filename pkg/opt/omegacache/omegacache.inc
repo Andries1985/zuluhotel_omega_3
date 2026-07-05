@@ -52,11 +52,11 @@ function OmegaCacheAudit(who, action, objtype, amount, key := "", destination :=
 
 	if(destination)
 		msg := msg + " dest_serial=" + destination.serial + " dest_objtype=" + Hex(destination.objtype);
-		var root := destination;
-		while(root.container)
-			root := root.container;
+		var top_container := destination;
+		while(top_container.container)
+			top_container := top_container.container;
 		endwhile
-		msg := msg + " dest_root_serial=" + root.serial + " dest_root_objtype=" + Hex(root.objtype);
+		msg := msg + " dest_root_serial=" + top_container.serial + " dest_root_objtype=" + Hex(top_container.objtype);
 	endif
 
 	SysLog(msg);
