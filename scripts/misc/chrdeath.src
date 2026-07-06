@@ -254,9 +254,20 @@ program chrdeath(corpse,ghost)
 		endforeach
 	endif
 
-	if(mount) 
-		Dismount(ghost,mount); 
+	if(mount)
+		if( !Dismount(ghost,mount) )
+			// Emergency fallback: never leave a dead player mounted.
+			Print( "chrdeath(): dismount failed for "+ghost.name+" ("+ghost.serial+"); forcing mount destroy." );
+			if( !DestroyItem(mount) )
+				ReleaseItem( mount );
+				SleepMS(50);
+				DestroyItem(mount);
+			endif
+		endif
 	endif
+
+	// Reset any stale movement override packet state.
+	SendPacket( ghost, "BF0006002600" );
 
 	if( GetObjProperty( ghost, "DonatorMounted" ) )
 		EraseObjProperty( ghost, "DonatorMounted" );

@@ -1,0 +1,79 @@
+// Synopsis: Force-clear mount state on a targeted mobile (stuck mount recovery)
+use uo;
+use os;
+use polsys;
+
+include ":staff:include/staff";
+include "include/myutil";
+
+program clearmount(staff)
+	SendSysMessage(staff, "Target the mobile to clear mount state from.");
+	var targetmount := TargetCoordinates(staff);
+
+	if(!targetmount || !targetmount.mobile)
+		SendSysMessage(staff, "No mobile was targeted.");
+		return 0;
+	endif
+
+	var mob := targetmount.mobile;
+
+	if(staff.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
+		SendSysMessage(staff, "You can only clear mounts on NPCs.");
+		LogCommand(staff, GetProcess(GetPid()).name, staff.name+" tried to .clearmount "+mob.name);
+		return 0;
+	endif
+
+	if(mob.cmdlevel > staff.cmdlevel && staff.cmdlevel < 5)
+		SendSysMessage(staff, "You cannot clear mount state from a higher-level staff member.");
+		SendSysMessage(mob, staff.name + " is trying to clear your mount state.");
+		return 0;
+	endif
+
+	var removed := 0;
+	removed := removed + RemoveLayerMountItem(mob);
+	removed := removed + RemoveRootMountItems(mob);
+
+	EraseObjProperty(mob, "DonatorMounted");
+	EraseObjProperty(mob, "DMountSerial");
+	EraseObjProperty(mob, "bmSpeed");
+
+	// Reset any stale movement override on the client (run speed mod packet).
+	SendPacket(mob, "BF0006002600");
+	IncRevision(mob);
+
+	SendSysMessage(staff, "Cleared mount state from "+mob.name+" (removed "+removed+" mount item(s)).");
+	SendSysMessage(mob, "A staff member cleared your mount state.");
+	LogCommand(staff, GetProcess(GetPid()).name, mob.name+"/"+mob.serial+" removed="+removed);
+
+	return 1;
+endprogram
+
+function RemoveLayerMountItem(mob)
+	var mounted := GetEquipmentByLayer(mob, 25);
+	if(!mounted)
+		return 0;
+	endif
+
+	if(!DestroyItem(mounted))
+		ReleaseItem(mounted);
+		SleepMS(25);
+		DestroyItem(mounted);
+	endif
+
+	return 1;
+endfunction
+
+function RemoveRootMountItems(mob)
+	var removed := 0;
+	foreach item in ListRootItemsInContainerOfObjtype(mob, 0x1F021)
+		if(item)
+			if(!DestroyItem(item))
+				ReleaseItem(item);
+				SleepMS(25);
+				DestroyItem(item);
+			endif
+			removed := removed + 1;
+		endif
+	endforeach
+	return removed;
+endfunction
