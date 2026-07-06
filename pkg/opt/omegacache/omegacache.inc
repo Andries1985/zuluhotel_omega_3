@@ -862,8 +862,10 @@ endfunction
 // Returns struct{ container, house, df } or 0.
 function FindAccessibleContainer(who, required_privileges)
 	_debug_who := who;
+	var current_house := GetCurrentHouseAtMobile(who);
+
 	// Must be inside a house
-	if(!who.multi and who.cmdlevel < 4)
+	if(!current_house and who.cmdlevel < 4)
 		return 0;
 	endif
 
@@ -881,7 +883,7 @@ function FindAccessibleContainer(who, required_privileges)
 			endif
 
 			// Must be inside the same house the cache belongs to
-			if(who.multi and who.multi.serial != house.serial and who.cmdlevel < 4)
+			if(current_house and current_house.serial != house.serial and who.cmdlevel < 4)
 				continue;
 			endif
 
@@ -1062,7 +1064,8 @@ function ValidateWithdrawDestination(who, access, dest)
 		check := check.container;
 	endwhile
 
-	if(!who.multi or who.multi.serial != access.house.serial)
+	var current_house := GetCurrentHouseAtMobile(who);
+	if(!current_house or current_house.serial != access.house.serial)
 		SendSysMessage(who, "You must be inside the house to withdraw to that container.");
 		return 0;
 	endif
@@ -1179,8 +1182,10 @@ function ValidateDepositTarget(who, access, tgt)
 		return 1;
 	endif
 
+	var current_house := GetCurrentHouseAtMobile(who);
+
 	// Player must be in the cache's house
-	if(!who.multi or who.multi.serial != access.house.serial)
+	if(!current_house or current_house.serial != access.house.serial)
 		SendSysMessage(who, "You must be inside the house to deposit items.");
 		return 0;
 	endif

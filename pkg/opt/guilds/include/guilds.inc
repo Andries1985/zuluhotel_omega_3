@@ -1,4 +1,6 @@
 use util;
+use guilds;
+include ":house:utility";
 
 include ":gumps:include/gumps";
 include "guildconstants";
@@ -14,13 +16,14 @@ include "guildconstants";
 // returns a house ref or 0
 /////////////////////////////////////////////////////////////////////////////////////
 function FindSelectedHouse(who, data);
+	var standing_house := GetCurrentHouseAtMobile(who);
 
 	// Player selected 'standing in house' option
 	if (50 in data.keys)
-		if (GetObjProperty(who.multi, "ownerserial") != who.serial)
+		if (!standing_house or !IsCowner(who, standing_house))
 			return 2;
 		else
-			return who.multi;
+			return standing_house;
 		endif
 	endif
 
