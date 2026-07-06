@@ -13,6 +13,26 @@ const CO_OWNER := 8;
 
 //-------------------------------------------------- New Housing Functions ----------------------------------------------------------------\\
 
+function GetCurrentHouseAtMobile(who)
+
+	if(!who)
+		return 0;
+	endif
+
+	var house := who.multi;
+	if(house and (GetObjProperty(house, "ownerserial") or GetObjProperty(house, "Friends")))
+		return house;
+	endif
+
+	var standing_house := GetStandingHeight(who.x, who.y, who.z, who.realm).multi;
+	if(standing_house and (GetObjProperty(standing_house, "ownerserial") or GetObjProperty(standing_house, "Friends")))
+		return standing_house;
+	endif
+
+	return house;
+
+endfunction
+
 // Returns 1 if it's the owner of co-owner.
 function IsCowner( who, house )
 
