@@ -245,11 +245,14 @@ program chrdeath(corpse,ghost)
 	endif
 
 
-	// Dismount ghost is mounted, check if this is needed.
-	var mount;
-	foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
-		mount:=item;
-	endforeach
+	// Dismount if the mount item is still equipped on layer 25;
+	// fallback to corpse contents for legacy/offline transfer cases.
+	var mount := GetEquipmentByLayer( ghost, LAYER_MOUNT );
+	if( !mount )
+		foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
+			mount := item;
+		endforeach
+	endif
 
 	if(mount) 
 		Dismount(ghost,mount); 
