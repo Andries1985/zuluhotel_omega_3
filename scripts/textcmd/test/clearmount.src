@@ -5,6 +5,7 @@ use polsys;
 
 include ":staff:include/staff";
 include "include/myutil";
+include "include/constants/cids";
 
 program clearmount(staff)
 	SendSysMessage(staff, "Target the mobile to clear mount state from.");
@@ -29,24 +30,100 @@ program clearmount(staff)
 		return 0;
 	endif
 
+	DiagnoseMountState(mob, "BEFORE");
+
 	var removed := 0;
 	removed := removed + RemoveLayerMountItem(mob);
 	removed := removed + RemoveRootMountItems(mob);
+	removed := removed + RemoveMountItemsAllLayers(mob);
+	removed := removed + RemoveMountItemsInBackpack(mob);
+	removed := removed + RemoveMountFromRecentCorpse(mob);
 
 	EraseObjProperty(mob, "DonatorMounted");
 	EraseObjProperty(mob, "DMountSerial");
 	EraseObjProperty(mob, "bmSpeed");
+	EraseObjProperty(mob, "SpeedWalk");
+
+	// Ghost graphic sanity: if character is dead, force proper ghost body.
+	if(mob.dead && mob.graphic != CID_GHOST_MALE && mob.graphic != CID_GHOST_FEMALE)
+		Print("clearmount(): "+mob.name+" is dead with non-ghost graphic 0x"+Hex(mob.graphic)+"; forcing ghost body.");
+		mob.graphic := 402 + CInt(mob.gender);
+	endif
 
 	// Reset any stale movement override on the client (run speed mod packet).
 	SendPacket(mob, "BF0006002600");
 	IncRevision(mob);
 
-	SendSysMessage(staff, "Cleared mount state from "+mob.name+" (removed "+removed+" mount item(s)).");
+	// Force full client visual resync by re-locating to same tile.
+	MoveObjectToLocation(mob, mob.x, mob.y, mob.z, mob.realm, MOVEOBJECT_FORCELOCATION);
+
+	DiagnoseMountState(mob, "AFTER");
+
+	SendSysMessage(staff, "Cleared mount state from "+mob.name+" (removed "+removed+" mount item(s)). Check console for diagnostics.");
 	SendSysMessage(mob, "A staff member cleared your mount state.");
 	LogCommand(staff, GetProcess(GetPid()).name, mob.name+"/"+mob.serial+" removed="+removed);
 
 	return 1;
 endprogram
+
+function DiagnoseMountState(mob, label)
+	Print("=== clearmount "+label+" for "+mob.name+" ("+mob.serial+") ===");
+	Print("  dead="+mob.dead+" graphic=0x"+Hex(mob.graphic)+" x="+mob.x+" y="+mob.y+" z="+mob.z+" realm="+mob.realm);
+	Print("  DonatorMounted="+GetObjProperty(mob, "DonatorMounted")+" DMountSerial="+GetObjProperty(mob, "DMountSerial")+" SpeedWalk="+GetObjProperty(mob, "SpeedWalk")+" bmSpeed="+GetObjProperty(mob, "bmSpeed"));
+
+	var mount_layer_item := GetEquipmentByLayer(mob, 25);
+	if(mount_layer_item)
+		Print("  Ghost layer 25 item: serial="+mount_layer_item.serial+" objtype=0x"+Hex(mount_layer_item.objtype)+" graphic=0x"+Hex(mount_layer_item.graphic));
+	else
+		Print("  Ghost layer 25: (empty)");
+	endif
+
+	// Iterate all equipment layers looking for mount-graphic items.
+	var layer;
+	for(layer := 1; layer <= 30; layer := layer + 1)
+		var it := GetEquipmentByLayer(mob, layer);
+		if(it && it.objtype == 0x1F021)
+			Print("  Ghost mount objtype on layer "+layer+": serial="+it.serial+" graphic=0x"+Hex(it.graphic));
+		endif
+	endfor
+
+	if(mob.backpack)
+		var pack_mounts := 0;
+		foreach it in EnumerateItemsInContainer(mob.backpack, ENUMERATE_ROOT_ONLY)
+			if(it.objtype == 0x1F021)
+				pack_mounts := pack_mounts + 1;
+				Print("  Ghost mount in backpack: serial="+it.serial+" graphic=0x"+Hex(it.graphic));
+			endif
+		endforeach
+		if(!pack_mounts)
+			Print("  Ghost backpack: no mount items");
+		endif
+	endif
+
+	// Check recent corpse - POL core stores mount on corpse layer 25 on death.
+	var corpse := mob.GetCorpse();
+	if(corpse)
+		Print("  Recent corpse: serial="+corpse.serial+" objtype=0x"+Hex(corpse.objtype));
+		var corpse_mount := GetEquipmentByLayer(corpse, 25);
+		if(corpse_mount)
+			Print("  ** Corpse layer 25 item: serial="+corpse_mount.serial+" objtype=0x"+Hex(corpse_mount.objtype)+" graphic=0x"+Hex(corpse_mount.graphic));
+		else
+			Print("  Corpse layer 25: (empty)");
+		endif
+		var corpse_root_mounts := 0;
+		foreach it in EnumerateItemsInContainer(corpse, ENUMERATE_ROOT_ONLY)
+			if(it.objtype == 0x1F021)
+				corpse_root_mounts := corpse_root_mounts + 1;
+				Print("  Corpse root mount: serial="+it.serial+" graphic=0x"+Hex(it.graphic));
+			endif
+		endforeach
+		if(!corpse_root_mounts)
+			Print("  Corpse root: no mount items");
+		endif
+	else
+		Print("  No recent corpse");
+	endif
+endfunction
 
 function RemoveLayerMountItem(mob)
 	var mounted := GetEquipmentByLayer(mob, 25);
@@ -54,10 +131,15 @@ function RemoveLayerMountItem(mob)
 		return 0;
 	endif
 
+	Print("clearmount(): destroying layer 25 item serial="+mounted.serial+" objtype=0x"+Hex(mounted.objtype)+" graphic=0x"+Hex(mounted.graphic));
+
 	if(!DestroyItem(mounted))
 		ReleaseItem(mounted);
 		SleepMS(25);
-		DestroyItem(mounted);
+		if(!DestroyItem(mounted))
+			Print("clearmount(): FAILED to destroy layer 25 item "+mounted.serial);
+			return 0;
+		endif
 	endif
 
 	return 1;
@@ -67,6 +149,7 @@ function RemoveRootMountItems(mob)
 	var removed := 0;
 	foreach item in ListRootItemsInContainerOfObjtype(mob, 0x1F021)
 		if(item)
+			Print("clearmount(): destroying root mount item serial="+item.serial+" objtype=0x"+Hex(item.objtype));
 			if(!DestroyItem(item))
 				ReleaseItem(item);
 				SleepMS(25);
@@ -75,5 +158,79 @@ function RemoveRootMountItems(mob)
 			removed := removed + 1;
 		endif
 	endforeach
+	return removed;
+endfunction
+
+function RemoveMountItemsAllLayers(mob)
+	var removed := 0;
+	var layer;
+	for(layer := 1; layer <= 30; layer := layer + 1)
+		if(layer == 25) continue; endif
+		var it := GetEquipmentByLayer(mob, layer);
+		if(it && it.objtype == 0x1F021)
+			Print("clearmount(): destroying stray mount item on layer "+layer+" serial="+it.serial);
+			if(!DestroyItem(it))
+				ReleaseItem(it);
+				SleepMS(25);
+				DestroyItem(it);
+			endif
+			removed := removed + 1;
+		endif
+	endfor
+	return removed;
+endfunction
+
+function RemoveMountItemsInBackpack(mob)
+	if(!mob.backpack)
+		return 0;
+	endif
+	var removed := 0;
+	foreach item in EnumerateItemsInContainer(mob.backpack, ENUMERATE_ROOT_ONLY)
+		if(item.objtype == 0x1F021)
+			Print("clearmount(): destroying backpack mount item serial="+item.serial);
+			if(!DestroyItem(item))
+				ReleaseItem(item);
+				SleepMS(25);
+				DestroyItem(item);
+			endif
+			removed := removed + 1;
+		endif
+	endforeach
+	return removed;
+endfunction
+
+function RemoveMountFromRecentCorpse(mob)
+	var corpse := mob.GetCorpse();
+	if(!corpse)
+		return 0;
+	endif
+
+	var removed := 0;
+
+	// Modern POL puts mount on the corpse's layer 25 during die().
+	var corpse_mount := GetEquipmentByLayer(corpse, 25);
+	if(corpse_mount && corpse_mount.objtype == 0x1F021)
+		Print("clearmount(): destroying corpse layer 25 mount serial="+corpse_mount.serial+" graphic=0x"+Hex(corpse_mount.graphic));
+		if(!DestroyItem(corpse_mount))
+			ReleaseItem(corpse_mount);
+			SleepMS(25);
+			DestroyItem(corpse_mount);
+		endif
+		removed := removed + 1;
+	endif
+
+	// Legacy: some code paths dropped the mount into corpse root contents.
+	foreach item in EnumerateItemsInContainer(corpse, ENUMERATE_ROOT_ONLY)
+		if(item.objtype == 0x1F021)
+			Print("clearmount(): destroying corpse root mount serial="+item.serial);
+			if(!DestroyItem(item))
+				ReleaseItem(item);
+				SleepMS(25);
+				DestroyItem(item);
+			endif
+			removed := removed + 1;
+		endif
+	endforeach
+
 	return removed;
 endfunction
