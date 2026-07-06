@@ -245,9 +245,14 @@ program chrdeath(corpse,ghost)
 	endif
 
 
-	// Dismount if the mount item is still equipped on layer 25;
-	// fallback to corpse contents for legacy/offline transfer cases.
-	var mount := GetEquipmentByLayer( ghost, LAYER_MOUNT );
+	// Dismount handling: modern POL core (2013+) unequips the mount from
+	// the character during die() and equips it on the CORPSE's layer 25.
+	// Older code paths may leave it on the ghost's layer or drop it into
+	// the corpse container's root contents. Check all three locations.
+	var mount := GetEquipmentByLayer( corpse, LAYER_MOUNT );
+	if( !mount )
+		mount := GetEquipmentByLayer( ghost, LAYER_MOUNT );
+	endif
 	if( !mount )
 		foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
 			mount := item;
@@ -255,6 +260,7 @@ program chrdeath(corpse,ghost)
 	endif
 
 	if(mount)
+		Print( "chrdeath(): dismounting "+ghost.name+" mount item "+mount.serial+" graphic=0x"+Hex(mount.graphic) );
 		if( !Dismount(ghost,mount) )
 			// Emergency fallback: never leave a dead player mounted.
 			Print( "chrdeath(): dismount failed for "+ghost.name+" ("+ghost.serial+"); forcing mount destroy." );
@@ -268,6 +274,12 @@ program chrdeath(corpse,ghost)
 
 	// Reset any stale movement override packet state.
 	SendPacket( ghost, "BF0006002600" );
+
+	// Force full client visual resync so the client stops rendering the
+	// pre-death mounted state (which is the root cause of the "invisible
+	// mount + horse speed" ghost bug).
+	IncRevision( ghost );
+	MoveObjectToLocation( ghost, ghost.x, ghost.y, ghost.z, ghost.realm, MOVEOBJECT_FORCELOCATION );
 
 	if( GetObjProperty( ghost, "DonatorMounted" ) )
 		EraseObjProperty( ghost, "DonatorMounted" );
