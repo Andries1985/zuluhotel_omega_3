@@ -2,10 +2,35 @@
 use uo;
 
 program destroy_multi( who )
-	if(!who.multi)
-		var targ := Targetcoordinates( who ).multi;
-		DestroyMulti(targ);
-	else
-		DestroyMulti( who.multi );
+	var target_multi := who.multi;
+
+	if(!target_multi)
+		SendSysMessage(who, "Target an item in the multi to destroy.");
+		var targ := Target(who, TGTOPT_NOCHECK_LOS);
+		if(!targ)
+			SendSysMessage(who, "Cancelled.");
+			return 0;
+		endif
+
+		if(targ.multi)
+			target_multi := targ.multi;
+		elseif(GetObjProperty(targ, "houseserial"))
+			target_multi := SystemFindObjectBySerial(CInt(GetObjProperty(targ, "houseserial")));
+		endif
 	endif
+
+	if(!target_multi)
+		SendSysMessage(who, "No multi found at target.");
+		return 0;
+	endif
+
+	var result := DestroyMulti(target_multi);
+	if(result.errortext)
+		SendSysMessage(who, "DestroyMulti failed: " + result.errortext);
+		Print("DestroyMulti failed for serial " + target_multi.serial + " (objtype " + Hex(target_multi.objtype) + "): " + result.errortext);
+		return 0;
+	endif
+
+	SendSysMessage(who, "Multi destroyed.");
+	return 1;
 endprogram

@@ -1,9 +1,76 @@
 use util;
 use guilds;
+use polsys;
 include ":house:utility";
 
 include ":gumps:include/gumps";
 include "guildconstants";
+
+function GuildRealmNameFromMapId(mapid)
+	if (mapid == 0)
+		return "britannia";
+	elseif (mapid == 1)
+		return "britannia_alt";
+	elseif (mapid == 2)
+		return "ilshenar";
+	elseif (mapid == 3)
+		return "malas";
+	elseif (mapid == 4)
+		return "tokuno";
+	elseif (mapid == 5)
+		return "termur";
+	endif
+
+	return 0;
+endfunction
+
+function IsGuildHouseOwner(who, house)
+	if (!house)
+		return 0;
+	endif
+
+	if (CInt(GetObjProperty(house, "ownerserial")) == who.serial)
+		return 1;
+	endif
+
+	if (GetObjProperty(house, "owneracct") == who.acctname)
+		return 1;
+	endif
+
+	return 0;
+endfunction
+
+function GetOwnedGuildCandidateHouses(who)
+	var owned := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GuildRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListMultisInBox(0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found || !found.size())
+			continue;
+		endif
+
+		foreach house in found
+			if (!house || !house.isa(POLCLASS_HOUSE))
+				continue;
+			endif
+
+			if (IsGuildHouseOwner(who, house))
+				owned.append(house);
+			endif
+		endforeach
+	endforeach
+
+	return owned;
+endfunction
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
@@ -17,10 +84,11 @@ include "guildconstants";
 /////////////////////////////////////////////////////////////////////////////////////
 function FindSelectedHouse(who, data);
 	var standing_house := GetCurrentHouseAtMobile(who);
+	var houses := GetOwnedGuildCandidateHouses(who);
 
 	// Player selected 'standing in house' option
 	if (50 in data.keys)
-		if (!standing_house or !IsCowner(who, standing_house))
+		if (!standing_house or !IsGuildHouseOwner(who, standing_house))
 			return 2;
 		else
 			return standing_house;
@@ -29,13 +97,17 @@ function FindSelectedHouse(who, data);
 
 	var i := 51;
 
-	// Loop from 51 to 56, 
+	// Loop from 51 to 65.
 	repeat
 		if (i in data.keys)
-			return SystemFindObjectBySerial(GetObjProperty(who, "Houses")[i-50]);
+			var idx := i - 50;
+			if (idx >= 1 && idx <= houses.size())
+				return houses[idx];
+			endif
+			return 0;
 		endif
 		i := i + 1;
-	until (i >= 55);
+	until (i >= 66);
 
 	return 0;
 
