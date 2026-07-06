@@ -780,7 +780,10 @@ function demolish(house, sign, who, bank_region)
 	endif
 	var lists := GetObjProperty(sign, "footage");
 	var itemlist := {};
-	var holder, chk := 0;
+	var holder;
+	var has_guildstone := 0;
+	var has_vendor := 0;
+	var builtdeed_error := 0;
 	foreach thing in lists
 		holder := ListObjectsInBox(thing[1], thing[2], thing[3], thing[4], thing[5],thing[6], house.realm);
 		foreach thing in holder
@@ -789,29 +792,31 @@ function demolish(house, sign, who, bank_region)
 	endforeach
 	foreach thing in itemlist
 		if(thing.objtype == 0x1A390)
-			chk := 1;
+			has_guildstone := 1;
 			break;
 		endif
 	endforeach
 	foreach npc in (house.mobiles)
 		if(npc.npctemplate == "playervendor")
-			chk := 1;
+			has_vendor := 1;
 			break;
 		endif
 	endforeach
-	if(chk == 1)
+	if(has_guildstone)
+		SendSysMessage(who, "You cannot redeed a house while it has a guildstone.", color := 33);
+		return;
+	endif
+	if(has_vendor)
 		SendSysMessage(who, "You cannot redeed a house with vendors in it.", color := 33);
 		return;
 	endif
-	if(chk == 0)
-		var builtdeed := SystemFindObjectBySerial(GetObjProperty(sign, "builtdeed"));
-		if(builtdeed)
-			if(!DestroyItem(builtdeed))
-				chk := 2;
-			endif
+	var builtdeed := SystemFindObjectBySerial(GetObjProperty(sign, "builtdeed"));
+	if(builtdeed)
+		if(!DestroyItem(builtdeed))
+			builtdeed_error := 1;
 		endif
 	endif
-	if(chk == 0)
+	if(!builtdeed_error)
 		var LockIDs := {}, id;
 		foreach thing in (house.components)
 			id := GetObjProperty(thing, "LockID");
@@ -884,12 +889,14 @@ function demolish(house, sign, who, bank_region)
 			endif
 		endforeach
 		CloseOmegaCacheStore(house.serial);
-		DestroyMulti(house);
-	elseif(chk == 2)
+		var destroy_result := DestroyMulti(house);
+		if(destroy_result.errortext)
+			Print("House demolish failed for serial " + house.serial + " (objtype " + Hex(house.objtype) + "): " + destroy_result.errortext);
+			SendSysMessage(who, "Could not demolish this house: " + destroy_result.errortext, color := 33);
+			return;
+		endif
+	elseif(builtdeed_error)
 		SendSysMessage(who, "Could not find the built deed, please page a GM.", color := 33);
-		return;
-	else
-		SendSysMessage(who, "You cannot redeed a house while it has a guildstone.", color := 33);
 		return;
 	endif
 endfunction

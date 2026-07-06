@@ -252,10 +252,10 @@ GFTextLine(gump, 283, 48, 990, "Guild");
 	GFResizePic(gump, 229, 45, 9200, 145, 25);
 	GFTextLine(gump, 256, 48, 990, "Create A Guild");*/
 	
-	var houses := GetObjProperty(who, "Houses");
+	var houses := GetOwnedGuildCandidateHouses(who);
 	
 	// Player has no houses, or not enough money
-	if ( (houses.size() < 1 || !houses) || who.gold < GUILD_PRICE)
+	if ( (!houses || houses.size() < 1) || who.gold < GUILD_PRICE)
 	
 			GFHTMLArea(gump, 90, 90, 420, 380, "<center><BASEFONT COLOR=black>Any commoner may form a guild. The only determining factor being if he, or she, posseses the required capital." ,0,0 );
 		
@@ -268,7 +268,7 @@ GFTextLine(gump, 283, 48, 990, "Guild");
 			GFTextLine(gump, 170, 235, 0, "Be the owner of a house, castle, tent, or keep.");
 			
 			// player has a house
-			if (GetObjProperty(who, "Houses").size() && houses)
+			if (houses && houses.size())
 				GFTextLine(gump, 240, 265, 53, "- Requirement met!");
 			// player doesn't have enuf gold
 			else
@@ -306,13 +306,12 @@ GFTextLine(gump, 283, 48, 990, "Guild");
 		// Display player house info
 		var hname, htype;
 		var y := 265;
-		foreach house in GetObjProperty(who, "Houses")
+		foreach house in houses
 			// only show 3 houses
 			if (_house_iter > 3)
 				break;
 			endif
-			
-			house := SystemFindObjectBySerial(house);
+
 			hname := GetObjProperty(house, "MultiName");
 			htype := GetObjProperty(house, "MultiType");
 			
@@ -2365,10 +2364,10 @@ GFTextLine(gump, 243, 48, 990, "Change Guild House.");
 
 	GFPage(gump, 1);
 		
-	var houses := GetObjProperty(who, "Houses");
+	var houses := GetOwnedGuildCandidateHouses(who);
 	
 	// Player has no houses, or not enough money
-	if (houses.size() >= 2)		
+	if (houses && houses.size() >= 2)		
 		// Select House
 		GFTextLine(gump, 90, 80, 78, "Select the Guild House:");
 		GFTextLine(gump, 300, 80, 65, "I am standing in the desired house.");
@@ -2376,8 +2375,7 @@ GFTextLine(gump, 243, 48, 990, "Change Guild House.");
 		// Display player house info
 		var hname, htype;
 		var y := 105;
-		foreach house in GetObjProperty(who, "Houses")
-			house := SystemFindObjectBySerial(house);
+		foreach house in houses
 			if(!GetObjProperty(house, "GuildHouse"))
 				if (_house_iter > 15)
 					break;
@@ -2450,8 +2448,7 @@ endcase
 		return GuildMasterGump(who);
 	endif
 
-	foreach house in GetObjProperty(who, "Houses")
-		house := SystemFindObjectBySerial(house);
+	foreach house in houses
 		if(GetObjProperty(house, "GuildHouse"))
 			EraseObjProperty(house, "GuildHouse");
 		endif
