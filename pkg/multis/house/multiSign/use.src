@@ -895,6 +895,15 @@ function demolish(house, sign, who, bank_region)
 			SendSysMessage(who, "Could not demolish this house: " + destroy_result.errortext, color := 33);
 			return;
 		endif
+
+		// Some clients can keep rendering the removed multi shell until a full
+		// local revision update is forced.
+		foreach viewer in ListMobilesNearLocation(house.x, house.y, house.z, 18, house.realm)
+			if(viewer && viewer.connected)
+				IncRevision(viewer);
+				MoveObjectToLocation(viewer, viewer.x, viewer.y, viewer.z, viewer.realm, MOVEOBJECT_FORCELOCATION);
+			endif
+		endforeach
 	elseif(builtdeed_error)
 		SendSysMessage(who, "Could not find the built deed, please page a GM.", color := 33);
 		return;

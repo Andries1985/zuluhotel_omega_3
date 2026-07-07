@@ -8,13 +8,24 @@ program textcmd_DestroyMulti( mobile, serial )
 	if( !serial )
 		SendSysMessage( mobile, "Target an item in the multi." );
 		var targ := Target( mobile, TGTOPT_NOCHECK_LOS );
+                if(!targ)
+                        SendSysMessage(mobile, "Cancelled.");
+                        return 0;
+                endif
 		if( !targ.multi )
-			SendSysMessage( mobile, "It doesn't have a multi property." );
-			return 0;
+                        var hserial := GetObjProperty(targ, "houseserial");
+                        if(hserial)
+                                multi := SystemFindObjectBySerial(CInt(hserial));
+                        endif
+                        if(!multi)
+                                SendSysMessage( mobile, "It doesn't have a multi property." );
+                                return 0;
+                        endif
+                else
+                        multi := targ.multi;
 		endif
-                multi := targ.multi;
         else
-        	multi := SystemFindObjectBySerial( CInt( serial ));
+                multi := SystemFindObjectBySerial( CInt( serial ));
                 if( multi.errortext )
                         SendSysMessage( mobile, "Error finding multi serial "+serial+" -->"+multi.errortext );
                         return 0;
@@ -23,9 +34,12 @@ program textcmd_DestroyMulti( mobile, serial )
 
         var dest := Multi_DestroyMulti( multi );
         if( dest.errortext )
-                PrintTextAbove( multi, dest.errortext );
+                SendSysMessage(mobile, "DestroyMulti failed: " + dest.errortext);
+                Print("DestroyMulti failed for serial " + multi.serial + " (objtype " + Hex(multi.objtype) + "): " + dest.errortext);
                 return 0;
         endif
+
+        SendSysMessage(mobile, "Multi destroyed.");
 
 	return 1;
 endprogram

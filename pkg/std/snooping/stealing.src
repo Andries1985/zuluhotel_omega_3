@@ -30,6 +30,7 @@ program stealing(who)
 
 	if (!itemtaken) 
 		sendsysmessage(who, "canceled"); 
+		return;
 	endif
 
 	if(!getobjproperty(itemtaken,"cansteal"))
@@ -37,7 +38,7 @@ program stealing(who)
 	return;
 	endif;
 
-	nearvictim(who);
+	nearvictim(who, itemtaken);
 
 	var difficulty:= getobjproperty(itemtaken,"stealdiff");
 	var thepoints:= difficulty*20;
@@ -111,7 +112,7 @@ function freehands(who)
 
 	if(GetEquipmentByLayer(who, LAYER_HAND1) || GetEquipmentByLayer(who, LAYER_HAND2))
 		sendsysmessage(who, "You need empty hands to perform this action!");
-		return;
+		exit;
 	endif
 
 endfunction
@@ -166,7 +167,20 @@ var postarget:=ListMobilesNearLocation(who.x, who.y, who.z, 10, who.realm);
 
 endfunction
 
-function nearvictim(who)
+function nearvictim(who, itemtaken)
+
+var victimserial := getobjproperty(itemtaken, "victimserial");
+if (victimserial)
+	var victim := SystemFindObjectBySerial(victimserial);
+	if (!victim)
+		victim := SystemFindObjectBySerial(victimserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if (victim && victim.realm == who.realm && Distance(who, victim) <= 2)
+		return 1;
+	endif
+	sendsysmessage(who, "Your victim is too far away");
+	exit;
+endif
 
 var close:= 0;
 var posvictim:=ListMobilesNearLocation(who.x, who.y, who.z, 2, who.realm);
