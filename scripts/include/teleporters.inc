@@ -1188,6 +1188,190 @@ var teleporters := {
     { 5355, 3209, 0, 6641, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
     { 5356, 3209, 0, 6642, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
 
+    //Recently added by Nagash (July 8th 2026)
+    { 744, 3531, -18, 5977, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 745, 3531, -18, 5978, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 746, 3531, -18, 5979, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 5976, 52, 46, 744, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5977, 52, 46, 744, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5978, 52, 46, 745, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5979, 52, 46, 746, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 6043, 237, 8, 6036, 268, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Blood Dungeon Boss
+    { 6036, 267, 8, 6043, 236, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Boss -> Blood Dungeon Lvl1
+    { 951, 2885, 35, 951, 2885, 35, "britannia_alt", "britannia_alt" }, //Black City of the Damned -> Tartarus
+    { 6651, 102, 1, 6721, 122, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6721, 121, 1, 6651, 101, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6634, 115, 1, 6723, 105, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6723, 106, 1, 6634, 114, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6658, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6659, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6747, 109, 1, 6658, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6747, 109, 1, 6659, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6787, 105, 1, 6808, 100, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6808, 101, 1, 6787, 106, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6782, 56, 1, 6855, 57, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6854, 57, 1, 6784, 56, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6803, 42, 11, 6830, 123, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon Boss
+    { 6831, 123, 1, 6806, 40, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Boss -> Water Dungeon
+    { 5477, 3182, 0, 5757, 2050, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5477, 3183, 0, 5757, 2051, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5477, 3184, 0, 5757, 2052, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5756, 2050, 0, 5476, 3182, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5756, 2051, 0, 5476, 3183, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5756, 2052, 0, 5476, 3184, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5377, 3354, 0, 5796, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5378, 3354, 0, 5797, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5379, 3354, 0, 5798, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5796, 1970, 0, 5377, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5797, 1970, 0, 5378, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5798, 1970, 0, 5379, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5498, 3431, 0, 5759, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5499, 3431, 0, 5760, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5500, 3431, 0, 5761, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5759, 1978, 0, 5498, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5760, 1978, 0, 5499, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5761, 1978, 0, 5500, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5147, 3379, 0, 5802, 2115, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5147, 3380, 0, 5802, 2116, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5803, 2115, 0, 5148, 3379, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5803, 2116, 0, 5148, 3380, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5299, 3644, 0, 5765, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5300, 3644, 0, 5766, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5301, 3644, 0, 5767, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5765, 2191, 0, 5299, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5766, 2191, 0, 5300, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5767, 2191, 0, 5301, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5714, 3194, 0, 5813, 2161, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5715, 3194, 0, 5814, 2161, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5813, 2162, 0, 5714, 3195, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5814, 2162, 0, 5715, 3195, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5564, 3308, 0, 5835, 1997, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5564, 3309, 0, 5835, 1998, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5836, 1997, 0, 5565, 3308, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5836, 1998, 0, 5565, 3309, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5943, 3219, 0, 5991, 2043, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5943, 3220, 0, 5991, 2044, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5943, 3221, 0, 5991, 2045, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5992, 2043, 0, 5944, 3219, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5992, 2044, 0, 5944, 3220, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5992, 2045, 0, 5944, 3221, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5776, 3387, 0, 6079, 2123, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5776, 3388, 0, 6079, 2124, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6080, 2123, 0, 5777, 3387, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6080, 2124, 0, 5777, 3388, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5600, 4024, 0, 5994, 2152, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5600, 4025, 0, 5994, 2153, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5600, 4026, 0, 5994, 2154, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5993, 2152, 0, 5599, 4024, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5993, 2153, 0, 5599, 4025, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5993, 2154, 0, 5599, 4026, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5408, 3958, 0, 6034, 2234, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5408, 3959, 0, 6034, 2235, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6035, 2234, 0, 5409, 3958, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6035, 2235, 0, 5409, 3959, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 7139, 3748, 0, 6060, 2207, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 7140, 3748, 0, 6061, 2207, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6060, 2208, 0, 7139, 3749, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6061, 2208, 0, 7140, 3749, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6948, 3888, 0, 5999, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6949, 3888, 0, 6000, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6950, 3888, 0, 6001, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 5999, 1929, 0, 6948, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6000, 1929, 0, 6949, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6001, 1929, 0, 6950, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 5161, 3900, 0, 6088, 2038, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5161, 3901, 0, 6088, 2039, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6089, 2038, 0, 5162, 3900, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6089, 2039, 0, 5162, 3901, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5261, 4008, 0, 6087, 1983, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5262, 4008, 0, 6088, 1983, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6087, 1982, 0, 5261, 4007, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6088, 1982, 0, 5262, 4007, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5282, 3693, 0, 6105, 2030, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6105, 2031, 0, 5282, 3694, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6109, 3725, 0, 6056, 1917, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6110, 3725, 0, 6057, 1917, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6056, 1916, 0, 6109, 3724, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6057, 1916, 0, 6110, 3724, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 4268, 415, 5, 5901, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4269, 415, 5, 5902, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5901, 2234, 0, 4268, 416, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5902, 2234, 0, 4269, 416, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4305, 396, 5, 5833, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4306, 396, 5, 5834, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5833, 2234, 0, 4305, 397, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5834, 2234, 0, 4306, 397, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4298, 354, 5, 5956, 2189, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4298, 355, 5, 5956, 2190, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5957, 2189, 0, 4299, 354, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5957, 2190, 0, 4299, 355, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4330, 370, 5, 5934, 2083, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4330, 371, 5, 5934, 2084, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5935, 2083, 0, 4331, 370, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5935, 2084, 0, 4331, 371, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4331, 417, 5, 5964, 2168, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4332, 417, 5, 5965, 2168, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5964, 2169, 0, 4331, 418, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5965, 2169, 0, 4332, 418, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4475, 381, 5, 5885, 2129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4475, 382, 5, 5885, 2130, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5886, 2129, 0, 4476, 381, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5886, 2130, 0, 4476, 382, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4506, 373, 5, 6247, 2793, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4507, 373, 5, 6248, 2793, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6247, 2794, 0, 4506, 374, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6248, 2794, 0, 4507, 374, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4500, 502, 5, 6261, 2823, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4501, 502, 5, 6262, 2823, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6261, 2824, 0, 4500, 503, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6262, 2824, 0, 4501, 503, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4390, 388, 5, 5143, 904, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4391, 388, 5, 5144, 904, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5143, 905, 0, 4390, 389, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5144, 905, 0, 4391, 389, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4574, 360, 5, 6300, 2809, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4575, 360, 5, 6301, 2809, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6300, 2810, 0, 4574, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6301, 2810, 0, 4575, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4612, 475, 5, 5902, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4612, 476, 5, 5902, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5901, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5901, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4636, 491, 5, 5877, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4637, 491, 5, 5878, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5877, 2203, 0, 4636, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5878, 2203, 0, 4637, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4663, 442, 5, 5888, 2181, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4663, 443, 5, 5888, 2182, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5889, 2181, 0, 4664, 442, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5889, 2182, 0, 4664, 443, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4680, 427, 5, 5905, 2188, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4681, 427, 5, 5906, 2188, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5905, 2189, 0, 4680, 428, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5906, 2189, 0, 4681, 428, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4876, 416, 5, 6245, 2953, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4877, 416, 5, 6246, 2953, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6245, 2954, 0, 4876, 417, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6246, 2954, 0, 4877, 417, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4921, 371, 30, 6262, 2926, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4922, 371, 30, 6263, 2926, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6262, 2927, 0, 4921, 372, 30, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6263, 2927, 0, 4922, 372, 30, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4938, 356, 5, 6304, 2929, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4938, 357, 5, 6304, 2930, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6305, 2929, 0, 4939, 356, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6305, 2930, 0, 4939, 357, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4748, 388, 5, 6947, 3129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 4749, 388, 5, 6948, 3129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 6947, 3130, 0, 4748, 389, 5, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6948, 3130, 0, 4749, 389, 5, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 3408, 1628, 0, 7023, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 3409, 1628, 0, 7024, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 3410, 1628, 0, 7025, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 7023, 2825, 0, 3408, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+    { 7024, 2825, 0, 3409, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+    { 7025, 2825, 0, 3410, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+
     ////////////////////////////////
     ////////////////////////////////
     // Malas and Tokuno
