@@ -49,7 +49,7 @@ function KillMobile( byref mobile, guard_killed := 0, by_who := 0 )
 		return ApplyTheDamage( mobile, by_who, GetMaxHP(mobile)+3 );
 	else
 		EraseObjProperty( mobile, PROPID_MOBILE_HITLIST );
-		return ApplyRawDamage( mobile, GetMaxHP(mobile)+3 );
+		return mobile.kill();
 	endif
 	
 endfunction

@@ -450,7 +450,7 @@ function Release()
 			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
 			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 			RevokePrivilege( me, "invul" );
-			ApplyRawDamage( me , GetMaxHP(me)+3 );
+			me.kill();
 			return;
 		elseif( IsInNOPKArea(me) || IsInGuardedArea(me) )
 			SendSysmessage( master , "You can't release an animal here!" );

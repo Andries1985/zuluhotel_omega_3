@@ -112,36 +112,36 @@ function CreateGump()
 	GFPage(gump, 0);
 	
 	//Top
-	GFGumpPic(gump, 0, 0, 150);
-	GFGumpPic(gump, 114, 0, 151);
-	GFGumpPic(gump, 171, 0, 151);
-	GFGumpPic(gump, 228, 0, 151);
-	GFGumpPic(gump, 285, 0, 152);
+	GFGumpPic(gump, 0, 0, 3900);
+	GFGumpPic(gump, 114, 0, 3901);
+	GFGumpPic(gump, 171, 0, 3901);
+	GFGumpPic(gump, 228, 0, 3901);
+	GFGumpPic(gump, 285, 0, 3902);
 	//mid 1
-	GFGumpPic(gump, 0, 140, 153);
-	GFGumpPic(gump, 114, 140, 154);
-	GFGumpPic(gump, 171, 140, 154);
-	GFGumpPic(gump, 228, 140, 154);
-	GFGumpPic(gump, 285, 140, 155);
+	GFGumpPic(gump, 0, 140, 3903);
+	GFGumpPic(gump, 114, 140, 3904);
+	GFGumpPic(gump, 171, 140, 3904);
+	GFGumpPic(gump, 228, 140, 3904);
+	GFGumpPic(gump, 285, 140, 3905);
 	//mid 2
-	GFGumpPic(gump, 0, 182, 153);
-	GFGumpPic(gump, 114, 182, 154);
-	GFGumpPic(gump, 171, 182, 154);
-	GFGumpPic(gump, 228, 182, 154);
-	GFGumpPic(gump, 285, 182, 155);
+	GFGumpPic(gump, 0, 182, 3903);
+	GFGumpPic(gump, 114, 182, 3904);
+	GFGumpPic(gump, 171, 182, 3904);
+	GFGumpPic(gump, 228, 182, 3904);
+	GFGumpPic(gump, 285, 182, 3905);
 	//mid 3
-	GFGumpPic(gump, 0, 224, 153);
-	GFGumpPic(gump, 114, 224, 154);
-	GFGumpPic(gump, 171, 224, 154);
-	GFGumpPic(gump, 228, 224, 154);
-	GFGumpPic(gump, 285, 224, 155);
+	GFGumpPic(gump, 0, 224, 3903);
+	GFGumpPic(gump, 114, 224, 3904);
+	GFGumpPic(gump, 171, 224, 3904);
+	GFGumpPic(gump, 228, 224, 3904);
+	GFGumpPic(gump, 285, 224, 3905);
 
 	//bottom
-	GFGumpPic(gump, 0, 266, 156);
-	GFGumpPic(gump, 114, 266, 157);
-	GFGumpPic(gump, 171, 266, 157);
-	GFGumpPic(gump, 228, 266, 157);
-	GFGumpPic(gump, 285, 266, 158);
+	GFGumpPic(gump, 0, 266, 3906);
+	GFGumpPic(gump, 114, 266, 3907);
+	GFGumpPic(gump, 171, 266, 3907);
+	GFGumpPic(gump, 228, 266, 3907);
+	GFGumpPic(gump, 285, 266, 3908);
 
 	GFTextLine(gump, 107, 7, 51, "Welcome to the Omega Vanity Shop!");
 	GFTextLine(gump, 62, 39, 50, "Select what you'd like to purchase:");
@@ -155,14 +155,13 @@ function CreateGump()
 	
 	foreach item in vanitystuff
 		if (count >= perpage)
-			if (page != 1)
-			// back
-			GFAddButton(gump, 351, 75, 9700, 5604, 0, page-1);
-			endif
 			page := page +1;
 			// next page
 			GFAddButton(gump, 351, 320, 9704, 5606, 0, page);
 			GFPage(gump, page);
+			if (page != 1)
+				GFAddButton(gump, 351, 75, 9700, 5604, 0, page-1);
+			endif
 			prev_y := 20;
 			prev_x := 43;
 			count := 0;

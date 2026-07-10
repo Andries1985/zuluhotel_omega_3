@@ -1296,13 +1296,13 @@ function MountHorse(horse)
 			MoveObjectToLocation( horse, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
 			RevokePrivilege( horse, "invul" );
 			setobjproperty(horse,"guardkill",1);
-			ApplyRawdamage(horse,GetMaxHP(horse)+3);
+			horse.kill();
 			EquipItem(me,mount);
 			if (horse)
 				MoveObjectToLocation( horse, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
 				RevokePrivilege(horse, "invul" );
 				setobjproperty(horse,"guardkill",1);
-				applyRawdamage(horse,GetMaxHP(horse)+3);
+				horse.kill();
 			endif
 			set_critical(0);
 		endif

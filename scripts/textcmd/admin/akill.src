@@ -56,8 +56,8 @@ program akill( who, dist )
 			if(TryForceClosePlayerVendor(who, mob))
 				continue;
 			endif
-			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
+			mob.kill();
 		endif
 	endforeach
 		
@@ -78,8 +78,8 @@ program akill( who, dist )
 			if(TryForceClosePlayerVendor(who, mob))
 				continue;
 			endif
-			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
+			mob.kill();
 		endif
 	endforeach
 
@@ -100,8 +100,8 @@ program akill( who, dist )
 			if(TryForceClosePlayerVendor(who, mob))
 				continue;
 			endif
-			ApplyRawDamage( mob, GetMaxHP(mob) + 3 );
 			WarnManagerofNPCDeath(mob);
+			mob.kill();
 		endif
 	endforeach
 endprogram
