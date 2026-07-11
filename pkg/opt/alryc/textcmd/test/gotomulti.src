@@ -116,7 +116,7 @@ function ShowMultiListGump(who, multis)
 
 	var gump := GFCreateGump(0, 0, 860, 620);
 	GFDisposable(gump, 0);
-	GFResizePic(gump, 0, 0, 3600, 860, 620);
+	GFResizePic(gump, 0, 0, 3500, 860, 620);
 	GFTextMid(gump, 15, 20, 830, 1153, "Alryc Gotomulti");
 	GFTextLine(gump, 25, 52, 1153, "Owner");
 	GFTextLine(gump, 165, 52, 1153, "House Type");

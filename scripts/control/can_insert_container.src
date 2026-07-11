@@ -77,23 +77,18 @@ if ( IsCowner( who, sign ) )
 	return 1;
 endif
 
-// Only friends now, with different level of access
-var friends := GetObjProperty(sign, "Friends");
+if (IsFriend(who, sign, ADD_TO_SECURE))
+	return 1;
+endif
 
-foreach friend in friends
-	if (friend[1] == who.serial)
-		if (friend[ADD_TO_SECURE] == 1)
-			return 1;
-		else
-			var remtime := GetObjProperty(item, "#SecureRemove");
-			if ( (remtime[2]+30) > ReadGameClock() && remtime[1] == container.serial) // less than 5 seconds, allow to put back
-				return 1;
-			endif
-			SendSysMessage(who, "You don't have the permission level to add items.");
-			return 0;
-		endif
+var remtime := GetObjProperty(item, "#SecureRemove");
+if (remtime && !remtime.errortext)
+	if( (remtime[2] + 30) > ReadGameClock() && remtime[1] == container.serial )
+		return 1;
 	endif
-endforeach
+endif
+
+SendSysMessage(who, "You don't have the permission level to add items.");
 
 return 0;
 

@@ -10,7 +10,7 @@ include "include/client";
 function checkmymod(player)
 	if(player.warmode && IsInSafeArea(player))
 		SetObjProperty(player, "guardkill", 1);
-		ApplyRawdamage(player, GetMaxHP(player) + 3);
+		player.kill();
 	endif
 
 	var allmods := GetObjProperty( player , "#mods" );

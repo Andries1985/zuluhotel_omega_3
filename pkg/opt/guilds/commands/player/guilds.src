@@ -312,8 +312,8 @@ GFTextLine(gump, 283, 48, 990, "Guild");
 				break;
 			endif
 
-			hname := GetObjProperty(house, "MultiName");
-			htype := GetObjProperty(house, "MultiType");
+			hname := GuildSafeObjProperty(house, "MultiName", "");
+			htype := GetGuildHouseDisplayName(house);
 			
 			// Player hasn't named this house
 			if (!hname)
@@ -1822,10 +1822,10 @@ endfunction
 
 function ConfirmGuildFormation(who, guildname, guildabv, house)
 
-var housename := GetObjProperty(house, "MultiName");
+var housename := GuildSafeObjProperty(house, "MultiName", "");
 
-if (!housename)
-	housename := GetObjProperty(house, "MultiType");
+if(housename == error || (housename && housename.errortext) || !housename)
+	housename := GetGuildHouseDisplayName(house);
 endif
 
 var gump := GFCreateGump(20, 20, 330, 170);
@@ -2365,9 +2365,15 @@ GFTextLine(gump, 243, 48, 990, "Change Guild House.");
 	GFPage(gump, 1);
 		
 	var houses := GetOwnedGuildCandidateHouses(who);
+	var selectable_houses := {};
+	foreach house in houses
+		if(!GetObjProperty(house, "GuildHouse"))
+			selectable_houses.append(house);
+		endif
+	endforeach
 	
-	// Player has no houses, or not enough money
-	if (houses && houses.size() >= 2)		
+	// Require at least one non-guild-owned house to switch to.
+	if (selectable_houses.size() >= 1)		
 		// Select House
 		GFTextLine(gump, 90, 80, 78, "Select the Guild House:");
 		GFTextLine(gump, 300, 80, 65, "I am standing in the desired house.");
@@ -2375,27 +2381,25 @@ GFTextLine(gump, 243, 48, 990, "Change Guild House.");
 		// Display player house info
 		var hname, htype;
 		var y := 105;
-		foreach house in houses
-			if(!GetObjProperty(house, "GuildHouse"))
-				if (_house_iter > 15)
-					break;
-				endif
-			
-				hname := GetObjProperty(house, "MultiName");
-				htype := GetObjProperty(house, "MultiType");
-			
-				// Player hasn't named this house
-				if (!hname)
-					GFTextLine(gump, 130, y, 65, htype+" ("+house.x+","+house.y+")");
-				else
-				// Player HAS named the house
-					GFTextLine(gump, 125, y,65, hname+" ("+house.x+","+house.y+")");
-				endif
-			
-				GFRadioButton(gump, 90, y, 9020, 9021, 0, _house_iter+50);
-					
-				y := y + 25;
+		foreach house in selectable_houses
+			if (_house_iter > 15)
+				break;
 			endif
+		
+			hname := GuildSafeObjProperty(house, "MultiName", "");
+			htype := GetGuildHouseDisplayName(house);
+		
+			// Player hasn't named this house
+			if (!hname)
+				GFTextLine(gump, 130, y, 65, htype+" ("+house.x+","+house.y+")");
+			else
+			// Player HAS named the house
+				GFTextLine(gump, 125, y,65, hname+" ("+house.x+","+house.y+")");
+			endif
+		
+			GFRadioButton(gump, 90, y, 9020, 9021, 0, _house_iter+50);
+				
+			y := y + 25;
 		endforeach
 		
 		GFTilePic(gump, 450, 275, 8960);
@@ -2434,30 +2438,55 @@ case (data[0])
 	0: return GuildMasterGump(who);		
 endcase
 
-	var house := FindSelectedHouse(who, data);
-	if(GetObjProperty(house, "GuildHouse"))
+	var selected_house := 0;
+	if (50 in data.keys)
+		selected_house := GetCurrentHouseAtMobile(who);
+		if(!selected_house)
+			SendSysMessage(who, "You are not standing in a house.");
+			return GuildMasterGump(who);
+		endif
+		if(!IsGuildHouseOwner(who, selected_house))
+			SendSysMessage(who, "This house doesn't belong to you.");
+			return GuildMasterGump(who);
+		endif
+	else
+		var i := 51;
+		repeat
+			if(i in data.keys)
+				var idx := i - 50;
+				if(idx >= 1 && idx <= selectable_houses.size())
+					selected_house := selectable_houses[idx];
+				endif
+				break;
+			endif
+			i := i + 1;
+		until(i >= 66);
+	endif
+
+	if(!selected_house)
+		SendSysMessage(who, "There was a problem selecting the guild house.");
+		return GuildMasterGump(who);
+	endif
+
+	if(GetObjProperty(selected_house, "GuildHouse"))
 		SendSysMessage(who, "This house already belongs to a guild.");
 		return GuildMasterGump(who);
 	endif
-	if(!who.multi && house == 2)
-		SendSysMessage(who, "You are not standing in a house.");
-		return GuildMasterGump(who);
-	endif
-	if(house == 2)
+	if(!IsGuildHouseOwner(who, selected_house))
 		SendSysMessage(who, "This house doesn't belong to you.");
 		return GuildMasterGump(who);
 	endif
 
-	foreach house in houses
-		if(GetObjProperty(house, "GuildHouse"))
-			EraseObjProperty(house, "GuildHouse");
+	var current_house := SystemFindObjectBySerial(who.guild.getprop("GuildHouse"));
+	if(current_house)
+		if(GetObjProperty(current_house, "GuildHouse") == who.guild.guildid)
+			EraseObjProperty(current_house, "GuildHouse");
 		endif
-	endforeach
+	endif
 
-	house := FindSelectedHouse(who, data);
-	if(house)
-		SetObjProperty(house, "GuildHouse", who.guild.guildid);
-		who.guild.setprop("GuildHouse", house.serial);
+	if(selected_house)
+		SetObjProperty(selected_house, "GuildHouse", who.guild.guildid);
+		who.guild.setprop("GuildHouse", selected_house.serial);
 		SendSysMessage(who, "You have successfully changed the guild house.");
 	else
 		

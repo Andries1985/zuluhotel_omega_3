@@ -40,7 +40,7 @@ program runebookdyecheck( who, runicdyetub)
 		return;
 	endif
 
-	if (item.objtype != 0x6100)
+	if (item.objtype != 0x7100)
 		SendSysMessage(who, "Only Runebooks can resist the power of the Runic Dye Tub", color:= 319);
 		Releaseitem(runicdyetub);
 		Releaseitem(item);

@@ -58,7 +58,7 @@ program textcmd_kill( who )
 				return;
 			endif
 			WarnManagerOfNpcDeath(mob);
-			ApplyRawDamage( mob, GetMaxHP(mob)+3 );
+			mob.kill();
 		else
 			SendSysMessage( who, "That Tickles!" );
 		endif

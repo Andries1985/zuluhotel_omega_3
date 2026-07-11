@@ -147,7 +147,7 @@ function CheckSheepAmount()
 	endforeach
 
 	if ( Random(500) < DeathChance )			
-		ApplyRawdamage( me, GetMAXHP(me) + 3 );
+		me.kill();
 	endif
 
 endfunction

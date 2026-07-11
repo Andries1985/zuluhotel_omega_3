@@ -45,6 +45,13 @@ program CustomItemName (who, soulpen)
 		return;
 	endif
 
+	if (item.container != who.backpack)
+		SendSysmessage( who, "You can only rename items in your backpack!" );
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+
 	if(playerhasnamed)
 		SendSysmessage( who, "That has already been named!" );
 		Releaseitem(soulpen);

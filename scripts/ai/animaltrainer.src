@@ -642,7 +642,7 @@ function Save_Pet_Data (ticket, pet)
 
   SetObjProperty(pet, "guardkill", 1);
   pet.graphic := 1000;
-  ApplyRawDamage(pet, GetMaxHP(pet)+3);
+  pet.kill();
 
 endfunction
 

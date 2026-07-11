@@ -122,7 +122,7 @@ function MountNPC(npc, mount)
             MoveObjectToLocation(mount, DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, DEFAULT_LOCATION_ITEM_CREATION_R, MOVEOBJECT_FORCELOCATION);
                 RevokePrivilege( mount, "invul" );
                 setobjproperty(mount,"guardkill",1);
-                ApplyRawdamage( mount, GetMaxHP(mount) + 3 );
+                mount.kill();
 
     mount2.graphic := mounttype;
     return EquipItem(npc,mount2);
