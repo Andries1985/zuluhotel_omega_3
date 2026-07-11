@@ -1,0 +1,11 @@
+Animated Graphics Regeneration Notes
+
+Run these from the repository root.
+
+Regenerate animatedgraphics.cfg from an animdata JSON export:
+python pythonscripts/_gen_alryc_animatedgraphics_cfg.py --animdata-json "C:\Users\Alryc\Desktop\animdata-202607110545.json" --output pkg/opt/alryc/config/animatedgraphics.cfg
+
+Regenerate nonanimatedgraphics.cfg as the complement of animatedgraphics.cfg over tile range 0x1..0xB4E3:
+python pythonscripts/_gen_alryc_animatedgraphics_cfg.py --exclude-cfg pkg/opt/alryc/config/animatedgraphics.cfg --min-tile 0x1 --max-tile 0xB4E3 --output pkg/opt/alryc/config/nonanimatedgraphics.cfg
+
+If the animdata JSON export path changes, update the --animdata-json path in the first command.

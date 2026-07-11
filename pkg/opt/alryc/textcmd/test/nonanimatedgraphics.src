@@ -1,17 +1,17 @@
-// Synopsis: Spawn configured animated graphics groups at a target location from selected group down to 1
+// Synopsis: Spawn configured non-animated graphics groups at a target location from selected group down to 1
 use uo;
 use cfgfile;
 
 const DEFAULT_PER_ROW := 50;
 const MAX_PER_ROW := 50;
 const MAX_SPAWN := 500;
-const GROUP_Y_STEP := 4;
-const X_SPACING := 3;
+const GROUP_Y_STEP := 2;
+const X_SPACING := 1;
 
-program animatedgraphics(who, text)
-    var cfg := ReadConfigFile(":alryc:animatedgraphics");
+program nonanimatedgraphics(who, text)
+    var cfg := ReadConfigFile(":alryc:nonanimatedgraphics");
     if (!cfg)
-        SendSysMessage(who, "animatedgraphics.cfg could not be loaded from :alryc:config.");
+        SendSysMessage(who, "nonanimatedgraphics.cfg could not be loaded from :alryc:config.");
         return;
     endif
 
@@ -20,7 +20,7 @@ program animatedgraphics(who, text)
     var args := SplitWords(text);
     if (len(args) < 1)
         var keys := GetConfigIntKeys(cfg);
-        SendSysMessage(who, "Usage: .animatedgraphics <group> [perrow]");
+        SendSysMessage(who, "Usage: .nonanimatedgraphics <group> [perrow]");
         SendSysMessage(who, "Configured groups: " + len(keys));
         return;
     endif

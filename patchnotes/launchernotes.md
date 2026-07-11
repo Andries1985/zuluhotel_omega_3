@@ -3,35 +3,28 @@ Always check Discord announcements for all patchnotes.
 
 ## What Changed
 
-Patch 3.0.3 is a major parity and stability pass across combat, classes, teleporters, and world interaction scripts.
+Patch 3.0.4 is a systems cleanup release focused on housing, townstones, mounts, guilds, snooping/stealing, and world utility fixes.
 
-This update focuses on cleaner combat outcomes, stronger mount/character lifecycle handling, more reliable item identification behavior, and expanded teleporter maintenance tools.
+This update improves house sign reliability, mount cleanup after death, townstone status tools, and several interaction paths used by the shard.
 
-## Combat and Spell Consistency
+## Housing and Towns
 
-- Restored and tuned multiple combat and hit-script paths for better parity.
-- Added/fixed critical stamina-hit and related on-hit behavior integrations.
-- Improved several spell/skill safety and targeting consistency paths.
-- Applied follow-up party/pet/no-PK safety handling improvements.
+- House sign access, owner-name lookup, and co-owner/friend checks were tightened.
+- Custom housing commit and destroy flows were refreshed.
+- Town treasury and player-run town status windows were expanded.
+- Town upgrade and donation toggles were refreshed.
 
-## Character, Mount, and Class Flow
+## Mounts and Movement
 
-- Updated class/race/start-state handling for parity behavior.
-- Revised starting equipment and related setup rules.
-- Tightened mount lifecycle behavior around death/logoff/dismount scenarios.
-- Included class/title/world interaction follow-up fixes.
+- Fixed mount cleanup edge cases, including stale mount states after death.
+- Improved death and rise handling for mounted characters.
+- Updated mount-related utility commands.
 
-## Teleporters, Items, and Utilities
+## World and Utility Maintenance
 
-- Expanded teleporter include/system coverage.
-- Added admin cleanup command support for dungeon teleporters (`.deletedungteles`).
-- Applied item identification and merchant-identify reliability fixes.
-- Added supporting world utility content and script updates.
-
-## Systems Follow-up
-
-- Townstone election/start/admin/treasury flows received another reliability pass.
-- Additional parity maintenance was applied across supporting combat, spawn, and utility systems.
-- Command synopsis coverage was refreshed for the current command surface.
+- Guild house checks were improved.
+- Snooping and stealing restrictions were tightened.
+- Teleporter, spawn, NPC, and AI support scripts were refreshed.
+- Command support and test utilities were updated.
 
 Thanks for playing Zuluhotel Omega 3.
