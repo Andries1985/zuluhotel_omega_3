@@ -7,46 +7,51 @@
 
 ## What Changed
 
-Patch 3.0.4 is a systems cleanup release centered on housing, townstones, mounts, guilds, snooping/stealing, and world utility fixes.
+Patch 3.0.4 is a broad systems and data sync update.
 
-Players should notice more reliable house sign behavior, cleaner mount and death recovery, improved townstone status tools, and a handful of interaction fixes across long-running systems.
+This release includes housing/sign reliability updates, townstone governance expansions, mount/death stability fixes, animated graphics regeneration work, and command/tooling maintenance across the shard.
 
-## Housing
+## Housing and Multi Systems
 
-- House sign access, owner-name lookup, and co-owner/friend checks were tightened.
-- Custom housing commit and destroy flows were refreshed so placement and cleanup behave more reliably.
-- House-related utility commands were updated to better match live shard behavior.
+- Expanded custom housing package content and refreshed house sign behavior.
+- Updated multi destroy and house management command paths.
+- Improved ownership/co-owner/friend handling around house sign interactions.
 
-## Townstones and Player Towns
+## Townstones and Player-Run Towns
 
-- Added improved town treasury and player-run town status windows.
-- Town upgrade and donation toggles were refreshed.
-- Spawnpoint and townstone data were updated alongside the upgrade sync pipeline.
+- Added player-run town status support and configuration.
+- Improved town treasury admin status tooling.
+- Synced townstone upgrades from spreadsheet source into generated config.
 
-## Mounts, Death, and Movement
+## Mounts, Death, and Character State
 
-- Fixed several mount cleanup and dismount edge cases, including stale mount states after death.
-- Improved death and rise handling so mounted characters recover more consistently.
-- Updated mount-related test and utility commands.
+- Continued fixes for stale mount states around death and dismount flows.
+- Updated death/rise and related character-state transitions.
+- Added/updated mount test and cleanup utility commands.
 
-## Guilds, Snooping, and Stealing
+## Graphics, NPC Data, and Utility Tooling
 
-- Guild house checks were improved for better ownership handling.
-- Snooping and stealing restrictions were tightened, with cleaner item cleanup.
-- Vanity shop and cache support were refreshed to match the updated item behavior.
+- Regenerated animated/non-animated graphics config surfaces.
+- Updated NPC descriptor categorization and related vendor/graphics data.
+- Refreshed supporting generation scripts and diff artifacts.
 
-## World and Utility Updates
+## Guild, Theft, Vanity, and Cache Follow-up
 
-- Teleporter and spawn-related support data were expanded.
-- Several NPC and AI scripts received cleanup and safety fixes.
-- Command support and test utilities were refreshed, including destroy-multi and related helpers.
+- Guild command path and guild handling updates.
+- Snooping/stealing reliability and validation fixes.
+- Vanity shop and Omega Cache consistency updates.
+
+## World and Command Maintenance
+
+- Spawnpoint groups and teleporter support were expanded.
+- Broad AI and include-level maintenance updates were applied.
+- Admin/seer/player command surfaces were refreshed.
 
 ## Player Highlights
 
-- More reliable house sign and ownership handling.
-- Clearer town treasury and player-town status screens.
-- Better mount cleanup after death and dismount issues.
-- Tighter snooping/stealing restrictions.
-- General world and command maintenance across the shard.
+- More reliable housing sign and access behavior.
+- Better town status visibility and governance controls.
+- Improved mount/death edge-case stability.
+- Ongoing cleanup for theft, vanity, and world utility systems.
 
 Thanks for playing Zuluhotel Omega 3.
