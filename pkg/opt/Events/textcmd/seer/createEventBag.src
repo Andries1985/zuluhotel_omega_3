@@ -45,9 +45,9 @@ program createEventBag(who)
 	if(color)
 		item.color := color;
 	endif
-	CreateItemInContainer( bag, 0x9A89 );
-	CreateItemInContainer( bag, 0x9A90 );
-	CreateItemInContainer( bag, 0x9A90 );
+	CreateItemInContainer( bag, 0x4001AA );
+	CreateItemInContainer( bag, 0x4001AB );
+	CreateItemInContainer( bag, 0x4001AB );
 return;
 endprogram
 

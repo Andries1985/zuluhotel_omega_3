@@ -1,6 +1,7 @@
 use uo;
 use os;
 use cliloc;
+use guilds;
 
 include ":keys:key";
 include ":mdgumps:confirmationSizable";
@@ -83,7 +84,30 @@ function GetHouseDecayDisplay(sign)
 	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
 endfunction
 
-function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, lockdowns, secures, declare_text, can_manage)
+function GetGuildHouseName(house)
+	if(!house)
+		return "";
+	endif
+
+	var guild_house_id := GetObjProperty(house, "GuildHouse");
+	if(!guild_house_id || guild_house_id.errortext)
+		return "";
+	endif
+
+	foreach guild in ListGuilds()
+		if(CInt(guild.guildid) == CInt(guild_house_id) && CInt(guild.getprop("GuildHouse")) == CInt(house.serial))
+			var guild_name := guild.getprop("GuildName");
+			if(guild_name && !guild_name.errortext)
+				return guild_name;
+			endif
+			return "Unknown Guild";
+		endif
+	endforeach
+
+	return "";
+endfunction
+
+function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, lockdowns, secures, guild_house_name, declare_text, can_manage)
 	GFInitGump();
 	GFNoDispose();
 	GFResizePic(100, 45, 2600, 412, 300);
@@ -111,6 +135,10 @@ function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, loc
 	GFTextLine(350, 215, 0, CStr(lockdowns));
 	GFTextLine(135, 240, 2302, "Number of secure containers:");
 	GFTextLine(350, 240, 0, CStr(secures));
+	if(guild_house_name)
+		GFTextLine(135, 265, 2302, "Guild House:");
+		GFTextLine(220, 265, 0, guild_house_name);
+	endif
 	if(!can_manage)
 		return GFSendGump(who);
 	endif
@@ -260,6 +288,7 @@ program Mulit_House_sign(who, sign)
 	endif
 	var remaining_lockdowns := GetObjProperty(sign, "RemainingLockdowns");
 	var remaining_secures := GetObjProperty(sign, "RemainingSecures");
+	var guild_house_name := GetGuildHouseName(house);
 	var house_type := GetHouseTypeDisplayName(house);
 	var friend_ := 0, cown := 0;
 	var friendlist := sign.GetFriendList();
@@ -277,9 +306,9 @@ program Mulit_House_sign(who, sign)
 	var result;
 	var acct := GetObjProperty(sign, "owneracct");
 	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2))
-		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, declare_text, 1);
+		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 1);
 	else
-		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, declare_text, 0);
+		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 0);
 	endif
 	// Friends can see house lists.
 	if(sign.IsAFriend(who))
@@ -774,6 +803,16 @@ endfunction
 
 function demolish(house, sign, who, bank_region)
 	sign := sign;
+	var guild_house_id := GetObjProperty(house, "GuildHouse");
+	if(guild_house_id && !guild_house_id.errortext)
+		var guild_house_serial := CInt(house.serial);
+		foreach guild in ListGuilds()
+			if(CInt(guild.guildid) == CInt(guild_house_id) && CInt(guild.getprop("GuildHouse")) == guild_house_serial)
+				SendSysMessage(who, "This house is your active guild house. Select a new guild house first.", color := 33);
+				return;
+			endif
+		endforeach
+	endif
 	if(!IsOmegaCacheEmpty(house.serial))
 		SendSysMessage(who, "You cannot redeed this house while Omega Cache contents are stored.", color := 33);
 		return;
@@ -889,21 +928,54 @@ function demolish(house, sign, who, bank_region)
 			endif
 		endforeach
 		CloseOmegaCacheStore(house.serial);
+		var hserial := house.serial;
+		var hx := house.x;
+		var hy := house.y;
+		var hz := house.z;
+		var hrealm := house.realm;
 		var destroy_result := DestroyMulti(house);
-		if(destroy_result.errortext)
-			Print("House demolish failed for serial " + house.serial + " (objtype " + Hex(house.objtype) + "): " + destroy_result.errortext);
-			SendSysMessage(who, "Could not demolish this house: " + destroy_result.errortext, color := 33);
+		var destroy_failed := 0;
+		var destroy_err := "";
+		if(!destroy_result)
+			destroy_failed := 1;
+			destroy_err := "DestroyMulti returned false";
+		elseif(destroy_result.errortext)
+			destroy_failed := 1;
+			destroy_err := destroy_result.errortext;
+		endif
+
+		var still_exists := SystemFindObjectBySerial(CInt(hserial));
+		if(still_exists)
+			var destroy_retry := DestroyMulti(still_exists);
+			if((!destroy_retry) || destroy_retry.errortext || SystemFindObjectBySerial(CInt(hserial)))
+				destroy_failed := 1;
+				if(destroy_retry && destroy_retry.errortext)
+					destroy_err := destroy_retry.errortext;
+				elseif(destroy_err == "")
+					destroy_err := "multi serial still exists after retry";
+				endif
+			endif
+		endif
+
+		if(destroy_failed)
+			Print("House demolish failed for serial " + CStr(hserial) + " (objtype " + Hex(house.objtype) + "): " + destroy_err);
+			SendSysMessage(who, "Could not demolish this house: " + destroy_err, color := 33);
 			return;
 		endif
 
 		// Some clients can keep rendering the removed multi shell until a full
-		// local revision update is forced.
-		foreach viewer in ListMobilesNearLocation(house.x, house.y, house.z, 18, house.realm)
+		// local revision update is forced. Use cached coords because the house
+		// object may be invalid after DestroyMulti.
+		foreach viewer in ListMobilesNearLocation(hx, hy, hz, 24, hrealm)
 			if(viewer && viewer.connected)
 				IncRevision(viewer);
 				MoveObjectToLocation(viewer, viewer.x, viewer.y, viewer.z, viewer.realm, MOVEOBJECT_FORCELOCATION);
 			endif
 		endforeach
+		if(who && who.connected)
+			IncRevision(who);
+			MoveObjectToLocation(who, who.x, who.y, who.z, who.realm, MOVEOBJECT_FORCELOCATION);
+		endif
 	elseif(builtdeed_error)
 		SendSysMessage(who, "Could not find the built deed, please page a GM.", color := 33);
 		return;
@@ -1185,6 +1257,14 @@ function AddSecureFacingFromMenu(who, sign, house, facing_east := 1)
 		SendSysMessage(who, "Could not create the secure container.", color := 33);
 		return;
 	endif
+	var lockid := GetObjProperty(box, "LockID");
+	if(lockid && !lockid.errortext)
+		var lockids := {};
+		lockids.append(lockid);
+		KP_DestroyKeysForLockIDsInContainer(box, lockids);
+		EraseObjProperty(box, "LockID");
+	endif
+	box.locked := 0;
 	box.movable := 0;
 	SetObjProperty(box, "houseserial", CInt(house.serial));
 	SetObjProperty(box, "secure", 1);

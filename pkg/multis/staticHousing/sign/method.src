@@ -125,10 +125,11 @@ exported function IsLocationInsideHouse(sign, byref loc_or_x, y := error, z := e
 	var footage := GetObjProperty(sign, "footage");
 	var chk := 0;
 	foreach thing in footage
+		var minz := CInt(thing[3]) - 12;
 		if((rlm == sign.realm) &&
 			(x >= thing[1] && x <= thing[4]) &&
 			(yloc >= thing[2] && yloc <= thing[5]) &&
-			(zloc >= thing[3] && zloc <= thing[6]))
+			(zloc >= minz && zloc <= thing[6]))
 			chk := 1;
 			break;
 		endif
@@ -156,10 +157,11 @@ exported function IsObjectInsideHouse(byref sign, byref object)
 	footage := GetObjProperty (sign, "footage");
 	var chk := 0;
 	foreach thing in footage
+		var minz := CInt(thing[3]) - 12;
 		if ( (object.realm == sign.realm) &&
 			(object.x >= thing[1] && object.x <= thing[4]) &&
 			(object.y >= thing[2] && object.y <= thing[5]) &&
-			(object.z >= thing[3] && object.z <= thing[6]) )
+			(object.z >= minz && object.z <= thing[6]) )
 			chk := 1;
 			return chk;
 		endif

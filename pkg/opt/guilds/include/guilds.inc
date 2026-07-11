@@ -40,6 +40,38 @@ function IsGuildHouseOwner(who, house)
 	return 0;
 endfunction
 
+function GuildSafeObjProperty(obj, propname, fallback := "")
+	var value := GetObjProperty(obj, propname);
+	if(value == error)
+		return fallback;
+	endif
+	if(value && value.errortext)
+		return fallback;
+	endif
+	if(!value)
+		return fallback;
+	endif
+	return value;
+endfunction
+
+function GetGuildHouseDisplayName(house)
+	if(!house)
+		return "Unknown house";
+	endif
+
+	var hname := GuildSafeObjProperty(house, "MultiName", "");
+	if(hname != "")
+		return hname;
+	endif
+
+	var htype := GuildSafeObjProperty(house, "MultiType", "");
+	if(htype != "")
+		return htype;
+	endif
+
+	return "House " + Hex(CInt(house.objtype));
+endfunction
+
 function GetOwnedGuildCandidateHouses(who)
 	var owned := array;
 	var realmslist := Realms();
@@ -129,11 +161,23 @@ endfunction
 function DisbandGuild(guild)
 
 	// remove colour from guild house
-	var guildhouse := guild.getprop("GuildHouse");
+	var guildhouse_serial := guild.getprop("GuildHouse");
+	var guildhouse := 0;
+	if(guildhouse_serial)
+		guildhouse := SystemFindObjectBySerial(CInt(guildhouse_serial));
+	endif
 	//SetGuildHouseColour(guildhouse, 0);
 
-	// remove guild from the house
-	EraseObjProperty(guildhouse, "GuildHouse");
+	// remove guild reference from the linked house if it still exists
+	if(guildhouse)
+		var linked_guild_id := GetObjProperty(guildhouse, "GuildHouse");
+		if(CInt(linked_guild_id) == CInt(guild.guildid))
+			EraseObjProperty(guildhouse, "GuildHouse");
+		endif
+	endif
+
+	// also clear the guild-side house reference before destruction
+	guild.eraseprop("GuildHouse");
 
 	// remove all players from guild. Remove players titles
 	foreach person in (guild.members)

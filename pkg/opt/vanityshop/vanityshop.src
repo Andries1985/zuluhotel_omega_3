@@ -51,13 +51,13 @@ function GetConfigItems(file)
             var dirty_desc := GetConfigString(element, "Desc");
             var clean_desc := SplitWords(dirty_desc,"%");
 
-			if (key == "0x9A90")
+			if (key == "0x4001AB")
 				AddVanityItem(key, element, clean_desc, 1);
 				AddVanityItem(key, element, clean_desc, 5);
 				AddVanityItem(key, element, clean_desc, 10);
-			elseif (key == "0x9A89")
+			elseif (key == "0x4001AA")
 				// Power Tome is not sold directly in the vanity shop.
-			elseif (key == "0x9B00")
+			elseif (key == "0x4001AC")
 				AddVanityItem(key, element, clean_desc, 1);
 				AddVanityItem(key, element, clean_desc, 5);
 				AddVanityItem(key, element, clean_desc, 10);

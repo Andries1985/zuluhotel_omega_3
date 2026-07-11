@@ -55,6 +55,13 @@ program CustomItemDye (who, omegadye)
 		return;
 	endif
 
+	if (item.container != who.backpack)
+		SendSysmessage( who, "You can only dye items in your backpack!" );
+		Releaseitem(omegadye);
+		Releaseitem(item);
+		return;
+	endif
+
 	var old_color := item.color;
 	//item.color := new_color;
 	//charges -= 1;

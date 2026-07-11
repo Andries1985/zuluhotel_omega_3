@@ -220,10 +220,10 @@ function CreatehouseKeysAndBuiltDeed2(character, housetype, where, deed)
   SetObjProperty(house,"owneracct",character.acctname);
   SetObjProperty(house,"builtdeed",builtdeed.serial);
   SetObjProperty(house,"decay", (ReadGameClock() + get_abandon_time()));
-  if(housetype==0x6bb8 || housetype==0x16070 || housetype==0x16072)
-    house.movable:=0;
-    house.visible:=1;
-  endif
+  // if(housetype==0x6bb8 || housetype==0x16070 || housetype==0x16072)
+  //   house.movable:=0;
+  //   house.visible:=1;
+  // endif
 	var result := array;
 	result .+ packkey := packkey;
 	result .+ bankkey := bankkey;
