@@ -497,6 +497,34 @@ function castlearray(house, x, y, z)
   return boxarray;
 endfunction
 
+function gothicfortressarray(house, x, y, z)
+  var boxarray := {};
+  var box1 := {};
+  box1.append(x - 15);
+  box1.append(y - 15);
+  box1.append(z     );
+  box1.append(x + 15);
+  box1.append(y + 16);
+  box1.append(z + 67);
+  boxarray[1] := box1;
+  var banarray := {};
+  var bantile;
+  bantile := CreateItemAtLocation(x-1, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+1, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  bantile := CreateItemAtLocation(x+2, y+16, Z+3, "bantile", 1, house.realm);
+  banarray.append(bantile.serial);
+  SetObjProperty(bantile, "houseserial", house.serial);
+  SetObjProperty(house, "bantiles", banarray);
+  return boxarray;
+endfunction
+
 function keeparray(house, x, y, z)
   var boxarray := {};
   var box1 := {};

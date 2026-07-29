@@ -454,10 +454,22 @@ function GetHouseFootprintBounds(housetype, x, y)
       bounds := {x - 10, y - 10, x + 11, y + 11};
     0x16071:
       bounds := {x - 14, y - 14, x + 14, y + 14};
+    0x1607D:
+      bounds := {x - 15, y - 15, x + 15, y + 16};
     0x16075:
       bounds := {x - 3, y - 3, x + 3, y + 3};
     default:
-      return 0;
+      var id := ReadConfigFile("itemdesc");
+      var elem := id[housetype];
+      if(!elem)
+        return 0;
+      endif
+      var multiid := CInt(elem.MultiID);
+      var dims := GetMultiDimensions(multiid);
+      if(!dims)
+        return 0;
+      endif
+      bounds := {x + dims.xmin, y + dims.ymin, x + dims.xmax, y + dims.ymax};
   endcase
   return bounds;
 endfunction
@@ -494,7 +506,37 @@ function FindBoxArray(housetype, house)
     0x1607A: ftage := smallmarbleworkshoparray(house, house.x, house.y, house.z); // Small Marble Workshop
     0x1607B: ftage := gardenshedarray(house, house.x, house.y, house.z); // Garden Shed South
     0x1607C: ftage := gardenshedarray(house, house.x, house.y, house.z); // Garden Shed East
+    0x1607D: ftage := gothicfortressarray(house, house.x, house.y, house.z); // Gothic Fortress
   endcase
+  if(!ftage)
+    ftage := BuildGenericFootageArray(housetype, house);
+  endif
   return ftage;
+endfunction
+
+function BuildGenericFootageArray(housetype, house)
+  var boxarray := {};
+  var id := ReadConfigFile("itemdesc");
+  var elem := id[housetype];
+  if(!elem)
+    return boxarray;
+  endif
+
+  var multiid := CInt(elem.MultiID);
+  var dims := GetMultiDimensions(multiid);
+  if(!dims)
+    return boxarray;
+  endif
+
+  var box := {};
+  box.append(house.x + dims.xmin);
+  box.append(house.y + dims.ymin);
+  box.append(house.z - 8);
+  box.append(house.x + dims.xmax);
+  box.append(house.y + dims.ymax);
+  box.append(house.z + 80);
+  boxarray[1] := box;
+  SetObjProperty(house, "bantiles", {});
+  return boxarray;
 endfunction
 
