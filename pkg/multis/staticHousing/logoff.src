@@ -5,7 +5,7 @@ use file;
 use os;
 
 include "include/math";
-include "include/eventID";
+include "include/eventid";
 include "include/attributes";
 include "include/clock";
 include ":timeutils:gameTime";
