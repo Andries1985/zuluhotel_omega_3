@@ -549,8 +549,10 @@ var teleporters := {
     //Winterwyn
     {1068,  629,  20,  5184,  1160,  0,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining - Need added back to map
     {1069,  629,  20,  5183,  1160,  0,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
-    {5183,  1161,  0,  1068,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
-    {5184,  1161,  0,  1069,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
+    // //BAD TELEPORTER - REMOVE
+    // {5183,  1161,  0,  1068,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
+    // //BAD TELEPORTER - REMOVE
+    // {5184,  1161,  0,  1069,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
 
     //Sunken City
     { 1908, 3665, 60, 1979, 3651, 5, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Mainland - Fixed for New Map
@@ -1049,12 +1051,18 @@ var teleporters := {
     { 5408, 2017, 0, 5951, 2219, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
     { 5408, 2018, 0, 5951, 2220, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
     { 5408, 2019, 0, 5951, 2221, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
-    { 2210, 1097, 1, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
-    { 2211, 1097, 3, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
-    { 2212, 1097, 4, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
-    { 5793, 457, 1, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
-    { 5794, 457, 1, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
-    { 5795, 457, 0, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    // //BAD TELEPORTER - REMOVE
+    // { 2210, 1097, 1, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 2211, 1097, 3, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 2212, 1097, 4, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 5793, 457, 1, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    // //BAD TELEPORTER - REMOVE
+    // { 5794, 457, 1, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    // //BAD TELEPORTER - REMOVE
+    // { 5795, 457, 0, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
     { 6205, 435, 0, 5495, 1009, 20, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl 1 -> Ogre Cave Lvl2
     { 6206, 435, 0, 5496, 1009, 30, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl 1 -> Ogre Cave Lvl2
     { 5495, 1010, 20, 6205, 436, 0, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl2 -> Ogre Cave Lvl1
@@ -1073,8 +1081,10 @@ var teleporters := {
     { 5240, 1763, 19, 5230, 1787, 25, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
     { 5539, 2111, 0, 1068, 630, 21, "britannia_alt", "britannia_alt" }, //Winterwyn Mine -> Winterwyn
     { 5540, 2111, 0, 1069, 630, 21, "britannia_alt", "britannia_alt" }, //Winterwyn Mine -> Winterwyn
-    { 1068, 629, 21, 5539, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
-    { 1069, 629, 21, 5540, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 1068, 629, 21, 5539, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 1069, 629, 21, 5540, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
     { 5592, 2739, -15, 6983, 3586, 0, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
     { 5593, 2739, -15, 6984, 3586, -1, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
     { 5594, 2739, -15, 6985, 3586, -2, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
@@ -1127,9 +1137,12 @@ var teleporters := {
     { 7072, 3842, 0, 6126, 3168, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
     { 7072, 3843, 0, 6126, 3169, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
     { 7072, 3844, 0, 6126, 3170, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
-    { 2210, 1097, 1, 6311, 3003, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
-    { 2211, 1097, 3, 6312, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
-    { 2212, 1097, 4, 6313, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 2210, 1097, 1, 6311, 3003, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 2211, 1097, 3, 6312, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 2212, 1097, 4, 6313, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
     { 6311, 3004, 2, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
     { 6312, 3004, 3, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
     { 6313, 3004, 3, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
@@ -1149,9 +1162,12 @@ var teleporters := {
     { 6778, 1072, 0, 6323, 2973, 3, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Mine
     { 6322, 2972, 3, 6777, 1071, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
     { 6322, 2973, 3, 6777, 1072, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
-    { 5793, 457, 1, 5490, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
-    { 5794, 457, 1, 5491, 64, 0, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
-    { 5795, 457, 0, 5492, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    // //BAD TELEPORTER - REMOVE
+    // { 5793, 457, 1, 5490, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    // //BAD TELEPORTER - REMOVE
+    // { 5794, 457, 1, 5491, 64, 0, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    // //BAD TELEPORTER - REMOVE
+    // { 5795, 457, 0, 5492, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
     { 5489, 63, 0, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
     { 5490, 63, -1, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
     { 5491, 63, 0, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
@@ -1335,8 +1351,10 @@ var teleporters := {
     { 6301, 2810, 0, 4575, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 4612, 475, 5, 5902, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4612, 476, 5, 5902, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
-    { 5901, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
-    { 5901, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    // //BAD TELEPORTER - REMOVE
+    // { 5901, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    // //BAD TELEPORTER - REMOVE
+    // { 5901, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 4636, 491, 5, 5877, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4637, 491, 5, 5878, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 5877, 2203, 0, 4636, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
@@ -1371,6 +1389,24 @@ var teleporters := {
     { 7023, 2825, 0, 3408, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
     { 7024, 2825, 0, 3409, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
     { 7025, 2825, 0, 3410, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+
+    //Nagash Added August 2026
+    { 719, 1424, 22, 6391, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 720, 1424, 22, 6392, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 721, 1424, 22, 6393, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 6391, 357, 22, 719, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6392, 357, 22, 720, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6393, 357, 22, 721, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6418, 185, 0, 6798, 460, 0, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Vault of the First Dynasty Lvl1
+    { 6419, 185, 0, 6799, 460, 0, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Vault of the First Dynasty Lvl1
+    { 6798, 459, 0, 6418, 184, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Ancient Sewers
+    { 6799, 459, 0, 6419, 184, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Ancient Sewers
+    { 6878, 515, 0, 6622, 679, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Vault of the First Dynasty Lvl2
+    { 6878, 516, 0, 6622, 680, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Vault of the First Dynasty Lvl2
+    { 6621, 679, 0, 6877, 515, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl2 -> Vault of the First Dynasty Lvl1
+    { 6621, 680, 0, 6877, 516, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl2 -> Vault of the First Dynasty Lvl1
+    { 5902, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5902, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
 
     ////////////////////////////////
     ////////////////////////////////

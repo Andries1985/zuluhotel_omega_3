@@ -3,9 +3,9 @@ use os;
 use cliloc;
 use vitals;
 
-include "include/eventID";
-include ":gumps:yesNo";
-include "include/sysEvent";
+include "include/eventid";
+include ":gumps:yesno";
+include "include/sysevent";
 include "include/canAccess";
 include "include/housing";
 include ":statichousing:include/settings";

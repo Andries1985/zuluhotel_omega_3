@@ -1,5 +1,9 @@
-# Latest Changes
-Always check Discord announcements for all patchnotes.
+# Patch Notes - v3.0.5
+**Zuluhotel Omega 3 | Beta Shard**
+
+**Date: [August 2, 2026]**
+
+---
 
 ## What Changed
 
@@ -11,14 +15,29 @@ Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fort
 - Added a new purchasable house: the Gothic Fortress, complete with its own banner decorations and properly sized lockdown/secure area.
 - Any newly imported house type now automatically gets a correctly sized lockdown/secure area based on its footprint, even without custom setup, so new houses added in the future should work correctly out of the box.
 
+### Player Impact
+
+- More house deed variety available from housing vendors.
+- The new Gothic Fortress house can be purchased and placed like other houses.
+- Fewer chances of a new house type having broken or missing lockdown/secure storage.
+
 ## NPC Fix
 
 - Corrected the Horned Rat's color, which was displaying an incorrect custom hue.
+
+### Player Impact
+
+- The Horned Rat now appears with its correct color.
 
 ## Teleporter Network
 
 - Added new two-way teleporters connecting Lost City, the Ancient Sewers, and the Vault of the First Dynasty (both levels).
 - Disabled a handful of duplicate/incorrect one-way teleporter links around Winterwyn Mining, the Cult of the Serpent Isle, Nexus Outskirts, the Underdark, and the Sosaria mine connections; a corrected replacement link was added where one of these was needed.
+
+### Player Impact
+
+- New travel routes between Lost City, the Ancient Sewers, and the Vault of the First Dynasty.
+- A few teleporters that could send you to the wrong place or dead-end no longer function; legitimate routes to those areas are unaffected.
 
 ## Server Stability and Performance
 
@@ -26,9 +45,19 @@ Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fort
 - The server can no longer freeze up shard-wide because of a slow or stalled web/API connection.
 - Character name tooltips (title/prefix/suffix/race/guild) now display consistently with what shows on the paperdoll.
 
+### Player Impact
+
+- Faster, smoother logins during busy periods and after restarts.
+- Better overall server stability under load.
+- More consistent-looking name tooltips when mousing over characters.
+
 ## Behind the Scenes
 
-- The server engine gained the ability for certain non-creature world objects to be engaged and damaged directly in combat. No current content uses this yet, so no direct gameplay change is expected.
+- The server engine gained the ability for certain non-creature world objects to be engaged and damaged directly in combat. No current content uses this yet.
+
+### Player Impact
+
+- No direct gameplay change expected from this yet — it's groundwork for possible future content.
 
 ## Summary
 
