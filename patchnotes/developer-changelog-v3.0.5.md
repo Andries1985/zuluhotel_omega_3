@@ -1,25 +1,28 @@
 # Developer Changelog - v3.0.5
 
-Range: Patch-3.0.4..Patch-3.0.5 (commit `2afb166`..`80d5327`, plus staged/uncommitted working-tree changes queued for this release)
+Range: Patch-3.0.4..Patch-3.0.5 (commit `2afb166`..`6cc93f5`)
 Branch: Patch-3.0.5
-Date: 2026-08-02
+Date: 2026-08-02 through 2026-08-04
 
 ---
 
 ## Scope Summary
 
-- Total files changed: 22
-- Status breakdown: 22 modified, 0 added, 0 deleted, 0 renamed
-- Net textual delta: 3482 insertions, 161 deletions (text files only; 6 binaries were also rebuilt: `pol.exe`, `poltool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`, `uoconvert.exe`, `uotool.exe`)
+- Total files changed: 26 (excluding the patch-note docs themselves)
+- Status breakdown: 26 modified, 0 added, 0 deleted, 0 renamed
+- Net textual delta: 6640 insertions, 3663 deletions (text files only; 6 binaries were also rebuilt: `pol.exe`, `poltool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`, `uoconvert.exe`, `uotool.exe`)
 - Largest shifts:
+  - `pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg` (+3093 / -3489) - renumbered after removing 33 duplicate/erroneous door decor entries
   - `pkg/multis/house/config/itemdesc.cfg` (+3041 / -113) - ~90 new Fiddler-imported house deed entries + Gothic Fortress
   - `core-changes.txt` (+148 / -0) - polserver engine changelog sync, 05-31-2026 through 07-30-2026
   - `config/mrcspawn.cfg` (+123 / -1) - new house deeds added to deed vendor stock
+  - `scripts/misc/chrdeath.src` (+63 / -11) - fourth attempt at the mount-stuck-on-death fix
   - `scripts/include/teleporters.inc` (+54 / -18) - new dungeon teleporters + disabled bad routes
-  - `pol.cfg` (+22 / -11), `pol.cfg.example` (+11 / -5) - server settings changes following engine sync
+  - `pol.cfg` (+20 / -9), `pol.cfg.example` (+11 / -5) - server settings changes following engine sync, plus reverting the debug-watch settings back off
 - Non-merge commits in range:
   - New multis from Fiddler NPC fix (`80d5327`)
-- Additional scope: a staged (not yet committed at time of writing) polserver engine core sync touching `core-changes.txt`, `pol.cfg`/`pol.cfg.example`, `scripts/modules/{npc,os,uo,vitals}.em`, the six shipped tool binaries, `scripts/include/teleporters.inc` (bad-route cleanup + new dungeon links), and three include-path case fixes.
+  - New Core / patch notes update / teleporters fix / naming case fix (`38e8a76`)
+  - New update to areas and doors and regions to fix errors / attempt to fix character death being mounted (`6cc93f5`)
 
 ---
 
@@ -35,13 +38,17 @@ Legend: `Status | File`
 - M | pkg/multis/house/multiDeed/use.src
 - M | pkg/multis/staticHousing/logoff.src
 - M | pkg/multis/staticHousing/sign/control.src
+- M | pkg/opt/areas/areas.cfg
+- M | pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg
 - M | pkg/utils/gumps/commands/admin/selectiongump.src
 - M | pol.cfg
 - M | pol.cfg.example
 - M | pol.exe
 - M | poltool.exe
+- M | regions/regions.cfg
 - M | scripts/ecompile.exe
 - M | scripts/include/teleporters.inc
+- M | scripts/misc/chrdeath.src
 - M | scripts/modules/npc.em
 - M | scripts/modules/os.em
 - M | scripts/modules/uo.em
@@ -131,7 +138,7 @@ Notable functional changes:
   - `uoconvert`: fixed a UOP size-estimator bug that dropped a block from the final chunk (broke conversion of Ilshenar/map2 and Tokuno/map4), fixed a `maptile.dat` floor-vs-ceil block-index bug that corrupted the easternmost/southernmost tile-block on realms whose dimensions aren't multiples of 64 (bumping `RealmDescriptor::VERSION` 1->2, requiring realm reconversion), and parallelized `map`/`maptile` conversion across CPU cores (new `threads=` argument, default all cores) with byte-identical output.
   - A `customhouse` include/inc: `addhousepart`/`erasehousepart` now also accept a single array-of-struct `{graphic,xoffset,yoffset,z}` argument for adding/erasing multiple parts at once.
   - Misc data-race/socket fixes: aux connection close vs. deferred transmit race; macOS `POLLHUP`-before-drain data loss on socket close.
-- `pol.cfg`: `LogLevel`, `WatchRPM`, `WatchSysLoad`, `LogScriptCycles` all changed from `0` to `1` (this shard now logs/watches these by default); added `DefaultPriority=10` documentation block; replaced the `LoginServerSelectTimeout` block with a documented `StalledPeerTimeout=60`; commented out `DebugLocalOnly=1` (now implied/enforced by the engine default) and `MiniDumpType=variable`; added a clarifying comment line to `DebugLocalOnly`'s doc block noting the new bind-to-127.0.0.1 behavior.
+- `pol.cfg`: `LogLevel`, `WatchRPM`, `WatchSysLoad`, `LogScriptCycles` all changed from `0` to `1` (this shard now logs/watches these by default); added `DefaultPriority=10` documentation block; replaced the `LoginServerSelectTimeout` block with a documented `StalledPeerTimeout=60`; commented out `DebugLocalOnly=1` (now implied/enforced by the engine default) and `MiniDumpType=variable`; added a clarifying comment line to `DebugLocalOnly`'s doc block noting the new bind-to-127.0.0.1 behavior. (`LogLevel`, `WatchRPM`, `WatchSysLoad`, and `LogSysLoad` were then reverted back from `1` to `0` in `6cc93f5` after the initial sync landed; `LogScriptCycles` was left untouched.)
 - `pol.cfg.example`: same `StalledPeerTimeout` doc replacement and `DebugLocalOnly`/`WebServerLocalOnly` clarifying comments as `pol.cfg` (values left at their example defaults).
 - Rebuilt `pol.exe`, `poltool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`, `uoconvert.exe`, `uotool.exe` against the synced engine revision.
 
@@ -153,13 +160,46 @@ Notable functional changes:
 Expected impact:
 - Matches the on-disk (lowercase) filenames, avoiding include-resolution failures on case-sensitive filesystems/toolchains per [[reference_escript_language_basics]].
 
+### 6) Mount-Stuck-On-Death Fix (Fourth Attempt)
+
+Files involved:
+- `scripts/misc/chrdeath.src`
+
+Notable functional changes:
+- This is the fourth attempt at fixing the bug tracked in [[project_mount_stuck_on_death_bug]] (ghost left with a stuck mounted pose/speed after PvP death); not yet confirmed fixed live.
+- Mount-location lookup now checks a fourth location: `foreach item in ListRootItemsInContainerOfObjtype(ghost,0x1F021)` over the ghost's root contents, in addition to the existing corpse-layer-25, ghost-layer, and corpse-root-contents checks. Matches the same four locations `clearmount.src` (the manual GM recovery command for this bug) already checks.
+- Added an explicit `Print()` when no mount item is found in any of the four locations, for diagnosing recurrences from console output.
+- Added a "belt-and-suspenders" sweep after the normal dismount: loops all equipment layers 1-30 (skipping `LAYER_MOUNT`) destroying any stray item with `objtype == 0x1F021`, and separately scans the ghost's backpack root contents (`EnumerateItemsInContainer(ghost.backpack, ENUMERATE_ROOT_ONLY)`) destroying any mount-objtype item found there. Each destroy attempt falls back to `ReleaseItem()` + `SleepMS(50)` + retry if `DestroyItem()` fails outright.
+- Added explicit clearing of `DMountSerial`, `bmSpeed`, and `SpeedWalk` obj-properties (previously only `DonatorMounted` was erased), matching everything `clearmount.src` resets by hand.
+- Replaced the old `SendPacket(ghost, "BF0006002600")` stale-movement-packet reset with a hide/unhide cycle: `ghost.hidden := 1; SleepMS(50); ghost.hidden := 0;` before the existing `IncRevision()` + `MoveObjectToLocation(..., MOVEOBJECT_FORCELOCATION)` client-resync call. Rationale documented inline: a forced/instant mount-to-ghost transition (dying while mounted, rather than a normal double-click dismount) is a known UO client bug class where the client keeps rendering the pre-transition mounted pose; briefly removing and re-inserting the mobile forces a full client redraw, using the same technique already applied elsewhere in this codebase (`pvp.src`, `pvp2vs2.src`, `chaosmultikillpcs.src`).
+
+Expected impact:
+- More mount-item locations and stale properties are now caught and cleared on death, and the client-resync method changed from a raw movement packet to a hide/unhide cycle. Whether this actually eliminates the stuck-mounted-ghost bug is unconfirmed — watch server console `Print()` output (the new "no mount item found..." and "destroying stray mount item..." lines) if it recurs.
+
+### 7) Dungeon Region/Area Boundary Fixes + Door Decoration Cleanup
+
+Files involved:
+- `pkg/opt/areas/areas.cfg`
+- `regions/regions.cfg`
+- `pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg`
+
+Notable functional changes:
+- Fire Dungeon: `Area`/`Region` Y-range extended from `2196-2259` to `2196-2559` in both `areas.cfg` and `regions.cfg` (matching pair of edits) — the previous range cut the dungeon's named area/region off partway through its actual footprint.
+- Caverns of Despair 2: `Area`/`Region` Y-range extended from `1076-1463` to `1048-1463` in both files, for the same reason.
+- `doors.cfg`: removed 33 duplicate door decoration entries (verified by diffing the full old/new entry sets by `(ObjType, X, Y, Z, Color, Realm)` — no coordinates, graphics, or colors changed on any surviving entry, and nothing was added; the 33 removed entries were exact duplicates/overlaps of other door placements). The large line-count diff on this file is from every subsequent `Decor N` block being renumbered after the removals, not from unrelated content changes.
+
+Expected impact:
+- Players in the Fire Dungeon and Caverns of Despair 2 areas are no longer cut off from area/region-based mechanics (e.g. guard zones, area-triggered scripts) partway through the dungeon.
+- Removing the duplicate door decorations should not change visible behavior other than resolving whatever "errors" (per the commit message) the duplicates were causing — most likely double-triggering or targeting ambiguity on doors placed at the same coordinates.
+
 ---
 
 ## Validation Notes
 
-- Diff range used: `Patch-3.0.4..Patch-3.0.5` (`2afb166..80d5327`), plus staged/uncommitted working-tree changes present at time of writing and confirmed as intended for this release.
+- Diff range used: `Patch-3.0.4..Patch-3.0.5` (`2afb166..6cc93f5`), covering all three non-merge commits in range (`80d5327`, `38e8a76`, `6cc93f5`).
 - Coverage checks used:
-  - `git diff --name-status 2afb166`
-  - `git diff --numstat 2afb166`
-  - `git log --no-merges --oneline 2afb166..HEAD`
-- This changelog is exhaustive for the branch delta (committed + staged) at the time of generation. If the staged changes are amended or split into multiple commits before release, re-verify the file inventory and commit list above.
+  - `git diff --name-status 2afb166..6cc93f5`
+  - `git diff --numstat 2afb166..6cc93f5`
+  - `git log --no-merges --oneline 2afb166..6cc93f5`
+  - Per-file `git show <commit> -- <path>` review for each theme, plus a scripted old/new entry-set diff of `doors.cfg` to separate real content changes from renumbering noise.
+- This changelog is exhaustive for the branch delta at the time of generation (2026-08-04, `HEAD` = `6cc93f5`, working tree clean). If further commits land on `Patch-3.0.5` before release, re-verify the file inventory and commit list above.
