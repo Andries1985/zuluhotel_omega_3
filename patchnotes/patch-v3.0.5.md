@@ -1,13 +1,13 @@
 # Patch Notes - v3.0.5
 **Zuluhotel Omega 3 | Beta Shard**
 
-**Date: [August 2, 2026]**
+**Date: [August 4, 2026]**
 
 ---
 
 ## What Changed
 
-Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fortress), fixes several broken teleporter routes and adds new dungeon connections, corrects a bugged NPC color, and pulls in a batch of server-core engine improvements focused on login speed and connection stability.
+Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fortress), fixes several broken teleporter routes and adds new dungeon connections, corrects a bugged NPC color, pulls in a batch of server-core engine improvements focused on login speed and connection stability, fixes two dungeon areas that were cut short, and includes another attempt at fixing ghosts getting stuck in a mounted pose after dying.
 
 ## New Housing
 
@@ -59,6 +59,30 @@ Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fort
 
 - No direct gameplay change expected from this yet — it's groundwork for possible future content.
 
+## Dungeon Fixes
+
+- Fixed the Fire Dungeon and Caverns of Despair 2 areas, which were previously bounded too small and cut off partway through the dungeon.
+
+### Player Impact
+
+- Guard-zone and other area-based rules now apply correctly across the full Fire Dungeon and Caverns of Despair 2, instead of ending partway through.
+
+## Door Decoration Cleanup
+
+- Removed a number of duplicate door decorations that were placed on top of other doors around the world.
+
+### Player Impact
+
+- Fewer oddities (like misclicks or double-triggering) when using doors at those locations. No new doors were added or removed from the world otherwise.
+
+## Character Death Fix (Continued)
+
+- Made another attempt at fixing the bug where a character's ghost could get stuck showing as mounted (with mount speed) after dying while riding a mount.
+
+### Player Impact
+
+- If you die while mounted, your ghost should be less likely to get visually stuck in a mounted pose/speed. This is not yet confirmed fully fixed — please report it if it still happens.
+
 ## Summary
 
 - Added ~90 new house deeds plus a new Gothic Fortress house, with automatic lockdown/secure sizing for future house imports.
@@ -66,5 +90,8 @@ Patch 3.0.5 adds a large wave of new player housing (including a new Gothic Fort
 - Added new teleporters linking Lost City, the Ancient Sewers, and the Vault of the First Dynasty; disabled several broken teleporter routes elsewhere.
 - Significantly faster logins and improved server stability against stalled connections; fixed inconsistent name tooltip formatting.
 - Added (unused-for-now) engine support for combat-targetable non-creature objects.
+- Fixed the Fire Dungeon and Caverns of Despair 2 areas being cut off too early.
+- Cleaned up duplicate door decorations placed on top of other doors.
+- Another attempt at fixing ghosts getting stuck in a mounted pose after death (not yet confirmed fully resolved).
 
 Thanks for playing Zuluhotel Omega 3.
