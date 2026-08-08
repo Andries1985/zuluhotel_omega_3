@@ -261,11 +261,9 @@ function DestroyContainerAndContents(byref container)
 
 	var item_count := 0;
 	var items_to_destroy := {};
-	foreach item in EnumerateItemsInContainer(container)
-		if(item.container == container)
-			items_to_destroy.append(item);
-			item_count := item_count + 1;
-		endif
+	foreach item in EnumerateItemsInContainer(container, ENUMERATE_ROOT_ONLY)
+		items_to_destroy.append(item);
+		item_count := item_count + 1;
 	endforeach
 
 	EscrowDebugMsg(0, "DestroyContainerAndContents: destroying " + item_count + " items in container");

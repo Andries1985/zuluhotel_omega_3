@@ -245,97 +245,19 @@ program chrdeath(corpse,ghost)
 	endif
 
 
-	// Dismount handling: modern POL core (2013+) unequips the mount from
-	// the character during die() and equips it on the CORPSE's layer 25.
-	// Older/edge-case paths can instead leave it on the ghost's own mount
-	// layer or loose in the corpse's root contents -- clearmount.src (our
-	// manual GM recovery command for this exact bug) additionally has to
-	// check the ghost's root contents, so check all four locations.
-	var mount := GetEquipmentByLayer( corpse, LAYER_MOUNT );
-	if( !mount )
-		mount := GetEquipmentByLayer( ghost, LAYER_MOUNT );
-	endif
-	if( !mount )
-		foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
-			mount := item;
-		endforeach
-	endif
-	if( !mount )
-		foreach item in ListRootItemsInContainerOfObjtype(ghost,0x1F021)
-			mount := item;
-		endforeach
-	endif
+	// Dismount ghost is mounted, check if this is needed.
+	var mount;
+	foreach item in ListRootItemsInContainerOfObjtype(corpse,0x1F021)
+		mount:=item;
+	endforeach
 
 	if(mount)
-		Print( "chrdeath(): dismounting "+ghost.name+" mount item "+mount.serial+" graphic=0x"+Hex(mount.graphic) );
-		if( !Dismount(ghost,mount) )
-			// Emergency fallback: never leave a dead player mounted.
-			Print( "chrdeath(): dismount failed for "+ghost.name+" ("+ghost.serial+"); forcing mount destroy." );
-			if( !DestroyItem(mount) )
-				ReleaseItem( mount );
-				SleepMS(50);
-				DestroyItem(mount);
-			endif
-		endif
-	else
-		Print( "chrdeath(): no mount item found in any known location for "+ghost.name+" ("+ghost.serial+")." );
+		Dismount(ghost,mount);
 	endif
 
-	// Belt-and-suspenders sweep: destroy any stray mount-objtype items on
-	// other equipment layers or loose in the ghost's backpack. These
-	// shouldn't normally exist, but clearmount.src has needed to clean
-	// exactly this up in the field, which means the checks above don't
-	// always catch everything.
-	var strylayer;
-	for( strylayer := 1; strylayer <= 30; strylayer := strylayer + 1 )
-		if( strylayer != LAYER_MOUNT )
-			var stray := GetEquipmentByLayer( ghost, strylayer );
-			if( stray && stray.objtype == 0x1F021 )
-				Print( "chrdeath(): destroying stray mount item on layer "+strylayer+" serial="+stray.serial+" for "+ghost.name );
-				if( !DestroyItem( stray ) )
-					ReleaseItem( stray );
-					SleepMS(50);
-					DestroyItem( stray );
-				endif
-			endif
-		endif
-	endfor
-	if( ghost.backpack )
-		foreach item in EnumerateItemsInContainer( ghost.backpack, ENUMERATE_ROOT_ONLY )
-			if( item.objtype == 0x1F021 )
-				Print( "chrdeath(): destroying backpack mount item serial="+item.serial+" for "+ghost.name );
-				if( !DestroyItem( item ) )
-					ReleaseItem( item );
-					SleepMS(50);
-					DestroyItem( item );
-				endif
-			endif
-		endforeach
+	if( GetObjProperty( ghost, "DonatorMounted" ) )
+		EraseObjProperty( ghost, "DonatorMounted" );
 	endif
-
-	// Clear every stale mount-related property clearmount.src resets, not
-	// just DonatorMounted -- DMountSerial/bmSpeed/SpeedWalk left behind
-	// are exactly what our manual recovery tool has to erase by hand.
-	EraseObjProperty( ghost, "DonatorMounted" );
-	EraseObjProperty( ghost, "DMountSerial" );
-	EraseObjProperty( ghost, "bmSpeed" );
-	EraseObjProperty( ghost, "SpeedWalk" );
-
-	// Force a full client redraw. IncRevision plus a same-tile relocate
-	// were not enough on their own to clear a stuck mounted animation and
-	// its movement speed in the field. This matches a known UO client bug
-	// class where a forced, instant transition -- dying while mounted,
-	// instead of a normal double-click dismount -- leaves the client
-	// rendering the pre-transition mounted pose. Briefly hiding and
-	// unhiding the mobile forces the client to fully remove and re-insert
-	// it, which is the same technique already used elsewhere in this
-	// codebase (pvp.src, pvp2vs2.src, chaosmultikillpcs.src) to force a
-	// clean client redraw.
-	IncRevision( ghost );
-	ghost.hidden := 1;
-	SleepMS(50);
-	ghost.hidden := 0;
-	MoveObjectToLocation( ghost, ghost.x, ghost.y, ghost.z, ghost.realm, MOVEOBJECT_FORCELOCATION );
 
 	SetPlayerWarMode(ghost, 0);
 	SleepMS(200);
