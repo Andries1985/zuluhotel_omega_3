@@ -31,7 +31,7 @@ exported function IsHouseSign( byref sign )
 	if(!sign)
 		return 0;
 	endif
-	if(sign.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+	if(sign.objtype in {0xFFF1, 0xFFF0, 0xFFF2, 0xFFF3, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
 		return 1;
 	endif
 	return 0;
@@ -78,7 +78,7 @@ exported function IsMultiHouseSign( byref sign )
 	if(!sign)
 		return 0;
 	endif
-	if(sign.objtype in {0xBD2, 0xBD0})
+	if(sign.objtype in {0xFFF1, 0xFFF0, 0xFFF2, 0xFFF3})
 		return 1;
 	endif
 	return 0;
