@@ -147,17 +147,16 @@ endfunction
 
 function RemoveRootMountItems(mob)
 	var removed := 0;
-	foreach item in ListRootItemsInContainerOfObjtype(mob, 0x1F021)
-		if(item)
-			Print("clearmount(): destroying root mount item serial="+item.serial+" objtype=0x"+Hex(item.objtype));
-			if(!DestroyItem(item))
-				ReleaseItem(item);
-				SleepMS(25);
-				DestroyItem(item);
-			endif
-			removed := removed + 1;
+	var item := FindObjtypeInContainer(mob, 0x1F021, FINDOBJTYPE_ROOT_ONLY);
+	if(item)
+		Print("clearmount(): destroying root mount item serial="+item.serial+" objtype=0x"+Hex(item.objtype));
+		if(!DestroyItem(item))
+			ReleaseItem(item);
+			SleepMS(25);
+			DestroyItem(item);
 		endif
-	endforeach
+		removed := removed + 1;
+	endif
 	return removed;
 endfunction
 

@@ -761,7 +761,7 @@ endfunction
 function ChangeSign(who, unused house, sign, result)
 	who := who;
 	var signgraph := result[0];
-	if(sign.graphic == 0xBD0 || sign.graphic == 0xBD2)
+	if(sign.graphic == 0xBD0 || sign.graphic == 0xBD1 || sign.graphic == 0xBD2 || sign.graphic == 0xBCF)
 		SetObjProperty(sign, "oldsignprop", sign.graphic);
 		sign.graphic := signgraph;
 	else
@@ -887,6 +887,43 @@ function demolish(house, sign, who, bank_region)
 			0x1607a: CreateItemInBackpack(who,0x16033,1); //small marble workshop
 			0x1607b: CreateItemInBackpack(who,0x16034,1); //garden shed south
 			0x1607c: CreateItemInBackpack(who,0x16035,1); //garden shed east
+			// --- patch 3.0.5 Fiddler-imported castles, added 2026-08-06 (each gives back its own specific deed) ---
+			0x1607d: CreateItemInBackpack(who,0xd33d0999,1); //gothicrosecastle
+			0x1607e: CreateItemInBackpack(who,0xd33d1000,1); //trinsickeep
+			0x1607f: CreateItemInBackpack(who,0xd33d1001,1); //elsacastle
+			0x16080: CreateItemInBackpack(who,0xd33d1002,1); //spires
+			0x16081: CreateItemInBackpack(who,0xd33d1003,1); //castleofoceania
+			0x16082: CreateItemInBackpack(who,0xd33d1004,1); //feudalcastle
+			0x16083: CreateItemInBackpack(who,0xd33d1005,1); //robinsnest
+			0x16084: CreateItemInBackpack(who,0xd33d1006,1); //stronghold
+			0x16085: CreateItemInBackpack(who,0xd33d1007,1); //villacrowley
+			0x16086: CreateItemInBackpack(who,0xd33d1008,1); //darkthornkeep
+			0x16087: CreateItemInBackpack(who,0xd33d1009,1); //sandalwoodkeep
+			0x16088: CreateItemInBackpack(who,0xd33d100a,1); //casamoga
+			0x16089: CreateItemInBackpack(who,0xd33d100b,1); //robinsroost
+			0x1608a: CreateItemInBackpack(who,0xd33d100c,1); //camelot
+			0x1608b: CreateItemInBackpack(who,0xd33d100d,1); //lacrimaeincaelo
+			0x1608c: CreateItemInBackpack(who,0xd33d100e,1); //okinawasweetdreams
+			0x1608d: CreateItemInBackpack(who,0xd33d100f,1); //thesandstonecastle
+			0x1608e: CreateItemInBackpack(who,0xd33d1010,1); //grimswindsisters
+			0x1608f: CreateItemInBackpack(who,0xd33d1011,1); //fortressoflestat
+			0x16090: CreateItemInBackpack(who,0xd33d1012,1); //multi1491house
+			0x16091: CreateItemInBackpack(who,0xd33d1013,1); //keepincarcerated
+			0x16092: CreateItemInBackpack(who,0xd33d1014,1); //sallytreesrefurbishedkeep
+			0x16093: CreateItemInBackpack(who,0xd33d1015,1); //desertrose
+			0x16094: CreateItemInBackpack(who,0xd33d1016,1); //cloverskeep
+			0x16095: CreateItemInBackpack(who,0xd33d1017,1); //sorcererscastle
+			0x16096: CreateItemInBackpack(who,0xd33d1018,1); //thecastlecascade
+			0x16097: CreateItemInBackpack(who,0xd33d1019,1); //multi1498house
+			0x16098: CreateItemInBackpack(who,0xd33d101a,1); //thesandstonefortress
+			0x16099: CreateItemInBackpack(who,0xd33d101b,1); //multi149ahouse
+			0x1609a: CreateItemInBackpack(who,0xd33d101c,1); //terracegardens
+			0x1609b: CreateItemInBackpack(who,0xd33d101d,1); //multi149chouse
+			0x1609c: CreateItemInBackpack(who,0xd33d101e,1); //ravenloftkeep
+			0x1609d: CreateItemInBackpack(who,0xd33d101f,1); //thequeensretreat
+			0x1609e: CreateItemInBackpack(who,0xd33d1020,1); //multi149fhouse
+			0x1609f: CreateItemInBackpack(who,0xd33d1021,1); //multi14a0house
+			0x160a0: CreateItemInBackpack(who,0xd33d1022,1); //thecastleofresistance
 		endcase
 		var tilelist := GetObjProperty(house, "bantiles");
 		foreach thing in tilelist

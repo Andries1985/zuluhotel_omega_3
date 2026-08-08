@@ -162,6 +162,7 @@ function GetRandomBookContents()
 	book.title := elem.getprop("title");
 	book.conents := elem.getprop("contents");
 	book.spawn := elem.getprop("spawn");
+	UnloadDataFile("shard_library");
 	return book;
 
 endfunction

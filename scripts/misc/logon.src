@@ -18,13 +18,6 @@ program logon( who )
 	Print("I am using scripts misc logon.src");
 
 	var stafflevel := who.cmdlevel;
-	if( !CheckForMaxClientsOnline( who ))
-		if( !ACCT_IsStaffCharacter( who ))
-			SysLog( "LoginAccount() Error: trying to login too many accounts." );
-			DisconnectClient( who );
-			return 0;
-		endif
-	endif
 
 	if(stafflevel > 0)
 		who.setlightlevel(0, 999999);

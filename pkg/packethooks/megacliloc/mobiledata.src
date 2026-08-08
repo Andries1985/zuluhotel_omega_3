@@ -115,6 +115,12 @@ program mobiledata(parms)
 				allprops.append(prop);
 			endif
 
+			if (xObject.master)
+				prop.clilocid := 1070722;
+				prop.values := array {"Owner: " + xObject.master.name};
+				allprops.append(prop);
+			endif
+
 			elem_prot := GetObjProperty(xObject, "FireProtection");
 			if(elem_prot)
 				prop.clilocid := 1063492;

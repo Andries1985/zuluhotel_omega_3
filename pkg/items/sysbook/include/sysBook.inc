@@ -43,6 +43,7 @@ function RetrieveOrInitShardLibrary()
 		Print(shard_library.errortext);
 		shard_library := CreateDataFile("shard_library", DF_KEYTYPE_INTEGER);
 	endif
+	UnloadDataFile("shard_library");
 	return shard_library;
 endfunction
 
@@ -70,6 +71,7 @@ function GetBookContents(bookid)
 	book.author := elem.getprop("author");
 	book.title := elem.getprop("title");
 	book.conents := elem.getprop("contents");
+	UnloadDataFile("shard_library");
 	return book;
 
 endfunction

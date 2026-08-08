@@ -322,11 +322,15 @@ endfunction
 
 function ACCT_GetHouseholdStore( create_if_missing:=1 )
 
+	var store;
 	if( create_if_missing )
-		return DFOpenDataFile( "AccountsHouseholds", DF_CREATE );
+		store := DFOpenDataFile( "AccountsHouseholds", DF_CREATE );
+	else
+		store := DFOpenDataFile( "AccountsHouseholds", DF_NO_CREATE );
 	endif
 
-	return DFOpenDataFile( "AccountsHouseholds", DF_NO_CREATE );
+	UnloadDataFile( "AccountsHouseholds" );
+	return store;
 endfunction
 
 function ACCT_GetHouseholdById( household_id, create_if_missing:=0 )
@@ -719,49 +723,11 @@ function ACCT_IsAccountCurrentlyOnline( account_name )
 	return 0;
 endfunction
 
-function ACCT_GetPendingLoginReservations( create_if_missing:=1 )
-
-	var pending := GetGlobalProperty( "acct_pending_login_reservations" );
-	if( TypeOf( pending ) != "Dictionary" )
-		pending := dictionary{};
-		if( create_if_missing )
-			SetGlobalProperty( "acct_pending_login_reservations", pending );
-		endif
-	endif
-
-	return pending;
-endfunction
-
-function ACCT_SavePendingLoginReservations( pending )
-
-	if( TypeOf( pending ) != "Dictionary" )
-		pending := dictionary{};
-	endif
-
-	SetGlobalProperty( "acct_pending_login_reservations", pending );
-	return 1;
-endfunction
-
 function ACCT_ClearPendingLoginReservation( account_or_who )
 
 	var account := ACCT_ResolveAccountRef( account_or_who );
 	if( account.errortext )
 		return 0;
-	endif
-
-	var reservation_key := Lower( CStr( account.name ));
-	if( !reservation_key )
-		return 0;
-	endif
-
-	var pending := ACCT_GetPendingLoginReservations( 0 );
-	if( TypeOf( pending ) != "Dictionary" )
-		return 0;
-	endif
-
-	if( pending.exists( reservation_key ))
-		pending.Erase( reservation_key );
-		ACCT_SavePendingLoginReservations( pending );
 	endif
 
 	account.EraseProp( "#PendingPolicyLoginUntil" );
@@ -954,199 +920,6 @@ function ACCT_CheckAccountLoginPolicy( account_or_who, ip )
 
 	ACCT_ReleasePolicyLoginGate();
 	return 1;
-endfunction
-
-function ACCT_PrunePendingLoginReservations( byref pending, now_systime )
-
-	if( TypeOf( pending ) != "Dictionary" )
-		pending := dictionary{};
-		return pending;
-	endif
-
-	var dirty := 0;
-	foreach reservation_key in pending
-		var reservation := pending[reservation_key];
-		if( TypeOf( reservation ) != "Dictionary" )
-			pending.Erase( reservation_key );
-			dirty := 1;
-			continue;
-		endif
-
-		var expires_at := CInt( reservation["ExpiresAt"] );
-		if( expires_at <= now_systime )
-			pending.Erase( reservation_key );
-			dirty := 1;
-			continue;
-		endif
-
-		var reservation_account := Lower( ACCT_TrimDiscordID( reservation["AccountName"] ));
-		if( !reservation_account )
-			reservation_account := Lower( ACCT_TrimDiscordID( reservation_key ));
-		endif
-
-		if( ACCT_IsAccountCurrentlyOnline( reservation_account ))
-			pending.Erase( reservation_key );
-			dirty := 1;
-			continue;
-		endif
-	endforeach
-
-	if( dirty )
-		ACCT_SavePendingLoginReservations( pending );
-	endif
-
-	return pending;
-endfunction
-
-function VerifyStaffOnline( who )
-
-        foreach player in EnumerateOnlineCharacters()
-                SleepMS(5);
-
-                if( who == player )
-                        continue;
-                elseif( player.ip != who.ip )
-                        continue;
-                endif
-
-                /*if( !who.cmdlevel && player.cmdlevel < 3 )
-                        DisconnectClient( player );
-                elseif( who.cmdlevel <�3 && !player.cmdlevel )
-                        DisconnectClient( who );
-                endif*/
-        endforeach
-
-        return 1;
-endfunction
-
-function CheckForMaxClientsOnline_Legacy( who )
-    var settings := ACCT_GetSettingsCfgElem("Settings");
-    var MaxIpsOnline := GetConfigInt(settings, "MaxIpsOnline");
-    var MaxDiscordsOnline := GetConfigInt(settings, "MaxDiscordsOnline");
-    var MaxCharsOnline := GetConfigInt(settings, "MaxCharsOnline");
-    var MaxCharsPerIP := GetConfigInt(settings, "MaxCharsPerIP");
-
-    if (!MaxIpsOnline || !MaxDiscordsOnline || !MaxCharsOnline || !MaxCharsPerIP)
-        return 1; // Allow login if no limits are set
-    endif
-
-    var ini_ip := who.ip;
-    var ini_discordID := who.acct.getprop("DiscordID");
-    var ini_character := who.name;
-    var ini_extraclient := (who.acct.getprop("ExtraClient") == 1) ? 1 : 0;
-
-    var playerData := dictionary;
-
-    // Step 1: Populate playerData dictionary
-    foreach player in EnumerateOnlineCharacters()
-		if (!ACCT_IsStaffCharacter( player ))
-            var player_ip := player.ip;
-            var player_discordID := player.acct.getprop("DiscordID");
-            var player_character := player.name;
-            var player_extraclient := (player.acct.getprop("ExtraClient") == 1) ? 1 : 0;
-
-            if (!playerData.exists(player_ip))
-                playerData.insert(player_ip, dictionary {});
-            endif
-
-            var ipData := playerData[player_ip];
-
-            if (!ipData.exists(player_discordID))
-                ipData.insert(player_discordID, dictionary {
-                    "Characters" -> array,
-                    "ExtraClient" -> player_extraclient
-                });
-            endif
-
-            var discordData := ipData[player_discordID];
-
-            if (!discordData["Characters"].contains(player_character))
-                discordData["Characters"].append(player_character);
-            endif
-
-            discordData["ExtraClient"] := player_extraclient;
-            ipData.insert(player_discordID, discordData);
-            playerData.insert(player_ip, ipData);
-		endif
-        
-		SleepMS(10);
-    
-	endforeach
-
-    // Step 2: Enforcement Checks
-    foreach ip in playerData
-		ACCT_DebugPrint( "Legacy snapshot for policy check: " + CStr( playerData ));
-        var ipData := playerData[ip]; // Retrieve the dictionary for this IP
-        var totalCharsPerIP := 0;
-
-        foreach discordID in ipData
-            var discordData := ipData[discordID];
-            var characterList := discordData["Characters"];
-            var extraClient := discordData["ExtraClient"];
-
-            // Check 1: Prevent multiple IPs on a single Discord ID
-            var ipCount := 0;
-            foreach checkIP in playerData
-                var checkData := playerData[checkIP];
-                if (checkData.exists(discordID))
-                    ipCount += 1;
-                endif
-            endforeach
-
-            if (ipCount > 1)
-				ACCT_DebugPrint( "Legacy disconnect: Discord ID " + discordID + " is logging in from multiple IPs." );
-                return 0;
-            endif
-
-            // Check 2: Prevent multiple Discord IDs per IP (unless ExtraClient is enabled)
-            var discordCount := ipData.size(); // Count Discord IDs under this IP
-            if (discordCount > 1 && extraClient == 0)
-				ACCT_DebugPrint( "Legacy disconnect: Multiple Discord IDs from the same IP without ExtraClient." );
-                return 0;
-            endif
-
-            // Check 3: Prevent more than 2 characters per Discord ID (unless ExtraClient is enabled)
-            if (characterList.size() > 2 && extraClient == 0)
-				ACCT_DebugPrint( "Legacy disconnect: Too many characters under Discord ID " + discordID );
-                return 0;
-            endif
-
-            // Check 4: ExtraClient Rules
-            if (extraClient == 1)
-                if (discordCount > 2)
-					ACCT_DebugPrint( "Legacy disconnect: ExtraClient limit exceeded - More than 2 Discord IDs from a single IP." );
-                    return 0;
-                endif
-				if (characterList.size() > 2)
-					ACCT_DebugPrint( "Legacy disconnect: ExtraClient limit exceeded - More than 2 characters per Discord ID." );
-                    return 0;
-				endif
-
-            totalCharsPerIP += characterList.size();
-			endif
-        endforeach
-
-        // Check 5: Total character limit per IP
-        if (totalCharsPerIP > 4)
-			ACCT_DebugPrint( "Legacy disconnect: Too many total characters from a single IP." );
-            return 0;
-		endif
-    endforeach
-
-    return 1;
-endfunction
-
-function ACCT_CheckForMaxClientsOnline_NewEngineScaffold( who )
-
-	// Non-active comparison scaffold while wrapper is pinned to legacy behavior.
-	var legacy_result := CheckForMaxClientsOnline_Legacy( who );
-	var new_engine_result := ACCT_CheckForMaxClientsOnline_NewEngine( who );
-
-	if( legacy_result != new_engine_result )
-		ACCT_DebugPrint( "Legacy/NewEngine mismatch for " + who.name + " legacy=" + CStr( legacy_result ) + " new=" + CStr( new_engine_result ));
-	endif
-
-	return legacy_result;
 endfunction
 
 function ACCT_CheckForMaxClientsOnline_NewEngine( who )
