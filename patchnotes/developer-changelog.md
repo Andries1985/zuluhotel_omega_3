@@ -488,6 +488,38 @@ Notable functional changes:
 Expected impact:
 - Reduced log verbosity for normal operation; mousing over an owned pet/summon now shows its owner's name in the properties popup; door-decoration data deduplicated with no expected functional change.
 
+### 6) Mount-Stuck-On-Death Fix (Fourth Attempt)
+
+Files involved:
+- `scripts/misc/chrdeath.src`
+
+Notable functional changes:
+- This is the fourth attempt at fixing the bug tracked in [[project_mount_stuck_on_death_bug]] (ghost left with a stuck mounted pose/speed after PvP death); not yet confirmed fixed live.
+- Mount-location lookup now checks a fourth location: `foreach item in ListRootItemsInContainerOfObjtype(ghost,0x1F021)` over the ghost's root contents, in addition to the existing corpse-layer-25, ghost-layer, and corpse-root-contents checks. Matches the same four locations `clearmount.src` (the manual GM recovery command for this bug) already checks.
+- Added an explicit `Print()` when no mount item is found in any of the four locations, for diagnosing recurrences from console output.
+- Added a "belt-and-suspenders" sweep after the normal dismount: loops all equipment layers 1-30 (skipping `LAYER_MOUNT`) destroying any stray item with `objtype == 0x1F021`, and separately scans the ghost's backpack root contents (`EnumerateItemsInContainer(ghost.backpack, ENUMERATE_ROOT_ONLY)`) destroying any mount-objtype item found there. Each destroy attempt falls back to `ReleaseItem()` + `SleepMS(50)` + retry if `DestroyItem()` fails outright.
+- Added explicit clearing of `DMountSerial`, `bmSpeed`, and `SpeedWalk` obj-properties (previously only `DonatorMounted` was erased), matching everything `clearmount.src` resets by hand.
+- Replaced the old `SendPacket(ghost, "BF0006002600")` stale-movement-packet reset with a hide/unhide cycle: `ghost.hidden := 1; SleepMS(50); ghost.hidden := 0;` before the existing `IncRevision()` + `MoveObjectToLocation(..., MOVEOBJECT_FORCELOCATION)` client-resync call. Rationale documented inline: a forced/instant mount-to-ghost transition (dying while mounted, rather than a normal double-click dismount) is a known UO client bug class where the client keeps rendering the pre-transition mounted pose; briefly removing and re-inserting the mobile forces a full client redraw, using the same technique already applied elsewhere in this codebase (`pvp.src`, `pvp2vs2.src`, `chaosmultikillpcs.src`).
+
+Expected impact:
+- More mount-item locations and stale properties are now caught and cleared on death, and the client-resync method changed from a raw movement packet to a hide/unhide cycle. Whether this actually eliminates the stuck-mounted-ghost bug is unconfirmed — watch server console `Print()` output (the new "no mount item found..." and "destroying stray mount item..." lines) if it recurs.
+
+### 7) Dungeon Region/Area Boundary Fixes + Door Decoration Cleanup
+
+Files involved:
+- `pkg/opt/areas/areas.cfg`
+- `regions/regions.cfg`
+- `pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg`
+
+Notable functional changes:
+- Fire Dungeon: `Area`/`Region` Y-range extended from `2196-2259` to `2196-2559` in both `areas.cfg` and `regions.cfg` (matching pair of edits) — the previous range cut the dungeon's named area/region off partway through its actual footprint.
+- Caverns of Despair 2: `Area`/`Region` Y-range extended from `1076-1463` to `1048-1463` in both files, for the same reason.
+- `doors.cfg`: removed 33 duplicate door decoration entries (verified by diffing the full old/new entry sets by `(ObjType, X, Y, Z, Color, Realm)` — no coordinates, graphics, or colors changed on any surviving entry, and nothing was added; the 33 removed entries were exact duplicates/overlaps of other door placements). The large line-count diff on this file is from every subsequent `Decor N` block being renumbered after the removals, not from unrelated content changes.
+
+Expected impact:
+- Players in the Fire Dungeon and Caverns of Despair 2 areas are no longer cut off from area/region-based mechanics (e.g. guard zones, area-triggered scripts) partway through the dungeon.
+- Removing the duplicate door decorations should not change visible behavior other than resolving whatever "errors" (per the commit message) the duplicates were causing — most likely double-triggering or targeting ambiguity on doors placed at the same coordinates.
+
 ---
 
 ## Validation Notes

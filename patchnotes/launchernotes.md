@@ -62,6 +62,18 @@ Patch 3.0.6 is a major housing patch: it unifies house ownership limits across a
 - Fixed several memory leaks across the accounts, email, sysbook, and area-policy systems where server memory usage would slowly grow over uptime.
 - Investigated the "stuck mounted after death" appearance bug further and confirmed it's caused by the client, not the server; no server-side fix was possible, so no gameplay change is expected here.
 
+## Dungeon Fixes
+
+- Fixed the Fire Dungeon and Caverns of Despair 2 areas, which were previously bounded too small and cut off partway through the dungeon. Guard-zone and other area-based rules now apply correctly across the full dungeon.
+
+## Door Decoration Cleanup
+
+- Removed a number of duplicate door decorations that were placed on top of other doors around the world. No new doors were added or removed otherwise.
+
+## Character Death Fix (Continued)
+
+- Made another attempt at fixing the bug where a character's ghost could get stuck showing as mounted (with mount speed) after dying while riding a mount. Not yet confirmed fully fixed — please report it if it still happens.
+
 ## Summary
 
 - Unified the max-houses-per-account limit across custom, classic, and static housing.
