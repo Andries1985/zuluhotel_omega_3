@@ -15,7 +15,7 @@ include ":accounts:settings";
 const BANNED_IPS := ":ipban:bannedips";
 
 program logon( who )
-	Print("I am using scripts misc logon.src");
+	//Print("I am using scripts misc logon.src");
 
 	var stafflevel := who.cmdlevel;
 
