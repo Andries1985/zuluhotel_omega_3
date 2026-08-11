@@ -1,0 +1,11 @@
+// Synopsis: Dump internal script memory/profile diagnostics (polcore internal 2 & 5)
+use uo;
+
+program memdump(who)
+
+	polcore().internal(2);
+	polcore().internal(5);
+
+	SendSysMessage(who, "Internal diagnostics dumped (codes 2 and 5).");
+
+endprogram

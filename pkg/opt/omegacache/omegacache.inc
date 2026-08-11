@@ -857,9 +857,97 @@ endfunction
 // Access Control
 // ============================================================
 
+// 2026-08-10: house/staticHousing/customhousing access resolution.
+//
+// :house:utility's GetHouseSignFromObject() (which IsCowner()/IsFriend()
+// depend on to find a sign from a house/multi) only resolves via a
+// "signserial" cprop on the multi or a "houseserial" cprop on a nearby sign,
+// checked against a hardcoded sign-objtype list that predates customhousing's
+// current sign objtype. house's own multis populate "signserial" so it works
+// there, but staticHousing's signs never populate any multi-serial link at
+// all (they track coverage purely via footage-box geometry), and
+// customhousing's sign->multi link is a differently-named cprop
+// ("house_serial", not "houseserial") that this helper never checks. Net
+// effect: IsCowner()/IsFriend() silently fall back to the legacy "Friends"
+// array format for two of the three packages, and none of the three
+// populate that array anymore (they're on the shared :house: sign core's
+// friendlist/coowners/perm_* now) -- so cache access for co-owners/friends
+// was broken for staticHousing and customhousing houses.
+//
+// Fixed here with a self-contained resolver scoped to Omega Cache only,
+// rather than touching GetHouseSignFromObject/IsCowner/IsFriend themselves
+// (those are used shard-wide well beyond housing/caching, and auditing every
+// other caller is out of scope for this change). Resolves the sign via each
+// package's own linkage first (house/customhousing's serial cprops), falling
+// back to a footage-geometry match (IsObjectInsideHouse) for staticHousing.
+// 2026-08-10: radius bumped 24 -> 50. When called from placecache.src's
+// lazy-init (before a placement location is known), near_item is the house
+// multi itself, so the search center is the multi's placement anchor tile,
+// not the sign -- and customhousing's largest foundation is 31x31, wider
+// than the old 24-tile radius could reach from a corner anchor. A miss here
+// doesn't break access (the owner/co-owner check has its own legacy
+// fallback), only the sign's numomegacache/maxnumomegacache bookkeeping,
+// which would then silently desync from the house's actual slot count.
+function FindOmegaCacheHouseSign(house, near_item)
+	foreach candidate in ListItemsNearLocation(near_item.x, near_item.y, near_item.z, 50, near_item.realm)
+		if(!candidate.IsHouseSign())
+			continue;
+		endif
+		if(CInt(GetObjProperty(candidate, "houseserial")) == house.serial)
+			return candidate;
+		endif
+		if(CInt(GetObjProperty(candidate, "house_serial")) == house.serial)
+			return candidate;
+		endif
+		if(candidate.IsObjectInsideHouse(near_item))
+			return candidate;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+// Priv values are :house:utility's constants (VIEW_SECURE=2, ADD_TO_SECURE=3,
+// REMOVE_FROM_SECURE=4, RECALL_TO=5, GATE_TO=6, GATE_FROM=7, CO_OWNER=8).
+// Omega Cache only ever passes the *_SECURE trio, but this covers the rest
+// for completeness/future callers.
+function OmegaCachePrivilegeGranted(sign, who, priv)
+	case(priv)
+		CO_OWNER: return sign.IsCoOwnerOrOwner(who);
+		VIEW_SECURE: return sign.HasHousePermission(who, "secure");
+		ADD_TO_SECURE: return sign.HasHousePermission(who, "secure");
+		REMOVE_FROM_SECURE: return sign.HasHousePermission(who, "secure");
+		RECALL_TO: return sign.HasHousePermission(who, "teleporter");
+		GATE_TO: return sign.HasHousePermission(who, "teleporter");
+		GATE_FROM: return sign.HasHousePermission(who, "teleporter");
+		default: return sign.IsAFriend(who);
+	endcase
+endfunction
+
+// Unified owner/co-owner/friend-with-privilege check used both by
+// FindAccessibleContainer and by the deposit/withdraw destination checks
+// further down this file. Prefers the resolved shared-core sign when one
+// exists; falls back to the legacy ownerserial/IsCowner/IsFriend path for
+// any house outside these three packages (or one whose sign genuinely
+// can't be found).
+function OmegaCacheHasPrivilege(who, house, sign, priv)
+	if(sign)
+		if(sign.IsCoOwnerOrOwner(who))
+			return 1;
+		endif
+		return (OmegaCachePrivilegeGranted(sign, who, priv) and sign.IsAFriend(who));
+	endif
+	if(GetObjProperty(house, "ownerserial") == who.serial)
+		return 1;
+	endif
+	if(IsCowner(who, house))
+		return 1;
+	endif
+	return IsFriend(who, house, priv);
+endfunction
+
 // Finds an Omega Cache item within interaction range of the player
 // and validates house access privileges.
-// Returns struct{ container, house, df } or 0.
+// Returns struct{ container, house, df, sign } or 0.
 function FindAccessibleContainer(who, required_privileges)
 	_debug_who := who;
 	var current_house := GetCurrentHouseAtMobile(who);
@@ -887,38 +975,44 @@ function FindAccessibleContainer(who, required_privileges)
 				continue;
 			endif
 
-			// Owner — always passes
-			if(GetObjProperty(house, "ownerserial") == who.serial)
-				return struct{ container := item, house := house, df := OpenHouseStore(item) };
-			endif
-
-			// Co-owner — always passes
-			if(IsCowner(who, house))
-				return struct{ container := item, house := house, df := OpenHouseStore(item) };
-			endif
-
 			// GM+ — always passes
 			if(who.cmdlevel >= 4)
-				return struct{ container := item, house := house, df := OpenHouseStore(item) };
+				return struct{ container := item, house := house, df := OpenHouseStore(item), sign := FindOmegaCacheHouseSign(house, item) };
+			endif
+
+			var sign := FindOmegaCacheHouseSign(house, item);
+
+			// Owner/co-owner — always passes
+			if(sign)
+				if(sign.IsCoOwnerOrOwner(who))
+					return struct{ container := item, house := house, df := OpenHouseStore(item), sign := sign };
+				endif
+			else
+				if(GetObjProperty(house, "ownerserial") == who.serial)
+					return struct{ container := item, house := house, df := OpenHouseStore(item), sign := sign };
+				endif
+				if(IsCowner(who, house))
+					return struct{ container := item, house := house, df := OpenHouseStore(item), sign := sign };
+				endif
 			endif
 
 			// Friend — check required privileges
-			var friends := GetObjProperty(house, "Friends");
-			if(friends)
-				foreach friend in friends
-					if(friend[1] == who.serial)
-						var has_all := 1;
-						foreach priv in required_privileges
-							if(!friend[priv])
-								has_all := 0;
-								break;
-							endif
-						endforeach
-						if(has_all)
-							return struct{ container := item, house := house, df := OpenHouseStore(item) };
-						endif
+			var has_all := 1;
+			foreach priv in required_privileges
+				if(sign)
+					if(!OmegaCachePrivilegeGranted(sign, who, priv) or !sign.IsAFriend(who))
+						has_all := 0;
+						break;
 					endif
-				endforeach
+				else
+					if(!IsFriend(who, house, priv))
+						has_all := 0;
+						break;
+					endif
+				endif
+			endforeach
+			if(has_all)
+				return struct{ container := item, house := house, df := OpenHouseStore(item), sign := sign };
 			endif
 		endif
 	endforeach
@@ -1087,12 +1181,9 @@ function ValidateWithdrawDestination(who, access, dest)
 	check := dest;
 	while(check)
 		if(check.usescript == ":house:secureCont")
-			var owner_serial := GetObjProperty(access.house, "ownerserial");
-			if(who.serial != owner_serial and !IsCowner(who, access.house))
-				if(!IsFriend(who, access.house, ADD_TO_SECURE))
-					SendSysMessage(who, "You don't have permission to add items to that secure container.");
-					return 0;
-				endif
+			if(!OmegaCacheHasPrivilege(who, access.house, access.sign, ADD_TO_SECURE))
+				SendSysMessage(who, "You don't have permission to add items to that secure container.");
+				return 0;
 			endif
 			break;
 		endif
@@ -1255,12 +1346,9 @@ function ValidateDepositTarget(who, access, tgt)
 	while(check)
 		if(check.usescript == ":house:secureCont")
 			// Inside a secured container — check access
-			var owner_serial := GetObjProperty(access.house, "ownerserial");
-			if(who.serial != owner_serial and !IsCowner(who, access.house))
-				if(!IsFriend(who, access.house, REMOVE_FROM_SECURE))
-					SendSysMessage(who, "You don't have permission to remove items from that container.");
-					return 0;
-				endif
+			if(!OmegaCacheHasPrivilege(who, access.house, access.sign, REMOVE_FROM_SECURE))
+				SendSysMessage(who, "You don't have permission to remove items from that container.");
+				return 0;
 			endif
 			break;
 		endif

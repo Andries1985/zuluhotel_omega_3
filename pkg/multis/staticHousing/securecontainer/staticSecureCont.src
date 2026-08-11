@@ -47,10 +47,7 @@ program use_securecontainer(who, item)
 		securedlevel := 4;
 	endif
 
-	var owneracct := GetObjProperty(house, "owneraccount");
-	if(!owneracct)
-		owneracct := GetObjProperty(house, "owneracct");
-	endif
+	var owneracct := GetObjProperty(house, "owneracct");
 
 	if((CInt(GetObjProperty( house, "ownerserial" )) == who.serial) || (owneracct == who.acctname))
 		securitylevel := 1;

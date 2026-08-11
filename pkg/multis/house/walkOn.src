@@ -34,7 +34,7 @@ endprogram
 function GetHSign( byref who, byref tile )
 
 	foreach sign in ListObjectsInBox (who.x-32, who.y-32, -128, who.x+32, who.y+32, +127, who.realm)
-		if(sign.objtype in {0xBD2, 0xBD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+		if(sign.objtype in {0xBCF, 0xBD1, 0xBD2, 0xBD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
 			if(CInt(GetObjProperty(sign, "houseserial")) == CInt(GetObjProperty(tile, "houseserial")))
 				if(GetObjProperty(sign, "footage"))
 					return sign;

@@ -9,6 +9,8 @@ include "include/sysevent";
 include "include/canAccess";
 include "include/housing";
 include ":statichousing:include/settings";
+include ":house:multihouse_settings";
+include "include/omegacache_utils";
 
 var owneracct;
 var ownerser;
@@ -21,8 +23,31 @@ function SHDebug(msg)
 	endif
 endfunction
 
+function MigrateSignToSharedHouseCore(sign)
+	// 2026-08-10: one-time migration to the shared :house: sign core. Renames
+	// the legacy "owneraccount" cprop to "owneracct" (matching house/
+	// customhousing), and retroactively registers already-owned houses into
+	// the cross-package account house-cap tracking list (:house:
+	// multihouse_settings), since that registry didn't exist before this
+	// patch. Runs once per sign at ControlScript startup -- ie. the next
+	// server restart after this deploys -- and is a no-op on every run after
+	// the first, since it checks for the old property before touching it.
+	var legacy_acct := GetObjProperty(sign, "owneraccount");
+	if(legacy_acct)
+		SetObjProperty(sign, "owneracct", legacy_acct);
+		EraseObjProperty(sign, "owneraccount");
+	endif
+
+	var current_acct := GetObjProperty(sign, "owneracct");
+	if(current_acct and !GetObjProperty(sign, "NewHouse"))
+		RegisterAccountHouseSign(sign, current_acct);
+	endif
+endfunction
+
 program StaticSignListener(sign)
 	SHDebug("Listener started sign=" + sign.serial + " realm=" + sign.realm);
+
+	MigrateSignToSharedHouseCore(sign);
 
 	if(!GetObjProperty(sign, "decay"))
 		sign.RefreshHouse();
@@ -73,31 +98,35 @@ function handle_speech(sign, event)
 	var sec;
 	if(who.serial == ownerser)	// Owner
 		sec := 3;
-	elseif(sign.IsACoowner(who))	// Co-owner
+	elseif(sign.IsACoOwner(who))	// Co-owner
 		sec := 2;
 	elseif(sign.IsAFriend(who))	// Friend
 		sec := 1;
 	endif
 	var text := lower(event.text);
-	if((text["i wish to lock this down"]) && (sec >= 2))
-		SHDebug("Command lock down by " + who.name + " sec=" + sec);
-		HouseFunction(sign, event, 1);
-	elseif((text["i wish to release this"]) && (sec >= 2))
-		SHDebug("Command release by " + who.name + " sec=" + sec);
-		HouseFunction(sign, event, 2);
-	elseif((text["i wish to secure this"]) && (sec >= 2))
-		SHDebug("Command secure by " + who.name + " sec=" + sec);
-		secure(sign, event, text);
-	elseif((text["i wish to unsecure this"]) && (sec >= 2))
-		SHDebug("Command unsecure by " + who.name + " sec=" + sec);
-		unsecure(sign, event);
-	elseif((text["remove thyself"]) && (sec >= 1))
-		SHDebug("Command eject by " + who.name + " sec=" + sec);
-		remove(sign, event);
-	elseif((text["i ban thee"]) && (sec >= 2))
-		SHDebug("Command ban by " + who.name + " sec=" + sec);
-		housebanning(sign, event);
-	elseif((text["i wish to place a trash barrel"]) && (sec >= 2))
+	// 2026-08-10: lockdown/release/secure/unsecure/eject/ban speech commands
+	// disabled (commented out, not deleted) -- OpenHouseManagementGump is
+	// now the primary, audited interface for these actions (sign/use.src,
+	// button 15). Can be re-enabled later if wanted.
+	// if((text["i wish to lock this down"]) && (sec >= 2))
+	// 	SHDebug("Command lock down by " + who.name + " sec=" + sec);
+	// 	HouseFunction(sign, event, 1);
+	// elseif((text["i wish to release this"]) && (sec >= 2))
+	// 	SHDebug("Command release by " + who.name + " sec=" + sec);
+	// 	HouseFunction(sign, event, 2);
+	// elseif((text["i wish to secure this"]) && (sec >= 2))
+	// 	SHDebug("Command secure by " + who.name + " sec=" + sec);
+	// 	secure(sign, event, text);
+	// elseif((text["i wish to unsecure this"]) && (sec >= 2))
+	// 	SHDebug("Command unsecure by " + who.name + " sec=" + sec);
+	// 	unsecure(sign, event);
+	// elseif((text["remove thyself"]) && (sec >= 1))
+	// 	SHDebug("Command eject by " + who.name + " sec=" + sec);
+	// 	remove(sign, event);
+	// elseif((text["i ban thee"]) && (sec >= 2))
+	// 	SHDebug("Command ban by " + who.name + " sec=" + sec);
+	// 	housebanning(sign, event);
+	if((text["i wish to place a trash barrel"]) && (sec >= 2))
 		trashbarrel(sign, event);
 	elseif((text["reveal thyself"]))
 		reveal(sign, event);
@@ -130,7 +159,7 @@ function remove(sign, event)
         MoveObjectToLocation(victim, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
         SendSysMessage(victim, "you have been ejected from the house");
         return;
-      elseif((friend == 1) || (coown == 1) || (victim.acctname == GetObjProperty(sign, "owneraccount")))
+      elseif((friend == 1) || (coown == 1) || (victim.acctname == GetObjProperty(sign, "owneracct")))
         SendSysMessage(who, "you cannot eject friends", 3, 40);
         return;
       elseif(victim == who)
@@ -196,7 +225,11 @@ function HouseFunction(sign, event, num)
 	OtherItems := GetObjProperty( item, "OtherItems" );
 	//////////////////////////////////////////////
 	var fotage := GetObjProperty(sign, "footage");
-	var itemlist := GetHouseItems(fotage, item.realm);
+	// 2026-08-10: was the local GetHouseItems(footage, map) helper -- identical
+	// loop logic to house's shared GetItemsInHouse(sign), duplicated in
+	// scripts/include/housing.inc. Switched to the shared method-script call so
+	// there's one implementation instead of two that can drift.
+	var itemlist := sign.GetItemsInHouse();
 	if(item in itemlist)
 		case(num)
 			// Lock down
@@ -359,7 +392,7 @@ function secure(sign, event, unused text)
 		return;
 	elseif(GetObjProperty(sign, "RemainingSecures") >= 1)
 		footage := GetObjProperty(sign, "footage");
-		var itemlist := GetHouseItems(footage, who.realm);
+		var itemlist := sign.GetItemsInHouse();
 		if(item in itemlist)
 			if(item.movable == 0)
 				if(GetObjProperty(sign, "RemainingLockdowns") < GetObjProperty(sign, "MaxLockdowns"))
@@ -422,7 +455,7 @@ function unsecure(sign, event)
 		if(GetObjProperty(who, "Testing"))
 			seclevel := "O";
 		endif
-	elseif(sign.IsACoowner(who))			// Co-owner
+	elseif(sign.IsACoOwner(who))			// Co-owner
 		seclevel := "C";
 	endif
 	securedlevel := GetObjProperty(item, "SecuredLevel");
@@ -567,27 +600,30 @@ endfunction
 
 function demolish(sign)									// Decay timer has ran out. House will go up for sale.
 	var fotage := GetObjProperty(sign, "footage");
-	var itemlist := GetHouseItems(fotage, sign.realm);
-	var totalvalueofhouses := 0;
-	var hv := 0;
+	var itemlist := sign.GetItemsInHouse();
 	SetObjProperty(sign, "lastownername", GetObjProperty(sign, "ownername"));
 	SetObjProperty(sign, "lastownerserial", GetObjProperty(sign, "ownerserial"));
 	var stone;
-		// Determine if we have a "house values count" setting.
-		// If we do calculate the value of the current house and remove it from the approprite object.
-		var accnt := FindAccount(GetObjProperty(sign, "owneraccount"));
-		var ownrserial := CInt(GetObjProperty(sign, "ownerserial"));
-		var who := SystemFindObjectBySerial(ownrserial);
-		if(CInt(settings.HouseValuesCount))
-			hv := DetermineHouseValue(CInt(GetObjProperty(sign, "Price")));
-			if(settings.HouseValueAppliedTo == "Character")
-				totalvalueofhouses := CInt(GetObjProperty(who, "TotalValueOfHouses")) - hv;
-				SetObjProperty(who, "TotalValueOfHouses", totalvalueofhouses );
-			elseif(settings.HouseValueAppliedTo == "Account")
-				totalvalueofhouses := CInt(GetObjProperty(accnt, "TotalValueOfHouses")) - hv;
-				SetObjProperty(accnt, "TotalValueOfHouses", totalvalueofhouses );
-			endif
-		endif
+
+	// Account-wide house cap bookkeeping (:house:multihouse_settings), shared
+	// across house/staticHousing/customhousing -- replaces the old
+	// per-package TotalValueOfHouses/HouseValuesCount value tracking.
+	var demolished_acct := GetObjProperty(sign, "owneracct");
+	if(demolished_acct)
+		UnregisterAccountHouseSign(sign, demolished_acct);
+	endif
+
+	// 2026-08-10: decay-timeout teardown previously left friendlist/coowners/
+	// banlist intact (unlike RelinquishHouse/ChangeHouseOwner, which clear
+	// them), so a house that decayed back onto the market kept its previous
+	// owner's friends/co-owners/bans. Fixed here while consolidating onto
+	// the shared core.
+	EraseObjProperty(sign, "owneracct");
+	EraseObjProperty(sign, "ownerserial");
+	EraseObjProperty(sign, "ownername");
+	EraseObjProperty(sign, "friendlist");
+	EraseObjProperty(sign, "coowners");
+	EraseObjProperty(sign, "banlist");
 
     SetObjProperty(sign, "NewHouse", 1);
   var builtdeed := SystemFindObjectBySerial(GetObjProperty(sign, "builtdeed"));
@@ -595,7 +631,15 @@ function demolish(sign)									// Decay timer has ran out. House will go up for
 	EraseObjProperty(sign, "builtdeed");
 
   foreach thing in itemlist
-    if(GetObjProperty(thing, "houseserial") == sign.serial)
+    if(thing.objtype == OMEGACACHE_OBJTYPE)
+      // 2026-08-10: decay is terminal/abandoned -- force-clear any Omega
+      // Cache container regardless of stored contents, matching house's own
+      // forced-demolish handling. Erase the house link first so
+      // destroycache.src's "block if non-empty" safety net doesn't leave it
+      // orphaned when the rest of the house disappears around it.
+      EraseObjProperty(thing, "houseserial");
+      DestroyItem(thing);
+    elseif(GetObjProperty(thing, "houseserial") == sign.serial)
       if((GetObjProperty(thing, "secure")) && (!thing.movable))
         EraseObjProperty(thing, "secure");
         var oldscript := GetObjProperty(thing, "oldscript");

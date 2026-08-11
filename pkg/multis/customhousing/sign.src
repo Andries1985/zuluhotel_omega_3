@@ -9,12 +9,18 @@ use os;
 include "include/house";
 include "include/housefriends";
 //include ":doors:doors";
+include "include/omegacache_utils";
+// 2026-08-10: YesNo() used below (Continue?/Sell it?/Remove? prompts) --
+// used to come transitively via housefriends.inc's ":mdgumps:yesNo" include,
+// which was removed as dead weight (nothing in housefriends.inc itself used
+// it) and collided with customhousedeed.src's own ":gumps:yesno" include.
+// Included directly here, matching customhousedeed.src's choice of package.
+include ":gumps:yesno";
 
 var gump_layout := array{};
 var gump_data := array{};
 
 program use_house_sign (character, sign)
-	broadcast("PING");
 	//If its a deeded house, make sure its house exists...
 	if (sign.objtype != 0x17060)
 		var hserial := GetObjProperty (sign, "house_serial");
@@ -23,6 +29,8 @@ program use_house_sign (character, sign)
 		endif
 	endif
 
+	MigrateCustomHouseSignOwnership (sign, character);
+
 //	//Friends don't get the options
 //	if (!IsAFriend (sign, character))
 //		DisplayNonFriendSign (character, sign);
@@ -30,13 +38,15 @@ program use_house_sign (character, sign)
 //	endif
 
 	BuildHouseSignGump (character, sign);
-	SendSysMessage (character, "Your current Housevalue is " + GetAccountHouseValue (character.acctname) );
+	SendSysMessage (character, "You own " + GetAccountHouseCount (character.acctname) + " of " + get_max_houses_per_account() + " houses allowed on this account." );
 
 	var result := SendDialogGump (character, gump_layout, gump_data );
-	var accountname := GetObjProperty (sign, "account");
-	if (accountname != character.acctname and character.cmdlevel < 3)
-		SendSysMessage (character, "This is not your house!");
-		return;
+	if (!sign.IsFullHouseManager (character))
+		var legacy_account := GetObjProperty (sign, "account");
+		if (!legacy_account or character.acctname != legacy_account)
+			SendSysMessage (character, "This is not your house!");
+			return;
+		endif
 	endif
 
 	case (result[0])
@@ -47,21 +57,53 @@ program use_house_sign (character, sign)
 			else
 				var hserial := GetObjProperty (sign, "house_serial");
 				var house := SystemFindObjectBySerial (hserial);
+
+				// Omega Cache containers are freestanding items placed inside
+				// the house footage, not tracked in house.components, so they
+				// need their own sweep. Block the redeed if anything is still
+				// stored (matching house's own manual-demolish guard); collect
+				// the (now confirmed empty) containers to clean up below.
+				var homeinfo := GetObjProperty (sign, "homeinfo");
+				var cache_items := array {};
+				if (homeinfo)
+					foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
+						if (thing.objtype == OMEGACACHE_OBJTYPE)
+							if (!IsOmegaCacheEmpty (CInt (GetObjProperty (thing, "houseserial"))))
+								SendSysMessage (character, "You cannot redeed this house while Omega Cache contents are stored.", color := 33);
+								return;
+							endif
+							cache_items.append (thing);
+						endif
+					endforeach
+				endif
+
 				if (!MakeADeed (character, house))
 					return;
 				endif
+				foreach thing in cache_items
+					EraseObjProperty (thing, "houseserial");
+					DestroyItem (thing);
+				endforeach
 				var addons := GetObjProperty (house, "components");
 				if (addons.size())
 					foreach item in addons
 						DestroyItem (SystemFindObjectBySerial (item));
 					endforeach
 				endif
+				var demolished_acct := GetObjProperty (sign, "owneracct");
+				if (!demolished_acct)
+					demolished_acct := GetObjProperty (sign, "account");
+				endif
+				if (demolished_acct)
+					UnregisterAccountHouseSign (sign, demolished_acct);
+				endif
+				UnregisterCustomHouseSign (sign);
 				ReleaseAll (character, sign);
 				DestroyMulti (house);
 			endif
 		2:	RenameHouse (character, sign);
 		3:	ChangeHouseLocks (character, sign);
-		5: 
+		5:
 			set_critical (1);
 			ChangeOwner (character, sign);
 			set_critical (0);
@@ -73,7 +115,7 @@ program use_house_sign (character, sign)
 				var homeinfo := GetObjProperty (sign, "homeinfo");
 				if (!homeinfo)
 					SendSysMessage (character, "Error finding house definition.");
-					return;	
+					return;
 				endif
 				//CloseHouseDoors (character, sign);
 				MoveObjectToLocation(character, (homeinfo[4] + homeinfo[2]) / 2, (homeinfo[5] + homeinfo[3]) / 2, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
@@ -89,6 +131,12 @@ program use_house_sign (character, sign)
 			else
 				SendSysMessage (character, "Your house can't be customized.");
 			endif
+		9:	ManageCoOwners (character, sign);
+		10:	ManageBans (character, sign);
+		11:	ManageFriendPermissions (character, sign);
+		12:
+			var omegahouse := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+			CustomHouseFunctionRemoveOmegaCache (sign, omegahouse, character);
 		101:
 		102:
 		103:
@@ -97,7 +145,7 @@ program use_house_sign (character, sign)
 		106:
 		107:
 		108:
-			AdjustHouseFriendsFromSign (character, sign, CINT(result[0])-100 );
+			AdjustFriendListFromSign (character, sign, CINT(result[0])-100 );
 		default:
 			SendSysMessage (character, "Error:  Unknown gump return!");
 			return;
@@ -411,7 +459,7 @@ endfunction
 function BuildHouseSignGump (character, sign)
 	gump_layout := array {
 		"page 0",
-		"resizepic 0 50 2620 310 350",
+		"resizepic 0 50 2620 310 380",
 		"gumppic 83 0 100",
 		"text 100 29 40 0",
 		"text 100 47 40 10",
@@ -456,12 +504,18 @@ function BuildHouseSignGump (character, sign)
 		"text 20 237 40 11",
 		"text 20 267 40 16",
 		"text 20 297 40 28",
+		"text 20 327 40 29",
+		"text 20 357 40 30",
+		"text 20 387 40 31",
 		"button 200 145 2640 2641 0 4",
 		"button 200 175 2640 2641 1 3 2",
 		"button 200 205 2640 2641 1 3 6",
 		"button 200 235 2640 2641 1 3 3",
 		"button 200 265 2640 2641 1 3 5",
 		"button 200 295 2640 2641 1 3 7",
+		"button 200 325 2640 2641 1 3 9",
+		"button 200 355 2640 2641 1 3 10",
+		"button 200 385 2640 2641 1 3 12",
 
 		"page 4",
 		"text 55 183 40 8",
@@ -497,7 +551,10 @@ function BuildHouseSignGump (character, sign)
 		"New Friend",			//25 - friend 9
 		"New Friend",			//26 - friend 10
 		"Change Signs",			//27
-		"Customize House"		//28
+		"Customize House",		//28
+		"Manage Co-owners",		//29
+		"Manage Bans",			//30
+		"Remove Omega Cache Container"	//31
 	};
 
 	gump_data[14] := CSTR(GetLockdowns (sign)) + " / " + CSTR(GetMaxLockdowns (sign));
@@ -508,28 +565,26 @@ function BuildHouseSignGump (character, sign)
 		gump_data[7] := "Disown this House";
 	endif
 
-	if (GetObjProperty (sign, "housefriends"))
-		var friends := GetObjProperty (sign, "housefriends");
-		var counter := 18;
-		foreach key in (friends.keys())
-			var tempvar := friends[key];
-			if (tempvar)
-				var tempname := tempvar[2];
-				if (tempvar[1] == "account")
-					tempname := tempname + " (account)";
-				elseif (tempvar[1] == "merchant")
-					tempname := tempname + " (merchants)";
-				endif
-				gump_data[counter] := tempname;
-				counter := counter + 1;
+	var counter := 18;
+	foreach friendserial in (sign.GetFriendList())
+		var friendchar := SystemFindObjectBySerial (friendserial);
+		if (!friendchar)
+			friendchar := SystemFindObjectBySerial (friendserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if (friendchar)
+			var tempname := friendchar.name;
+			if (sign.IsACoOwner (friendchar))
+				tempname := tempname + " (co-owner)";
 			endif
-		endforeach
-	endif
+			gump_data[counter] := tempname;
+			counter := counter + 1;
+		endif
+	endforeach
 
-	var accountname := GetObjProperty (sign, "account");
 	SetPlaqueName (sign);
-	if (accountname == character.acctname)
-		RefreshHouse (character);
+	var legacy_account := GetObjProperty (sign, "account");
+	if (sign.IsFullHouseManager (character) or (legacy_account and legacy_account == character.acctname))
+		sign.RefreshHouse();
 		gump_data[8] := character.name;
 		SetObjProperty (sign, "lastownername", character.name);
 	else
@@ -628,6 +683,459 @@ function DisplayNonFriendSign (character, sign)
 
 
 
+endfunction
+
+
+
+
+///////////////////
+//  handles add/remove clicks from the main gump's Friends page (button
+//  codes 101-108, one per numbered slot). Backed by the shared :house: sign
+//  core (sign.GetFriendList/AddFriend/RemoveFriend) instead of the old
+//  "housefriends" dictionary.
+///////////////////
+
+function AdjustFriendListFromSign (character, sign, friendnum)
+	if (friendnum > 8)
+		SendSysMessage (character, "Error: invalid gump return/friend number!");
+		return;
+	endif
+
+	var namedlist := ResolveMemberList (sign.GetFriendList());
+
+	if (friendnum <= namedlist.size())
+		var chosenfriend := namedlist[friendnum];
+		SendSysMessage (character, "Are you sure you want to remove " + chosenfriend.name + " as a house friend?");
+		if (!YesNo (character, "Remove?"))
+			SendSysMessage (character, "Canceled.");
+			return;
+		endif
+		sign.RemoveFriend (chosenfriend);
+		SendSysMessage (character, "Friend removed.");
+		return;
+	endif
+
+	SendSysMessage (character, "Who do you want to add as a friend?");
+	var friend := Target (character);
+	if (!friend)
+		SendSysMessage (character, "Canceled.");
+		return;
+	elseif (!friend.acctname)
+		SendSysMessage (character, "Invalid target!  Only players can be house friends.");
+		return;
+	endif
+
+	var addresult := sign.AddFriend (friend);
+	if (!addresult)
+		SendSysMessage (character, "That person is already a friend of the house.");
+	elseif (addresult < 0)
+		SendSysMessage (character, "Your friend list is full.");
+	else
+		SendSysMessage (character, "New friend added!");
+	endif
+endfunction
+
+
+
+
+///////////////////
+//  resolves a list of mobile serials (as stored by the shared friend/
+//  co-owner/ban list methods) into mobile refs, silently dropping any that
+//  no longer exist.
+///////////////////
+
+function ResolveMemberList (serials)
+	var resolved := array {};
+	foreach memberserial in serials
+		var member := SystemFindObjectBySerial (memberserial);
+		if (!member)
+			member := SystemFindObjectBySerial (memberserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if (member)
+			resolved.append (member);
+		endif
+	endforeach
+	return resolved;
+endfunction
+
+
+
+
+///////////////////
+//  standalone gump listing co-owners, same add/remove-by-slot UX as the
+//  Friends page on the main gump. Co-owners have full manager rights
+//  (sign.IsFullHouseManager), same as house/staticHousing.
+///////////////////
+
+function ManageCoOwners (character, sign)
+	if (!sign.IsFullHouseManager (character))
+		SendSysMessage (character, "You do not have permission to manage co-owners.", color := 33);
+		return;
+	endif
+
+	var showing := 1;
+	while (showing)
+		var colayout := array {
+			"page 0",
+			"resizepic 0 50 2620 310 350",
+			"gumppic 83 0 100",
+			"text 100 29 40 0",
+			"text 40 150 40 1",
+			"text 40 170 40 2",
+			"text 40 190 40 3",
+			"text 40 210 40 4",
+			"text 40 230 40 5",
+			"text 40 250 40 6",
+			"text 40 270 40 7",
+			"text 40 290 40 8",
+			"button 20 155 2104 2103 1 0 1",
+			"button 20 175 2104 2103 1 0 2",
+			"button 20 195 2104 2103 1 0 3",
+			"button 20 215 2104 2103 1 0 4",
+			"button 20 235 2104 2103 1 0 5",
+			"button 20 255 2104 2103 1 0 6",
+			"button 20 275 2104 2103 1 0 7",
+			"button 20 295 2104 2103 1 0 8",
+			"button 234 68 242 241 1 0 0"
+		};
+		var codata := array {
+			"Co-Owners",		//0
+			"New Co-owner",		//1
+			"New Co-owner",		//2
+			"New Co-owner",		//3
+			"New Co-owner",		//4
+			"New Co-owner",		//5
+			"New Co-owner",		//6
+			"New Co-owner",		//7
+			"New Co-owner"		//8
+		};
+
+		var colist := ResolveMemberList (sign.GetCoOwnerList());
+		for i := 1 to colist.size()
+			codata[i] := colist[i].name;
+		endfor
+
+		var result := SendDialogGump (character, colayout, codata);
+		if (!result or !result[0])
+			showing := 0;
+		else
+			var slotnum := CINT (result[0]);
+			if (slotnum <= colist.size())
+				var chosenco := colist[slotnum];
+				SendSysMessage (character, "Are you sure you want to remove " + chosenco.name + " as a co-owner?");
+				if (YesNo (character, "Remove?"))
+					sign.RemoveCoOwner (chosenco);
+					SendSysMessage (character, "Co-owner removed.");
+				else
+					SendSysMessage (character, "Canceled.");
+				endif
+			else
+				SendSysMessage (character, "Who do you want to add as a co-owner?");
+				var newco := Target (character);
+				if (!newco)
+					SendSysMessage (character, "Canceled.");
+				elseif (!newco.acctname or newco.isA (POLCLASS_NPC))
+					SendSysMessage (character, "That can't be a co-owner of the house.");
+				else
+					if (!sign.IsAFriend (newco))
+						sign.AddFriend (newco);
+					endif
+					var coresult := sign.AddCoOwner (newco);
+					if (!coresult)
+						SendSysMessage (character, "That person is already a co-owner.");
+					elseif (coresult < 0)
+						SendSysMessage (character, "Your co-owner list is full.");
+					else
+						SendSysMessage (character, newco.name + " is now a co-owner of your house.");
+					endif
+				endif
+			endif
+		endif
+	endwhile
+endfunction
+
+
+
+
+///////////////////
+//  standalone gump listing bans, same add/remove-by-slot UX as Friends.
+///////////////////
+
+function ManageBans (character, sign)
+	if (!sign.IsFullHouseManager (character))
+		SendSysMessage (character, "You do not have permission to manage bans.", color := 33);
+		return;
+	endif
+
+	var showing := 1;
+	while (showing)
+		var banlayout := array {
+			"page 0",
+			"resizepic 0 50 2620 310 350",
+			"gumppic 83 0 100",
+			"text 100 29 40 0",
+			"text 40 150 40 1",
+			"text 40 170 40 2",
+			"text 40 190 40 3",
+			"text 40 210 40 4",
+			"text 40 230 40 5",
+			"text 40 250 40 6",
+			"text 40 270 40 7",
+			"text 40 290 40 8",
+			"button 20 155 2104 2103 1 0 1",
+			"button 20 175 2104 2103 1 0 2",
+			"button 20 195 2104 2103 1 0 3",
+			"button 20 215 2104 2103 1 0 4",
+			"button 20 235 2104 2103 1 0 5",
+			"button 20 255 2104 2103 1 0 6",
+			"button 20 275 2104 2103 1 0 7",
+			"button 20 295 2104 2103 1 0 8",
+			"button 234 68 242 241 1 0 0"
+		};
+		var bandata := array {
+			"Banned",		//0
+			"Ban someone",		//1
+			"Ban someone",		//2
+			"Ban someone",		//3
+			"Ban someone",		//4
+			"Ban someone",		//5
+			"Ban someone",		//6
+			"Ban someone",		//7
+			"Ban someone"		//8
+		};
+
+		var banlist := ResolveMemberList (sign.GetBanList());
+		for i := 1 to banlist.size()
+			bandata[i] := banlist[i].name;
+		endfor
+
+		var result := SendDialogGump (character, banlayout, bandata);
+		if (!result or !result[0])
+			showing := 0;
+		else
+			var slotnum := CINT (result[0]);
+			if (slotnum <= banlist.size())
+				var chosenban := banlist[slotnum];
+				sign.RemoveBan (chosenban);
+				SendSysMessage (character, "Ban lifted for " + chosenban.name + ".");
+			else
+				SendSysMessage (character, "Who do you want to ban from this house?");
+				var newban := Target (character);
+				if (!newban)
+					SendSysMessage (character, "Canceled.");
+				elseif (!newban.acctname)
+					SendSysMessage (character, "That can't be banned.");
+				elseif (sign.IsCoOwnerOrOwner (newban))
+					SendSysMessage (character, "You cannot ban an owner or co-owner!");
+				else
+					var banresult := sign.AddBan (newban);
+					if (!banresult)
+						SendSysMessage (character, "That person is already banned.");
+					elseif (banresult < 0)
+						SendSysMessage (character, "Your ban list is full.");
+					else
+						sign.RemoveFriend (newban);
+						sign.RemoveCoOwner (newban);
+						SendSysMessage (character, newban.name + " has been banned from this house.");
+					endif
+				endif
+			endif
+		endif
+	endwhile
+endfunction
+
+
+
+
+///////////////////
+//  simple menu of per-friend permission toggles, all target-based -- avoids
+//  needing a full permission grid gump. Mirrors house's
+//  ToggleHousePermission/ToggleCoOwnerStatus.
+///////////////////
+
+function ManageFriendPermissions (character, sign)
+	if (!sign.IsFullHouseManager (character))
+		SendSysMessage (character, "You do not have permission to manage house friend permissions.", color := 33);
+		return;
+	endif
+
+	var showing := 1;
+	while (showing)
+		var permlayout := array {
+			"page 0",
+			"resizepic 0 50 2620 310 350",
+			"gumppic 83 0 100",
+			"text 100 29 40 0",
+			"text 40 150 40 1",
+			"text 40 170 40 2",
+			"text 40 190 40 3",
+			"text 40 210 40 4",
+			"text 40 230 40 5",
+			"text 40 250 40 6",
+			"button 20 155 2104 2103 1 0 1",
+			"button 20 175 2104 2103 1 0 2",
+			"button 20 195 2104 2103 1 0 3",
+			"button 20 215 2104 2103 1 0 4",
+			"button 20 235 2104 2103 1 0 5",
+			"button 20 255 2104 2103 1 0 6",
+			"button 234 68 242 241 1 0 0"
+		};
+		var permdata := array {
+			"Friend Permissions",					//0
+			"Toggle lockdown permission",			//1
+			"Toggle secure permission",			//2
+			"Toggle eject permission",				//3
+			"Toggle ban permission",				//4
+			"Toggle teleporter permission",		//5
+			"Show permission overview"				//6
+		};
+
+		var result := SendDialogGump (character, permlayout, permdata);
+		if (!result or !result[0])
+			showing := 0;
+		else
+			case (CINT (result[0]))
+				1:	ToggleCustomHousePermission (character, sign, "lockdown", "lockdown");
+				2:	ToggleCustomHousePermission (character, sign, "secure", "secure");
+				3:	ToggleCustomHousePermission (character, sign, "eject", "eject");
+				4:	ToggleCustomHousePermission (character, sign, "ban", "ban");
+				5:	ToggleCustomHousePermission (character, sign, "teleporter", "teleporter");
+				6:	ShowCustomHousePermissionOverview (character, sign);
+			endcase
+		endif
+	endwhile
+endfunction
+
+
+
+
+function ToggleCustomHousePermission (who, sign, perm_key, label)
+	SendSysMessage (who, "Target the person whose " + label + " permission you want to toggle.");
+	var targetchr := Target (who);
+	if (!targetchr)
+		SendSysMessage (who, "Canceled.");
+		return;
+	endif
+	if (!targetchr.isA (POLCLASS_MOBILE))
+		SendSysMessage (who, "That cannot be modified.");
+		return;
+	endif
+	if (sign.IsCoOwnerOrOwner (targetchr))
+		SendSysMessage (who, "Owners and co-owners always have full permissions.");
+		return;
+	endif
+	if (!sign.IsAFriend (targetchr))
+		SendSysMessage (who, "That person is not on your friend list.");
+		return;
+	endif
+
+	var profile := sign.GetFriendPermissionProfile (targetchr);
+	var enabled := 0;
+	case (perm_key)
+		"lockdown": enabled := profile[2];
+		"secure": enabled := profile[3];
+		"eject": enabled := profile[4];
+		"ban": enabled := profile[5];
+		"teleporter": enabled := profile[6];
+	endcase
+
+	if (enabled)
+		sign.SetFriendPermission (targetchr, perm_key, 0);
+		SendSysMessage (who, "Disabled " + label + " permission for " + targetchr.name + ".");
+	else
+		sign.SetFriendPermission (targetchr, perm_key, 1);
+		SendSysMessage (who, "Enabled " + label + " permission for " + targetchr.name + ".");
+	endif
+endfunction
+
+
+
+
+function ShowCustomHousePermissionOverview (who, sign)
+	SendSysMessage (who, "House permissions overview:");
+	foreach coserial in (sign.GetCoOwnerList())
+		var co := SystemFindObjectBySerial (coserial);
+		if (!co)
+			co := SystemFindObjectBySerial (coserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if (co)
+			SendSysMessage (who, co.name + " [co-owner] full access");
+		endif
+	endforeach
+	foreach friendserial in (sign.GetFriendList())
+		if (friendserial in (sign.GetCoOwnerList()))
+			continue;
+		endif
+		var fr := SystemFindObjectBySerial (friendserial);
+		if (!fr)
+			fr := SystemFindObjectBySerial (friendserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if (fr)
+			var p := sign.GetFriendPermissionProfile (fr);
+			SendSysMessage (who, fr.name + " [friend] L:" + CSTR(p[2]) + " S:" + CSTR(p[3]) + " E:" + CSTR(p[4]) + " B:" + CSTR(p[5]) + " T:" + CSTR(p[6]));
+		endif
+	endforeach
+endfunction
+
+
+
+
+// 2026-08-10: Omega Cache removal for customhousing, mirroring house's
+// HouseFunctionRemoveOmegaCache (pkg/multis/house/multiSign/use.src) and
+// staticHousing's StaticHouseFunctionRemoveOmegaCache.
+function CustomHouseFunctionRemoveOmegaCache (sign, house, character)
+	if (!sign.IsFullHouseManager (character))
+		SendSysMessage (character, "Only owners and co-owners can remove Omega Cache containers.", color := 33);
+		return;
+	endif
+
+	SendSysMessage (character, "Choose the Omega Cache container you wish to remove.");
+	var cache := Target (character, TGTOPT_NOCHECK_LOS);
+	if (!cache)
+		SendSysMessage (character, "Canceled.");
+		return;
+	endif
+
+	if (CInt (cache.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage (character, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var homeinfo := GetObjProperty (sign, "homeinfo");
+	if (!homeinfo or cache.x < homeinfo[2] or cache.x > homeinfo[4] or cache.y < homeinfo[3] or cache.y > homeinfo[5] or cache.realm != sign.realm)
+		SendSysMessage (character, "That is not in your house.", color := 33);
+		return;
+	endif
+
+	if (!IsOmegaCacheEmpty (CInt (GetObjProperty (cache, "houseserial"))))
+		SendSysMessage (character, "This house Omega Cache still contains stored items. Withdraw them first.", color := 33);
+		return;
+	endif
+
+	if (!YesNo (character, "Remove this Omega Cache container?"))
+		SendSysMessage (character, "Canceled.");
+		return;
+	endif
+
+	// Avoid destroycache.src's non-empty block re-triggering on a manual,
+	// already-confirmed-empty removal.
+	EraseObjProperty (cache, "houseserial");
+	if (!DestroyItem (cache))
+		SendSysMessage (character, "Could not remove that Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var remaining := CInt (GetObjProperty (sign, "numomegacache")) + 1;
+	var maxslots := CInt (GetObjProperty (sign, "maxnumomegacache"));
+	if (remaining > maxslots)
+		remaining := maxslots;
+	endif
+	SetObjProperty (sign, "numomegacache", remaining);
+	if (house)
+		SetObjProperty (house, "numomegacache", remaining);
+	endif
+
+	SendSysMessage (character, "Omega Cache container removed. One cache slot was refunded.");
 endfunction
 
 

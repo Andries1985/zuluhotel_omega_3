@@ -49,6 +49,10 @@ function Buildhouse(who, deed)
     syslog("Deed " + deed.serial + " had no housetype property!");
     return;
   endif
+  if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+    PrintTextAbovePrivate(deed, "You already own the maximum number of houses allowed on this account.", who, color := 33);
+    return;
+  endif
   SendSysMessageCL(who, 501274, color := 88); // Where do you wish to build the house?
   var where := TargetMultiPlacement(who, housetype);
   if(!where)
@@ -137,7 +141,7 @@ function Buildhouse(who, deed)
 			item.locked := 1;
 			SetObjProperty(item,			"LockID", LockID);
 			SetObjProperty(item,			"houseserial", created.house.serial);
-		elseif((item.objtype == 0xFFF1) || (item.objtype == 0xFFF0) || (item.objtype == 0xFFF2) || (item.objtype == 0xFFF3) || (item.objtype == 0x20BD1) || (item.objtype == 0x20BD2) || (item.objtype == 0x20BCF) || (item.objtype == 0x20BD0) || (item.objtype == 0x260FA))
+		elseif((item.objtype == 0xBCF) || (item.objtype == 0xBD0) || (item.objtype == 0xBD1) || (item.objtype == 0xBD2) || (item.objtype == 0x20BD1) || (item.objtype == 0x20BD2) || (item.objtype == 0x20BCF) || (item.objtype == 0x20BD0) || (item.objtype == 0x260FA))
 			SetObjProperty(item,			"LockID", LockID);
 			SetObjProperty(item,			"houseserial", created.house.serial);
 			SetObjProperty(item,			"signserial", item.serial);
@@ -150,6 +154,7 @@ function Buildhouse(who, deed)
 			SetObjProperty(item,			"footage", created.footage);
 			SetObjProperty(item,			"ownerserial", who.serial);
 			SetObjProperty(item,			"owneracct", who.acctname);
+			RegisterAccountHouseSign(item, who.acctname);
 			SetObjProperty(item,			"lastownername", who.name);
 			SetObjProperty(item,			"signname", "a house");
 			SetObjProperty(item,			"builtdeed", created.builtdeed.serial);

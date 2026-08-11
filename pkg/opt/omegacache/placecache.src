@@ -12,6 +12,8 @@ include "include/omegacache_utils";
 include ":house:utility";
 include ":gumps:gumps";
 include ":gumps:gumps_ex";
+//include ":omegacache:omegacache";
+include "../pkg/opt/omegacache/omegacache";
 
 program place_omegacache(who, deed)
 
@@ -26,21 +28,34 @@ program place_omegacache(who, deed)
 		return;
 	endif
 
+	// 2026-08-10: sign resolved via FindOmegaCacheHouseSign (omegacache.inc)
+	// instead of GetObjProperty(house,"signserial") -- only house-package
+	// multis ever populate that cprop; staticHousing/customhousing don't, so
+	// this previously silently failed to find (and sync) their sign for
+	// slot bookkeeping, and the ownership check below had the same
+	// cross-package gap IsCowner()/IsFriend() have (see omegacache.inc).
+	var placesign := FindOmegaCacheHouseSign(house, house);
+
 	// Must be owner or co-owner
-	if(!IsCowner(who, house) and GetObjProperty(house, "ownerserial") != who.serial)
+	var can_place := 0;
+	if(placesign)
+		can_place := placesign.IsCoOwnerOrOwner(who);
+	else
+		can_place := (IsCowner(who, house) or GetObjProperty(house, "ownerserial") == who.serial);
+	endif
+	if(!can_place)
 		SendSysMessage(who, "You must be the owner or co-owner of this house.");
 		return;
 	endif
 
 	// Lazy-init cache slots if not yet set (new house, sign never opened)
 	if(GetObjProperty(house, "numomegacache") == error)
-		var max := GetMaxOmegaCacheForHouse(house.objtype);
-		SetObjProperty(house, "numomegacache", max);
-		SetObjProperty(house, "maxnumomegacache", max);
-		var sign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
-		if(sign)
-			SetObjProperty(sign, "numomegacache", max);
-			SetObjProperty(sign, "maxnumomegacache", max);
+		var maxcache := GetMaxOmegaCacheForHouse(house.objtype);
+		SetObjProperty(house, "numomegacache", maxcache);
+		SetObjProperty(house, "maxnumomegacache", maxcache);
+		if(placesign)
+			SetObjProperty(placesign, "numomegacache", maxcache);
+			SetObjProperty(placesign, "maxnumomegacache", maxcache);
 		endif
 	endif
 
@@ -101,7 +116,10 @@ program place_omegacache(who, deed)
 
 	// Decrement remaining slots (same pattern as numsecure)
 	SetObjProperty(house, "numomegacache", CInt(GetObjProperty(house, "numomegacache")) - 1);
-	var sign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
+	var sign := placesign;
+	if(!sign)
+		sign := FindOmegaCacheHouseSign(house, cache);
+	endif
 	if(sign)
 		SetObjProperty(sign, "numomegacache", CInt(GetObjProperty(house, "numomegacache")));
 		SetObjProperty(sign, "maxnumomegacache", CInt(GetObjProperty(house, "maxnumomegacache")));
