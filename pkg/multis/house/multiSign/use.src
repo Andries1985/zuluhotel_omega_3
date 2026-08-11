@@ -19,32 +19,11 @@ const KEYEND := 0x1013;
 const KEYRING := 0x1011;
 
 function GetPlaqueLines(sign)
-	var line1 := " ";
-	var line2 := "";
 	var signname := GetObjProperty(sign, "signname");
-	if(!signname)
+	if(!signname || signname.errortext)
 		signname := " ";
 	endif
-	var split := SplitWords(signname);
-	var j;
-	for(j := 1; j <= 5; j := j + 1)
-		if(!split[j])
-			split[j] := "";
-		endif
-	endfor
-	if(len(signname) <= 12)
-		line1 := signname;
-	elseif((len(split[1]) + len(split[2]) + len(split[3]) + 2) <= 12)
-		line1 := split[1] + " " + split[2] + " " + split[3];
-		line2 := split[4] + " " + split[5];
-	elseif(len(split[1]) + len(split[2]) + 1 <= 12)
-		line1 := split[1] + " " + split[2];
-		line2 := split[3] + " " + split[4] + " " + split[5];
-	elseif(len(split[1]) <= 12)
-		line1 := split[1];
-		line2 := split[2] + " " + split[3] + " " + split[4] + " " + split[5];
-	endif
-	return array(line1, line2);
+	return signname;
 endfunction
 
 function GetHouseDecayDisplay(sign)
@@ -84,6 +63,44 @@ function GetHouseDecayDisplay(sign)
 	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
 endfunction
 
+// "numomegacache" on the sign tracks *remaining* slots (see
+// pkg/opt/omegacache), so the used count shown to players is max-remaining.
+function GetOmegaCacheCountDisplay(sign)
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	var remaining := CInt(GetObjProperty(sign, "numomegacache"));
+	var used := maxslots - remaining;
+	if(used < 0)
+		used := 0;
+	endif
+	return CStr(used) + " / " + CStr(maxslots);
+endfunction
+
+// "numhteles" on the sign tracks the number of house teleporter pairs
+// already placed (pkg/items/houseExtras/hteleporter).
+// 2026-08-11: the cap itself used to be the flat package-wide houseExtras
+// setting for every house type. House types built from an itemdesc.cfg deed
+// with a "numteleporters" cprop (the sqft-scaled house types) now get a
+// per-house cap instead ("maxnumteleporters" on the sign, set in
+// multiDeed/use.src); anything without it (older/original house types)
+// still falls back to the houseExtras global default.
+function GetMaxTeleportersForSign(sign)
+	var maxtele := GetObjProperty(sign, "maxnumteleporters");
+	if(maxtele && !maxtele.errortext)
+		return CInt(maxtele);
+	endif
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	return CInt(htsettings.MaxHouseTeleporters);
+endfunction
+
+function GetTeleporterCountDisplay(sign)
+	var used := CInt(GetObjProperty(sign, "numhteles"));
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	if(htsettings.LimitHouseTeleporters)
+		return CStr(used) + " / " + CStr(GetMaxTeleportersForSign(sign));
+	endif
+	return CStr(used);
+endfunction
+
 function GetGuildHouseName(house)
 	if(!house)
 		return "";
@@ -110,34 +127,39 @@ endfunction
 function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, lockdowns, secures, guild_house_name, declare_text, can_manage)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 45, 2600, 412, 300);
-	GFGumpPic(240, 0, 100);
-	var plaque := GetPlaqueLines(sign);
-	GFTextLine(270, 30, 48, plaque[1]);
-	GFTextLine(270, 50, 48, plaque[2]);
-	GFResizePic(115, 100, 5100, 382, 25);
-	GFTextLine(125, 102, 0, "Info");
-	GFButtonPage(178, 104, 5209, 5003, 1);
-	GFTextLine(215, 102, 0, "House Lists");
-	GFButtonPage(293, 104, 5209, 5003, 2);
-	GFTextLine(330, 102, 0, "Options");
-	GFButtonPage(390, 104, 5209, 5003, 3);
+	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
+	// its 412-wide span (100..512, centre 306); GFTextMid centers each line
+	// within the plaque's own width instead of a hand-tuned x offset.
+	GFResizePic(100, 45, 40288, 412, 300);
+	GFGumpPic(204, 0, 1764);
+	GFTextMid(215, 17, 205, 50, GetPlaqueLines(sign));
+	GFResizePic(115, 55, 5100, 382, 25);
+	GFTextLine(125, 57, 0, "Info");
+	GFButtonPage(178, 59, 5209, 5003, 1);
+	GFTextLine(215, 57, 0, "House Lists");
+	GFButtonPage(293, 59, 5209, 5003, 2);
+	GFTextLine(330, 57, 0, "Options");
+	GFButtonPage(390, 59, 5209, 5003, 3);
 	GFButtonID(430, 308, 247, 248, 1, 0);
 
 	GFPage(1);
-	GFTextLine(135, 140, 2302, "Owned by:");
-	GFTextLine(220, 140, 0, owner_name);
-	GFTextLine(135, 165, 2302, "House Type:");
-	GFTextLine(220, 165, 0, house_type);
-	GFTextLine(135, 190, 2302, "House Decays At:");
-	GFTextLine(250, 190, 0, decay_display);
-	GFTextLine(135, 215, 2302, "Number of locked down items:");
-	GFTextLine(350, 215, 0, CStr(lockdowns));
-	GFTextLine(135, 240, 2302, "Number of secure containers:");
-	GFTextLine(350, 240, 0, CStr(secures));
+	GFTextLine(135, 95, 2020, "Owned by:");
+	GFTextLine(220, 95, 2590, owner_name);
+	GFTextLine(135, 118, 2020, "House Type:");
+	GFTextLine(220, 118, 2590, house_type);
+	GFTextLine(135, 141, 2020, "House Decays At:");
+	GFTextLine(250, 141, 2590, decay_display);
+	GFTextLine(135, 164, 2020, "Number of locked down items:");
+	GFTextLine(370, 164, 2590, CStr(lockdowns));
+	GFTextLine(135, 187, 2020, "Number of secure containers:");
+	GFTextLine(370, 187, 2590, CStr(secures));
+	GFTextLine(135, 210, 2020, "Number of Omega Cache containers:");
+	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
+	GFTextLine(135, 233, 2020, "Number of Teleporters:");
+	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
 	if(guild_house_name)
-		GFTextLine(135, 265, 2302, "Guild House:");
-		GFTextLine(220, 265, 0, guild_house_name);
+		GFTextLine(135, 256, 2020, "Guild House:");
+		GFTextLine(220, 256, 2590, guild_house_name);
 	endif
 	if(!can_manage)
 		return GFSendGump(who);
@@ -147,32 +169,32 @@ function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, loc
 	GFTextLine(155, 308, 2302, "Change the house name!");
 
 	GFPage(2);
-	GFTextLine(155, 140, 2302, "Manage house friends");
-	GFButtonID(125, 140, 2714, 2715, 1, 8);
-	GFTextLine(155, 165, 2302, "List of banned people");
-	GFButtonID(125, 165, 2714, 2715, 1, 11);
-	GFTextLine(155, 190, 2302, "Ban someone from the house");
-	GFButtonID(125, 190, 2714, 2715, 1, 9);
-	GFTextLine(155, 215, 2302, "Remove a ban");
-	GFButtonID(125, 215, 2714, 2715, 1, 12);
-	GFTextLine(155, 240, 2302, "Eject someone from the house");
-	GFButtonID(125, 240, 2714, 2715, 1, 10);
+	GFTextLine(155, 95, 2302, "Manage house friends");
+	GFButtonID(125, 95, 2714, 2715, 1, 8);
+	GFTextLine(155, 118, 2302, "List of banned people");
+	GFButtonID(125, 118, 2714, 2715, 1, 11);
+	GFTextLine(155, 141, 2302, "Ban someone from the house");
+	GFButtonID(125, 141, 2714, 2715, 1, 9);
+	GFTextLine(155, 164, 2302, "Remove a ban");
+	GFButtonID(125, 164, 2714, 2715, 1, 12);
+	GFTextLine(155, 187, 2302, "Eject someone from the house");
+	GFButtonID(125, 187, 2714, 2715, 1, 10);
 
 	GFPage(3);
-	GFTextLine(155, 140, 2302, "House management");
-	GFButtonID(125, 140, 2714, 2715, 1, 15);
-	GFTextLine(155, 165, 2302, "Transfer ownership of the house");
-	GFButtonID(125, 165, 2714, 2715, 1, 13);
-	GFTextLine(155, 190, 2302, "Demolish the house & get a deed back");
-	GFButtonID(125, 190, 2714, 2715, 1, 14);
-	GFTextLine(155, 215, 2302, "Change the master key");
-	GFButtonID(125, 215, 2714, 2715, 1, 16);
+	GFTextLine(155, 95, 2302, "House management");
+	GFButtonID(125, 95, 2714, 2715, 1, 15);
+	GFTextLine(155, 118, 2302, "Transfer ownership of the house");
+	GFButtonID(125, 118, 2714, 2715, 1, 13);
+	GFTextLine(155, 141, 2302, "Demolish the house & get a deed back");
+	GFButtonID(125, 141, 2714, 2715, 1, 14);
+	GFTextLine(155, 164, 2302, "Change the master key");
+	GFButtonID(125, 164, 2714, 2715, 1, 16);
 	// 2026-08-10: Public/Private declaration button hidden (not just
 	// non-functional -- see the case(result[0]) 19 handler below, which was
 	// already commented out but still reachable through this visible button).
 	// Kept in place, not deleted, in case it's wanted back later.
-	// GFTextLine(155, 240, 2302, declare_text);
-	// GFButtonID(125, 240, 2714, 2715, 1, 19);
+	// GFTextLine(155, 187, 2302, declare_text);
+	// GFButtonID(125, 187, 2714, 2715, 1, 19);
 
 	return GFSendGump(who);
 endfunction
@@ -180,7 +202,7 @@ endfunction
 function ShowPagedNameSelectionGump(who, title, action_label, names, action_x := 165, action_y := 335)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -216,7 +238,7 @@ endfunction
 function ShowPagedNameListGump(who, title, names)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -269,25 +291,25 @@ program Mulit_House_sign(who, sign)
 	if(GetObjProperty(sign, "Public"))
 		declare_text := "Declare this house Private";
 	endif
+	// Always resolve the owner's live name, regardless of who is clicking the
+	// sign -- previously this only refreshed when the owner themselves clicked,
+	// so a name change didn't show to anyone else until the owner used the sign.
 	var owner_name := "Unknown";
-	if(who.serial == oserial)
-		owner_name := who.name;
-		SetObjProperty(sign, "lastownername", who.name);
+	var owner_obj := SystemFindObjectBySerial(CInt(oserial));
+	if(!owner_obj)
+		owner_obj := SystemFindObjectBySerial(CInt(oserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if(owner_obj)
+		owner_name := owner_obj.name;
+		SetObjProperty(sign, "lastownername", owner_obj.name);
 	else
+		// Owner object no longer resolvable (e.g. deleted character) -- fall back to last known name.
 		owner_name := GetObjProperty(sign, "lastownername");
 		if(!owner_name || owner_name.errortext)
 			owner_name := GetObjProperty(sign, "Owner");
 		endif
 		if(!owner_name || owner_name.errortext)
-			// Fall back: resolve owner name from ownerserial, including offline mobiles.
-			var owner_obj := SystemFindObjectBySerial(CInt(oserial));
-			if(!owner_obj)
-				owner_obj := SystemFindObjectBySerial(CInt(oserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
-			endif
-			if(owner_obj)
-				owner_name := owner_obj.name;
-				SetObjProperty(sign, "lastownername", owner_obj.name);
-			endif
+			owner_name := "Unknown";
 		endif
 	endif
 	var remaining_lockdowns := GetObjProperty(sign, "RemainingLockdowns");
@@ -333,8 +355,6 @@ program Mulit_House_sign(who, sign)
 					SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 				elseif((len(newname) > 20))
 					SendSysMessage(who, "House sign names may not be longer than 20 characters.", color := 33);
-				elseif(len(SplitWords(newname)) > 5)
-					SendSysMessage(who, "House sign names are limited to 5 words or less.", color := 33);
 				else
 					SetName(sign, newname);
 					SetObjProperty(sign, "signname", newname);
@@ -1255,7 +1275,7 @@ function NewFriendsControl(who, sign, pagenum := 0)
 	GFInitGump();
 	GFNoClose();
 	GFNoDispose();
-	GFResizePic(10, 10, 2600, 750, 530);
+	GFResizePic(10, 10, 40288, 750, 530);
 	GFResizePic(60, 25, 5100, 650, 25);
 	GFTextLine(272, 28, 60, "MANAGE HOUSE FRIENDS");
 	GFResizePic(40, 80, 2620, 690, 410);
@@ -1439,7 +1459,7 @@ function HouseManagement(sign, house, who)
 		GFInitGump();
 		GFNoDispose();
 		GFNoClose();
-		GFResizePic(0, 0, 2600, 250, 316);
+		GFResizePic(0, 0, 40288, 250, 316);
 		GFTextLine(60, 15, 20, "House Management");
 		GFButtonID(35, 50, 2714, 2715, 1, 1);
 		GFTextLine(70, 50, 2302, "Lock down an item");
@@ -1569,7 +1589,7 @@ function OpenManageHouseFriendsGump(sign, who)
 	endif
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 280);
+	GFResizePic(100, 100, 40288, 400, 280);
 	GFTextLine(155, 120, 995, "Manage House Friends");
 	GFButtonID(130, 150, 2714, 2715, 1, 210);
 	GFTextLine(165, 150, 0, "Add person to house lists");
@@ -1884,7 +1904,7 @@ endfunction
 function OpenTeleporterManagementGump(sign, unused house, who)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 220);
+	GFResizePic(100, 100, 40288, 400, 220);
 	GFTextLine(155, 120, 995, "Teleporter Management");
 	GFButtonID(130, 150, 2714, 2715, 1, 230);
 	GFTextLine(165, 150, 0, "Place a teleporter pair");
@@ -1924,7 +1944,7 @@ function PlaceHouseTeleporterPair(sign, who)
 		SendSysMessage(who, "House teleporters are disabled.", color := 33);
 		return;
 	endif
-	if(settings.LimitHouseTeleporters && (CInt(GetObjProperty(sign, "numhteles")) >= CInt(settings.MaxHouseTeleporters)))
+	if(settings.LimitHouseTeleporters && (CInt(GetObjProperty(sign, "numhteles")) >= GetMaxTeleportersForSign(sign)))
 		SendSysMessage(who, "This house has reached the teleporter limit.", color := 33);
 		return;
 	endif
@@ -2027,7 +2047,7 @@ function SetHouseTeleporterAccess(sign, who)
 	var othertele := SystemFindObjectBySerial(CInt(GetObjProperty(tele, "Othertele")));
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 260, 180);
+	GFResizePic(100, 100, 40288, 260, 180);
 	GFTextLine(140, 120, 995, "Set teleporter access");
 	GFButtonID(130, 145, 2714, 2715, 1, 1);
 	GFTextLine(165, 145, 0, "Owner");
