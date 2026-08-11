@@ -16,7 +16,7 @@ function GetHouseSignFromObject(byref house_or_sign)
 		return 0;
 	endif
 
-	if(house_or_sign.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+	if(house_or_sign.objtype in {0xBCF, 0xBD1, 0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
 		return house_or_sign;
 	endif
 
@@ -29,7 +29,7 @@ function GetHouseSignFromObject(byref house_or_sign)
 	endif
 
 	foreach nearby in ListItemsNearLocation(house_or_sign.x, house_or_sign.y, house_or_sign.z, 18, house_or_sign.realm)
-		if(nearby.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+		if(nearby.objtype in {0xBCF, 0xBD1, 0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
 			if(CInt(GetObjProperty(nearby, "houseserial")) == CInt(house_or_sign.serial))
 				return nearby;
 			endif

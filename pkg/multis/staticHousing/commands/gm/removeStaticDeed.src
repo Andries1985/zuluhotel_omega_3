@@ -186,7 +186,7 @@ function PurgeStaticHouseEntry(sign)
 	foreach thing in GetObjProperty(sign, "exteriordoors")
 		var door := SystemFindObjectBySerial(CInt(thing));
 		if(door)
-			EraseObjProperty(door, "SignSerial");
+			EraseObjProperty(door, "signserial");
 			EraseObjProperty(door, "LockID");
 			door.locked := 0;
 		endif

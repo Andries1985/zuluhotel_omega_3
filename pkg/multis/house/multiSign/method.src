@@ -31,7 +31,7 @@ exported function IsHouseSign( byref sign )
 	if(!sign)
 		return 0;
 	endif
-	if(sign.objtype in {0xFFF1, 0xFFF0, 0xFFF2, 0xFFF3, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+	if(sign.objtype in {0xBCF, 0xBD0, 0xBD1, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA, 0xFFF4})
 		return 1;
 	endif
 	return 0;
@@ -78,7 +78,7 @@ exported function IsMultiHouseSign( byref sign )
 	if(!sign)
 		return 0;
 	endif
-	if(sign.objtype in {0xFFF1, 0xFFF0, 0xFFF2, 0xFFF3})
+	if(sign.objtype in {0xBCF, 0xBD0, 0xBD1, 0xBD2})
 		return 1;
 	endif
 	return 0;
@@ -96,15 +96,43 @@ endfunction
 //
 // Returns: 1 if true and 0 if false.
 ///////////////////////////////////////////////////////////
-exported function IsLocationInsideHouse(sign, byref loc)
+exported function IsLocationInsideHouse(sign, byref loc_or_x, y := error, z := error, realm := error)
+	// Accepts either a single location-like object (x/y/z/realm members,
+	// e.g. from TargetCoordinates()) or explicit x, y, z[, realm] numbers --
+	// matches staticHousing's original call convention, which several of
+	// its scripts (lockunlock.src, commands/player/decorate.src) rely on.
+	var x := 0;
+	var yloc := 0;
+	var zloc := 0;
+	var rlm := sign.realm;
+
+	if(y == error || z == error)
+		if(!loc_or_x)
+			return 0;
+		endif
+		x := loc_or_x.x;
+		yloc := loc_or_x.y;
+		zloc := loc_or_x.z;
+		if(loc_or_x.realm)
+			rlm := loc_or_x.realm;
+		endif
+	else
+		x := CInt(loc_or_x);
+		yloc := CInt(y);
+		zloc := CInt(z);
+		if(realm != error)
+			rlm := realm;
+		endif
+	endif
+
 	var fotage := GetObjProperty (sign, "footage");
 	var chk := 0;
 	foreach thing in fotage
 		var minz := CInt(thing[3]) - 12;
-		if ( (loc.realm == sign.realm) &&
-			(loc.x >= thing[1] && loc.x <= thing[4]) &&
-			(loc.y >= thing[2] && loc.y <= thing[5]) &&
-			(loc.z >= minz && loc.z <= thing[6]) )
+		if ( (rlm == sign.realm) &&
+			(x >= thing[1] && x <= thing[4]) &&
+			(yloc >= thing[2] && yloc <= thing[5]) &&
+			(zloc >= minz && zloc <= thing[6]) )
 			chk := 1;
 			break;
 		endif
@@ -146,17 +174,20 @@ endfunction
 ///////////////////////////////////////////////////////////////
 // RefreshHouse(sign)
 //
-// Refreshes the decay timer based on settings.RefreshTime
-// Formula is ReadGameClock() + (CInt(RefreshTime) * 360 * 24)
-// RefreshTime times 60 seconds times 60 minutes times 24 hours
+// Refreshes the decay timer using the shared Abandoned_Timeout setting
+// (:house:settings), the same value get_abandon_time() reads elsewhere.
 //
+// 2026-08-10: previously read settings.RefreshTime via
+// SH_GetSettingsCfgElem(), but :house:settings has no RefreshTime key --
+// that lookup silently resolved to an error/0, so this set decay to
+// essentially "right now" instead of extending it. Dead in house's own
+// package (which refreshes decay inline via get_abandon_time() instead),
+// but staticHousing/customhousing call sign.RefreshHouse() directly, so
+// fixed here as part of sharing this method script across all three.
 //////////////////////////////////////////////////////////////
 exported function RefreshHouse(sign)
-	var settings := SH_GetSettingsCfgElem("settings");
-
-	SetObjProperty(sign,"decay", ReadGameClock() + (CInt(settings.RefreshTime) * 360 * 24));
-    return 1;
-
+	SetObjProperty(sign, "decay", ReadGameClock() + get_abandon_time());
+	return 1;
 endfunction
 
 ////////////////////////////////////////////////
@@ -1197,6 +1228,35 @@ exported function GetHouseSize(sign)
 			area := area + x * y;
 	endforeach
 	return area;
+endfunction
+
+///////////////////////////////////////////////////////////
+//
+// GetItemsInHouse( sign )
+//
+// Purpose: Lists every non-mobile item within any of the house's footage
+// boxes.
+//
+// Parameter objref:: sign (implied)
+//
+// Returns: array:: of item refs, or an empty array if footage is unset.
+//
+///////////////////////////////////////////////////////////
+exported function GetItemsInHouse(sign)
+	var fotage := GetObjProperty(sign, "footage");
+	if(!fotage)
+		return {};
+	endif
+	var itemlist := {};
+	foreach thing in fotage
+		var holder := ListObjectsInBox(thing[1], thing[2], thing[3], thing[4], thing[5], thing[6], sign.realm);
+		foreach obj in holder
+			if(!obj.isa(POLCLASS_MOBILE))
+				itemlist.append(obj);
+			endif
+		endforeach
+	endforeach
+	return itemlist;
 endfunction
 
 function GetPermPropertyName(perm_key)

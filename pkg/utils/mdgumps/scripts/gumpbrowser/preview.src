@@ -1,0 +1,61 @@
+// Companion preview window for commands/test/gumpbrowser.src.
+// Started via Start_Script with params := array{ mobile, mode, gump_id }.
+// mode 1 = GFGumpPic (native size), mode 2 = GFResizePic (stretched to 200x200).
+// Registers its own PID so the main browser can force-close this window
+// (via CloseGump) whenever the player picks a new mode or id.
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program GumpBrowserPreview( params )
+	var mobile := params[1],
+		mode := CInt( params[2] ),
+		gump_id := CInt( params[3] );
+
+	var BTN_BACK := 100,
+		BTN_NEXT := 101,
+		BTN_CLOSE := 102;
+
+	SetObjProperty( mobile, "#GumpBrowserPreviewPID", GetPid() );
+
+	while ( 1 )
+		var gump := GFCreateGump( 400, 50 );
+		GFClosable( gump, 0 );
+		GFResizePic( gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 300, 34 );
+
+		GFTextLine( gump, 10, 10, 1153, "ID: "+CStr(gump_id) );
+		// Back/Next are the small ~20px arrow icons; Close is the ~66px "CANCEL" art,
+		// so it gets its own wide gap instead of sitting flush against Next.
+		GFAddButton( gump, 100, 6, 4014, 4016, GF_CLOSE_BTN, BTN_BACK );
+		GFAddButton( gump, 140, 6, 4005, 4007, GF_CLOSE_BTN, BTN_NEXT );
+		GFAddButton( gump, 185, 4, 2119, 2120, GF_CLOSE_BTN, BTN_CLOSE );
+
+		if ( mode == 1 )
+			GFGumpPic( gump, 0, 39, gump_id );
+		else
+			GFResizePic( gump, 0, 39, gump_id, 200, 200 );
+		endif
+
+		var result := GFSendGump( mobile, gump );
+		if ( !result || result[BTN_CLOSE] )
+			break;
+		endif
+
+		if ( result[BTN_NEXT] )
+			gump_id += 1;
+			SetObjProperty( mobile, "#GumpBrowserGumpID", gump_id );
+		elseif ( result[BTN_BACK] )
+			if ( gump_id > 1 )
+				gump_id -= 1;
+			endif
+			SetObjProperty( mobile, "#GumpBrowserGumpID", gump_id );
+		endif
+	endwhile
+
+	// Only clear the PID marker if a newer preview thread hasn't already replaced us.
+	var cur_pid := GetObjProperty( mobile, "#GumpBrowserPreviewPID" );
+	if ( cur_pid && !cur_pid.errortext && CInt(cur_pid) == GetPid() )
+		SetObjProperty( mobile, "#GumpBrowserPreviewPID", 0 );
+	endif
+endprogram

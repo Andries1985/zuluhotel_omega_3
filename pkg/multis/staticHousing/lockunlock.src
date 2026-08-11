@@ -13,6 +13,32 @@ function SHDebug(msg)
 	endif
 endfunction
 
+// 2026-08-10: was previously called as sign.IsLocationInsideHouseMsg(...),
+// a method-script method that was never actually defined anywhere (in
+// either this package's old sign/method.src or the shared :house: one),
+// so every call site below was erroring at runtime. Fixed by making it a
+// plain local wrapper around the real sign.IsLocationInsideHouse() method,
+// matching the same check+message pattern already used inline elsewhere
+// in this file.
+function IsLocationInsideHouseMsg(sign, character, item)
+	// 2026-08-10: was sign.IsLocationInsideHouse(character, item) -- house's
+	// IsLocationInsideHouse dispatches on whether y/z were passed (object
+	// form vs explicit x,y,z), so a 2-arg call binds item to the "y" slot
+	// while "z" stays defaulted, taking the object-form branch on
+	// `character` and silently discarding item entirely: this validated
+	// the ACTOR's position, not the target item's, letting a character
+	// standing inside the house lock down/secure/raise/lower items that
+	// are physically outside its footage (and blocking valid actions on
+	// in-house items if the character was standing just outside). Fixed to
+	// pass the item's own coordinates explicitly.
+	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z))
+		SHDebug("Location check denied outside house item=" + item.serial + " sign=" + sign.serial);
+		SendSysMessage(character, "That location is not in the house.", color := 33);
+		return 0;
+	endif
+	return 1;
+endfunction
+
 function NormalizeLegacySecureItem(sign, item)
 	if(!item)
 		return 0;
@@ -134,7 +160,17 @@ function HouseLockUnlockItem (sign, character, item)
 	endif
 
 
-	if (!sign.IsLocationInsideHouse(character, item))
+	// 2026-08-10: was sign.IsLocationInsideHouse(character, item) -- house's
+	// IsLocationInsideHouse dispatches on whether y/z were passed (object
+	// form vs explicit x,y,z), so a 2-arg call binds item to the "y" slot
+	// while "z" stays defaulted, taking the object-form branch on
+	// `character` and silently discarding item entirely: this validated
+	// the ACTOR's position, not the target item's, letting a character
+	// standing inside the house lock down/secure/raise/lower items that
+	// are physically outside its footage (and blocking valid actions on
+	// in-house items if the character was standing just outside). Fixed to
+	// pass the item's own coordinates explicitly.
+	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z))
 		SHDebug("Lock/release denied outside house item=" + item.serial + " sign=" + sign.serial);
 		SendSysMessage(character, "That location is not in the house.", color := 33);
 		return;
@@ -223,7 +259,7 @@ function HouseSecureReleaseContainer (sign, character, item)
 	NormalizeLegacySecureItem(sign, item);
 	var itemsecure := GetObjProperty(item, "secure") || GetObjProperty(item, "secured");
 	SHDebug("Secure/release action by " + character.name + " on item " + item.serial + " in sign " + sign.serial);
-	if(!sign.IsLocationInsideHouseMsg(character, item))
+	if(!IsLocationInsideHouseMsg(sign, character, item))
 		return;
 	endif
 
@@ -411,7 +447,7 @@ endfunction
 ///////////////////
 
 function HouseRaiseItem (sign, character, item)
-	if (!sign.IsLocationInsideHouseMsg(character, item))
+	if (!IsLocationInsideHouseMsg(sign, character, item))
 		return;
 	endif
 
@@ -451,7 +487,7 @@ endfunction
 ///////////////////
 
 function HouseLowerItem (sign, character, item);
-	if (!sign.IsLocationInsideHouseMsg(character, item))
+	if (!IsLocationInsideHouseMsg(sign, character, item))
 		return;
 	endif
 
@@ -540,9 +576,14 @@ function IsADeedItem (me, it)
 	endif
 
 	//the new, prefered way to do multipart items
-	if (GetObjProperty (it, "deedobjtype") )
-		var deedobjtype := GetObjProperty (it, "deedobjtype");
-		var deedcolor := GetObjProperty (it, "deedcolor");
+	// 2026-08-10: was reading "deedobjtype"/"deedcolor"/"otheritems"
+	// (lowercase), but the shared deed-furniture system that actually
+	// stamps these on items (pkg/items/deed/, carpentrydeed.src) always
+	// writes the capitalized "DeedObjType"/"DeedColor"/"OtherItems" -- this
+	// lookup never matched anything set by that system. Fixed to match.
+	if (GetObjProperty (it, "DeedObjType") )
+		var deedobjtype := GetObjProperty (it, "DeedObjType");
+		var deedcolor := GetObjProperty (it, "DeedColor");
 		var thedeed := CreateItemInBackpack (me, deedobjtype, 1);
 		if (!thedeed)
 			PrintTextAbovePrivate (me, "*Your backpack is full!*", me, 0x3, 0x21);
@@ -552,7 +593,7 @@ function IsADeedItem (me, it)
 			thedeed.color := deedcolor;
 		endif
 
-		foreach serial in GetObjProperty (it, "otheritems")
+		foreach serial in GetObjProperty (it, "OtherItems")
 			var item := SystemFindObjectBySerial (serial);
 			if (item.isa(POLCLASS_CONTAINER))
 				foreach anitem in EnumerateItemsInContainer(item, ENUMERATE_ROOT_ONLY)

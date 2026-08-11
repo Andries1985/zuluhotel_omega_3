@@ -12,6 +12,8 @@ use os;
 
 include "include/client";
 include "include/omegacache_utils";
+//include ":omegacache:omegacache";
+include "../pkg/opt/omegacache/omegacache";
 
 program destroy_omegacache(item)
 
@@ -41,21 +43,24 @@ program destroy_omegacache(item)
 	// Re-credit the house's omega cache slot
 	if(house)
 		var current := CInt(GetObjProperty(house, "numomegacache"));
-		var max := CInt(GetObjProperty(house, "maxnumomegacache"));
-		if(max <= 0)
-			max := GetMaxOmegaCacheForHouse(CInt(GetObjType(house)));
-			SetObjProperty(house, "maxnumomegacache", max);
+		var maxcache := CInt(GetObjProperty(house, "maxnumomegacache"));
+		if(maxcache <= 0)
+			maxcache := GetMaxOmegaCacheForHouse(CInt(GetObjType(house)));
+			SetObjProperty(house, "maxnumomegacache", maxcache);
 		endif
 		current := current + 1;
-		if(current > max)
-			current := max;
+		if(current > maxcache)
+			current := maxcache;
 		endif
 		SetObjProperty(house, "numomegacache", current);
 
-		var sign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
+		// 2026-08-10: was GetObjProperty(house,"signserial"), which only
+		// house-package multis populate; staticHousing/customhousing don't,
+		// so their sign's slot count never got synced back here.
+		var sign := FindOmegaCacheHouseSign(house, item);
 		if(sign)
 			SetObjProperty(sign, "numomegacache", current);
-			SetObjProperty(sign, "maxnumomegacache", max);
+			SetObjProperty(sign, "maxnumomegacache", maxcache);
 		endif
 	endif
 

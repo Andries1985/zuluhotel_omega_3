@@ -4,11 +4,21 @@ use os;
 use math;
 
 include "include/client";
+include ":mdgumps:gumps_ex";
 
 const minute := 60;
 const hour := 3600;
 const week := 604800;
 const starttime := 1543172400; //2018/11/25 19:00 gmt (sunday)
+
+const ph_gump_id := 3900;
+const ph_title_color := 1097;
+const ph_option_color := 2212;
+const ph_radio_off := 5844;
+const ph_radio_on := 5845;
+
+const btn_cancel := 1;
+const btn_okay := 2;
 
 program textcmd_setPH(who)
 
@@ -39,63 +49,19 @@ program textcmd_setPH(who)
 	if ((weekday_now < use_weekday) || (time_now > use_time_nextweek) )
 
 		SetObjProperty(who, "#SettingPH", 1);
-		
-		var gump := {
-			"nodispose",
-			"page 0",
-			"gumppic 564 322 30500",
-			"gumppic 686 516 1802",
-			"gumppic 694 516 1803",
-			"gumppic 910 516 1804",
-			"gumppic 686 556 1802",
-			"gumppic 694 556 1803",
-			"gumppic 910 556 1804",
-			"gumppic 686 596 1802",
-			"gumppic 694 596 1803",
-			"gumppic 910 596 1804",
-			"text 710 360 2595 0",
-			"page 1",
 
-			"text 620 420 2578 1",
-
-			"text 710 514 2614 2",
-			"text 710 554 2614 3",
-			"text 710 594 2614 4",
-
-			"radio 663 513 208 209 0 100",								// Hunting PH button
-			"radio 663 553 208 209 0 200",								// Half-Resources PH button
-			"radio 663 593 208 209 0 300",								// Double-Skillgain PH button
-			
-			"button 700 710 243 241 1 0 0",                             // Cancel button
-			"button 840 710 249 248 1 0 1"								// Okay button
-		};
-		
-		var data := {
-			"<[ PERSONAL POWERHOUR ]>",
-			"Your Powerhour will continue if you disconnect.",
-			"Hunting Powerhour",
-			"Half-resources Powerhour",
-			"Double-skillgain Powerhour"
-		};
-
-		var gumpdata := SendDialogGump(who, gump, data);
-		if(!gumpdata)
+		var gumpdata := SendPHGump(who);
+		if(!gumpdata || !gumpdata[btn_okay])
 			SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
 			EraseObjProperty(who, "#SettingPH");
 			return;
 		endif
-		
-		// Okay button wasn't pressed
-		if(gumpdata[0] != 1)
-			SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
-			EraseObjProperty(who, "#SettingPH");
-			return 0;
-		endif
-		
-		var playerchoice;
 
+		var playerchoice;
 		foreach key in (gumpdata.keys)
-			playerchoice := key;
+			if(key != btn_okay && key != btn_cancel)
+				playerchoice := key;
+			endif
 		endforeach
 
 		case(playerchoice)
@@ -110,15 +76,57 @@ program textcmd_setPH(who)
 endprogram
 
 
+function SendPHGump(who)
+
+	var width := 300;
+	var height := 300;
+
+	var gump := GFCreateGump(350, 200, width, height);
+	GFDisposable(gump, 0);
+
+	GFResizePic(gump, 0, 0, ph_gump_id, width, height);							// Resizable background (3900)
+
+	//var title_x_correction := 25;	// GFTextMid's width estimate for "<[ ]" runs narrow, so nudge right to true-center it
+	GFTextMid(gump, 30, 8, width-40, ph_title_color, "PERSONAL POWERHOUR");	// Title (in the title bar cutout at the top)
+
+	var wrap_x := 30;
+	var wrap_y := 66;
+	GFDrawWrappedText(gump, wrap_x, wrap_y,
+		GFWordWrap("Your Powerhour will continue if you disconnect.", 260), 2578);
+
+	GFSetRadioGroup(gump, 1);
+
+	var y_pos := 130;
+	GFRadioButton(gump, 40, y_pos, ph_radio_off, ph_radio_on, 0, 100);
+	GFTextLine(gump, 90, y_pos+2, ph_option_color, "Hunting Powerhour");
+
+	y_pos += 34;
+	GFRadioButton(gump, 40, y_pos, ph_radio_off, ph_radio_on, 0, 200);
+	GFTextLine(gump, 90, y_pos+2, ph_option_color, "Half-resources Powerhour");
+
+	y_pos += 34;
+	GFRadioButton(gump, 40, y_pos, ph_radio_off, ph_radio_on, 0, 300);
+	GFTextLine(gump, 90, y_pos+2, ph_option_color, "Double-skillgain Powerhour");
+
+	var btn_width := 63;
+	var btn_gap := 10;
+	GFAddButton(gump, CInt(width/2) - btn_width - btn_gap, height-50, 243, 241, GF_CLOSE_BTN, btn_cancel);						// Cancel button (left of center)
+	GFAddButton(gump, CInt(width/2) + btn_gap, height-50, 249, 248, GF_CLOSE_BTN, btn_okay);		// Okay button (right of center)
+
+	return GFSendGump(who, gump);
+endfunction
+
+
 function activateph(who, choice)
 
 	var use_time := POLCore().systime;
-	
+
 	var setph := SetObjProperty(who, choice, 1);
 	var use_weekday :=  cint(Floor(use_time/86400)+4) % 7;
-	
+
 	SetObjProperty(who, "pph_use_time", use_time);
 	SetObjProperty(who, "pph_use_weekday", use_weekday);
+	SetObjProperty(who, "#PPHPid", GetPid());		// Lets .resetph kill this sleeping instance directly
 
 	if(GetObjProperty(who, "#PPHH"))
 		SendSysMessage( who, "Your Hunting Powerhour has started!", FONT_BOLD, 2601 );
@@ -128,7 +136,7 @@ function activateph(who, choice)
 		SendSysMessage( who, "Your Double-Skillgain Powerhour has started!", FONT_BOLD, 2601 );
 	endif
 
-	Sleep(3600);
+	Sleep(hour);
 
 	if(GetObjProperty(who, "#PPHH"))
 		SendSysMessage( who, "Your Hunting Powerhour has ended!", FONT_BOLD, 2595 );
@@ -139,6 +147,7 @@ function activateph(who, choice)
 	endif
 	EraseObjProperty(who, "#PPHH");
 	EraseObjProperty(who, "#PPHC");
-	EraseObjProperty(who, "#PPHS");	
+	EraseObjProperty(who, "#PPHS");
 	EraseObjProperty(who, "#SettingPH");
+	EraseObjProperty(who, "#PPHPid");
 endfunction
