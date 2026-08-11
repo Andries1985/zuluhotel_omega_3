@@ -8,7 +8,7 @@ include "house";
 // sign.RemoveFriend()/sign.GetFriendList()/sign.IsAFriend(), now also
 // registered as this package's MethodScript), which additionally brings
 // co-owners, bans, and per-friend permissions that customhousing never had.
-// AdjustFriendListFromSign (sign.src) is the new gump handler; the
+// NewFriendsControl (sign.src) is the new gump handler; the
 // account-wide "merchant-only friend" concept (never actually consumed
 // anywhere outside this file) was dropped in favor of the shared model's
 // regular friend status -- house's own Public/Private vendor-placement gate
