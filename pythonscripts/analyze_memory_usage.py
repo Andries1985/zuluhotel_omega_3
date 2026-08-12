@@ -6,6 +6,7 @@ Analyzes memoryusagescripts.log for script memory usage statistics.
 
 import re
 import csv
+import sys
 import argparse
 from pathlib import Path
 from datetime import datetime
@@ -19,7 +20,11 @@ class C:
     GRAY   = "\033[90m"
     RESET  = "\033[0m"
 
+_COLOR_ENABLED = sys.stdout.isatty()
+
 def c(color: str, text: str) -> str:
+    if not _COLOR_ENABLED:
+        return text
     return f"{color}{text}{C.RESET}"
 
 # ── Patterns ─────────────────────────────────────────────────────────────────
