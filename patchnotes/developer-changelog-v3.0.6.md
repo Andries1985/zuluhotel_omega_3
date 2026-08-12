@@ -1,6 +1,6 @@
 # Developer Changelog - v3.0.6
 
-Range: Patch-3.0.5..Patch-3.0.6 (commit `38e8a76`..`6ed29ee`)
+Range: Patch-3.0.5..Patch-3.0.6 (commit `38e8a76`..`8ed373d`)
 Branch: Patch-3.0.6
 Date: 2026-08-11
 
@@ -8,27 +8,31 @@ Date: 2026-08-11
 
 ## Scope Summary
 
-- Total files changed: 97
-- Status breakdown: 85 modified, 9 added, 2 deleted, 1 renamed
-- Net textual delta: 9969 insertions, 7665 deletions (text files only; 6 binaries were also rebuilt: `pol.exe`, `poltool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`, `uoconvert.exe`, `uotool.exe`)
-- Largest shifts:
+- Total files changed: 100
+- Status breakdown: 87 modified, 10 added, 2 deleted, 1 renamed
+- Net textual delta: 12855 insertions, 8348 deletions (text files only, excluding the `ainotes/multis-cfg-backup-20260811.txt` snapshot noted below; 6 binaries were also rebuilt: `pol.exe`, `poltool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`, `uoconvert.exe`, `uotool.exe`)
+- Also added: `ainotes/multis-cfg-backup-20260811.txt` (+269335 / -0) - a plain pre-`uoconvert` snapshot of `config/multis.cfg`, kept as a diff source for handing the graphics team an exact list of what to re-add via UOFiddler (see Theme 24); not application/source content.
+- Largest shifts (full branch range):
   - `pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg` (+3093 / -3489) - bulk regeneration, renumbered/deduplicated door decor entries
-  - `pkg/multis/house/include/footagearrays.inc` (+2375 / -0, new file) - auto-generated lockdown/ban-tile arrays for newly named legacy multis
-  - `pkg/multis/house/config/itemdesc.cfg` (+979 / -951) - deed renaming, two new sign graphics, demolish-refund coverage for ~114 multis
-  - `pkg/multis/customhousing/sign.src` (+538 / -30) - shared friend/co-owner/ban core, decay wiring, Omega Cache removal, gump additions
+  - `pkg/multis/house/include/footagearrays.inc` (+4202 / -4, new file) - auto-generated lockdown/ban-tile arrays for newly named legacy multis, later reworked with 30 real in-game-verified ban-tile placements superseding the original heuristic guesses (Theme 24)
+  - `pkg/multis/house/config/itemdesc.cfg` (+1412 / -1273) - deed renaming, two new sign graphics, demolish-refund coverage for ~114 multis, plus this patch's lockdown/secure/Omega Cache/teleporter square-footage scaling rewrite across all 106 Fiddler-imported deeds (Theme 23) and one deed pulled from circulation (Theme 24)
+  - `pkg/multis/staticHousing/sign/method.src` (+0 / -1421, deleted) - consolidated onto the shared `:house:multiSign/method` script (Theme 2)
   - `config/boats.cfg` (+448 / -480) - boat component schema migration (tillerman/hold removed, sails/storage/weaponslot added)
-  - `pythonscripts/analyze_memory_usage.py` / `Analyze-MemoryUsage.ps1` (+286 / +199, new files) - dev tooling used to drive this patch's memory-leak fixes
-  - `pkg/multis/house/multiSign/use.src` (+166 / -163) - dead-code removal, Omega Cache removal option, teleporter sub-gump rewire
-  - `pkg/multis/customhousing/include/house.inc` (+137 / -95) - serial-based ownership migration, cross-account house cap
-  - `config/mrcspawn.cfg` (+129 / -122) - new Master Builder / Grand Surveyor vendors replacing flat deed stock
-  - `pkg/opt/omegacache/omegacache.inc` (+126 / -38) - cross-package sign resolver fixing broken co-owner/friend access
-  - `pkg/multis/house/include/multihouse_settings.inc` (+125 / -0, new file) - shared cross-account house cap API
+  - `pkg/multis/customhousing/sign.src` (+685 / -214) - shared friend/co-owner/ban core, decay wiring, Omega Cache removal, gump additions, plus the house-sign gump rework and new friend/co-owner permission table gump (Themes 4 and 22)
+  - `pkg/multis/house/multiSign/use.src` (+272 / -249) - dead-code removal, Omega Cache removal option, teleporter sub-gump rewire, plus the gump texture/plaque rework and per-house teleporter cap display (Themes 7 and 22)
+  - `pkg/multis/staticHousing/sign/use.src` (+194 / -115) - same gump rework pattern as house's sign gump (Theme 22)
+  - `pythonscripts/analyze_memory_usage.py` / `Analyze-MemoryUsage.ps1` (+291 / +199, new files) - dev tooling used to drive this patch's memory-leak fixes, later given TTY-aware color output (Theme 27)
+  - `config/mrcspawn.cfg` (+132 / -122) - new Master Builder / Grand Surveyor vendors replacing flat deed stock, plus one deed pulled from circulation (Theme 24)
 - Non-merge commits in range:
   - New update to areas and doors and regions to fix errors, attempt to fix character death being mounted (`6cc93f5`)
   - Logon and housing updates (`3d1a141`)
   - Char death mounted fix reverts as it was client side (`2c2d81a`)
   - Update core, lots of housing fixes, setph fixes, custom housing fixes, sign consolidation, memory usage analysis (`6ed29ee`)
-- Merge commits in range (no unique changes): `49041b9`, `c63d3cd`
+  - Patchnotes Update (`17584fd`) - patchnotes-only commit (created the initial versioned v3.0.6 docs this file descends from), no code changes
+  - House sign changes (`aa168fc`) - house/staticHousing/customhousing sign gump rework plus the lockdown/secure/Omega Cache/teleporter scaling formula and per-house teleporter cap (Themes 22-23)
+  - Logon and uoconvert fix (`3101cf5`)
+  - multis.cfg work for missing signs and bantiles, housing stack drop fix, bantiles fix, memdump python script updated (`8ed373d`) - Fiddler multi ban-tile/sign QA batch, ban-tile drop-location safety fix, gold stack partial-fill fix (Themes 24-26)
+- Merge commits in range (no unique changes): `49041b9`, `c63d3cd`, `92cafc2`, `192a9a8`, `6e08f78`
 
 ---
 
@@ -36,6 +40,7 @@ Date: 2026-08-11
 
 Legend: `Status | File`
 
+- A | ainotes/multis-cfg-backup-20260811.txt
 - A | ainotes/vendor-buy-list-count-bug.md
 - M | config/boats.cfg
 - M | config/command_synopses.cfg
@@ -65,6 +70,7 @@ Legend: `Status | File`
 - M | pkg/multis/house/multiSign/method.src
 - M | pkg/multis/house/multiSign/use.src
 - M | pkg/multis/house/walkOn.src
+- M | pkg/multis/staticHousing/bantile/walkOn.src
 - M | pkg/multis/staticHousing/commands/gm/removeStaticDeed.src
 - M | pkg/multis/staticHousing/commands/gm/staticDeed.src
 - M | pkg/multis/staticHousing/commands/player/decorate.src
@@ -89,6 +95,7 @@ Legend: `Status | File`
 - M | pkg/opt/powerhour/textcmd/player/setph.src
 - M | pkg/opt/powerhour/textcmd/test/resetph.src
 - M | pkg/packethooks/megacliloc/mobiledata.src
+- M | pkg/packethooks/packethook/packethook.src
 - M | pkg/systems/accounts/config/settings.cfg
 - M | pkg/systems/accounts/hook/onLogin.src
 - M | pkg/systems/accounts/include/accounts.inc
@@ -488,14 +495,106 @@ Notable functional changes:
 Expected impact:
 - Reduced log verbosity for normal operation; mousing over an owned pet/summon now shows its owner's name in the properties popup; door-decoration data deduplicated with no expected functional change.
 
+### 22) Housing - Sign Gump Rework (house / staticHousing / customhousing)
+
+Files involved:
+- `pkg/multis/house/multiSign/use.src`
+- `pkg/multis/staticHousing/sign/use.src`
+- `pkg/multis/customhousing/sign.src`
+- `pkg/multis/customhousing/include/housefriends.inc`
+
+Notable functional changes:
+- All three housing packages' main sign gump (`ShowHouseSignGump`) switched its background texture from gump art `2600` to `40288`, and its plaque graphic from `100` to `1764`.
+- `GetPlaqueLines(sign)` (house and staticHousing) no longer manually word-wraps the sign name into two centered lines via `SplitWords` + length-budget branching; it now returns the raw sign name as a single string, rendered with `GFTextMid` (centered within the plaque's own width) instead of two `GFTextLine` calls at hand-tuned offsets. The 5-word sign-name limit tied to that wrapping logic is gone; the 20-character length cap (already enforced separately) remains the only limit.
+- Owner-name resolution on the info page is now always live: previously the sign only refreshed `lastownername`/`ownername` when the *owner themselves* clicked the sign (so a character rename wasn't visible to other viewers until the owner next used the sign). All three packages now resolve the current name via `SystemFindObjectBySerial` (including offline mobiles) on every click, falling back to the last-known stored name only if the owner object can no longer be resolved at all (e.g. a deleted character).
+- house and staticHousing sign info pages gained two new display rows: "Number of Omega Cache containers" (`GetOmegaCacheCountDisplay(sign)`, computed as `maxnumomegacache - numomegacache` since the stored cprop tracks *remaining* slots) and "Number of Teleporters" (`GetTeleporterCountDisplay(sign)`, `numhteles` against the applicable cap). Existing info rows were re-spaced (18px -> 23px line pitch) to fit the two new rows without growing the panel.
+- house's `GetTeleporterCountDisplay`/`PlaceHouseTeleporterPair` cap check now goes through a new `GetMaxTeleportersForSign(sign)`: houses built from a deed with a `numteleporters` cprop (the sqft-scaled Fiddler house types, Theme 23) get a per-house cap via the sign's `maxnumteleporters` property; house types without it fall back to the flat `houseExtras` package setting `MaxHouseTeleporters`, same as before. staticHousing's equivalent function was not changed to be per-house in this pass and still uses the flat package-wide cap only.
+- `customhousing/sign.src` was substantially restructured to match: gump result button IDs were renumbered (e.g. rename moved from button 2 to 1, friend management from 9 to 8, the old ad-hoc 101-108 friend-permission button range removed entirely), a `NewFriendsControl` gump replaces the previous `ManageCoOwners`/`ManageBans`/`ManageFriendPermissions` trio and the old `AdjustFriendListFromSign` handler (renamed/superseded, `housefriends.inc`'s doc comment updated to match) with a single scrollable table gump (name, secure/recall/gate-to/gate-from permission checkboxes, co-owner toggle, add/remove buttons, pagination) built on `BuildHouseFriendRows`/`SaveHouseFriendData`, mirroring the friend-permission model house/staticHousing already had. New `ListBan`/`DeleteBan`/`Eject` functions give customhousing sign-driven ban-list viewing, ban removal, and forced-eject, which previously didn't exist for custom houses.
+
+Expected impact:
+- Sign name display is simpler (one auto-centered line instead of a hand-wrapped two-line layout) and no longer artificially limited to 5 words; renaming a house's owner (or the owner reconnecting under a changed name) now shows correctly to any viewer immediately, not just after the owner re-clicks the sign; players can see Omega Cache and teleporter usage directly on the house/staticHousing info page; custom house owners gain ban-list viewing/removal, forced-eject, and the same friend-permission table UI as the other two housing types.
+
+### 23) Housing - Fiddler Deed Lockdown/Secure/Omega Cache/Teleporter Scaling
+
+Files involved:
+- `pkg/multis/house/config/itemdesc.cfg`
+- `pkg/multis/house/multiDeed/use.src`
+- `pkg/multis/house/multiSign/use.src` (teleporter cap plumbing, see Theme 22)
+
+Notable functional changes:
+- All 106 Fiddler-imported deeds (the 38 castle-range and 76 legacy multis named/renamed in Theme 7) previously shared one copy-pasted `cprop` template (577 lockdowns / 29 secures / 3 Omega Cache slots) regardless of the house's real footprint size -- e.g. a tiny imported house could carry the same limits as the largest. Every deed's `numlockdowns`/`numsecure`/`numomegacache` was recomputed from a power-law curve fit to the original 22 hand-tuned house types' real (square-footage, stat) pairs, then rescaled across the Fiddler-imported footprint range (64-1295 sqft) to hit new min/max targets: lockdowns 25-600, secures 1-30 (floor anchored at the smallest original house, the small stone house, at 1), Omega Cache 1-5 (same floor anchor). The garden shed variants (smallest original footprint, 12 sqft) were excluded from the curve entirely and hard-set to 0 Omega Cache / 0 teleporters, since they were never intended to carry storage/teleporter slots.
+- New `numteleporters` deed cprop added to all 106 deeds (1-10, same footage-scaled curve), a stat that didn't exist on these deeds before at all. `multiDeed/use.src`'s `Buildhouse()` and `CreatehouseKeysAndBuiltDeed2()` now read it and copy it onto the built house/sign as `maxnumteleporters`, mirroring the existing `numomegacache`/`maxnumomegacache` plumbing exactly; deeds without the cprop leave `maxnumteleporters` unset so the sign falls back to the flat package default (Theme 22).
+- These values are baked onto the house/sign at build time (same as lockdowns/secures/Omega Cache always have been) -- they do not retroactively apply to houses already built before this patch; only newly-placed houses from a freshly-purchased or already-in-inventory deed get the corrected numbers.
+
+Expected impact:
+- Newly built Fiddler-imported houses now get lockdown/secure/Omega Cache/teleporter limits proportional to their actual size instead of one flat number shared by houses of wildly different footprints; teleporters are a genuinely new per-house-size stat on these deeds. Players who already built one of these houses before this patch keep their old (flat 577/29/3/0) numbers until they redeed and rebuild.
+
+### 24) Housing - Fiddler Multi Ban-Tile / Sign QA Batch
+
+Files involved:
+- `pkg/multis/house/include/footagearrays.inc`
+- `pkg/multis/house/config/itemdesc.cfg`
+- `config/mrcspawn.cfg`
+- `config/multis.cfg` (not tracked in git, see below)
+- `ainotes/multis-cfg-backup-20260811.txt` (new)
+
+Notable functional changes:
+- 30 of the ~35 auto-generated (heuristic, unverified) `footagearrays.inc` ban-tile functions from Theme 7/3.0.5 were replaced with real, in-game-verified ban-tile coordinates: the shard owner placed physical blocker items at the correct ban-tile locations (and an `0x12EE` marker on multis with no sign at all) on a live test build, and those exact relative coordinates (deduped where multiple blockers landed on the same tile) were transcribed into each `multi<hex>housearray` function, replacing the old door-cluster-guessing heuristic. The 5 remaining unfixed auto-generated functions were confirmed to be dead code (their house types are already commented out of `itemdesc.cfg` from the original legacy-86 triage), so no multi was left with unverified ban tiles.
+- One multi (`largeplasterandtilehousewithoutbuildingsdeed`, MultiID `0x124`, house objtype `0x160be`) was confirmed broken via an in-world `0x1797` marker and pulled from circulation: its `itemdesc.cfg` `Item` block was moved to the end of the file and commented out (kept, not deleted, so a player who already owns the deed isn't broken), and its `config/mrcspawn.cfg` vendor stock line was commented out so it's no longer sold.
+- Sign+signpost pairs (`dynamic 0x0bd2` brass sign / `dynamic 0x0b9c` metal signpost, both at the multi's south-west footprint corner, z=7) were added directly to `config/multis.cfg` for the same 30 multis, and confirmed working live in-game. This is **not a durable fix**: `config/multis.cfg` is generated wholesale by `uoconvert multis` from the binary `multi.mul`/`multi.idx`/`MultiCollection.uop` client data every time it's run, and hand edits to it do not survive a reconversion (confirmed: after the shard owner ran `uoconvert multis` to pick up other client-data changes, all 30 sign/signpost additions were gone, byte-for-byte reverted). `config/multis.cfg` was therefore kept out of git (`.gitignore`) as before. A plain-text pre-reconversion backup (`ainotes/multis-cfg-backup-20260811.txt`) was diffed against the freshly regenerated file to produce an exact list of the 30 multis' missing sign/signpost tile data, handed off for the actual durable fix to be made in the binary mul data via UOFiddler.
+
+Expected impact:
+- 30 previously wrong/missing ban-tile setups (and matching missing signs, see Theme 25 for the related drop-location fix) are corrected for the affected Fiddler-imported houses; one confirmed-broken house type is no longer sold. The sign/signpost visual fix from this batch is **local/session-only** in `config/multis.cfg` and will need to be re-applied via the binary mul data (UOFiddler) to survive the next `uoconvert multis` run -- flagging this so it isn't mistaken for a shipped fix.
+
+### 25) Housing - Ban Tile Drop-Location Safety Fix
+
+Files involved:
+- `pkg/multis/house/walkOn.src`
+- `pkg/multis/staticHousing/bantile/walkOn.src`
+
+Notable functional changes:
+- Both packages' `walk_on_bantile` previously teleported a banned player straight onto the house sign's own tile. On some of the Fiddler-imported multis worked on in Theme 24, the sign can sit inside the house's own footprint (or have another ban tile placed under/near it), which risked an immediate re-ban -> re-teleport loop on landing -- a real crash risk flagged by the shard owner while doing QA on those houses.
+- New `GetBanTileDropSpot(sign)` computes the drop point from the house's real footprint (`footage` boxes, the same data already used for house-overlap checks) instead of the sign's location: it targets one tile past the south-east corner (`xmax+1, ymax+1`) first. A new `FindBanTileDropNear(x, y, realm)` helper uses the engine's `GetStandingCoordinates` to search an expanding radius (0 to 6 tiles) around that point for an actually walkable spot (accounting for walls, trees, and other blocking statics/items natively), filtering out any candidate that already has a bantile item on it (`0x18889` house / `0x260FC` staticHousing) so a banned player can never be dropped onto another ban tile. If the south-east search comes up empty, the same search is retried around the south-west corner (`xmin-1, ymax+1`) before giving up. If both corners fail entirely (very unlikely), the fallback is the south-west corner's raw coordinates with a `GetStandingHeight`-derived Z -- never the sign's location.
+- Both files gained a `use math;` import for `Abs()` (Manhattan-distance tiebreaking among candidate spots).
+
+Expected impact:
+- Banned players are now dropped just outside the house's real footprint on a verified-walkable, non-ban tile instead of on the sign (which could be inside the envelope or on/under another ban tile), removing the re-ban-loop crash risk the shard owner was concerned about.
+
+### 26) Player Item Drop - Gold/Item Stack Overflow Partial-Fill Fix
+
+Files involved:
+- `pkg/packethooks/packethook/packethook.src`
+
+Notable functional changes:
+- Ported from the ZH2.5 sibling project (Omega Cache era): when a player drops a stack onto an existing stack and the combined amount would exceed the 60,000 stack cap, core previously just left the drop alone entirely instead of filling the target stack and leaving the remainder in the player's hand/backpack. New `TryPartialStack(char, item, target_serial)` (called from both `CheckDrop` and `CheckDrop6017`, the two client packet variants for item-on-item drops) detects this overflow case via `CanStack`, fills the target stack up to 60,000, subtracts the amount actually moved from the source stack, force-moves the reduced source stack back into the player's pack, and sends a sysmessage explaining the partial fill.
+
+Expected impact:
+- Dropping a stack (most commonly gold) onto an existing stack that would overflow 60,000 now correctly tops off the target and leaves the remainder with the player, instead of silently doing nothing.
+
+### 27) Small Fixes
+
+Files involved:
+- `scripts/misc/logon.src`
+- `uoconvert.cfg`
+- `pythonscripts/analyze_memory_usage.py`
+
+Notable functional changes:
+- `scripts/misc/logon.src`: a leftover debug `Print("I am using scripts misc logon.src")` on every login is now commented out.
+- `uoconvert.cfg`: the mount-tile ID list in the `Mounts` block regained 5 tile IDs (`0x3EDE`-`0x3EE2`) that Theme 21/3.0.6's earlier reformatting pass had dropped; they're back in the list.
+- `pythonscripts/analyze_memory_usage.py`: ANSI color codes are now only emitted when stdout is a TTY (`sys.stdout.isatty()`), so redirecting output to a file or piping it no longer embeds raw escape codes in the text.
+
+Expected impact:
+- Less console log spam on login; mount-graphic detection during `uoconvert` covers the same tile set it did before the earlier reformatting pass; piped/redirected memory-usage report output is now clean text.
+
 ---
 
 ## Validation Notes
 
-- Diff range used: `Patch-3.0.5..Patch-3.0.6` (`38e8a76`..`6ed29ee`).
+- Diff range used: `Patch-3.0.5..Patch-3.0.6` (`38e8a76`..`8ed373d`).
 - Coverage checks used:
-  - `git diff --name-status 38e8a76..HEAD`
-  - `git diff --numstat 38e8a76..HEAD`
-  - `git log --no-merges --oneline 38e8a76..HEAD`
+  - `git diff --name-status 38e8a76..8ed373d`
+  - `git diff --numstat 38e8a76..8ed373d`
+  - `git log --no-merges --oneline 38e8a76..8ed373d`
   - Full-diff review of each subsystem area (housing, accounts/core-bugfix, misc/engine) via parallel deep-dive passes.
-- Working tree was clean (no staged/uncommitted changes) at time of writing — this changelog is exhaustive for the full committed branch delta.
+  - This update (2026-08-11, second pass) covers the delta `6ed29ee..8ed373d` on top of the previously-written v3.0.6 changelog: commits `aa168fc`, `3101cf5`, `8ed373d` (plus patchnotes-only `17584fd` and no-unique-change merges `92cafc2`/`192a9a8`/`6e08f78`), reviewed the same way (`git show <commit> -- <file>` per touched file, cross-checked against session context for the ban-tile/scaling/gold-stack work).
+- Working tree was clean (no staged/uncommitted changes) at time of writing — this changelog is exhaustive for the full committed branch delta. Note: `config/multis.cfg` sign/signpost edits from Theme 24 are real and were tested live but are **not** part of this diff — the file is gitignored and regenerated by `uoconvert`, so they exist only in the working tree until ported to the binary mul data.
