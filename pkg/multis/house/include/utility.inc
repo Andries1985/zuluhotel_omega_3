@@ -11,12 +11,19 @@ const GATE_TO := 6;
 const GATE_FROM := 7;
 const CO_OWNER := 8;
 
+// House sign objtypes: the classic (:house:) sign graphics, plus custom
+// housing's (:customhousing:) 0xFFF4 -- customhousing's signs carry the same
+// "signserial"/"houseserial" properties (see customhousedeed.src) and share
+// this package's :house:multiSign/method MethodScript, so they resolve the
+// same way as any other house sign here.
+var HOUSE_SIGN_OBJTYPES := {0xBCF, 0xBD1, 0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA, 0xFFF4};
+
 function GetHouseSignFromObject(byref house_or_sign)
 	if(!house_or_sign)
 		return 0;
 	endif
 
-	if(house_or_sign.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+	if(house_or_sign.objtype in HOUSE_SIGN_OBJTYPES)
 		return house_or_sign;
 	endif
 
@@ -29,7 +36,7 @@ function GetHouseSignFromObject(byref house_or_sign)
 	endif
 
 	foreach nearby in ListItemsNearLocation(house_or_sign.x, house_or_sign.y, house_or_sign.z, 18, house_or_sign.realm)
-		if(nearby.objtype in {0xBD0, 0xBD2, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+		if(nearby.objtype in HOUSE_SIGN_OBJTYPES)
 			if(CInt(GetObjProperty(nearby, "houseserial")) == CInt(house_or_sign.serial))
 				return nearby;
 			endif

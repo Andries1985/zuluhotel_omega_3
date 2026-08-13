@@ -1,0 +1,11 @@
+use uo;
+
+include "companions";
+
+program maindestroy(item)
+
+	DestroyGuildstoneCompanions(item);
+
+	return 1;
+
+endprogram

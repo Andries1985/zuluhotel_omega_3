@@ -1,5 +1,17 @@
 use os;
 
+// 2026-08-10: runalways.ecl -- POL's single script that auto-starts once at
+// server boot and persists for the shard's lifetime. Was previously an
+// inert placeholder (the loop's own Sleep() was commented out, spinning
+// with no yield). Now used to kick off the customhousing decay sweep as an
+// independent, single, persistent thread rather than one loop per sign (see
+// decaywatcher.src for why that design was chosen). Start_Script spawns an
+// independent thread that outlives this one; this loop doesn't need to do
+// the sweep work itself, and is kept alive (properly sleeping now) as a
+// general boot-time dispatch point for anything similar added later.
+
+Start_Script(":customhousing:decaywatcher");
+
 while (1)
-    // Sleep( 600 );
+    Sleep(600);
 endwhile

@@ -5,6 +5,8 @@ use os;
 
 include "housefriends";
 include "include/objtype";
+include ":house:multihouse_settings";
+include "include/omegacache_utils";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;
@@ -14,109 +16,180 @@ Const HOUSE_RAISE_ITEM		:= 5;
 Const HOUSE_LOWER_ITEM		:= 6;
 Const HOUSE_DISPLAY_ITEM		:= 7;
 
-Const HOUSE_VALUE_LIMIT		:= 6;
+// 2026-08-10: the old per-house-value account cap (HOUSE_VALUE_LIMIT=6,
+// GetAccountHouseValue/HouseValueUnderLimit) was replaced by the unified,
+// plain house-count cap shared across house/staticHousing/customhousing
+// (:house:multihouse_settings -- GetAccountHouseCount/IsAccountUnderHouseCap/
+// RegisterAccountHouseSign/UnregisterAccountHouseSign, MaxHousesPerAccount
+// setting). It reuses the exact same "#housing_of_<acctname>" tracking
+// property this package already wrote, just counting entries instead of
+// summing per-house "housevalue" scores, so existing registrations carried
+// over without a data migration.
+//
+// RecordHouseSignOwner (formerly here) is superseded by
+// RegisterAccountHouseSign(); customeHouseDeed.src registers new houses
+// synchronously at purchase time (no race with the sign's ControlScript),
+// and signcontrol.src's SignListener registers pre-existing signs the first
+// time they load under the new system.
 
-///////////////////
-//  gets the housevalue of the given account
-///////////////////
-
-function GetAccountHouseValue (acctname)
-	acctname := Lower (acctname);
-	if (!acctname)
-		return acctname.errortext := ("No accountname supplied");
-	endif
-	var acct := FindAccount (acctname);
-	if (!acct)
-		return acctname.errortext :=  ("Account " + acctname + " does not exist");
-	endif
-
-	var global_prop_name := "#housing_of_" + acctname;
-	var existing_houses := GetGlobalProperty (global_prop_name);
-	if (!existing_houses or !len (existing_houses))
-		return 0;
-	endif
-
-	var hv_counter := 0;
-	//make sure each sign exists and is still registered to the account
-	foreach sign_serial in existing_houses
-		var sign := SystemFindObjectBySerial (sign_serial);
-		if (sign)
-			var house_owner := Lower (GetObjProperty (sign, "account"));
-			if (house_owner and house_owner == acctname)
-				var sign_hv := GetHouseValueOfSign (sign);
-				if (sign_hv)
-					hv_counter := hv_counter + sign_hv;
-				endif
-			endif
-		endif
-	endforeach
-	return hv_counter;
-endfunction
-
-
-
-
-///////////////////
-//  adds the value of the house to the owner's housevalue
-///////////////////
-
-function RecordHouseSignOwner (sign)
+// Returns the house serial linked to a custom house sign. Reads "houseserial"
+// -- the same property name :house: housing uses for its own signs, and the
+// one FindOmegaCacheHouseSign() (omegacache.inc) and :house:utility's
+// GetHouseSignFromObject() already check -- falling back to the legacy
+// "house_serial" property (customhousing's original, differently-named
+// convention) for signs placed before this package started writing
+// "houseserial" too. The fallback self-heals: the first time it's hit for a
+// given sign, it backfills "houseserial" so every later read goes through
+// the fast path and legacy "house_serial" reads/writes can eventually be
+// dropped entirely once no un-migrated signs remain.
+function ResolveCustomHouseSerial (sign)
 	if (!sign)
-		return sign.errortext := "Sign does not exist!";
+		return 0;
 	endif
 
-	var owneraccount := Lower (GetObjProperty (sign, "account"));
-	if (!owneraccount)
-		var try_counter := 0;
-		repeat
-			sleep (1);
-			try_counter := try_counter + 1;
-			owneraccount := Lower (GetObjProperty (sign, "account"));
-		until ((try_counter > 20) or owneraccount);
+	var hserial := GetObjProperty (sign, "houseserial");
+	if (hserial)
+		return CInt (hserial);
 	endif
 
-	set_critical (1);
-	var global_prop_name := "";
-	if (owneraccount)
-		var acct := FindAccount (owneraccount);
-		if (acct)
-			global_prop_name := "#housing_of_" + owneraccount;
-		else
-			global_prop_name := "#housing_no_owner";
-		endif
-	else
-		global_prop_name := "#housing_no_owner";
-	endif
-	
-	var existing_houses := GetGlobalProperty (global_prop_name);
-	if (!existing_houses)
-		existing_houses := Array {};
-	endif
-	
-	if (! (sign.serial in existing_houses))
-		existing_houses.append (sign.serial);
-		SetGlobalProperty (global_prop_name, existing_houses);
+	var legacy := GetObjProperty (sign, "house_serial");
+	if (legacy)
+		SetObjProperty (sign, "houseserial", CInt (legacy));
+		return CInt (legacy);
 	endif
 
-	set_critical (0);
-	return 1;
+	return 0;
+endfunction
+
+///////////////////
+//  2026-08-10: flat registry of every custom house sign, independent of the
+//  per-account cap registry above (#housing_of_<acct>). Enumerating "every
+//  account" to sweep for decayed houses isn't cheap/reliable, so this keeps
+//  one simple global list instead. Used by decaywatcher.src.
+///////////////////
+
+function RegisterCustomHouseSign (sign)
+	if (!sign)
+		return;
+	endif
+	var existing := GetGlobalProperty ("#customhouse_all_signs");
+	if (!existing)
+		existing := array {};
+	endif
+	if (! (sign.serial in existing))
+		existing.append (sign.serial);
+		SetGlobalProperty ("#customhouse_all_signs", existing);
+	endif
+endfunction
+
+function UnregisterCustomHouseSign (sign)
+	if (!sign)
+		return;
+	endif
+	var existing := GetGlobalProperty ("#customhouse_all_signs");
+	if (!existing)
+		return;
+	endif
+	var idx := sign.serial in existing;
+	if (idx)
+		existing.erase (idx);
+		SetGlobalProperty ("#customhouse_all_signs", existing);
+	endif
 endfunction
 
 
 
 
 ///////////////////
-//  determines if adding the housevalue will put a character over their limit
+//  2026-08-10: decay-timeout teardown for an abandoned custom house, called
+//  by decaywatcher.src. Modeled directly on house's own timeout-demolish
+//  (pkg/multis/house/multiSign/control.src, function demolish) -- terminal/
+//  abandoned, so no deed refund, and Omega Cache containers are force-
+//  cleared regardless of contents (unlike the player-triggered manual
+//  redeed in sign.src, which blocks on non-empty cache instead).
 ///////////////////
 
-function HouseValueUnderLimit (character, housevalue);
-	var oldhousevalue := GetAccountHouseValue (character.acctname);
-	var newhousevalue := oldhousevalue + housevalue;
-	if (newhousevalue <= HOUSE_VALUE_LIMIT)
-		return 1;
-	else
-		return 0;
+function DemolishAbandonedCustomHouse (sign)
+	if (!sign)
+		return;
 	endif
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
+	if (!house)
+		UnregisterCustomHouseSign (sign);
+		DestroyItem (sign);
+		return;
+	endif
+
+	var homeinfo := GetObjProperty (sign, "homeinfo");
+	if (homeinfo)
+		foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
+			if (thing.objtype == OMEGACACHE_OBJTYPE)
+				EraseObjProperty (thing, "houseserial");
+				DestroyItem (thing);
+			endif
+		endforeach
+	endif
+
+	var demolished_acct := GetObjProperty (sign, "owneracct");
+	if (!demolished_acct)
+		demolished_acct := GetObjProperty (sign, "account");
+	endif
+	if (demolished_acct)
+		UnregisterAccountHouseSign (sign, demolished_acct);
+	endif
+	UnregisterCustomHouseSign (sign);
+
+	var owner := SystemFindObjectBySerial (CInt (GetObjProperty (sign, "ownerserial")), SYSFIND_SEARCH_OFFLINE_MOBILES);
+	if (owner)
+		ReleaseAll (owner, sign);
+	endif
+
+	var addons := GetObjProperty (house, "components");
+	if (addons.size())
+		foreach item in addons
+			DestroyItem (SystemFindObjectBySerial (item));
+		endforeach
+	endif
+
+	var house_serial := house.serial;
+	DestroyMulti (house);
+	Print ("Custom house demolished due to decay: sign=" + sign.serial + " house=" + house_serial);
+endfunction
+
+
+
+
+///////////////////
+//  2026-08-10: customhousing originally tracked ownership only as an
+//  account-name string ("account"), with its own dictionary-based friend
+//  system (housefriends). The shared :house: sign core (co-owners, bans,
+//  per-friend permissions, IsOwner/IsFullHouseManager, the account house
+//  cap's self-healing count) is serial-based ("ownerserial"/"owneracct"),
+//  matching house/staticHousing.
+//
+//  Existing custom houses only have "account" set, with no character serial
+//  recorded anywhere to promote from -- an account can have multiple
+//  characters, so there's no safe way to guess which one is "the owner" from
+//  data alone. Instead, this runs on every sign interaction: once the
+//  character whose account matches the legacy "account" property actually
+//  opens their house sign, THEY are recorded as the serial-based owner from
+//  then on. Houses whose owner never logs back in stay on the legacy
+//  "account" check (still honored everywhere below) until they do.
+///////////////////
+
+function MigrateCustomHouseSignOwnership (sign, character)
+	if (GetObjProperty (sign, "ownerserial"))
+		return;
+	endif
+
+	var legacy_account := Lower (GetObjProperty (sign, "account"));
+	if (!legacy_account or Lower (character.acctname) != legacy_account)
+		return;
+	endif
+
+	SetObjProperty (sign, "ownerserial", character.serial);
+	SetObjProperty (sign, "owneracct", character.acctname);
+	RegisterAccountHouseSign (sign, character.acctname);
 endfunction
 
 
@@ -193,7 +266,7 @@ function GetHouseValueOfSign (sign)
 	// 	return CINT (GetObjProperty (sign, "housevalue"));
 	// endif
 	//deed-placed houses:
-	var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 	var deed := GetDeedType (house);
 	return GetHouseValueByDeed (deed);
 endfunction
@@ -323,30 +396,22 @@ endfunction
 
 
 
-///////////////////
-//  refreshes the house
-///////////////////
-
-function RefreshHouse (sign)
-	var lastvisit := GetObjProperty (sign, "lastvisit");
-	if (!lastvisit)
-		SetObjProperty (sign, "lastvisit", ReadGameClock() );
-	elseif ( lastvisit < ReadGameClock() )
-		SetObjProperty (sign, "lastvisit", ReadGameClock() );
-	endif
-endfunction
-
-
-
+// 2026-08-10: the old "lastvisit"-based RefreshHouse(sign)/LongTermRefresh()
+// here tracked decay separately from the actual "decay" cprop the sign's
+// ControlScript checks (signcontrol.src) -- customhousing's decay/abandon
+// system was fully disabled at the time (its check loop was commented out),
+// so this mismatch didn't matter. Decay is real again now, wired through
+// the shared :house: sign core (sign.RefreshHouse(), used above and by
+// handle_speech()), so both call sites were repointed there instead of this
+// now-dead pair.
 
 ///////////////////
 //  refreshes the house for a longer period of time
 ///////////////////
 
 function LongTermRefresh (sign, owner)
-	var onemonth := 2592000 + ReadGameClock();
-	SetObjProperty (sign, "lastvisit" , onemonth);
-	SendSysMessage (owner, "Your house has been refreshed for one month.");
+	sign.RefreshHouse();
+	SendSysMessage (owner, "Your house has been refreshed.");
 endfunction
 
 
@@ -435,20 +500,26 @@ function ChangeOwner (who, sign)
 		return;
 	endif
 
-	if (!HouseValueUnderLimit (newowner, GetHouseValueOfSign (sign)))
-		SendSysMessage (who, "That person owns too many houses!");
+	if ((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap (newowner.acctname))
+		SendSysMessage (who, "That person already owns the maximum number of houses allowed on their account!");
 		return;
 	endif
 
+	if (who and who.acctname)
+		UnregisterAccountHouseSign (sign, who.acctname);
+	endif
 	EraseObjProperty (sign, "housefriends");
 	SetObjProperty (sign, "account", newowner.acctname);
+	SetObjProperty (sign, "owneracct", newowner.acctname);
+	SetObjProperty (sign, "ownerserial", newowner.serial);
+	RegisterAccountHouseSign (sign, newowner.acctname);
 
 	if (GetObjProperty (sign, "homeinfo"))
 		var homeinfo := GetObjProperty (sign, "homeinfo");
 		homeinfo[1] := newowner.serial;
 		SetObjProperty (sign, "homeinfo", homeinfo);
 	else
-		var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+		var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 		SetObjProperty (house, "ownerserial", newowner.serial);
 	endif
 
@@ -493,7 +564,7 @@ endfunction
 ///////////////////
 
 function handle_speech (event, sign)
-	RefreshHouse (sign);
+	sign.RefreshHouse();
 
 	var text := lower( event.text );
 	if (text["i wish to lock this down"] or text["i wish to release this"])
@@ -631,7 +702,7 @@ function FindHouseSign (character)
 			0x17060:
 			0x0bd2:
 			0x0bd0:
-				if (IsAFriend (item, character) or character.cmdlevel)
+				if (item.IsAFriend (character) or character.cmdlevel)
 					if (IsInsideTheHouse (character, item) )
 						return item;
 					endif

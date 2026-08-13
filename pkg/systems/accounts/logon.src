@@ -27,8 +27,6 @@ program Logon( who )
                 endif
         endif
 
-        VerifyStaffOnline( who );
-
 	var speed_walk := GetObjProperty( who, "SpeedWalk" );
 	if( who.cmdlevel >= 2 )
 		if( !speed_walk.errortext )

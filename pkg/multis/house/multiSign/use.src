@@ -19,32 +19,11 @@ const KEYEND := 0x1013;
 const KEYRING := 0x1011;
 
 function GetPlaqueLines(sign)
-	var line1 := " ";
-	var line2 := "";
 	var signname := GetObjProperty(sign, "signname");
-	if(!signname)
+	if(!signname || signname.errortext)
 		signname := " ";
 	endif
-	var split := SplitWords(signname);
-	var j;
-	for(j := 1; j <= 5; j := j + 1)
-		if(!split[j])
-			split[j] := "";
-		endif
-	endfor
-	if(len(signname) <= 12)
-		line1 := signname;
-	elseif((len(split[1]) + len(split[2]) + len(split[3]) + 2) <= 12)
-		line1 := split[1] + " " + split[2] + " " + split[3];
-		line2 := split[4] + " " + split[5];
-	elseif(len(split[1]) + len(split[2]) + 1 <= 12)
-		line1 := split[1] + " " + split[2];
-		line2 := split[3] + " " + split[4] + " " + split[5];
-	elseif(len(split[1]) <= 12)
-		line1 := split[1];
-		line2 := split[2] + " " + split[3] + " " + split[4] + " " + split[5];
-	endif
-	return array(line1, line2);
+	return signname;
 endfunction
 
 function GetHouseDecayDisplay(sign)
@@ -84,6 +63,44 @@ function GetHouseDecayDisplay(sign)
 	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
 endfunction
 
+// "numomegacache" on the sign tracks *remaining* slots (see
+// pkg/opt/omegacache), so the used count shown to players is max-remaining.
+function GetOmegaCacheCountDisplay(sign)
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	var remaining := CInt(GetObjProperty(sign, "numomegacache"));
+	var used := maxslots - remaining;
+	if(used < 0)
+		used := 0;
+	endif
+	return CStr(used) + " / " + CStr(maxslots);
+endfunction
+
+// "numhteles" on the sign tracks the number of house teleporter pairs
+// already placed (pkg/items/houseExtras/hteleporter).
+// 2026-08-11: the cap itself used to be the flat package-wide houseExtras
+// setting for every house type. House types built from an itemdesc.cfg deed
+// with a "numteleporters" cprop (the sqft-scaled house types) now get a
+// per-house cap instead ("maxnumteleporters" on the sign, set in
+// multiDeed/use.src); anything without it (older/original house types)
+// still falls back to the houseExtras global default.
+function GetMaxTeleportersForSign(sign)
+	var maxtele := GetObjProperty(sign, "maxnumteleporters");
+	if(maxtele && !maxtele.errortext)
+		return CInt(maxtele);
+	endif
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	return CInt(htsettings.MaxHouseTeleporters);
+endfunction
+
+function GetTeleporterCountDisplay(sign)
+	var used := CInt(GetObjProperty(sign, "numhteles"));
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	if(htsettings.LimitHouseTeleporters)
+		return CStr(used) + " / " + CStr(GetMaxTeleportersForSign(sign));
+	endif
+	return CStr(used);
+endfunction
+
 function GetGuildHouseName(house)
 	if(!house)
 		return "";
@@ -110,34 +127,39 @@ endfunction
 function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, lockdowns, secures, guild_house_name, declare_text, can_manage)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 45, 2600, 412, 300);
-	GFGumpPic(240, 0, 100);
-	var plaque := GetPlaqueLines(sign);
-	GFTextLine(270, 30, 48, plaque[1]);
-	GFTextLine(270, 50, 48, plaque[2]);
-	GFResizePic(115, 100, 5100, 382, 25);
-	GFTextLine(125, 102, 0, "Info");
-	GFButtonPage(178, 104, 5209, 5003, 1);
-	GFTextLine(215, 102, 0, "House Lists");
-	GFButtonPage(293, 104, 5209, 5003, 2);
-	GFTextLine(330, 102, 0, "Options");
-	GFButtonPage(390, 104, 5209, 5003, 3);
+	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
+	// its 412-wide span (100..512, centre 306); GFTextMid centers each line
+	// within the plaque's own width instead of a hand-tuned x offset.
+	GFResizePic(100, 45, 40288, 412, 300);
+	GFGumpPic(204, 0, 1764);
+	GFTextMid(215, 17, 205, 50, GetPlaqueLines(sign));
+	GFResizePic(115, 55, 5100, 382, 25);
+	GFTextLine(125, 57, 0, "Info");
+	GFButtonPage(178, 59, 5209, 5003, 1);
+	GFTextLine(215, 57, 0, "House Lists");
+	GFButtonPage(293, 59, 5209, 5003, 2);
+	GFTextLine(330, 57, 0, "Options");
+	GFButtonPage(390, 59, 5209, 5003, 3);
 	GFButtonID(430, 308, 247, 248, 1, 0);
 
 	GFPage(1);
-	GFTextLine(135, 140, 2302, "Owned by:");
-	GFTextLine(220, 140, 0, owner_name);
-	GFTextLine(135, 165, 2302, "House Type:");
-	GFTextLine(220, 165, 0, house_type);
-	GFTextLine(135, 190, 2302, "House Decays At:");
-	GFTextLine(250, 190, 0, decay_display);
-	GFTextLine(135, 215, 2302, "Number of locked down items:");
-	GFTextLine(350, 215, 0, CStr(lockdowns));
-	GFTextLine(135, 240, 2302, "Number of secure containers:");
-	GFTextLine(350, 240, 0, CStr(secures));
+	GFTextLine(135, 95, 2020, "Owned by:");
+	GFTextLine(220, 95, 2590, owner_name);
+	GFTextLine(135, 118, 2020, "House Type:");
+	GFTextLine(220, 118, 2590, house_type);
+	GFTextLine(135, 141, 2020, "House Decays At:");
+	GFTextLine(250, 141, 2590, decay_display);
+	GFTextLine(135, 164, 2020, "Number of locked down items:");
+	GFTextLine(370, 164, 2590, CStr(lockdowns));
+	GFTextLine(135, 187, 2020, "Number of secure containers:");
+	GFTextLine(370, 187, 2590, CStr(secures));
+	GFTextLine(135, 210, 2020, "Number of Omega Cache containers:");
+	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
+	GFTextLine(135, 233, 2020, "Number of Teleporters:");
+	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
 	if(guild_house_name)
-		GFTextLine(135, 265, 2302, "Guild House:");
-		GFTextLine(220, 265, 0, guild_house_name);
+		GFTextLine(135, 256, 2020, "Guild House:");
+		GFTextLine(220, 256, 2590, guild_house_name);
 	endif
 	if(!can_manage)
 		return GFSendGump(who);
@@ -147,28 +169,32 @@ function ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, loc
 	GFTextLine(155, 308, 2302, "Change the house name!");
 
 	GFPage(2);
-	GFTextLine(155, 140, 2302, "Manage house friends");
-	GFButtonID(125, 140, 2714, 2715, 1, 8);
-	GFTextLine(155, 165, 2302, "List of banned people");
-	GFButtonID(125, 165, 2714, 2715, 1, 11);
-	GFTextLine(155, 190, 2302, "Ban someone from the house");
-	GFButtonID(125, 190, 2714, 2715, 1, 9);
-	GFTextLine(155, 215, 2302, "Remove a ban");
-	GFButtonID(125, 215, 2714, 2715, 1, 12);
-	GFTextLine(155, 240, 2302, "Eject someone from the house");
-	GFButtonID(125, 240, 2714, 2715, 1, 10);
+	GFTextLine(155, 95, 2302, "Manage house friends");
+	GFButtonID(125, 95, 2714, 2715, 1, 8);
+	GFTextLine(155, 118, 2302, "List of banned people");
+	GFButtonID(125, 118, 2714, 2715, 1, 11);
+	GFTextLine(155, 141, 2302, "Ban someone from the house");
+	GFButtonID(125, 141, 2714, 2715, 1, 9);
+	GFTextLine(155, 164, 2302, "Remove a ban");
+	GFButtonID(125, 164, 2714, 2715, 1, 12);
+	GFTextLine(155, 187, 2302, "Eject someone from the house");
+	GFButtonID(125, 187, 2714, 2715, 1, 10);
 
 	GFPage(3);
-	GFTextLine(155, 140, 2302, "House management");
-	GFButtonID(125, 140, 2714, 2715, 1, 15);
-	GFTextLine(155, 165, 2302, "Transfer ownership of the house");
-	GFButtonID(125, 165, 2714, 2715, 1, 13);
-	GFTextLine(155, 190, 2302, "Demolish the house & get a deed back");
-	GFButtonID(125, 190, 2714, 2715, 1, 14);
-	GFTextLine(155, 215, 2302, "Change the master key");
-	GFButtonID(125, 215, 2714, 2715, 1, 16);
-	GFTextLine(155, 240, 2302, declare_text);
-	GFButtonID(125, 240, 2714, 2715, 1, 19);
+	GFTextLine(155, 95, 2302, "House management");
+	GFButtonID(125, 95, 2714, 2715, 1, 15);
+	GFTextLine(155, 118, 2302, "Transfer ownership of the house");
+	GFButtonID(125, 118, 2714, 2715, 1, 13);
+	GFTextLine(155, 141, 2302, "Demolish the house & get a deed back");
+	GFButtonID(125, 141, 2714, 2715, 1, 14);
+	GFTextLine(155, 164, 2302, "Change the master key");
+	GFButtonID(125, 164, 2714, 2715, 1, 16);
+	// 2026-08-10: Public/Private declaration button hidden (not just
+	// non-functional -- see the case(result[0]) 19 handler below, which was
+	// already commented out but still reachable through this visible button).
+	// Kept in place, not deleted, in case it's wanted back later.
+	// GFTextLine(155, 187, 2302, declare_text);
+	// GFButtonID(125, 187, 2714, 2715, 1, 19);
 
 	return GFSendGump(who);
 endfunction
@@ -176,7 +202,7 @@ endfunction
 function ShowPagedNameSelectionGump(who, title, action_label, names, action_x := 165, action_y := 335)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -212,7 +238,7 @@ endfunction
 function ShowPagedNameListGump(who, title, names)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -265,25 +291,25 @@ program Mulit_House_sign(who, sign)
 	if(GetObjProperty(sign, "Public"))
 		declare_text := "Declare this house Private";
 	endif
+	// Always resolve the owner's live name, regardless of who is clicking the
+	// sign -- previously this only refreshed when the owner themselves clicked,
+	// so a name change didn't show to anyone else until the owner used the sign.
 	var owner_name := "Unknown";
-	if(who.serial == oserial)
-		owner_name := who.name;
-		SetObjProperty(sign, "lastownername", who.name);
+	var owner_obj := SystemFindObjectBySerial(CInt(oserial));
+	if(!owner_obj)
+		owner_obj := SystemFindObjectBySerial(CInt(oserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if(owner_obj)
+		owner_name := owner_obj.name;
+		SetObjProperty(sign, "lastownername", owner_obj.name);
 	else
+		// Owner object no longer resolvable (e.g. deleted character) -- fall back to last known name.
 		owner_name := GetObjProperty(sign, "lastownername");
 		if(!owner_name || owner_name.errortext)
 			owner_name := GetObjProperty(sign, "Owner");
 		endif
 		if(!owner_name || owner_name.errortext)
-			// Fall back: resolve owner name from ownerserial, including offline mobiles.
-			var owner_obj := SystemFindObjectBySerial(CInt(oserial));
-			if(!owner_obj)
-				owner_obj := SystemFindObjectBySerial(CInt(oserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
-			endif
-			if(owner_obj)
-				owner_name := owner_obj.name;
-				SetObjProperty(sign, "lastownername", owner_obj.name);
-			endif
+			owner_name := "Unknown";
 		endif
 	endif
 	var remaining_lockdowns := GetObjProperty(sign, "RemainingLockdowns");
@@ -305,7 +331,12 @@ program Mulit_House_sign(who, sign)
 	var decay_display := GetHouseDecayDisplay(sign);
 	var result;
 	var acct := GetObjProperty(sign, "owneracct");
-	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2))
+	// A guild member whose rank has been granted "house_manager" access to
+	// this (their own guild's) house gets the same reach as any friend --
+	// checked last since it's the only one of these that can touch a
+	// datafile, and every cheaper check above already short-circuits it for
+	// the common owner/co-owner/staff/friend cases.
+	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2) || sign.HasHousePermission(who, "house_manager"))
 		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 1);
 	else
 		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 0);
@@ -329,8 +360,6 @@ program Mulit_House_sign(who, sign)
 					SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 				elseif((len(newname) > 20))
 					SendSysMessage(who, "House sign names may not be longer than 20 characters.", color := 33);
-				elseif(len(SplitWords(newname)) > 5)
-					SendSysMessage(who, "House sign names are limited to 5 words or less.", color := 33);
 				else
 					SetName(sign, newname);
 					SetObjProperty(sign, "signname", newname);
@@ -373,9 +402,13 @@ program Mulit_House_sign(who, sign)
 				else
 					SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 				endif
-			19:	if(oserial == who.serial)                                   //make private
-					DeclarePrivPub(who, house, sign);
-				endif
+			// 2026-08-10: Public/Private declaration disabled (kept, not deleted,
+			// in case it's wanted again later). DeclarePrivPub() below is now
+			// unreachable dead code; the button still renders and returns id 19,
+			// it just falls through this case with no handler.
+			// 19:	if(oserial == who.serial)                                   //make private
+			//		DeclarePrivPub(who, house, sign);
+			//	endif
 		endcase
 	endif
 endprogram
@@ -664,6 +697,9 @@ function ChangeHouseOwner(oldowner, newowner, sign, bank_region)
 	endif
 	if(oldownerserial == newowner.serial)
 		return 0;
+	elseif((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap(newowner.acctname))
+		SendSysMessage(newowner, "You already own the maximum number of houses allowed on this account.", color := 33);
+		return 0;
 	else
 		var chk;
 		var builtdeed := GetObjProperty(sign, "builtdeed");
@@ -694,8 +730,12 @@ function ChangeHouseOwner(oldowner, newowner, sign, bank_region)
 			SendSysMessage(oldowner, "House transfer was NOT successful.", color := 33);
 			return 0;
 		endif
+		if(oldowner and oldowner.acctname)
+			UnregisterAccountHouseSign(sign, oldowner.acctname);
+		endif
 		SetObjProperty(sign,    "ownerserial", newowner.serial);
 		SetObjProperty(sign,    "owneracct",   newowner.acctname);
+		RegisterAccountHouseSign(sign, newowner.acctname);
 		EraseObjProperty(sign, "coowners");
 		EraseObjProperty(sign, "friendlist");
 		EraseObjProperty(sign, "banlist");
@@ -761,7 +801,7 @@ endfunction
 function ChangeSign(who, unused house, sign, result)
 	who := who;
 	var signgraph := result[0];
-	if(sign.graphic == 0xBD0 || sign.graphic == 0xBD2)
+	if(sign.graphic == 0xBD0 || sign.graphic == 0xBD1 || sign.graphic == 0xBD2 || sign.graphic == 0xBCF)
 		SetObjProperty(sign, "oldsignprop", sign.graphic);
 		sign.graphic := signgraph;
 	else
@@ -887,6 +927,124 @@ function demolish(house, sign, who, bank_region)
 			0x1607a: CreateItemInBackpack(who,0x16033,1); //small marble workshop
 			0x1607b: CreateItemInBackpack(who,0x16034,1); //garden shed south
 			0x1607c: CreateItemInBackpack(who,0x16035,1); //garden shed east
+			// --- patch 3.0.5 Fiddler-imported castles, added 2026-08-06 (each gives back its own specific deed) ---
+			0x1607d: CreateItemInBackpack(who,0xd33d0999,1); //gothicrosecastle
+			0x1607e: CreateItemInBackpack(who,0xd33d1000,1); //trinsickeep
+			0x1607f: CreateItemInBackpack(who,0xd33d1001,1); //elsacastle
+			0x16080: CreateItemInBackpack(who,0xd33d1002,1); //spires
+			0x16081: CreateItemInBackpack(who,0xd33d1003,1); //castleofoceania
+			0x16082: CreateItemInBackpack(who,0xd33d1004,1); //feudalcastle
+			0x16083: CreateItemInBackpack(who,0xd33d1005,1); //robinsnest
+			0x16084: CreateItemInBackpack(who,0xd33d1006,1); //stronghold
+			0x16085: CreateItemInBackpack(who,0xd33d1007,1); //villacrowley
+			0x16086: CreateItemInBackpack(who,0xd33d1008,1); //darkthornkeep
+			0x16087: CreateItemInBackpack(who,0xd33d1009,1); //sandalwoodkeep
+			0x16088: CreateItemInBackpack(who,0xd33d100a,1); //casamoga
+			0x16089: CreateItemInBackpack(who,0xd33d100b,1); //robinsroost
+			0x1608a: CreateItemInBackpack(who,0xd33d100c,1); //camelot
+			0x1608b: CreateItemInBackpack(who,0xd33d100d,1); //lacrimaeincaelo
+			0x1608c: CreateItemInBackpack(who,0xd33d100e,1); //okinawasweetdreams
+			0x1608d: CreateItemInBackpack(who,0xd33d100f,1); //thesandstonecastle
+			0x1608e: CreateItemInBackpack(who,0xd33d1010,1); //grimswindsisters
+			0x1608f: CreateItemInBackpack(who,0xd33d1011,1); //fortressoflestat
+			0x16090: CreateItemInBackpack(who,0xd33d1012,1); //multi1491house
+			0x16091: CreateItemInBackpack(who,0xd33d1013,1); //keepincarcerated
+			0x16092: CreateItemInBackpack(who,0xd33d1014,1); //sallytreesrefurbishedkeep
+			0x16093: CreateItemInBackpack(who,0xd33d1015,1); //desertrose
+			0x16094: CreateItemInBackpack(who,0xd33d1016,1); //cloverskeep
+			0x16095: CreateItemInBackpack(who,0xd33d1017,1); //sorcererscastle
+			0x16096: CreateItemInBackpack(who,0xd33d1018,1); //thecastlecascade
+			0x16097: CreateItemInBackpack(who,0xd33d1019,1); //multi1498house
+			0x16098: CreateItemInBackpack(who,0xd33d101a,1); //thesandstonefortress
+			0x16099: CreateItemInBackpack(who,0xd33d101b,1); //multi149ahouse
+			0x1609a: CreateItemInBackpack(who,0xd33d101c,1); //terracegardens
+			0x1609b: CreateItemInBackpack(who,0xd33d101d,1); //multi149chouse
+			0x1609c: CreateItemInBackpack(who,0xd33d101e,1); //ravenloftkeep
+			0x1609d: CreateItemInBackpack(who,0xd33d101f,1); //thequeensretreat
+			0x1609e: CreateItemInBackpack(who,0xd33d1020,1); //multi149fhouse
+			0x1609f: CreateItemInBackpack(who,0xd33d1021,1); //multi14a0house
+			0x160a0: CreateItemInBackpack(who,0xd33d1022,1); //thecastleofresistance
+			// --- 76 legacy Fiddler-imported multis (0x160a1-0x160f6), triaged
+			// and kept 2026-08-07 (see itemdesc.cfg), added here 2026-08-10 --
+			// demolishing one of these previously hit no case branch (silently
+			// destroyed the house with no deed back) because only the 38
+			// castle-range objtypes (0x1607d-0x160a0) above had ever been added.
+			0x160a1: CreateItemInBackpack(who,0xd33d1023,1); //smallflagstoneandloghouse
+			0x160a2: CreateItemInBackpack(who,0xd33d1024,1); //largestoneandlogsplitlevelhouse
+			0x160a4: CreateItemInBackpack(who,0xd33d1026,1); //largemarblecastle
+			0x160a6: CreateItemInBackpack(who,0xd33d1028,1); //courtyardkeep
+			0x160a9: CreateItemInBackpack(who,0xd33d102b,1); //twostorylogcabin
+			0x160aa: CreateItemInBackpack(who,0xd33d102c,1); //twostorystoneandslatehouse
+			0x160ab: CreateItemInBackpack(who,0xd33d102d,1); //smalltwostorybrownstonehouse
+			0x160ac: CreateItemInBackpack(who,0xd33d102e,1); //smallgreystonehouse
+			0x160ad: CreateItemInBackpack(who,0xd33d102f,1); //smalllogranchouse
+			0x160ae: CreateItemInBackpack(who,0xd33d1030,1); //smallloglshapedranchouse
+			0x160af: CreateItemInBackpack(who,0xd33d1031,1); //mediumstoneandlogbungalow
+			0x160b0: CreateItemInBackpack(who,0xd33d1032,1); //mediumstoneandlogsquarebungalow
+			0x160b1: CreateItemInBackpack(who,0xd33d1033,1); //smallstoneandslatehouse
+			0x160b2: CreateItemInBackpack(who,0xd33d1034,1); //smalllogcabineast
+			0x160b3: CreateItemInBackpack(who,0xd33d1035,1); //smalllogcabinwithworkshop
+			0x160b4: CreateItemInBackpack(who,0xd33d1036,1); //logcabineast
+			0x160b5: CreateItemInBackpack(who,0xd33d1037,1); //mediumlogcabineast
+			0x160b6: CreateItemInBackpack(who,0xd33d1038,1); //stoneandlogkeep
+			0x160b7: CreateItemInBackpack(who,0xd33d1039,1); //mediumstables
+			0x160b8: CreateItemInBackpack(who,0xd33d103a,1); //mediumtwostorystonetower
+			0x160b9: CreateItemInBackpack(who,0xd33d103b,1); //smallmarbletowereast
+			0x160ba: CreateItemInBackpack(who,0xd33d103c,1); //smallstonetowereast
+			0x160bd: CreateItemInBackpack(who,0xd33d103f,1); //stonecastlewithcourtyardeast
+			0x160be: CreateItemInBackpack(who,0xd33d1040,1); //largeplasterandtilehousewithoutbuildings
+			0x160c0: CreateItemInBackpack(who,0xd33d1042,1); //windowedkeep
+			0x160c1: CreateItemInBackpack(who,0xd33d1043,1); //smallwoodenhouseeast
+			0x160c2: CreateItemInBackpack(who,0xd33d1044,1); //smallbrickhouseeast
+			0x160c3: CreateItemInBackpack(who,0xd33d1045,1); //smallwoodenhouseeastwithporch
+			0x160c4: CreateItemInBackpack(who,0xd33d1046,1); //twostoryplasterandthatchdoublewide
+			0x160c5: CreateItemInBackpack(who,0xd33d1047,1); //stoneandlogsplitlevelkeep
+			0x160c6: CreateItemInBackpack(who,0xd33d1048,1); //logtower
+			0x160c7: CreateItemInBackpack(who,0xd33d1049,1); //mediumtwostorystoneandloghouse
+			0x160c8: CreateItemInBackpack(who,0xd33d104a,1); //mediumstonehouse
+			0x160c9: CreateItemInBackpack(who,0xd33d104b,1); //mediumtwostorystoneandloghouseeast
+			0x160ca: CreateItemInBackpack(who,0xd33d104c,1); //mediumtwostorystoneandtilehouse
+			0x160cc: CreateItemInBackpack(who,0xd33d104e,1); //windowedstonefortress
+			0x160cd: CreateItemInBackpack(who,0xd33d104f,1); //windowedstonekeep
+			0x160ce: CreateItemInBackpack(who,0xd33d1050,1); //windowedtowerdoublewide
+			0x160cf: CreateItemInBackpack(who,0xd33d1051,1); //marblekeepwithporch
+			0x160d1: CreateItemInBackpack(who,0xd33d1053,1); //twostorybrickandtilehouse
+			0x160d2: CreateItemInBackpack(who,0xd33d1054,1); //twostorywoodandtilehouse
+			0x160d3: CreateItemInBackpack(who,0xd33d1055,1); //twostorylargelogcabin
+			0x160d4: CreateItemInBackpack(who,0xd33d1056,1); //twostorylargeranchouse
+			0x160d5: CreateItemInBackpack(who,0xd33d1057,1); //twostorythatchedmanor
+			0x160d6: CreateItemInBackpack(who,0xd33d1058,1); //fourstorystoneandplasterhouse
+			0x160d7: CreateItemInBackpack(who,0xd33d1059,1); //threestorystonehouse
+			0x160d8: CreateItemInBackpack(who,0xd33d105a,1); //largestonemanor
+			0x160d9: CreateItemInBackpack(who,0xd33d105b,1); //fourstorystonehouse
+			0x160da: CreateItemInBackpack(who,0xd33d105c,1); //threestorydoublehouse
+			0x160db: CreateItemInBackpack(who,0xd33d105d,1); //threestorylargeplastermanor
+			0x160dc: CreateItemInBackpack(who,0xd33d105e,1); //threestorystonevilla
+			0x160dd: CreateItemInBackpack(who,0xd33d105f,1); //marbletower
+			0x160de: CreateItemInBackpack(who,0xd33d1060,1); //threestoryvilla
+			0x160df: CreateItemInBackpack(who,0xd33d1061,1); //threestoryorientalhouse
+			0x160e0: CreateItemInBackpack(who,0xd33d1062,1); //mediumtower
+			0x160e1: CreateItemInBackpack(who,0xd33d1063,1); //squareplasterhouse
+			0x160e2: CreateItemInBackpack(who,0xd33d1064,1); //twostorystoneandthatchhouse
+			0x160e3: CreateItemInBackpack(who,0xd33d1065,1); //splitlevelstoneandthatchhouse
+			0x160e4: CreateItemInBackpack(who,0xd33d1066,1); //smallstoneandthatchhouse
+			0x160e5: CreateItemInBackpack(who,0xd33d1067,1); //twostorydetachedstoneandthatchhouse
+			0x160e6: CreateItemInBackpack(who,0xd33d1068,1); //mediumtwostorystoneandthatchhouse
+			0x160e7: CreateItemInBackpack(who,0xd33d1069,1); //mediumtwostorystoneandwoodthatchhouse
+			0x160e8: CreateItemInBackpack(who,0xd33d106a,1); //twostorylogandstonecabinhouse
+			0x160e9: CreateItemInBackpack(who,0xd33d106b,1); //mediumstoneandlogthatchhouse
+			0x160ea: CreateItemInBackpack(who,0xd33d106c,1); //mediumtwostorystoneandlogthatchhouse
+			0x160eb: CreateItemInBackpack(who,0xd33d106d,1); //smallstoneandlogthatchhouse
+			0x160ec: CreateItemInBackpack(who,0xd33d106e,1); //threestorystoneandplastersplitlevelhouse
+			0x160ed: CreateItemInBackpack(who,0xd33d106f,1); //twostorywoodandplastermagehouse
+			0x160ee: CreateItemInBackpack(who,0xd33d1070,1); //mediumstoneandslatehouse
+			0x160ef: CreateItemInBackpack(who,0xd33d1071,1); //mediumstonelshapehouse
+			0x160f0: CreateItemInBackpack(who,0xd33d1072,1); //twostorymediumgreytowereast
+			0x160f1: CreateItemInBackpack(who,0xd33d1073,1); //smalltowereast
+			0x160f2: CreateItemInBackpack(who,0xd33d1074,1); //twostorymediumgreytowersouth
+			0x160f3: CreateItemInBackpack(who,0xd33d1075,1); //smallbrickandtilehousewithyard
+			0x160f5: CreateItemInBackpack(who,0xd33d1077,1); //smallstoneandwoodenhouseeast
+			0x160f6: CreateItemInBackpack(who,0xd33d1078,1); //mediumstoneandlogsplitlevelhouse
 		endcase
 		var tilelist := GetObjProperty(house, "bantiles");
 		foreach thing in tilelist
@@ -928,6 +1086,9 @@ function demolish(house, sign, who, bank_region)
 			endif
 		endforeach
 		CloseOmegaCacheStore(house.serial);
+		if(who and who.acctname)
+			UnregisterAccountHouseSign(sign, who.acctname);
+		endif
 		var hserial := house.serial;
 		var hx := house.x;
 		var hy := house.y;
@@ -1119,7 +1280,7 @@ function NewFriendsControl(who, sign, pagenum := 0)
 	GFInitGump();
 	GFNoClose();
 	GFNoDispose();
-	GFResizePic(10, 10, 2600, 750, 530);
+	GFResizePic(10, 10, 40288, 750, 530);
 	GFResizePic(60, 25, 5100, 650, 25);
 	GFTextLine(272, 28, 60, "MANAGE HOUSE FRIENDS");
 	GFResizePic(40, 80, 2620, 690, 410);
@@ -1303,7 +1464,7 @@ function HouseManagement(sign, house, who)
 		GFInitGump();
 		GFNoDispose();
 		GFNoClose();
-		GFResizePic(0, 0, 2600, 250, 294);
+		GFResizePic(0, 0, 40288, 250, 316);
 		GFTextLine(60, 15, 20, "House Management");
 		GFButtonID(35, 50, 2714, 2715, 1, 1);
 		GFTextLine(70, 50, 2302, "Lock down an item");
@@ -1323,7 +1484,9 @@ function HouseManagement(sign, house, who)
 		GFTextLine(70, 204, 2302, "Remove Teleporter");
 		GFButtonID(35, 226, 2714, 2715, 1, 9);
 		GFTextLine(70, 226, 2302, "Remove Cache Container");
-		GFButtonID(90, 254, 243, 241, 1, 13);
+		GFButtonID(35, 248, 2714, 2715, 1, 10);
+		GFTextLine(70, 248, 2302, "Manage Teleporters");
+		GFButtonID(90, 276, 243, 241, 1, 13);
 		var result := GFSendGump(who);
 		case(result[0])
 			1: HandleLockdownRelease(sign, house, who, 1);
@@ -1335,6 +1498,7 @@ function HouseManagement(sign, house, who)
 			7: PlaceHouseTeleporterPair(sign, who);
 			8: RemoveHouseTeleporter(sign, who);
 			9: HouseFunctionRemoveOmegaCache(sign, house, who);
+			10: OpenTeleporterManagementGump(sign, house, who);
 			13: ok := 0;
 			default: ok := 0;
 		endcase
@@ -1430,7 +1594,7 @@ function OpenManageHouseFriendsGump(sign, who)
 	endif
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 280);
+	GFResizePic(100, 100, 40288, 400, 280);
 	GFTextLine(155, 120, 995, "Manage House Friends");
 	GFButtonID(130, 150, 2714, 2715, 1, 210);
 	GFTextLine(165, 150, 0, "Add person to house lists");
@@ -1595,100 +1759,24 @@ function ShowHousePermissionOverview(sign, who)
 	endforeach
 endfunction
 
-function OpenHouseManagementGump(sign, who)
-	GFInitGump();
-	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 260);
-	GFTextLine(155, 120, 995, "House Management");
-	GFButtonID(130, 150, 2714, 2715, 1, 220);
-	GFTextLine(165, 150, 0, "Lock item down");
-	GFButtonID(130, 172, 2714, 2715, 1, 221);
-	GFTextLine(165, 172, 0, "Release item");
-	GFButtonID(130, 194, 2714, 2715, 1, 222);
-	GFTextLine(165, 194, 0, "Secure container");
-	GFButtonID(130, 216, 2714, 2715, 1, 223);
-	GFTextLine(165, 216, 0, "Delete secure container");
-	GFButtonID(130, 238, 2714, 2715, 1, 224);
-	GFTextLine(165, 238, 0, "Eject target");
-	GFButtonID(130, 260, 2714, 2715, 1, 225);
-	GFTextLine(165, 260, 0, "Ban target");
-	GFButtonID(130, 282, 2714, 2715, 1, 226);
-	GFTextLine(165, 282, 0, "Place trash barrel");
-	GFButtonID(130, 304, 2714, 2715, 1, 227);
-	GFTextLine(165, 304, 0, "Change house locks");
-	GFButtonID(130, 326, 2714, 2715, 1, 228);
-	GFTextLine(165, 326, 0, "Teleporter management");
-	var res := GFSendGump(who);
-	if(res)
-		HandleHouseManagementAction(sign, SystemFindObjectBySerial(CInt(GetObjProperty(sign, "houseserial"))), who, res[0]);
-	endif
-endfunction
-
-function HandleHouseManagementAction(sign, house, who, action)
-	if(!house)
-		SendSysMessage(who, "Cannot locate this house.", color := 33);
-		return;
-	endif
-	case(action)
-		220:
-			if(!sign.HasHousePermission(who, "lockdown"))
-				SendSysMessage(who, "You do not have lockdown permission.", color := 33);
-				return;
-			endif
-			HandleLockdownRelease(sign, house, who, 1);
-		221:
-			if(!sign.HasHousePermission(who, "lockdown"))
-				SendSysMessage(who, "You do not have lockdown permission.", color := 33);
-				return;
-			endif
-			HandleLockdownRelease(sign, house, who, 2);
-		222:
-			if(!sign.HasHousePermission(who, "secure"))
-				SendSysMessage(who, "You do not have secure permission.", color := 33);
-				return;
-			endif
-			SecureContainerFromMenu(sign, house, who);
-		223:
-			if(!sign.HasHousePermission(who, "secure"))
-				SendSysMessage(who, "You do not have secure permission.", color := 33);
-				return;
-			endif
-			UnsecureContainerFromMenu(sign, house, who);
-		224:
-			if(!sign.HasHousePermission(who, "eject"))
-				SendSysMessage(who, "You do not have eject permission.", color := 33);
-				return;
-			endif
-			Eject(sign, who);
-		225:
-			if(!sign.HasHousePermission(who, "ban"))
-				SendSysMessage(who, "You do not have ban permission.", color := 33);
-				return;
-			endif
-			AddBan(sign, who);
-		226:
-			if(!sign.IsFullHouseManager(who))
-				SendSysMessage(who, "Only owners and co-owners can place a trash barrel.", color := 33);
-				return;
-			endif
-			PlaceTrashBarrelFromMenu(house, who);
-		227:
-			if(!sign.IsFullHouseManager(who))
-				SendSysMessage(who, "Only owners and co-owners can change locks.", color := 33);
-				return;
-			endif
-			ChangeLocks(who, house);
-		228:
-			if(!sign.HasHousePermission(who, "teleporter"))
-				SendSysMessage(who, "You do not have teleporter permission.", color := 33);
-				return;
-			endif
-			OpenTeleporterManagementGump(sign, house, who);
-	endcase
-	OpenHouseManagementGump(sign, who);
-endfunction
+// 2026-08-10: removed OpenHouseManagementGump/HandleHouseManagementAction --
+// a second, never-called "house management" gump+dispatch pair (confirmed
+// via repo-wide grep: no caller anywhere except each other's redraw-loop
+// callback). HouseManagement() above is the one real, player-reachable
+// entry point (main sign gump, button 15) and now also reaches teleporter
+// management (case 10, below) directly. SecureContainerFromMenu and
+// PlaceTrashBarrelFromMenu, which only this dead pair called, were removed
+// too -- both were redundant with live equivalents (AddSecureFacingFromMenu,
+// and control.src's speech-triggered trashbarrel()). The teleporter
+// sub-gump (OpenTeleporterManagementGump and everything it calls) was kept
+// and wired in, since it had no live equivalent -- rename/access-level
+// management for house teleporters was previously unreachable by any path.
 
 function HandleLockdownRelease(sign, house, who, mode)
+	if(!sign.HasHousePermission(who, "lockdown"))
+		SendSysMessage(who, "You do not have lockdown permission.", color := 33);
+		return;
+	endif
 	var itemt := Target(who, TGTOPT_NOCHECK_LOS);
 	if(!itemt)
 		SendSysMessageCL(who, 1042023, color := 33);
@@ -1783,46 +1871,10 @@ function HandleLockdownRelease(sign, house, who, mode)
 	endcase
 endfunction
 
-function SecureContainerFromMenu(sign, house, who)
-	SendSysMessageCL(who, 502103, color := 88);
-	var itemt := Target(who);
-	if(!itemt)
-		SendSysMessageCL(who, 1042023, color := 33);
-		return;
-	endif
-	if(!sign.IsObjectInsideHouse(itemt))
-		SendSysMessage(who, "You can only secure containers inside your house.", color := 33);
-		return;
-	endif
-	if(GetObjProperty(itemt, "secure"))
-		SendSysMessageCL(who, 501714, color := 33);
-		return;
-	elseif(!itemt.isa(POLCLASS_CONTAINER))
-		SendSysMessageCL(who, 501682, color := 33);
-		return;
-	endif
-	if(!GetObjProperty(sign, "RemainingSecures"))
-		SendSysMessageCL(who, 1061839, color := 33);
-		return;
-	endif
-	if(itemt.movable == 0)
-		if(GetObjProperty(itemt, "lockeddown") == 1)
-			SetObjProperty(sign, "RemainingLockdowns", GetObjProperty(sign, "RemainingLockdowns") + 1);
-			EraseObjProperty(itemt, "lockeddown");
-		else
-			SendSysMessage(who, "You cannot secure that.", color := 33);
-			return;
-		endif
-	endif
-	itemt.movable := 0;
-	SetObjProperty(itemt, "boxserial", itemt.serial);
-	SetObjProperty(itemt, "houseserial", house.serial);
-	SetObjProperty(itemt, "secure", 1);
-	SetObjProperty(itemt, "oldscript", itemt.script);
-	itemt.usescript := ":house:secureCont";
-	SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "RemainingSecures") - 1);
-	SendSysMessageCL(who, 1010563, color := 66);
-endfunction
+// 2026-08-10: SecureContainerFromMenu removed -- only caller was the dead
+// HandleHouseManagementAction removed above; redundant with the live
+// AddSecureFacingFromMenu (facing-direction placement) used by
+// HouseManagement's own "Add a secure east/south" buttons.
 
 function UnsecureContainerFromMenu(sign, house, who)
 	SendSysMessage(who, "Choose the secure container you wish to delete.", color := 88);
@@ -1854,34 +1906,14 @@ function UnsecureContainerFromMenu(sign, house, who)
 	SendSysMessage(who, "Secure container deleted. One secure slot was refunded.", color := 66);
 endfunction
 
-function PlaceTrashBarrelFromMenu(house, who)
-	var barrelcheck := GetObjProperty(house, "barrelserial");
-	if(barrelcheck)
-		var exists := SystemFindObjectBySerial(CInt(barrelcheck));
-		if(exists)
-			SendSysMessage(who, "This house already has a trash barrel.", color := 33);
-			return;
-		endif
-	endif
-	var items := ListItemsNearLocation(who.x, who.y, who.z, 1);
-	foreach thing in items
-		if(thing.objtype == 0x18889)
-			SendSysMessage(who, "You cannot place that here.", color := 33);
-			return;
-		endif
-	endforeach
-	var barrel := CreateItemAtLocation(who.x, who.y, who.z, 0x17009, 1);
-	if(barrel)
-		SetObjProperty(house, "barrelserial", barrel.serial);
-		SetObjProperty(barrel, "houseserial", house.serial);
-		SendSysMessage(who, "Trash barrel placed.", color := 66);
-	endif
-endfunction
+// 2026-08-10: PlaceTrashBarrelFromMenu removed -- only caller was the dead
+// HandleHouseManagementAction removed above; redundant with control.src's
+// live speech-triggered trashbarrel().
 
 function OpenTeleporterManagementGump(sign, unused house, who)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 220);
+	GFResizePic(100, 100, 40288, 400, 220);
 	GFTextLine(155, 120, 995, "Teleporter Management");
 	GFButtonID(130, 150, 2714, 2715, 1, 230);
 	GFTextLine(165, 150, 0, "Place a teleporter pair");
@@ -1921,7 +1953,7 @@ function PlaceHouseTeleporterPair(sign, who)
 		SendSysMessage(who, "House teleporters are disabled.", color := 33);
 		return;
 	endif
-	if(settings.LimitHouseTeleporters && (CInt(GetObjProperty(sign, "numhteles")) >= CInt(settings.MaxHouseTeleporters)))
+	if(settings.LimitHouseTeleporters && (CInt(GetObjProperty(sign, "numhteles")) >= GetMaxTeleportersForSign(sign)))
 		SendSysMessage(who, "This house has reached the teleporter limit.", color := 33);
 		return;
 	endif
@@ -2024,7 +2056,7 @@ function SetHouseTeleporterAccess(sign, who)
 	var othertele := SystemFindObjectBySerial(CInt(GetObjProperty(tele, "Othertele")));
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 260, 180);
+	GFResizePic(100, 100, 40288, 260, 180);
 	GFTextLine(140, 120, 995, "Set teleporter access");
 	GFButtonID(130, 145, 2714, 2715, 1, 1);
 	GFTextLine(165, 145, 0, "Owner");

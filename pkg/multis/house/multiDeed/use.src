@@ -49,6 +49,10 @@ function Buildhouse(who, deed)
     syslog("Deed " + deed.serial + " had no housetype property!");
     return;
   endif
+  if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+    PrintTextAbovePrivate(deed, "You already own the maximum number of houses allowed on this account.", who, color := 33);
+    return;
+  endif
   SendSysMessageCL(who, 501274, color := 88); // Where do you wish to build the house?
   var where := TargetMultiPlacement(who, housetype);
   if(!where)
@@ -115,7 +119,12 @@ function Buildhouse(who, deed)
   if(cache_slots == error)
     cache_slots := GetMaxOmegaCacheForHouse(housetype);
   endif
-  
+  // 2026-08-11: numteleporters is only authored on the sqft-scaled house
+  // types (see itemdesc.cfg); house types without it leave "maxnumteleporters"
+  // unset so multiSign/use.src's GetMaxTeleportersForSign() falls back to the
+  // houseExtras global MaxHouseTeleporters setting.
+  var tele_slots := GetObjProperty(deed, "numteleporters");
+
   if(DestroyItem(deed))
     var LockID := AllocateLockID();
 	// CProps for deed in bank box.
@@ -124,6 +133,9 @@ function Buildhouse(who, deed)
     SetObjProperty(created.builtdeed,		"RemainingSecures",    sec);
   	SetObjProperty(created.builtdeed,		"numomegacache", cache_slots);
   	SetObjProperty(created.builtdeed,		"maxnumomegacache", cache_slots);
+    if(tele_slots != error)
+      SetObjProperty(created.builtdeed,	"maxnumteleporters", tele_slots);
+    endif
 	///////////////////////////////
     SetObjProperty(created.packkey,			"LockID",       LockID);
     SetObjProperty(created.bankkey,			"LockID",       LockID);
@@ -131,13 +143,16 @@ function Buildhouse(who, deed)
     SetObjProperty(created.house,			"RemainingSecures",    sec);
   	SetObjProperty(created.house,			"numomegacache", cache_slots);
   	SetObjProperty(created.house,			"maxnumomegacache", cache_slots);
+    if(tele_slots != error)
+      SetObjProperty(created.house,		"maxnumteleporters", tele_slots);
+    endif
     SetObjProperty(created.house,			"footage",      created.footage);
     foreach item in(created.house.components)
 		if(item.IsA(POLCLASS_DOOR))
 			item.locked := 1;
 			SetObjProperty(item,			"LockID", LockID);
 			SetObjProperty(item,			"houseserial", created.house.serial);
-		elseif((item.objtype == 0xBD0) || (item.objtype == 0xBD2) || (item.objtype == 0x20BD1) || (item.objtype == 0x20BD2) || (item.objtype == 0x20BCF) || (item.objtype == 0x20BD0) || (item.objtype == 0x260FA))
+		elseif((item.objtype == 0xBCF) || (item.objtype == 0xBD0) || (item.objtype == 0xBD1) || (item.objtype == 0xBD2) || (item.objtype == 0x20BD1) || (item.objtype == 0x20BD2) || (item.objtype == 0x20BCF) || (item.objtype == 0x20BD0) || (item.objtype == 0x260FA))
 			SetObjProperty(item,			"LockID", LockID);
 			SetObjProperty(item,			"houseserial", created.house.serial);
 			SetObjProperty(item,			"signserial", item.serial);
@@ -147,9 +162,13 @@ function Buildhouse(who, deed)
 			SetObjProperty(item,			"MaxSecures", sec);
       SetObjProperty(item,			"numomegacache", cache_slots);
       SetObjProperty(item,			"maxnumomegacache", cache_slots);
+      if(tele_slots != error)
+        SetObjProperty(item,		"maxnumteleporters", tele_slots);
+      endif
 			SetObjProperty(item,			"footage", created.footage);
 			SetObjProperty(item,			"ownerserial", who.serial);
 			SetObjProperty(item,			"owneracct", who.acctname);
+			RegisterAccountHouseSign(item, who.acctname);
 			SetObjProperty(item,			"lastownername", who.name);
 			SetObjProperty(item,			"signname", "a house");
 			SetObjProperty(item,			"builtdeed", created.builtdeed.serial);
@@ -212,10 +231,14 @@ function CreatehouseKeysAndBuiltDeed2(character, housetype, where, deed)
   if(cache_slots == error)
     cache_slots := GetMaxOmegaCacheForHouse(housetype);
   endif
+  var tele_slots := GetObjProperty(deed, "numteleporters");
   SetObjProperty(house,"RemainingLockdowns",GetObjProperty(deed,"RemainingLockdowns"));
   SetObjProperty(house,"RemainingSecures",GetObjProperty(deed,"RemainingSecures"));
   SetObjProperty(house,"numomegacache", cache_slots);
   SetObjProperty(house,"maxnumomegacache", cache_slots);
+  if(tele_slots != error)
+    SetObjProperty(house,"maxnumteleporters", tele_slots);
+  endif
   SetObjProperty(house,"ownerserial",character.serial);
   SetObjProperty(house,"owneracct",character.acctname);
   SetObjProperty(house,"builtdeed",builtdeed.serial);
@@ -454,10 +477,22 @@ function GetHouseFootprintBounds(housetype, x, y)
       bounds := {x - 10, y - 10, x + 11, y + 11};
     0x16071:
       bounds := {x - 14, y - 14, x + 14, y + 14};
+    0x1607D:
+      bounds := {x - 15, y - 15, x + 15, y + 16};
     0x16075:
       bounds := {x - 3, y - 3, x + 3, y + 3};
     default:
-      return 0;
+      var id := ReadConfigFile("itemdesc");
+      var elem := id[housetype];
+      if(!elem)
+        return 0;
+      endif
+      var multiid := CInt(elem.MultiID);
+      var dims := GetMultiDimensions(multiid);
+      if(!dims)
+        return 0;
+      endif
+      bounds := {x + dims.xmin, y + dims.ymin, x + dims.xmax, y + dims.ymax};
   endcase
   return bounds;
 endfunction
@@ -494,7 +529,74 @@ function FindBoxArray(housetype, house)
     0x1607A: ftage := smallmarbleworkshoparray(house, house.x, house.y, house.z); // Small Marble Workshop
     0x1607B: ftage := gardenshedarray(house, house.x, house.y, house.z); // Garden Shed South
     0x1607C: ftage := gardenshedarray(house, house.x, house.y, house.z); // Garden Shed East
+    0x1607D: ftage := gothicfortressarray(house, house.x, house.y, house.z); // Gothic Fortress
+    // --- Auto-generated ban-tile arrays for patch 3.0.5 multis, derived from real
+    // multi.mul door-tile data. Heuristic placement (nearest bounding edge) -- verify
+    // each entrance in-game before trusting; see footagearrays.inc for details/caveats.
+    0x1607e: ftage := multi147ehousearray(house, house.x, house.y, house.z); // multi147ehouse (MultiID 0x147e)
+    0x1607f: ftage := multi1480housearray(house, house.x, house.y, house.z); // multi1480house (MultiID 0x1480)
+    0x16080: ftage := multi1481housearray(house, house.x, house.y, house.z); // multi1481house (MultiID 0x1481)
+    0x16081: ftage := multi1482housearray(house, house.x, house.y, house.z); // multi1482house (MultiID 0x1482)
+    0x16082: ftage := multi1483housearray(house, house.x, house.y, house.z); // multi1483house (MultiID 0x1483)
+    0x16083: ftage := multi1484housearray(house, house.x, house.y, house.z); // multi1484house (MultiID 0x1484)
+    0x16084: ftage := multi1485housearray(house, house.x, house.y, house.z); // multi1485house (MultiID 0x1485)
+    0x16085: ftage := multi1486housearray(house, house.x, house.y, house.z); // multi1486house (MultiID 0x1486)
+    0x16086: ftage := multi1487housearray(house, house.x, house.y, house.z); // multi1487house (MultiID 0x1487)
+    0x16087: ftage := multi1488housearray(house, house.x, house.y, house.z); // multi1488house (MultiID 0x1488)
+    0x16088: ftage := multi1489housearray(house, house.x, house.y, house.z); // multi1489house (MultiID 0x1489)
+    0x16089: ftage := multi148ahousearray(house, house.x, house.y, house.z); // multi148ahouse (MultiID 0x148a)
+    0x1608a: ftage := multi148bhousearray(house, house.x, house.y, house.z); // multi148bhouse (MultiID 0x148b)
+    0x1608b: ftage := multi148chousearray(house, house.x, house.y, house.z); // multi148chouse (MultiID 0x148c)
+    0x1608c: ftage := multi148dhousearray(house, house.x, house.y, house.z); // multi148dhouse (MultiID 0x148d)
+    0x1608d: ftage := multi148ehousearray(house, house.x, house.y, house.z); // multi148ehouse (MultiID 0x148e)
+    0x1608e: ftage := multi148fhousearray(house, house.x, house.y, house.z); // multi148fhouse (MultiID 0x148f)
+    0x1608f: ftage := multi1490housearray(house, house.x, house.y, house.z); // multi1490house (MultiID 0x1490)
+    0x16090: ftage := multi1491housearray(house, house.x, house.y, house.z); // multi1491house (MultiID 0x1491)
+    0x16091: ftage := multi1492housearray(house, house.x, house.y, house.z); // multi1492house (MultiID 0x1492)
+    0x16092: ftage := multi1493housearray(house, house.x, house.y, house.z); // multi1493house (MultiID 0x1493)
+    0x16093: ftage := multi1494housearray(house, house.x, house.y, house.z); // multi1494house (MultiID 0x1494)
+    0x16094: ftage := multi1495housearray(house, house.x, house.y, house.z); // multi1495house (MultiID 0x1495)
+    0x16095: ftage := multi1496housearray(house, house.x, house.y, house.z); // multi1496house (MultiID 0x1496)
+    0x16096: ftage := multi1497housearray(house, house.x, house.y, house.z); // multi1497house (MultiID 0x1497)
+    0x16097: ftage := multi1498housearray(house, house.x, house.y, house.z); // multi1498house (MultiID 0x1498)
+    0x16098: ftage := multi1499housearray(house, house.x, house.y, house.z); // multi1499house (MultiID 0x1499)
+    0x16099: ftage := multi149ahousearray(house, house.x, house.y, house.z); // multi149ahouse (MultiID 0x149a)
+    0x1609a: ftage := multi149bhousearray(house, house.x, house.y, house.z); // multi149bhouse (MultiID 0x149b)
+    0x1609c: ftage := multi149dhousearray(house, house.x, house.y, house.z); // multi149dhouse (MultiID 0x149d)
+    0x1609d: ftage := multi149ehousearray(house, house.x, house.y, house.z); // multi149ehouse (MultiID 0x149e)
+    0x1609e: ftage := multi149fhousearray(house, house.x, house.y, house.z); // multi149fhouse (MultiID 0x149f)
+    0x1609f: ftage := multi14a0housearray(house, house.x, house.y, house.z); // multi14a0house (MultiID 0x14a0)
+    0x160a0: ftage := multi14a1housearray(house, house.x, house.y, house.z); // multi14a1house (MultiID 0x14a1)
   endcase
+  if(!ftage)
+    ftage := BuildGenericFootageArray(housetype, house);
+  endif
   return ftage;
+endfunction
+
+function BuildGenericFootageArray(housetype, house)
+  var boxarray := {};
+  var id := ReadConfigFile("itemdesc");
+  var elem := id[housetype];
+  if(!elem)
+    return boxarray;
+  endif
+
+  var multiid := CInt(elem.MultiID);
+  var dims := GetMultiDimensions(multiid);
+  if(!dims)
+    return boxarray;
+  endif
+
+  var box := {};
+  box.append(house.x + dims.xmin);
+  box.append(house.y + dims.ymin);
+  box.append(house.z - 8);
+  box.append(house.x + dims.xmax);
+  box.append(house.y + dims.ymax);
+  box.append(house.z + 80);
+  boxarray[1] := box;
+  SetObjProperty(house, "bantiles", {});
+  return boxarray;
 endfunction
 

@@ -157,7 +157,7 @@ program decorate (who)
 				endif
 
 			OPTION_ROTATE:
-				if (GetObjProperty (item, "otheritems"))
+				if (GetObjProperty (item, "OtherItems"))
 					SendSysMessage(who, "You can't rotate that item!", 0x3, 0x21);
 				else
 					RotateItem (item);
@@ -271,7 +271,7 @@ function IsLockedDownMovableItem (byref item, byref hsign)
 
 	if (GetObjProperty (item, "lockeddown"))
 		if (GetObjProperty (item, "lockeddown") == hsign.serial)
-			if (GetObjProperty (item, "otheritems"))
+			if (GetObjProperty (item, "OtherItems"))
 				return 1;
 			endif
 
@@ -404,10 +404,10 @@ function MoveItemInDirection(who, hsign, item, newx := 0, newy := 0)
 	elseif(!CheckLosAt( who, item.x + newx, item.y + newy, item.z ))
 		SHDebug("Move denied: LOS failed. who=" + who.name + " item=" + item.serial + " to=" + (item.x + newx) + "," + (item.y + newy) + "," + item.z);
 		SendSysMessage(who, "The new location is out of line of sight!", 0x3, 0x21);
-	elseif (GetObjProperty (item, "otheritems"))
+	elseif (GetObjProperty (item, "OtherItems"))
 		SHDebug("Move multipart item. who=" + who.name + " item=" + item.serial + " dx=" + newx + " dy=" + newy);
 		set_critical (1);
-		foreach serialnum in GetObjProperty (item, "otheritems")
+		foreach serialnum in GetObjProperty (item, "OtherItems")
 			var theitem := SystemFindObjectBySerial (serialnum);
 			if (theitem)
 				theitem.movable := 1;
@@ -425,9 +425,9 @@ function MoveItemInDirection(who, hsign, item, newx := 0, newy := 0)
 endfunction
 
 function ManipulateItemHeight(item, newz := 0)
-	if (GetObjProperty (item, "otheritems"))
+	if (GetObjProperty (item, "OtherItems"))
 		set_critical (1);
-		foreach serialnum in GetObjProperty (item, "otheritems")
+		foreach serialnum in GetObjProperty (item, "OtherItems")
 			var theitem := SystemFindObjectBySerial (serialnum);
 			if (theitem)
 				theitem.movable := 1;

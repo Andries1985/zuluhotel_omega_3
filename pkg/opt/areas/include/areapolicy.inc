@@ -47,6 +47,7 @@ function LoadRealmPolicies(realm)
 	foreach area_line in area_lines
 		var area_info := ParseAreaLine(area_line);
 		if (area_info == error)
+			UnloadDataFile(GetRealmPolicyDescriptor(realm));
 			return area_info;
 		endif
 
@@ -56,16 +57,19 @@ function LoadRealmPolicies(realm)
 
 	var meta := LoadRealmMeta(file_ref);
 	if (meta == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return meta;
 	endif
 
-	return CreatePolicyStruct(
+	var policy_struct := CreatePolicyStruct(
 		realm,
 		meta.schema_version,
 		meta.updated_at,
 		meta.updated_by,
 		entries
 	);
+	UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	return policy_struct;
 endfunction
 
 function SaveRealmPolicies(realm, policy_struct, updated_by := "")
@@ -98,6 +102,7 @@ function SaveRealmPolicies(realm, policy_struct, updated_by := "")
 	foreach area_line in area_lines
 		var area_info := ParseAreaLine(area_line);
 		if (area_info == error)
+			UnloadDataFile(GetRealmPolicyDescriptor(realm));
 			return area_info;
 		endif
 
@@ -108,17 +113,20 @@ function SaveRealmPolicies(realm, policy_struct, updated_by := "")
 
 		var set_result := SetPolicyMaskInternal(file_ref, area_info.area_id, mask, updated_at, updated_by);
 		if (set_result == error)
+			UnloadDataFile(GetRealmPolicyDescriptor(realm));
 			return set_result;
 		endif
 	endforeach
 
 	var prune_result := PruneStaleRealmPolicyEntries(realm, file_ref);
 	if (prune_result == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return prune_result;
 	endif
 
 	var meta_result := SaveRealmMeta(file_ref, updated_at, updated_by);
 	if (meta_result == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return meta_result;
 	endif
 
@@ -126,6 +134,7 @@ function SaveRealmPolicies(realm, policy_struct, updated_by := "")
 		AreaPolicyDebugPrint("SAVE realm="+realm+" descriptor="+GetRealmPolicyDescriptor(realm)+" pruned="+CStr(prune_result));
 	endif
 
+	UnloadDataFile(GetRealmPolicyDescriptor(realm));
 	return LoadRealmPolicies(realm);
 endfunction
 
@@ -147,7 +156,9 @@ function GetPolicyMask(realm, area_key)
 		return file_ref;
 	endif
 
-	return GetPolicyMaskFromElement(file_ref, area_key);
+	var mask := GetPolicyMaskFromElement(file_ref, area_key);
+	UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	return mask;
 endfunction
 
 function SetPolicyMask(realm, area_key, mask, updated_by := "")
@@ -167,11 +178,13 @@ function SetPolicyMask(realm, area_key, mask, updated_by := "")
 
 	var set_result := SetPolicyMaskInternal(file_ref, area_key, mask, ReadGameClock(), updated_by);
 	if (set_result == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return set_result;
 	endif
 
 	var meta_result := SaveRealmMeta(file_ref, ReadGameClock(), updated_by);
 	if (meta_result == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return meta_result;
 	endif
 
@@ -179,6 +192,7 @@ function SetPolicyMask(realm, area_key, mask, updated_by := "")
 		AreaPolicyDebugPrint("SET realm="+realm+" area_id="+area_key+" mask="+CStr(mask));
 	endif
 
+	UnloadDataFile(GetRealmPolicyDescriptor(realm));
 	return mask;
 endfunction
 
@@ -269,6 +283,7 @@ function EnsurePolicyDataInitialized(realm)
 
 	var meta_elem := DFFindElement(file_ref, AREA_POLICY_META_ELEMENT, DF_CREATE);
 	if (meta_elem == error)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
 		return meta_elem;
 	endif
 
@@ -282,21 +297,27 @@ function EnsurePolicyDataInitialized(realm)
 		meta_elem.SetProp("UpdatedBy", "");
 	endif
 
+	UnloadDataFile(GetRealmPolicyDescriptor(realm));
 	return 1;
 endfunction
 
 function PruneStaleRealmPolicyEntries(realm, file_ref := 0)
 	realm := Lower(realm);
 
+	var opened_here := 0;
 	if (!file_ref)
 		file_ref := OpenAreaPolicyFile(realm, DF_CREATE);
 		if (file_ref == error)
 			return file_ref;
 		endif
+		opened_here := 1;
 	endif
 
 	var area_lines := GetRealmAreaLines(realm);
 	if (area_lines == error)
+		if (opened_here)
+			UnloadDataFile(GetRealmPolicyDescriptor(realm));
+		endif
 		return area_lines;
 	endif
 
@@ -304,6 +325,9 @@ function PruneStaleRealmPolicyEntries(realm, file_ref := 0)
 	foreach area_line in area_lines
 		var area_info := ParseAreaLine(area_line);
 		if (area_info == error)
+			if (opened_here)
+				UnloadDataFile(GetRealmPolicyDescriptor(realm));
+			endif
 			return area_info;
 		endif
 		valid_ids.Insert(area_info.area_id, 1);
@@ -312,6 +336,9 @@ function PruneStaleRealmPolicyEntries(realm, file_ref := 0)
 	var removed := 0;
 	var keys := file_ref.Keys();
 	if (keys == error)
+		if (opened_here)
+			UnloadDataFile(GetRealmPolicyDescriptor(realm));
+		endif
 		return keys;
 	endif
 
@@ -330,6 +357,9 @@ function PruneStaleRealmPolicyEntries(realm, file_ref := 0)
 		AreaPolicyDebugPrint("PRUNE realm="+realm+" removed="+CStr(removed));
 	endif
 
+	if (opened_here)
+		UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	endif
 	return removed;
 endfunction
 

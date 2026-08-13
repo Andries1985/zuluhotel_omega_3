@@ -13,6 +13,9 @@ include ":mdgumps:confirmationSizable";
 include "../include/settings";
 include "../include/gumpMessage";
 include "../include/old-gumps";
+include ":house:multihouse_settings";
+include "include/omegacache_utils";
+include ":houseExtras:settings";
 
 const KEYSTART := 0x100e;
 const KEYEND := 0x1013;
@@ -28,32 +31,11 @@ function SHDebug(msg)
 endfunction
 
 function GetPlaqueLines(sign)
-	var line1 := " ";
-	var line2 := "";
 	var sgnname := GetObjProperty(sign, "signname");
-	if(!sgnname)
+	if(!sgnname || sgnname.errortext)
 		sgnname := "A house";
 	endif
-	var split := SplitWords(sgnname);
-	var j;
-	for(j := 1; j <= 5; j := j + 1)
-		if(!split[j])
-			split[j] := "";
-		endif
-	endfor
-	if(len(sgnname) <= 12)
-		line1 := sgnname;
-	elseif((len(split[1]) + len(split[2]) + len(split[3]) + 2) <= 12)
-		line1 := split[1] + " " + split[2] + " " + split[3];
-		line2 := split[4] + " " + split[5];
-	elseif((len(split[1]) + len(split[2]) + 1) <= 12)
-		line1 := split[1] + " " + split[2];
-		line2 := split[3] + " " + split[4] + " " + split[5];
-	elseif(len(split[1]) <= 12)
-		line1 := split[1];
-		line2 := split[2] + " " + split[3] + " " + split[4] + " " + split[5];
-	endif
-	return array(line1, line2);
+	return sgnname;
 endfunction
 
 function GetHouseDecayDisplay(sign)
@@ -93,59 +75,88 @@ function GetHouseDecayDisplay(sign)
 	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
 endfunction
 
+// "numomegacache" on the sign tracks *remaining* slots (see
+// pkg/opt/omegacache), so the used count shown to players is max-remaining.
+function GetOmegaCacheCountDisplay(sign)
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	var remaining := CInt(GetObjProperty(sign, "numomegacache"));
+	var used := maxslots - remaining;
+	if(used < 0)
+		used := 0;
+	endif
+	return CStr(used) + " / " + CStr(maxslots);
+endfunction
+
+// "numhteles" on the sign tracks the number of house teleporter pairs
+// already placed (pkg/items/houseExtras/hteleporter); the cap is the
+// package-wide houseExtras setting, not tracked per-sign.
+function GetTeleporterCountDisplay(sign)
+	var used := CInt(GetObjProperty(sign, "numhteles"));
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	if(htsettings.LimitHouseTeleporters)
+		return CStr(used) + " / " + CStr(CInt(htsettings.MaxHouseTeleporters));
+	endif
+	return CStr(used);
+endfunction
+
 function ShowHouseSignGump(who, sign, owner_name, decay_display, lockdowns, secures, can_manage)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 45, 2600, 412, 300);
-	GFGumpPic(240, 0, 100);
-	var plaque := GetPlaqueLines(sign);
-	GFTextLine(270, 30, 48, plaque[1]);
-	GFTextLine(270, 50, 48, plaque[2]);
-	GFResizePic(115, 100, 5100, 382, 25);
-	GFTextLine(125, 102, 0, "Info");
-	GFButtonPage(178, 104, 5209, 5003, 1);
-	GFTextLine(215, 102, 0, "House Lists");
-	GFButtonPage(293, 104, 5209, 5003, 2);
-	GFTextLine(330, 102, 0, "Options");
-	GFButtonPage(390, 104, 5209, 5003, 3);
+	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
+	// its 412-wide span (100..512, centre 306); GFTextMid centers each line
+	// within the plaque's own width instead of a hand-tuned x offset.
+	GFResizePic(100, 45, 40288, 412, 300);
+	GFGumpPic(204, 0, 1764);
+	GFTextMid(215, 17, 205, 50, GetPlaqueLines(sign));
+	GFResizePic(115, 55, 5100, 382, 25);
+	GFTextLine(125, 57, 0, "Info");
+	GFButtonPage(178, 59, 5209, 5003, 1);
+	GFTextLine(215, 57, 0, "House Lists");
+	GFButtonPage(293, 59, 5209, 5003, 2);
+	GFTextLine(330, 57, 0, "Options");
+	GFButtonPage(390, 59, 5209, 5003, 3);
 	GFButtonID(430, 308, 247, 248, 1, 0);
 
 	GFPage(1);
-	GFTextLine(135, 140, 2302, "Owned by:");
-	GFTextLine(220, 140, 0, owner_name);
-	GFTextLine(135, 165, 2302, "House Type:");
-	GFTextLine(220, 165, 0, "Static House");
-	GFTextLine(135, 190, 2302, "House Decays At:");
-	GFTextLine(250, 190, 0, decay_display);
-	GFTextLine(135, 215, 2302, "Remaining lockdowns:");
-	GFTextLine(350, 215, 0, CStr(lockdowns));
-	GFTextLine(135, 240, 2302, "Remaining secures:");
-	GFTextLine(350, 240, 0, CStr(secures));
+	GFTextLine(135, 95, 2020, "Owned by:");
+	GFTextLine(220, 95, 2590, owner_name);
+	GFTextLine(135, 118, 2020, "House Type:");
+	GFTextLine(220, 118, 2590, "Static House");
+	GFTextLine(135, 141, 2020, "House Decays At:");
+	GFTextLine(250, 141, 2590, decay_display);
+	GFTextLine(135, 164, 2020, "Remaining lockdowns:");
+	GFTextLine(370, 164, 2590, CStr(lockdowns));
+	GFTextLine(135, 187, 2020, "Remaining secures:");
+	GFTextLine(370, 187, 2590, CStr(secures));
+	GFTextLine(135, 210, 2020, "Number of Omega Cache containers:");
+	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
+	GFTextLine(135, 233, 2020, "Number of Teleporters:");
+	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
 
 	GFPage(2);
-	GFTextLine(155, 140, 2302, "Manage house friends");
-	GFButtonID(125, 140, 2714, 2715, 1, 8);
-	GFTextLine(155, 165, 2302, "List of banned people");
-	GFButtonID(125, 165, 2714, 2715, 1, 11);
-	GFTextLine(155, 190, 2302, "Ban someone from the house");
-	GFButtonID(125, 190, 2714, 2715, 1, 9);
-	GFTextLine(155, 215, 2302, "Remove a ban");
-	GFButtonID(125, 215, 2714, 2715, 1, 12);
-	GFTextLine(155, 240, 2302, "Eject someone from the house");
-	GFButtonID(125, 240, 2714, 2715, 1, 10);
+	GFTextLine(155, 95, 2302, "Manage house friends");
+	GFButtonID(125, 95, 2714, 2715, 1, 8);
+	GFTextLine(155, 118, 2302, "List of banned people");
+	GFButtonID(125, 118, 2714, 2715, 1, 11);
+	GFTextLine(155, 141, 2302, "Ban someone from the house");
+	GFButtonID(125, 141, 2714, 2715, 1, 9);
+	GFTextLine(155, 164, 2302, "Remove a ban");
+	GFButtonID(125, 164, 2714, 2715, 1, 12);
+	GFTextLine(155, 187, 2302, "Eject someone from the house");
+	GFButtonID(125, 187, 2714, 2715, 1, 10);
 
 	GFPage(3);
-	GFTextLine(155, 140, 2302, "House management");
-	GFButtonID(125, 140, 2714, 2715, 1, 15);
-	GFTextLine(155, 165, 2302, "Change house locks");
-	GFButtonID(125, 165, 2714, 2715, 1, 16);
-	GFTextLine(155, 190, 2302, "Relinquish house back for sale");
-	GFButtonID(125, 190, 2714, 2715, 1, 20);
-	GFTextLine(155, 215, 2302, "Change the house name");
-	GFButtonID(125, 215, 2714, 2715, 1, 1);
+	GFTextLine(155, 95, 2302, "House management");
+	GFButtonID(125, 95, 2714, 2715, 1, 15);
+	GFTextLine(155, 118, 2302, "Change house locks");
+	GFButtonID(125, 118, 2714, 2715, 1, 16);
+	GFTextLine(155, 141, 2302, "Relinquish house back for sale");
+	GFButtonID(125, 141, 2714, 2715, 1, 20);
+	GFTextLine(155, 164, 2302, "Change the house name");
+	GFButtonID(125, 164, 2714, 2715, 1, 1);
 
 	if(!can_manage)
-		GFTextLine(125, 268, 33, "You can view info, but cannot manage this house.");
+		GFTextLine(125, 190, 33, "You can view info, but cannot manage this house.");
 	endif
 
 	return GFSendGump(who);
@@ -154,7 +165,7 @@ endfunction
 function ShowPagedNameSelectionGump(who, title, action_label, names, action_x := 165, action_y := 335)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -190,7 +201,7 @@ endfunction
 function ShowPagedNameListGump(who, title, names)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 300);
+	GFResizePic(100, 100, 40288, 400, 300);
 	GFResizePic(147, 359, 5100, 310, 25);
 	GFTextLine(185, 118, 995, title);
 	GFButtonID(270, 360, 247, 248, 1, 1);
@@ -248,24 +259,12 @@ sign := sgn;
 			return 0;
 		endif
 
-		// Determine if we have a "house values count" setting.
-		// If we do, calculate the value of the current house and see if the player's
-		// TotalValueOfHouses + the house she is trying to buy exceeds the
-		// MaxHouseValue a player can own based on the settings.
-		if(CInt(settings.HouseValuesCount))
-			hv := DetermineHouseValue(CInt(GetObjProperty(sign, "Price")));
-			if(settings.HouseValueAppliedTo == "Character")						// If it applies on a per character basis
-				totalvalueofhouses := CInt(GetObjProperty(who, "TotalValueOfHouses"));
-			elseif(settings.HouseValueAppliedTo == "Account")					// If it applies on a per account basis
-				totalvalueofhouses := CInt(GetObjProperty(who.acct, "TotalValueOfHouses"));
-			endif
-			SetObjProperty(sign, "housevalue", hv);
-			if((totalvalueofhouses + hv) > maxhousevalue)
-				SendSysMessage(who, "You cannot buy this house because the 'house value'", 3, 40);
-				SendSysMessage(who, "of the house plus the value of the houses you already own", 3, 40);
-				SendSysMessage(who, "would exceed the maximum allowed.", 3, 40);
-				return 0;
-			endif
+		// Account-wide house cap, shared across house/staticHousing/customhousing
+		// (:house:multihouse_settings) -- replaces the old per-package
+		// TotalValueOfHouses/HouseValuesCount value-weighted check.
+		if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+			SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", 3, 40);
+			return 0;
 		endif
 
 		set_critical( 1 );
@@ -346,7 +345,8 @@ sign := sgn;
 		SetObjProperty(sign, "ownerserial", who.serial);
 		SetObjProperty(sign, "builtdeed", created.serial);
 		SetObjProperty(sign, "signserial", sign.serial);
-		SetObjProperty(sign, "owneraccount", who.acctname);
+		SetObjProperty(sign, "owneracct", who.acctname);
+		RegisterAccountHouseSign(sign, who.acctname);
 		SetObjProperty(sign, "RemainingLockdowns", GetObjProperty(sign, "MaxLockdowns"));
 		SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "MaxSecures"));
 		SetObjProperty( created, "footage", GetObjProperty(sign, "footage"));
@@ -356,23 +356,9 @@ sign := sgn;
 		SetObjProperty( created, "exteriordoors", GetObjProperty(sign, "exteriordoors"));
 		EnsureBaseResaleTemplate(sign);
 
-		EraseObjProperty(sign, "friends");
+		EraseObjProperty(sign, "friendlist");
 		EraseObjProperty(sign, "coowners");
 		EraseObjProperty(sign, "banlist");
-
-		// Determine if we have a "house values count" setting.
-		// If we do calculate the value of the current house and assign it to the approprite object.
-		if(CInt(settings.HouseValuesCount))
-			hv := DetermineHouseValue(CInt(GetObjProperty(sign, "Price")));
-			if(settings.HouseValueAppliedTo == "Character")
-				totalvalueofhouses := CInt(GetObjProperty(who, "TotalValueOfHouses")) + hv;
-				SetObjProperty(who, "TotalValueOfHouses", totalvalueofhouses );
-			elseif(settings.HouseValueAppliedTo == "Account")
-				totalvalueofhouses := CInt(GetObjProperty(who.acct, "TotalValueOfHouses")) + hv;
-				SetObjProperty(who.acct, "TotalValueOfHouses", totalvalueofhouses );
-			endif
-		endif
-
 
 		SendSysMessage( who, "You have taken ownership of the house.", 1, 66);
 		gumpmessage(who, "A key has been placed in your backpack. The deed is in your bank box along with a spare key.");
@@ -396,13 +382,23 @@ sign := sgn;
 	endif
 
 	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
-	var owner_name := GetObjProperty(sign, "ownername");
-	if(who.serial == ownerserial)
-		owner_name := who.name;
-		SetObjProperty(sign, "ownername", who.name);
+	// Always resolve the owner's live name, regardless of who is clicking the
+	// sign -- previously this only refreshed when the owner themselves clicked,
+	// so a name change didn't show to anyone else until the owner used the sign.
+	var owner_name := "Unknown";
+	var owner_obj := SystemFindObjectBySerial(ownerserial);
+	if(!owner_obj)
+		owner_obj := SystemFindObjectBySerial(ownerserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
 	endif
-	if(!owner_name || owner_name.errortext)
-		owner_name := "Unknown";
+	if(owner_obj)
+		owner_name := owner_obj.name;
+		SetObjProperty(sign, "ownername", owner_obj.name);
+	else
+		// Owner object no longer resolvable (e.g. deleted character) -- fall back to last known name.
+		owner_name := GetObjProperty(sign, "ownername");
+		if(!owner_name || owner_name.errortext)
+			owner_name := "Unknown";
+		endif
 	endif
 
 	sign.RefreshHouse();
@@ -410,7 +406,7 @@ sign := sgn;
 		SendSysMessageCL(who, 1043293, color := 66);
 	endif
 
-	var acct := GetObjProperty(sign, "owneraccount");
+	var acct := GetObjProperty(sign, "owneracct");
 	var is_friend := sign.IsAFriend(who);
 	var is_coowner := sign.IsACoOwner(who);
 	var can_manage := 0;
@@ -447,8 +443,6 @@ sign := sgn;
 					SendSysMessageCL(who, 1042023, color := 33);
 				elseif((len(newname) > 20))
 					SendSysMessage(who, "House sign names may not be longer than 20 characters.", color := 33);
-				elseif(len(SplitWords(newname)) > 5)
-					SendSysMessage(who, "House sign names are limited to 5 words or less.", color := 33);
 				else
 					SetName(sign, newname);
 					SetObjProperty(sign, "signname", newname);
@@ -670,7 +664,7 @@ function OpenManageHouseFriendsGump(sign, who)
 	endif
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 280);
+	GFResizePic(100, 100, 40288, 400, 280);
 	GFTextLine(155, 120, 995, "Manage House Friends");
 	GFButtonID(130, 150, 2714, 2715, 1, 210);
 	GFTextLine(165, 150, 0, "Add person to house lists");
@@ -839,7 +833,7 @@ endfunction
 function OpenHouseManagementGump(sign, who)
 	GFInitGump();
 	GFNoDispose();
-	GFResizePic(100, 100, 2600, 400, 260);
+	GFResizePic(100, 100, 40288, 400, 260);
 	GFTextLine(155, 120, 995, "House Management");
 	GFButtonID(130, 150, 2714, 2715, 1, 220);
 	GFTextLine(165, 150, 0, "Lock item down");
@@ -855,6 +849,8 @@ function OpenHouseManagementGump(sign, who)
 	GFTextLine(165, 260, 0, "Ban target");
 	GFButtonID(130, 282, 2714, 2715, 1, 227);
 	GFTextLine(165, 282, 0, "Change house locks");
+	GFButtonID(130, 304, 2714, 2715, 1, 228);
+	GFTextLine(165, 304, 0, "Remove Omega Cache Container");
 	var res := GFSendGump(who);
 	if(res)
 		HandleHouseManagementAction(sign, who, res[0]);
@@ -906,16 +902,71 @@ function HandleHouseManagementAction(sign, who, action)
 				SendSysMessage(who, "You do not have ban permission.", color := 33);
 				return;
 			endif
-			AddEnemy(sign, who);
+			addenemy(sign, who);
 		227:
 			if(!sign.IsFullHouseManager(who))
 				SendSysMessage(who, "Only owners and co-owners can change locks.", color := 33);
 				return;
 			endif
 			ChangeLocks(sign, who);
+		228:
+			StaticHouseFunctionRemoveOmegaCache(sign, who);
 		default: return;
 	endcase
 	OpenHouseManagementGump(sign, who);
+endfunction
+
+// 2026-08-10: Omega Cache removal for staticHousing, mirroring house's
+// HouseFunctionRemoveOmegaCache (multiSign/use.src).
+function StaticHouseFunctionRemoveOmegaCache(sign, who)
+	if(!sign.IsFullHouseManager(who))
+		SendSysMessage(who, "Only owners and co-owners can remove Omega Cache containers.", color := 33);
+		return;
+	endif
+
+	SendSysMessage(who, "Choose the Omega Cache container you wish to remove.", color := 88);
+	var cache := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!cache)
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	if(CInt(cache.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	if(!sign.IsObjectInsideHouse(cache))
+		SendSysMessageCL(who, 1005525, color := 33);
+		return;
+	endif
+
+	if(!IsOmegaCacheEmpty(CInt(GetObjProperty(cache, "houseserial"))))
+		SendSysMessage(who, "This house Omega Cache still contains stored items. Withdraw them first.", color := 33);
+		return;
+	endif
+
+	if(!confirmationSizable(who, "Remove this Omega Cache container?"))
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	// Avoid destroycache.src's non-empty block re-triggering on a manual,
+	// already-confirmed-empty removal.
+	EraseObjProperty(cache, "houseserial");
+	if(!DestroyItem(cache))
+		SendSysMessage(who, "Could not remove that Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var remaining := CInt(GetObjProperty(sign, "numomegacache")) + 1;
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	if(remaining > maxslots)
+		remaining := maxslots;
+	endif
+	SetObjProperty(sign, "numomegacache", remaining);
+
+	SendSysMessage(who, "Omega Cache container removed. One cache slot was refunded.", color := 66);
 endfunction
 
 function EnsureBaseResaleTemplate(sign)
@@ -989,11 +1040,35 @@ function RemoveInteriorDecorations(sign)
 	return removed;
 endfunction
 
+// Finds the canonical house serial Omega Cache items were placed under for
+// this sign, by locating an actual placed cache container (if any) within
+// its footage and reading its own "houseserial" back. staticHousing signs
+// don't track a house-multi serial themselves (see FindOmegaCacheHouseSign
+// in omegacache.inc for why), so this is the only reliable way to find the
+// right DataFile without guessing at a "current standing location" multi
+// that might not match the serial the cache was actually placed under.
+function FindStaticOmegaCacheSerial(sign)
+	foreach box in GetObjProperty(sign, "footage")
+		foreach thing in ListObjectsInBox(box[1], box[2], box[3], box[4], box[5], box[6], sign.realm)
+			if(thing.objtype == OMEGACACHE_OBJTYPE)
+				return CInt(GetObjProperty(thing, "houseserial"));
+			endif
+		endforeach
+	endforeach
+	return 0;
+endfunction
+
 function RelinquishHouse(sign, who)
 	SHDebug("Relinquish requested by " + who.name + " sign=" + sign.serial);
 	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
 	if(who.serial != ownerserial && who.cmdlevel < 3)
 		SendSysMessage(who, "Only the owner can relinquish this house.", color := 33);
+		return 0;
+	endif
+
+	var omegacache_serial := FindStaticOmegaCacheSerial(sign);
+	if(omegacache_serial and !IsOmegaCacheEmpty(omegacache_serial))
+		SendSysMessage(who, "You cannot relinquish this house while Omega Cache contents are stored.", color := 33);
 		return 0;
 	endif
 
@@ -1014,7 +1089,11 @@ function RelinquishHouse(sign, who)
 	endif
 	EraseObjProperty(sign, "builtdeed");
 
-	EraseObjProperty(sign, "owneraccount");
+	var relinquished_acct := GetObjProperty(sign, "owneracct");
+	if(relinquished_acct)
+		UnregisterAccountHouseSign(sign, relinquished_acct);
+	endif
+	EraseObjProperty(sign, "owneracct");
 	EraseObjProperty(sign, "ownerserial");
 	EraseObjProperty(sign, "ownername");
 	EraseObjProperty(sign, "friendlist");
@@ -1235,7 +1314,7 @@ function AddFriend( sign, who )
 		SendSysMessageCL(who, 501372, color := 33); // This person cannot be a friend of the house.
 		return 0;
 	endif
-	if(sign.IsACoowner(targetchr))
+	if(sign.IsACoOwner(targetchr))
 		if (!YesNo(who, targetchr.name + " is a co-owner. Are you sure?"))
 			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 			return 0;
@@ -1324,7 +1403,7 @@ function addcoowner( sign, who )
 		return 0;
 	elseif(sign.IsAFriend(targetchr))
 		sign.RemoveFriend(targetchr);
-	elseif(sign.IsABanned(targetchr))
+	elseif(sign.IsBanned(targetchr))
 		if (!YesNo(who, targetchr.name + " is on your ban list. Are you sure?"))
 			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 			return 0;

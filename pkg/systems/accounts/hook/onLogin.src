@@ -50,8 +50,13 @@ exported function LoginHook( connection, byref packet )
 	// RemoveSpaces() will also remove null values
 	var username := packet.GetString( OFFSET_ACCOUNT_NAME, INFO_LEN );
 	var password := packet.GetString( OFFSET_ACCOUNT_PASS, INFO_LEN );
-	var discordID, pin;
-	
+	// Auto-created accounts have no way to supply a real DiscordID from this
+	// packet (username/password only), so they're created without one and
+	// stay unable to log in again (ACCT_NO_DISCORDID) until staff link one,
+	// e.g. via .mkaccount-style linkage. Kept explicit rather than
+	// uninitialized so CreateNewAccount() below always gets real values.
+	var discordID := "", pin := 0;
+
 	if( username == error )
 		return 0;
 	elseif( password == error )

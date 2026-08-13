@@ -7,6 +7,7 @@ use util;
 
 include "include/findcity";
 include "include/areas";
+include "include/canstack";
 include ":staff:include/staff";
 include "include/client";
 
@@ -20,6 +21,48 @@ Program PacketHook()
   syslog("PacketHook ...");
   return CORE_IGNORE;
 EndProgram
+
+// Ported from ZH2.5 (Omega Cache era) — core only merges stacks when the
+// combined amount fits under the 60,000 stack cap. If it overflows that,
+// core leaves the drop alone entirely instead of filling the target and
+// leaving the remainder, so we do that split ourselves here.
+function TryPartialStack(char, item, target_serial)
+	if(target_serial == -1)
+		return 0;
+	endif
+
+	var targetStack := SystemFindObjectBySerial(target_serial);
+	if(!targetStack)
+		return 0;
+	endif
+
+	if(!CanStack(item, targetStack))
+		return 0;
+	endif
+
+	var combined := item.amount + targetStack.amount;
+	if(combined <= 60000)
+		return 0; // Core can handle normally
+	endif
+
+	var space := 60000 - targetStack.amount;
+	if(space <= 0)
+		return 0; // Target already full
+	endif
+
+	if(DEBUG_MODE)
+	    SendSysMessage( char, "Partial Stack filling " + space + " into target (amount=" + targetStack.amount + "), leaving " + (item.amount - space) + " in source");
+	endif
+
+	AddAmount(targetStack, space);
+	SubtractAmount(item, space);
+
+	// Put the reduced source stack back in backpack
+	start_script("ForceMove", {item, char});
+
+	SendSysMessage(char, "You fill the stack to its maximum. The rest remains in your backpack.");
+	return 1;
+endfunction
 
 Exported Function CheckDrop(char, ByRef packet)
 	/* if(char.cmdlevel && char.cmdlevel < 3)
@@ -50,9 +93,13 @@ Exported Function CheckDrop(char, ByRef packet)
   var serial := packet.getint32(1);
   var inhand := char.getgottenitem();
   If (serial and inhand and inhand.serial == serial)
+    var target_serial := packet.GetInt32(10);
+    if(TryPartialStack(char, inhand, target_serial))
+        return CORE_IGNORE;
+    endif
     return CORE_OK;
   EndIf
-  
+
 	// Check if "Character 0x{:X} tried to drop item 0x{:X}, but had not gotten an item.\n"
 	var badpackets := GetObjProperty(char, "badpackets");
 	if (!badpackets)
@@ -112,11 +159,15 @@ Exported Function CheckDrop6017(char, ByRef packet)
   var serial := packet.getint32(1);
   var inhand := char.getgottenitem();
   If (serial and inhand and inhand.serial == serial)
+    var target_serial := packet.GetInt32(11);
+    if(TryPartialStack(char, inhand, target_serial))
+        return CORE_IGNORE;
+    endif
     return CORE_OK;
   EndIf
-  		
+
 	// Check if "Character 0x{:X} tried to drop item 0x{:X}, but had not gotten an item.\n"
-	var badpackets := GetObjProperty(char, "badpackets");	
+	var badpackets := GetObjProperty(char, "badpackets");
 	if(GetObjProperty(char, "bpTime") < ReadGameClock() && badpackets)
 		SetObjProperty(char, "badpackets", 0);
 		EraseObjProperty(char, "bpTime");

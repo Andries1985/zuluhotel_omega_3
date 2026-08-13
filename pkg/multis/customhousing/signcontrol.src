@@ -7,14 +7,15 @@ use cfgfile;
 //include "include/itemtypes";
 include "include/house";
 include "include/housefriends";
+include ":house:multihouse_settings";
 
 program SignListener (sign)
-	if (!GetObjProperty (sign, "house_serial"))
+	if (!ResolveCustomHouseSerial (sign))
 		sign.controlscript := "";
 		return;
 	endif
 
-	var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 	if (!house)
 		DestroyItem (sign);
 		return;
@@ -31,7 +32,39 @@ program SignListener (sign)
 		return;
 	endif
 
-	RecordHouseSignOwner (sign);
+	// Shared :house: sign core (footage-box geometry, decay, friend/coowner/
+	// ban/permission API) reads "footage" (array of {x1,y1,z1,x2,y2,z2}
+	// boxes), not customhousing's original single-box "homeinfo". Custom
+	// house designs are 2-3 stories and homeinfo never tracked z bounds, so
+	// this derives a generously tall single box from it. Runs every sign
+	// load; cheap and idempotent, so it stays in sync if homeinfo changes.
+	SyncFootageFromHomeinfo (sign);
+
+	// Account-wide house cap (:house:multihouse_settings), shared across
+	// house/staticHousing/customhousing. Only needs the owning account name,
+	// so this can register/retain the sign here regardless of whether the
+	// sign has been touched yet by MigrateCustomHouseSignOwnership() (which
+	// needs an actual character and so can only run on interaction).
+	var owning_acct := GetObjProperty (sign, "owneracct");
+	if (!owning_acct)
+		owning_acct := GetObjProperty (sign, "account");
+	endif
+	if (owning_acct)
+		RegisterAccountHouseSign (sign, owning_acct);
+	endif
+
+	// 2026-08-10: decaywatcher.src only sweeps signs registered here, and
+	// this used to be missing -- RegisterCustomHouseSign was only ever
+	// called from customhousedeed.src's new-purchase flow, so every custom
+	// house that already existed before this patch deployed would never be
+	// added to the registry and would never decay. Same idempotent-append
+	// pattern as RegisterAccountHouseSign above, safe to call every load.
+	RegisterCustomHouseSign (sign);
+
+	if (!GetObjProperty (sign, "decay"))
+		SetObjProperty (sign, "decay", ReadGameClock() + get_abandon_time());
+	endif
+
 	RegisterForSpeechEvents (sign, 30);
 
 	//Removed as does not work with ZH scripts
@@ -163,4 +196,21 @@ function BuildHouseLockdownArea (sign, housetype)
 	endcase
 	homeinfo[6] := sign.realm;
 	SetObjProperty (sign, "homeinfo", homeinfo);
+endfunction
+
+
+
+
+///////////////////
+//  derives the shared-core "footage" box array (used by the :house:
+//  method-script API) from customhousing's own "homeinfo" single box.
+///////////////////
+
+function SyncFootageFromHomeinfo (sign)
+	var homeinfo := GetObjProperty (sign, "homeinfo");
+	if (!homeinfo)
+		return;
+	endif
+	var box := array {homeinfo[2], homeinfo[3], sign.z - 8, homeinfo[4], homeinfo[5], sign.z + 80};
+	SetObjProperty (sign, "footage", array {box});
 endfunction

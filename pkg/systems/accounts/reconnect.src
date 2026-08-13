@@ -20,7 +20,5 @@ program Reconnect( who )
                 return 0;
         endif
 
-        VerifyStaffOnline( who );
-
 	return 1;
 endprogram

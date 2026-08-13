@@ -100,6 +100,7 @@ while (1)
 				elseif( event.text["Help"] or event.text["help"] or event.text["HELP"] )
 					TurnToward( event.source );
 					Say( "How can I help thee?" );
+					ShowHelp( event.source );
 					
 				elseif( event.text["Farewell"] or event.text["farewell"] )
 					TurnToward( event.source );
@@ -672,5 +673,41 @@ function TargetAnItem( who )
 	else
 		return 0;
 	endif
-	
+
+endfunction
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	ShowHelp(who)
+//
+//	Purpose:
+//	Displays a resizable tip window listing every speech command this
+//	high priest understands, along with a short explanation of what each
+//	one does.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function ShowHelp(who)
+	var entries := array{
+		array{"greeting / hail / hi / hello", "Greet me."},
+		array{"help", "Show this list again."},
+		array{"farewell", "Bid me farewell."},
+		array{"remove curse / uncurse", "Target a cursed item and I shall permanently remove its curse for a gold donation, the price scaling with thine experience."},
+		array{"detect curse", "Target a suspect item and I shall tell thee whether it is cursed for a gold donation."},
+		array{"purify", "Target an item and I shall free it from all magical curses for a gold donation."},
+		array{"heal", "I shall heal all thine wounds for a 100 gold donation."},
+		array{"dispel", "I shall dispel all curses upon thee for a 1,000 gold donation."},
+		array{"cure", "I shall cure thee of all poison for a 500 gold donation."},
+		array{"protection", "I shall grant thee a protection blessing for a donation left to thine discretion."},
+		array{"bless", "I shall grant thee a minor blessing for a donation left to thine discretion."},
+		array{"boost", "I shall grant thee a major blessing for a donation left to thine discretion."}
+	};
+
+	var text := "HIGH PRIEST HELP MENU\n\n\n";
+	foreach entry in entries
+		text := text + entry[1] + "\n  " + entry[2] + "\n\n";
+	endforeach
+
+	SendStringAsTipWindow(who, text);
+	return 1;
 endfunction

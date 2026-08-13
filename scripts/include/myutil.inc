@@ -17,14 +17,7 @@ endfunction
 //returns all the 'top-level' items in container
 function ListRootItemsInContainer(container)
 
-	var ret := { };
-        foreach item in enumerateitemsincontainer(container)
-		if ( item.container == container )
-			ret.append(item);
-		endif
-	endforeach
-
-	return ret;
+	return EnumerateItemsInContainer(container, ENUMERATE_ROOT_ONLY);
 
 endfunction
 
@@ -32,8 +25,8 @@ endfunction
 function ListRootItemsInContainerOfObjtype(container, objtype)
 
 	var ret := { };
-        foreach item in enumerateitemsincontainer(container)
-		if ( (item.container == container) and (item.objtype == objtype) )
+        foreach item in EnumerateItemsInContainer(container, ENUMERATE_ROOT_ONLY)
+		if ( item.objtype == objtype )
 			ret.append(item);
 		endif
 	endforeach

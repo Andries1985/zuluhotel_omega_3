@@ -1,0 +1,75 @@
+// Synopsis: [gump_id] - Interactive gump ID browser. Preview any gump as GumpPic (native) or ResizePic (stretched) and cycle with Next.
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program GumpBrowser(who, start_id)
+	var gump_id := CInt(start_id);
+	if ( !gump_id )
+		gump_id := 3600; // 0xE10 BLUESLAB - a sane default so the tool never opens blank
+	endif
+
+	var BTN_GUMPPIC := 101,
+		BTN_RESIZEPIC := 102,
+		BTN_EXIT := 103;
+
+	while ( 1 )
+		// Pick up any id change made by the preview window's Next button
+		var synced := GetObjProperty( who, "#GumpBrowserGumpID" );
+		if ( synced && !synced.errortext && CInt(synced) > 0 )
+			gump_id := CInt(synced);
+		endif
+
+		var gump := GFCreateGump( 50, 50 );
+		GFClosable( gump, 0 );
+		GFResizePic( gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 340, 195 );
+
+		GFTextLine( gump, 15, 15, 1153, "Gump Browser" );
+
+		GFTextLine( gump, 15, 50, 1153, "Gump ID:" );
+		GFResizePic( gump, 88, 44, GFGetCfgConst("BackGrounds", "GOLDTRIM"), 104, 26 );
+		var id_txt := GFTextEntry( gump, 92, 47, 96, 20, 1153, CStr(gump_id) );
+
+		// Buttons are the ~66px-wide "OK"/"CANCEL" art (text baked into the graphic),
+		// so labels get their own column with a wide gap instead of sitting flush against them.
+		GFTextLine( gump, 15, 92, 1153, "View: GumpPic (native)" );
+		GFAddButton( gump, 245, 85, 2128, 2129, GF_CLOSE_BTN, BTN_GUMPPIC );
+
+		GFTextLine( gump, 15, 127, 1153, "View: ResizePic (200x200)" );
+		GFAddButton( gump, 245, 120, 2128, 2129, GF_CLOSE_BTN, BTN_RESIZEPIC );
+
+		GFAddButton( gump, 245, 155, 2119, 2120, GF_CLOSE_BTN, BTN_EXIT );
+
+		var result := GFSendGump( who, gump );
+		if ( !result || result[BTN_EXIT] )
+			StopGumpBrowserPreview( who );
+			SetObjProperty( who, "#GumpBrowserGumpID", 0 );
+			break;
+		endif
+
+		var typed := CInt( GFExtractData( result, id_txt ) );
+		if ( typed > 0 )
+			gump_id := typed;
+		endif
+		SetObjProperty( who, "#GumpBrowserGumpID", gump_id );
+
+		if ( result[BTN_GUMPPIC] )
+			StopGumpBrowserPreview( who );
+			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 1, gump_id } );
+		elseif ( result[BTN_RESIZEPIC] )
+			StopGumpBrowserPreview( who );
+			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 2, gump_id } );
+		endif
+	endwhile
+endprogram
+
+// Force-closes any preview window this browser currently has open, so a new
+// mode/id choice replaces it instead of stacking another window.
+function StopGumpBrowserPreview( who )
+	var pid := GetObjProperty( who, "#GumpBrowserPreviewPID" );
+	if ( pid && !pid.errortext && CInt(pid) > 0 )
+		CloseGump( who, CInt(pid), 0 );
+	endif
+	return 1;
+endfunction

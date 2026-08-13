@@ -15,16 +15,9 @@ include ":accounts:settings";
 const BANNED_IPS := ":ipban:bannedips";
 
 program logon( who )
-	Print("I am using scripts misc logon.src");
+	//Print("I am using scripts misc logon.src");
 
 	var stafflevel := who.cmdlevel;
-	if( !CheckForMaxClientsOnline( who ))
-		if( !ACCT_IsStaffCharacter( who ))
-			SysLog( "LoginAccount() Error: trying to login too many accounts." );
-			DisconnectClient( who );
-			return 0;
-		endif
-	endif
 
 	if(stafflevel > 0)
 		who.setlightlevel(0, 999999);
@@ -101,7 +94,22 @@ program logon( who )
 	endif
 
 	// Resume personal powerhour if one was active when the player disconnected.
+	// The original activateph() instance (setph.src) does not survive a server
+	// reboot, so #SettingPH/#PPHPid would otherwise be stuck forever -- only
+	// that dead instance's own cleanup, or a GM .resetph, would ever clear them.
 	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
+		// A plain disconnect (not a reboot) does NOT kill the original activateph()
+		// instance -- it keeps sleeping toward the same end time. Kill it here so
+		// resumeph.src below is the only thing still counting down; otherwise both
+		// finish at once and the player gets the "has ended!" message twice.
+		var old_pid := GetObjProperty(who, "#PPHPid");
+		if(old_pid)
+			var old_process := GetProcess(CInt(old_pid));
+			if(old_process)
+				old_process.kill();
+			endif
+		endif
+
 		var pph_start := CInt(GetObjProperty(who, "pph_use_time"));
 		var remaining := (pph_start + 3600) - POLCore().systime;
 		if( remaining > 0 )
@@ -111,6 +119,8 @@ program logon( who )
 			EraseObjProperty(who, "#PPHC");
 			EraseObjProperty(who, "#PPHS");
 		endif
+		EraseObjProperty(who, "#SettingPH");
+		EraseObjProperty(who, "#PPHPid");
 	endif
 
 endprogram

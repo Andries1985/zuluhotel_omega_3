@@ -12,6 +12,8 @@ include "include/utility";
 //include "util/bank";
 include ":containers:storageAreas";
 //include "include/constants/storageareas";
+include ":customhousing:house";
+include ":house:multihouse_settings";
 
 Const UOBJECT_BRASS_SIGN := 0x0bd2;
 Const UOBJECT_WOOD_SIGN := 0x0bd0;
@@ -54,6 +56,11 @@ program usehousedeed (character, deed)
 	dims := GetMultiDimensions (multiid);
 	Print(dims);
 	extracharges := ((3+dims.xmax-dims.xmin)*(1+dims.ymax-dims.ymin)-3)*500;
+
+	if ((character.cmdlevel == 0) and !IsAccountUnderHouseCap (character.acctname))
+		SendSysMessage (character, "You already own the maximum number of houses allowed on this account.");
+		return;
+	endif
 
 	var where := TargetMultiPlacement (character, housetype);
 	if (!where)
@@ -98,22 +105,34 @@ program usehousedeed (character, deed)
 	var item, sign, component := array { };
 	if (housetype >= 0x113ec && housetype <= 0x1147d) // custom houses
 		created.house.setcustom(1);
-		sign :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax+1, where.z+7, 0xfbd2, 1, where.realm );
-		SetObjProperty(sign, "house_serial", created.house.serial);
+		SetObjProperty (created.house, "customhouse_paidparts", 0);
+		sign :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax+1, where.z+7, 0xFFF4, 1, where.realm );
+		// Sign<->house link under the :house: package's own property names
+		// ("houseserial"/"signserial", no underscore) instead of a
+		// customhousing-only "house_serial" -- ResolveCustomHouseSerial()
+		// (include/house.inc) is now the only place that reads this link, and
+		// it already bridges any pre-existing sign that still only has the
+		// legacy "house_serial" property, so new signs never need to write it.
+		SetObjProperty(sign, "houseserial", created.house.serial);
+		SetObjProperty(created.house, "signserial", sign.serial);
 		sign.movable:=0;
 		component.append (sign.serial);
 		SetObjProperty (sign, "lockid", lockid );
 		SetObjProperty (sign, "account", character.acctname );
+		SetObjProperty (sign, "owneracct", character.acctname );
+		SetObjProperty (sign, "ownerserial", character.serial );
+		RegisterAccountHouseSign (sign, character.acctname);
+		RegisterCustomHouseSign (sign);
 		SetObjProperty (sign, "baseprice", extracharges);
 		SetObjProperty (sign, "houseprice", extracharges);
 		//make bracket
 		item :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax+1, where.z+7, 0x0b9c, 1, where.realm );
-		SetObjProperty(item, "house_serial", created.house.serial);
+		SetObjProperty(item, "houseserial", created.house.serial);
 		item.movable:=0;
 		component.append (item.serial);
 		//make pole
 		item :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax, where.z+7, 0x09, 1, where.realm );
-		SetObjProperty(item, "house_serial", created.house.serial);
+		SetObjProperty(item, "houseserial", created.house.serial);
 		item.movable:=0;
 		component.append (item.serial);
 	endif

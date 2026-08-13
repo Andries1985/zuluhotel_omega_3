@@ -1,0 +1,17 @@
+// Synopsis: <gump_id> - Displays a gump ID as a plain GumpPic (native size, no resizing)
+use uo;
+
+include "../pkg/utils/mdgumps/include/gumps";
+
+Program GumpTest(who, gump_id)
+	gump_id := CInt(gump_id);
+
+	if ( !gump_id )
+		SendSysMessage(who, "Error - no gump ID to display was sent.");
+		return 0;
+	endif
+
+	var gump := GFCreateGump(100, 100);
+	GFGumpPic(gump, 0, 0, gump_id);
+	GFSendGump(who, gump);
+endprogram

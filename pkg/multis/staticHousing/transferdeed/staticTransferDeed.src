@@ -16,6 +16,7 @@ include ":gumps:gumps";
 include ":keys:key";
 include ":statichousing:gumpMessage";
 include ":statichousing:include/settings";
+include ":house:multihouse_settings";
 
 const UOBJECT_SIGN_EW := 0x0bd1;
 const UOBJECT_SIGN_NS := 0x0bcf;
@@ -54,6 +55,10 @@ program ChangeHouseOwner(who, deed)
 	endif
 	if ( !sign )
 		SendSysMessage( who, "The deed points to an invalid sign!", color := 33 );
+		return;
+	endif
+	if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+		SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", color := 33);
 		return;
 	endif
 
@@ -122,8 +127,12 @@ program ChangeHouseOwner(who, deed)
 	sign.WipeFriendList();
 	sign.WipeCoOwnerList();
 	sign.ClearBanList();
+	if(lastowner and lastowner.acctname)
+		UnregisterAccountHouseSign(sign, lastowner.acctname);
+	endif
 	SetObjProperty(sign, "builtdeed", deed.serial);
-	SetObjProperty(sign, "owneraccount", (who.acctname));
+	SetObjProperty(sign, "owneracct", (who.acctname));
+	RegisterAccountHouseSign(sign, who.acctname);
 	SetObjProperty(sign, "LockID", LockID);
 	SetObjProperty(sign, "ownerserial", who.serial);
 	SetObjProperty(sign, "ownername", who.name);
