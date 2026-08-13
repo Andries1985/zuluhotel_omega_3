@@ -10,12 +10,12 @@ include "include/housefriends";
 include ":house:multihouse_settings";
 
 program SignListener (sign)
-	if (!GetObjProperty (sign, "house_serial"))
+	if (!ResolveCustomHouseSerial (sign))
 		sign.controlscript := "";
 		return;
 	endif
 
-	var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 	if (!house)
 		DestroyItem (sign);
 		return;

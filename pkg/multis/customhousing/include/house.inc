@@ -32,6 +32,35 @@ Const HOUSE_DISPLAY_ITEM		:= 7;
 // and signcontrol.src's SignListener registers pre-existing signs the first
 // time they load under the new system.
 
+// Returns the house serial linked to a custom house sign. Reads "houseserial"
+// -- the same property name :house: housing uses for its own signs, and the
+// one FindOmegaCacheHouseSign() (omegacache.inc) and :house:utility's
+// GetHouseSignFromObject() already check -- falling back to the legacy
+// "house_serial" property (customhousing's original, differently-named
+// convention) for signs placed before this package started writing
+// "houseserial" too. The fallback self-heals: the first time it's hit for a
+// given sign, it backfills "houseserial" so every later read goes through
+// the fast path and legacy "house_serial" reads/writes can eventually be
+// dropped entirely once no un-migrated signs remain.
+function ResolveCustomHouseSerial (sign)
+	if (!sign)
+		return 0;
+	endif
+
+	var hserial := GetObjProperty (sign, "houseserial");
+	if (hserial)
+		return CInt (hserial);
+	endif
+
+	var legacy := GetObjProperty (sign, "house_serial");
+	if (legacy)
+		SetObjProperty (sign, "houseserial", CInt (legacy));
+		return CInt (legacy);
+	endif
+
+	return 0;
+endfunction
+
 ///////////////////
 //  2026-08-10: flat registry of every custom house sign, independent of the
 //  per-account cap registry above (#housing_of_<acct>). Enumerating "every
@@ -84,7 +113,7 @@ function DemolishAbandonedCustomHouse (sign)
 	if (!sign)
 		return;
 	endif
-	var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 	if (!house)
 		UnregisterCustomHouseSign (sign);
 		DestroyItem (sign);
@@ -237,7 +266,7 @@ function GetHouseValueOfSign (sign)
 	// 	return CINT (GetObjProperty (sign, "housevalue"));
 	// endif
 	//deed-placed houses:
-	var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 	var deed := GetDeedType (house);
 	return GetHouseValueByDeed (deed);
 endfunction
@@ -490,7 +519,7 @@ function ChangeOwner (who, sign)
 		homeinfo[1] := newowner.serial;
 		SetObjProperty (sign, "homeinfo", homeinfo);
 	else
-		var house := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+		var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 		SetObjProperty (house, "ownerserial", newowner.serial);
 	endif
 

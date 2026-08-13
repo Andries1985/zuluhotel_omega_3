@@ -13,6 +13,7 @@ include ":guilds:include/guilds";
 include ":guilds:include/guildconstants";
 include "include/classes";
 include ":gumps:autoClose";
+include ":guilds:include/guildstonepicker";
 
 
 const PROPID_MOBILE_BROWSING := "#BrowsingGuild";
@@ -38,9 +39,375 @@ endif
 endprogram
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ResolveGuildHouse() - Looks up the guild's registered guild house, if it has one.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ResolveGuildHouse(guild)
+
+	var serial := GuildPropInt(guild, "GuildHouse");
+	if (!serial)
+		return 0;
+	endif
+
+	return SystemFindObjectBySerial(serial);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// IsInsideGuildHouse() - Tests whether loc falls within house's footage, via its sign.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function IsInsideGuildHouse(house, loc)
+
+	var sign := GetHouseSignFromObject(house);
+	if (!sign)
+		return 0;
+	endif
+
+	// Called with all 5 params explicit (sign + x, y, z, realm) -- the
+	// dispatched method call doesn't honor IsLocationInsideHouse()'s
+	// declared defaults the way an in-unit function call would, so passing
+	// just loc (relying on y/z/realm defaulting) fails with a param-count
+	// mismatch at runtime even though the source declares them optional.
+	return sign.IsLocationInsideHouse(loc.x, loc.y, loc.z, loc.realm);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ResolveGuildstone() - Looks up the guild's placed guildstone item, if it has one. The
+// guildstone always lives inside the guild house, so if the house is gone the stone is
+// destroyed along with it rather than left dangling.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ResolveGuildstone(guild)
+
+	var serial := GuildPropInt(guild, GUILD_STONE);
+	if (!serial)
+		return 0;
+	endif
+
+	var stone := SystemFindObjectBySerial(serial);
+	if (!stone)
+		guild.eraseprop(GUILD_STONE);
+		return 0;
+	endif
+
+	if (!ResolveGuildHouse(guild))
+		DestroyGuildstoneCompanions(stone);
+		DestroyItem(stone);
+		guild.eraseprop(GUILD_STONE);
+		SyncGuildRegistry(guild);
+		return 0;
+	endif
+
+	return stone;
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ViewGuildstone() - Lets any guild member browse the guildstone graphic library without
+// altering their guild's actual guildstone.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ViewGuildstone(who)
+
+	var stone := ResolveGuildstone(who.guild);
+	if (!stone)
+		SendSysMessage(who, "Your guild does not have a guildstone.", 1, 33);
+		return GuildGump(who);
+	endif
+
+	ShowGraphicCategoryMenu(who, stone, 1);
+
+	return GuildGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ManageGuildstone() - Guild master function. Places the guild's guildstone if it doesn't have
+// one yet, otherwise opens the same picker as ViewGuildstone() but applies each choice live.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ManageGuildstone(who)
+
+	var stone := ResolveGuildstone(who.guild);
+	if (!stone)
+		return PlaceGuildstone(who);
+	endif
+
+	ShowGraphicCategoryMenu(who, stone, 0);
+
+	return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// PlaceGuildstone() - Guild master function. Creates the guild's guildstone at a targeted
+// location inside the guild house and links it to the guild.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function PlaceGuildstone(who)
+
+	var house := ResolveGuildHouse(who.guild);
+	if (!house)
+		SendSysMessage(who, "Your guild needs a guild house before you can place a guildstone.", 1, 33);
+		return GuildMasterGump(who);
+	endif
+
+	SendSysMessage(who, "Target a location inside your guild house to place the guildstone.");
+	var loc := TargetCoordinates(who);
+	if (!loc)
+		SendSysMessage(who, "Targeting canceled.");
+		return GuildMasterGump(who);
+	endif
+
+	if (!IsInsideGuildHouse(house, loc))
+		SendSysMessage(who, "That location is not inside your guild house.", 1, 33);
+		return GuildMasterGump(who);
+	endif
+
+	if (IsNearDoor(loc, GUILDSTONE_DOOR_PLACEMENT_DISTANCE))
+		SendSysMessage(who, "You cannot place a guildstone that close to a door.", 1, 33);
+		return GuildMasterGump(who);
+	endif
+
+	var stone := CreateItemAtLocation(loc.x, loc.y, loc.z, GUILDSTONE_OBJTYPE, 1, loc.realm);
+	if (!stone)
+		SendSysMessage(who, "Failed to create the guildstone.", 1, 33);
+		return GuildMasterGump(who);
+	endif
+
+	stone.graphic := GUILDSTONE_DEFAULT_GRAPHIC;
+	stone.movable := 0;
+	SetObjProperty(stone, "GuildID", who.guild.guildid);
+	who.guild.setprop(GUILD_STONE, stone.serial);
+	SyncGuildRegistry(who.guild);
+
+	foreach member in (who.guild.members)
+		SendSysMessage(member, "Your guild's guildstone has been placed.", 3, 67);
+	endforeach
+
+	return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// RemoveGuildstone() - Guild master function. Destroys the guild's current guildstone (with
+// confirmation) so a new one can be placed elsewhere.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function RemoveGuildstone(who)
+
+	var stone := ResolveGuildstone(who.guild);
+	if (!stone)
+		SendSysMessage(who, "Your guild does not have a guildstone.", 1, 33);
+		return GuildMasterGump(who);
+	endif
+
+	if (!YesNoguild(who, "Remove the guildstone?", "This destroys your guild's current guildstone so you can place a new one elsewhere."))
+		SendSysMessage(who, "Cancelled.");
+		return GuildMasterGump(who);
+	endif
+
+	DestroyGuildstoneCompanions(stone);
+	DestroyItem(stone);
+	who.guild.eraseprop(GUILD_STONE);
+	SyncGuildRegistry(who.guild);
+
+	foreach member in (who.guild.members)
+		SendSysMessage(member, "Your guild's guildstone has been removed.", 3, 67);
+	endforeach
+
+	return GuildMasterGump(who);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// OrderedGuildMembersForRanks() - guild.members with the guild master moved to the front.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function OrderedGuildMembersForRanks(guild)
+
+	var leader_serial := GuildPropInt(guild, "GuildMaster");
+	var ordered := array;
+
+	foreach member in (guild.members)
+		if (member.serial == leader_serial)
+			ordered.append(member);
+		endif
+	endforeach
+
+	foreach member in (guild.members)
+		if (member.serial != leader_serial)
+			ordered.append(member);
+		endif
+	endforeach
+
+	return ordered;
+
+endfunction
+
+function IsRank(current_rank, candidate)
+
+	if (current_rank == candidate)
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ShowMembershipGump() - Guild master function. Lists members (leader first) with a per-row
+// rank radio group (Officer/Veteran/Member/Recruit); the leader's row is a fixed, non-selectable
+// "Guild Leader" indicator instead. Ranks have no gameplay effect yet -- OK just records the
+// page's choices to the registry datafile, the source of truth for them (see guilds.inc).
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ShowMembershipGump(who, startat := 1)
+
+	var guild := who.guild;
+	var members := OrderedGuildMembersForRanks(guild);
+	var perpage := 15;
+
+	// Widened past the usual 640-wide gump -- five rank columns each need
+	// more room than a normal two-column friends-style list, so this panel
+	// (and its corner art / title / header bars) all run wider to keep the
+	// column headers from crowding into each other.
+	var gump := GFCreateGump(0, 0, 720, 620);
+	GFResizePic(gump, 50, 30, 9260, 680, 560);
+
+	GFGumpPic(gump, 0, 60, 10440);
+	GFGumpPic(gump, 698, 60, 10441);
+
+	GFPage(gump, 1);
+
+	GFResizePic(gump, 90, 45, 9200, 600, 25);
+	GFHTMLArea(gump, 90, 48, 600, 22, "<CENTER>Guild Membership", 0, 0);
+
+	GFResizePic(gump, 90, 74, 9200, 600, 20);
+	GFTextLine(gump, 100, 76, 999, "Name");
+	GFTextLine(gump, 270, 76, 999, "Leader");
+	var header_col;
+	for (header_col := 1; header_col <= GUILD_ASSIGNABLE_RANKS.size(); header_col := header_col + 1)
+		GFTextLine(gump, GUILD_RANK_COLUMN_X[header_col], 76, 999, GUILD_ASSIGNABLE_RANKS[header_col]);
+	endfor
+
+	var leader_serial := GuildPropInt(guild, "GuildMaster");
+	var y := 102;
+	var row_serials := array;
+	var group := 0;
+	var i;
+	for (i := startat; i <= startat + perpage - 1 && i <= members.size(); i := i + 1)
+		var member := members[i];
+
+		GFTextLine(gump, 100, y, 89, member.name);
+
+		if (member.serial == leader_serial)
+			// Fixed indicator, not part of any radio group -- its click id
+			// (99999) is never checked back in ApplyMembershipRankChanges(),
+			// so there's no way to "uncheck" the leader from this gump.
+			GFRadioButton(gump, 295, y, 210, 211, 1, 99999);
+		else
+			group := group + 1;
+			var current_rank := GetGuildMemberRank(guild, member);
+			var base := group * 10;
+
+			GFSetRadioGroup(gump, group);
+			var rank_col;
+			for (rank_col := 1; rank_col <= GUILD_ASSIGNABLE_RANKS.size(); rank_col := rank_col + 1)
+				GFRadioButton(gump, GUILD_RANK_COLUMN_X[rank_col] + 25, y, 210, 211, IsRank(current_rank, GUILD_ASSIGNABLE_RANKS[rank_col]), base + rank_col);
+			endfor
+
+			row_serials[group] := member.serial;
+		endif
+
+		y := y + 25;
+	endfor
+
+	if (startat > 1)
+		GFAddButton(gump, 100, 485, 5603, 5607, GF_CLOSE_BTN, 9001);
+		GFTextLine(gump, 125, 487, 999, "Previous Page");
+	endif
+	if (startat + perpage <= members.size())
+		GFAddButton(gump, 560, 485, 5601, 5605, GF_CLOSE_BTN, 9002);
+		GFTextLine(gump, 585, 487, 999, "Next Page");
+	endif
+	// Paging rebuilds the gump from the datafile, so unsaved rank picks on
+	// the current page are dropped rather than carried over -- warn rather
+	// than silently losing them, since only Okay writes anything out.
+	if (startat > 1 || startat + perpage <= members.size())
+		GFTextLine(gump, 260, 487, 33, "Unsaved changes are lost when paging.");
+	endif
+
+	// OK / Cancel centered along the bottom of the panel (panel spans
+	// x:50-730, so 390 is the horizontal midpoint).
+	GFAddButton(gump, 340, 520, 2128, 2129, GF_CLOSE_BTN, 9000);
+	GFTextLine(gump, 365, 522, 999, "Okay");
+
+	GFAddButton(gump, 420, 520, 2119, 2120, GF_CLOSE_BTN, 0);
+	GFTextLine(gump, 445, 522, 999, "Cancel");
+
+	var data := GFSendGump(who, gump);
+
+	case (data[0])
+		9001: return ShowMembershipGump(who, startat - perpage);
+		9002: return ShowMembershipGump(who, startat + perpage);
+		9000:
+			ApplyMembershipRankChanges(guild, row_serials, group, data.keys);
+			SendSysMessage(who, "Guild membership ranks updated.", 3, 67);
+			return GuildMasterGump(who);
+		default:
+			SendSysMessage(who, "Cancelled.");
+			return GuildMasterGump(who);
+	endcase
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ApplyMembershipRankChanges() - Writes the submitted rank choices (row_serials[group] paired
+// with whichever base+1..base+4 key came back selected in that row's radio group) to the
+// registry datafile.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ApplyMembershipRankChanges(guild, row_serials, row_count, keys)
+
+	var ranks := GetGuildMemberRanks(guild);
+	var i;
+	for (i := 1; i <= row_count; i := i + 1)
+		var serial := row_serials[i];
+		var base := i * 10;
+		var rank := GUILD_DEFAULT_RANK;
+
+		var rank_col;
+		for (rank_col := 1; rank_col <= GUILD_ASSIGNABLE_RANKS.size(); rank_col := rank_col + 1)
+			if ((base + rank_col) in keys)
+				rank := GUILD_ASSIGNABLE_RANKS[rank_col];
+				break;
+			endif
+		endfor
+
+		ranks[CInt(serial)] := rank;
+	endfor
+
+	SetGuildMemberRanks(guild, ranks);
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
 //
-// GuildListGump() - Have to run this in a seperate gump to bypass the memory restrictions in the 
+// GuildListGump() - Have to run this in a seperate gump to bypass the memory restrictions in the
 // client.  It won't display, or crash if a gump is too large.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +632,7 @@ GFTextLine(gump, 283, 48, 990, "Guild");
 			GFResizePic(gump, 100, 330, 9350, 400, 120);
 			// house
 			GFTilePic(gump, 120, 220, 8949);	
-			GFTextLine(gump, 170, 235, 0, "Be the owner of a house, castle, tent, or keep.");
+			GFTextLine(gump, 170, 235, 0, "Be the owner of a house, castle or keep.");
 			
 			// player has a house
 			if (houses && houses.size())
@@ -389,7 +756,12 @@ else
 		
 	GFTextLine(gump, 120, 280, 78, "Purchase Guild Uniform");
 	GFAddButton(gump, 90, 280, 9026, 9027, 1, 40);
-		
+
+	if (GuildPropInt(who.guild, GUILD_STONE))
+		GFTextLine(gump, 120, 310, 78, "View Guildstone");
+		GFAddButton(gump, 90, 310, 9026, 9027, 1, 50);
+	endif
+
 	if (who.guild.getprop("GuildMaster") == who.serial)
 		GFTextLine(gump, 360, 100, 78, "Guild Master Functions");
 		GFAddButton(gump, 330, 100, 9026, 9027, 1, 45);
@@ -419,6 +791,7 @@ case (data[0])
 	35: ToggleTitle(who);
 	40:	PurchaseUniform(who);
 	45: GuildMasterGump(who);
+	50: ViewGuildstone(who);
 	1: EraseObjProperty( who, PROPID_MOBILE_BROWSING );		
 	0: EraseObjProperty( who, PROPID_MOBILE_BROWSING );		
 endcase
@@ -634,6 +1007,20 @@ GFAddbutton(gump, 90, 280, 9026, 9027, 1, 14);
 GFTextLine(gump, 120, 310, 78, "Disband The Guild");
 GFAddbutton(gump, 90, 310, 9026, 9027, 1, 11);
 
+GFTextLine(gump, 330, 100, 78, "Membership");
+GFAddbutton(gump, 300, 100, 9026, 9027, 1, 22);
+
+if (GuildPropInt(who.guild, GUILD_STONE))
+	GFTextLine(gump, 330, 130, 78, "Change Guildstone");
+	GFAddbutton(gump, 300, 130, 9026, 9027, 1, 20);
+
+	GFTextLine(gump, 330, 160, 78, "Remove Guildstone");
+	GFAddbutton(gump, 300, 160, 9026, 9027, 1, 21);
+else
+	GFTextLine(gump, 330, 130, 78, "Place Guildstone");
+	GFAddbutton(gump, 300, 130, 9026, 9027, 1, 20);
+endif
+
 GFHTMLArea(gump, 90, 340, 420, 130, "This is the main guildmaster menu. Here you can recruit applicants and manage guild relations, titles and colors." ,1,1 );
 
 
@@ -649,6 +1036,9 @@ case (data[0])
 	12: ChangeGuildHouse(who);
 	13: ManageGuildRecruits(who);
 	14: ChangeGuildMasterss(who);
+	20: ManageGuildstone(who);
+	21: RemoveGuildstone(who);
+	22: ShowMembershipGump(who);
 	0: GuildGump(who);
 endcase
 
@@ -894,7 +1284,8 @@ if (data[0] == 10)
 	endif
 	
 	var guild := who.guild;
-	
+	var old_registry_name := guild.getprop(GUILD_NAME);
+
 	var name;
 	var newtitle := "";
 	foreach member in (guild.members)
@@ -917,6 +1308,7 @@ if (data[0] == 10)
 	guild.setprop(GUILD_NAME, guildname);
 	guild.setprop(GUILD_ABV, guildabv);
 	guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+	MoveGuildRegistryEntry(old_registry_name, guild);
 	SendSysMessage(who, "You have successfully renamed your guild.", 3, 53);
 else
 	SendSysMessage(who, "Cancelled.");
@@ -1103,7 +1495,9 @@ function BuyGuildColour(who, colour)
 	var setcolourtime := who.guild.getprop("TimeGuildColour");
 	var currentcolour := who.guild.getprop("GuildColour");
 
-	if ( ((GUILD_COLOUR_TIME * 60)+ setcolourtime) > ReadGameClock() )
+	// Staff bypass the cooldown -- everyone else has to wait GUILD_COLOUR_TIME
+	// hours between colour changes.
+	if (who.cmdlevel < 3 && ((GUILD_COLOUR_TIME * 60)+ setcolourtime) > ReadGameClock() )
 		SendSysMessage(who, "You have already set your guild colour within the last "+GUILD_COLOUR_TIME+" hours.");
 		return GuildMasterGump(who);
 	endif
@@ -1660,6 +2054,10 @@ if (house == 2)
 	SendSysMessage(who, "Error: You are not standing in a house you own.");
 	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
 	return 0;
+elseif (house == 3)
+	SendSysMessage(who, "Static houses cannot be used as a guild house.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
 elseif (house == 0)
 	SendSysMessage(who, "There was a problem setting the guild house, contact staff.");
 	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
@@ -1709,6 +2107,7 @@ guild.setprop("GuildHouse", house.serial);
 guild.setprop("GuildName", guildname);
 guild.setprop("GuildAbv", guildabv);
 guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+SyncGuildRegistry(guild);
 // Add who to guild and set him as the master
 guild.addmember(who);
 guild.setprop("GuildMaster", who.serial);
@@ -2476,6 +2875,10 @@ endcase
 		SendSysMessage(who, "This house doesn't belong to you.");
 		return GuildMasterGump(who);
 	endif
+	if(IsStaticHouse(selected_house))
+		SendSysMessage(who, "Static houses cannot be used as a guild house.");
+		return GuildMasterGump(who);
+	endif
 
 	var current_house := SystemFindObjectBySerial(who.guild.getprop("GuildHouse"));
 	if(current_house)
@@ -2485,8 +2888,16 @@ endcase
 	endif
 
 	if(selected_house)
+		// The guildstone can only ever sit inside the guild's own house, so
+		// switching houses invalidates it -- the guild has to place a new one.
+		var had_guildstone := GuildPropInt(who.guild, GUILD_STONE);
+		DestroyGuildStone(who.guild);
 		SetObjProperty(selected_house, "GuildHouse", who.guild.guildid);
 		who.guild.setprop("GuildHouse", selected_house.serial);
+		SyncGuildRegistry(who.guild);
+		if(had_guildstone)
+			SendSysMessage(who, "Your guildstone was destroyed since it was tied to your old guild house. You may place a new one.", 3, 43);
+		endif
 		SendSysMessage(who, "You have successfully changed the guild house.");
 	else
 		

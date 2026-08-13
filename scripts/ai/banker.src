@@ -98,6 +98,12 @@ program banker();
 				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EEA);
 				EraseObjProperty(ev.source, "banker_making_check");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "gold", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_GOLD_COIN, "gold");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "silver", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_SILVER_COIN, "silver");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "copper", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_COPPER_COIN, "copper");
 			elseif(Find( text, "vault", 1 ) && Find( text, "balance", 1 ))
 				ShowStorageBalance( ev.source, CP_PLAYER_VAULT_AREA, "vault" );
 			elseif(Find(text, "vault", 1) && Find(text, "deposit", 1))
@@ -106,6 +112,12 @@ program banker();
 				WithdrawFromBank(ev.source, me, text, CP_PLAYER_VAULT_AREA, "vault");
 			elseif(Find(text, "vault", 1))
 				OpenBank(ev.source, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "balance", 1) && Find(text, "gold", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_GOLD_COIN, "gold");
+			elseif(Find(text, "balance", 1) && Find(text, "silver", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_SILVER_COIN, "silver");
+			elseif(Find(text, "balance", 1) && Find(text, "copper", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_COPPER_COIN, "copper");
 			// elseif(text["balance"])
 			elseif(Find( text, "balance", 1 ))
 				ShowStorageBalance( ev.source, bank_region, "bank box" );
@@ -119,6 +131,8 @@ program banker();
 				ConvertCopper(ev.source, me);
 			elseif(Find(text, "convert silver", 1))
 				ConvertSilver(ev.source, me);
+			elseif(Find(text, "help", 1))
+				ShowHelp(ev.source);
 			endif
 		elseif(SYSEVENT_ITEM_GIVEN)
 		TurnToward (ev.source);
@@ -285,12 +299,51 @@ function ShowStorageBalance(who, storage_area_name, storage_label)
 		who,
 		AddCommas(summary.gold_coins),
 		AddCommas(summary.gold_checks),
+		AddCommas(summary.gold_coins + summary.gold_checks),
 		AddCommas(summary.silver_coins),
 		AddCommas(summary.silver_checks),
+		AddCommas(summary.silver_coins + summary.silver_checks),
 		AddCommas(summary.copper_coins),
 		AddCommas(summary.copper_checks),
+		AddCommas(summary.copper_coins + summary.copper_checks),
 		storage_label
 	);
+	return 1;
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	SpeakCurrencyBalance(who, storage_area_name, storage_label, currency, currency_name)
+//
+//	Answers a "balance gold"/"balance silver"/"balance copper" request out loud,
+//	without opening the balance gump. Reports the combined coin + cheque total
+//	for the requested currency only.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function SpeakCurrencyBalance(who, storage_area_name, storage_label, currency, currency_name)
+	TurnToward(who);
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	var summary := GetBankCurrencySummary(bankbox);
+	var coins := 0;
+	var checks := 0;
+	if(currency == UOBJ_GOLD_COIN)
+		coins := summary.gold_coins;
+		checks := summary.gold_checks;
+	elseif(currency == UOBJ_SILVER_COIN)
+		coins := summary.silver_coins;
+		checks := summary.silver_checks;
+	elseif(currency == UOBJ_COPPER_COIN)
+		coins := summary.copper_coins;
+		checks := summary.copper_checks;
+	endif
+
+	var total := coins + checks;
+	PrintTextAbovePrivate(me, "Thou hast " + AddCommas(total) + " " + currency_name + " in thy " + storage_label + ", between coin and cheque.", who, 1, 66);
 	return 1;
 endfunction
 
@@ -449,19 +502,58 @@ endfunction
 //	Nothing
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function ShowBalance(who, gold_coins, gold_checks, silver_coins, silver_checks, copper_coins, copper_checks, storage_label := "bank box")
+function ShowBalance(who, gold_coins, gold_checks, gold_total, silver_coins, silver_checks, silver_total, copper_coins, copper_checks, copper_total, storage_label := "bank box")
 	var parms := array;
 	parms[1] := who;
 	parms[2] := gold_coins;
 	parms[3] := gold_checks;
-	parms[4] := silver_coins;
-	parms[5] := silver_checks;
-	parms[6] := copper_coins;
-	parms[7] := copper_checks;
-	parms[8] := storage_label;
+	parms[4] := gold_total;
+	parms[5] := silver_coins;
+	parms[6] := silver_checks;
+	parms[7] := silver_total;
+	parms[8] := copper_coins;
+	parms[9] := copper_checks;
+	parms[10] := copper_total;
+	parms[11] := storage_label;
 
 	Start_Script("ai/bankerbalancegump", parms);
 
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	ShowHelp(who)
+//
+//	Purpose:
+//	Displays a gump listing every speech command this banker understands,
+//	along with a short explanation of what each one does.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function ShowHelp(who)
+	var entries := array{
+		array{"bank / safe", "Open thy bank box."},
+		array{"deposit", "Deposit all coins from thy backpack into thy bank box."},
+		array{"withdraw [amount] [gold/silver/copper]", "Withdraw coins from thy bank box."},
+		array{"balance", "View a summary of thy bank box's currency."},
+		array{"balance gold/silver/copper", "Hear thy bank box's total in one currency."},
+		array{"gold note / silver note / copper note", "Purchase a Banker's Order."},
+		array{"convert copper", "Convert 60,000 copper into silver."},
+		array{"convert silver", "Convert 60,000 silver into gold."},
+		array{"vault", "Open thy account vault. This storage is account-based, shared across every character on thy account."},
+		array{"vault deposit", "Deposit all coins from thy backpack into thy vault."},
+		array{"vault withdraw [amount] [gold/silver/copper]", "Withdraw coins from thy vault."},
+		array{"vault balance", "View a summary of thy vault's currency."},
+		array{"vault balance gold/silver/copper", "Hear thy vault's total in one currency."},
+		array{"help", "Show this list again."}
+	};
+
+	var text := "BANKER HELP MENU\n\n\n";
+	foreach entry in entries
+		text := text + entry[1] + "\n  " + entry[2] + "\n\n";
+	endforeach
+
+	SendStringAsTipWindow(who, text);
+	return 1;
 endfunction
 
 function BuyBankersNote(who, me, currency)

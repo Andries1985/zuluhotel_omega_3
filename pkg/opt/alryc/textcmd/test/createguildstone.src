@@ -1,0 +1,33 @@
+// Synopsis: Create a test guildstone at a targeted location, defaulting to the 0xed6 graphic
+use uo;
+
+const GS_DEFAULT_GRAPHIC := 0xed6;
+
+program createguildstone(who)
+
+	if (who.cmdlevel < 5)
+		SendSysMessage(who, "You do not have permission to use this command.", 1, 33);
+		return 0;
+	endif
+
+	SendSysMessage(who, "Target a location to place the test guildstone.");
+	var loc := TargetCoordinates(who);
+	if (!loc)
+		SendSysMessage(who, "Targeting canceled.");
+		return 0;
+	endif
+
+	var item := CreateItemAtLocation(loc.x, loc.y, loc.z, 0x1A390, 1, loc.realm);
+	if (!item)
+		SendSysMessage(who, "Failed to create the guildstone.", 1, 33);
+		return 0;
+	endif
+
+	item.graphic := GS_DEFAULT_GRAPHIC;
+	item.movable := 0;
+
+	SendSysMessage(who, "Test guildstone created.", 1, 66);
+
+	return 1;
+
+endprogram

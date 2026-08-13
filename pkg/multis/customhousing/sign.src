@@ -1,5 +1,6 @@
 use uo;
 use os;
+use guilds;
 
 //include "include/client";
 //include "include/objtype";
@@ -22,7 +23,7 @@ include ":gumps:yesno";
 program use_house_sign (character, sign)
 	//If its a deeded house, make sure its house exists...
 	if (sign.objtype != 0x17060)
-		var hserial := GetObjProperty (sign, "house_serial");
+		var hserial := ResolveCustomHouseSerial (sign);
 		if (!hserial)
 			return;
 		endif
@@ -58,7 +59,14 @@ program use_house_sign (character, sign)
 
 	SendSysMessage (character, "You own " + GetAccountHouseCount (character.acctname) + " of " + get_max_houses_per_account() + " houses allowed on this account." );
 
-	var result := ShowHouseSignGump (character, sign, owner_name, "Custom House", GetHouseDecayDisplay (sign), GetLockdowns (sign), GetSecures (sign), can_manage);
+	var guild_house := 0;
+	var guild_house_serial := ResolveCustomHouseSerial (sign);
+	if (guild_house_serial)
+		guild_house := SystemFindObjectBySerial (guild_house_serial);
+	endif
+	var guild_house_name := GetGuildHouseName (guild_house);
+
+	var result := ShowHouseSignGump (character, sign, owner_name, "Custom House", GetHouseDecayDisplay (sign), GetLockdowns (sign), GetSecures (sign), guild_house_name, can_manage);
 
 	if (!can_manage)
 		if (!legacy_account or character.acctname != legacy_account)
@@ -83,7 +91,7 @@ program use_house_sign (character, sign)
 			if (sign.objtype == 0x17060)
 				DisownHouse (character, sign);
 			else
-				var hserial := GetObjProperty (sign, "house_serial");
+				var hserial := ResolveCustomHouseSerial (sign);
 				var house := SystemFindObjectBySerial (hserial);
 
 				// Omega Cache containers are freestanding items placed inside
@@ -131,7 +139,7 @@ program use_house_sign (character, sign)
 			endif
 		16:	ChangeHouseLocks (character, sign);
 		20:
-			var customhouse := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+			var customhouse := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 			if (customhouse.custom)
 				var homeinfo := GetObjProperty (sign, "homeinfo");
 				if (!homeinfo)
@@ -153,7 +161,7 @@ program use_house_sign (character, sign)
 				SendSysMessage (character, "Your house can't be customized.");
 			endif
 		21:
-			var omegahouse := SystemFindObjectBySerial (GetObjProperty (sign, "house_serial"));
+			var omegahouse := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
 			CustomHouseFunctionRemoveOmegaCache (sign, omegahouse, character);
 		default:
 			SendSysMessage (character, "Error:  Unknown gump return!");
@@ -207,7 +215,7 @@ function ChangeHouseLocks (character, sign)
 		endif
 	endif
 
-	var lockid := GetObjProperty(sign, "house_serial")+1;
+	var lockid := ResolveCustomHouseSerial(sign)+1;
 	SetObjProperty (newkey, "lockid", lockid); 
 	SetObjProperty (sign, "lockid", lockid); 
 	foreach item in ListObjectsInBox (sign.x - 32, sign.y - 32, -127, sign.x + 32, sign.y + 32, 127, sign.realm)
@@ -545,7 +553,35 @@ function GetTeleporterCountDisplay (sign)
 	return CStr(used);
 endfunction
 
-function ShowHouseSignGump (character, sign, owner_name, house_type, decay_display, lockdowns, secures, can_manage)
+// Mirrors :house:multiSign/use.src's GetGuildHouseName() -- kept as a
+// separate copy rather than a shared include since this file already
+// duplicates the rest of that sign gump (GetTeleporterCountDisplay,
+// GetOmegaCacheCountDisplay, ShowHouseSignGump) per-package rather than
+// sharing it.
+function GetGuildHouseName(house)
+	if(!house)
+		return "";
+	endif
+
+	var guild_house_id := GetObjProperty(house, "GuildHouse");
+	if(!guild_house_id || guild_house_id.errortext)
+		return "";
+	endif
+
+	foreach guild in ListGuilds()
+		if(CInt(guild.guildid) == CInt(guild_house_id) && CInt(guild.getprop("GuildHouse")) == CInt(house.serial))
+			var guild_name := guild.getprop("GuildName");
+			if(guild_name && !guild_name.errortext)
+				return guild_name;
+			endif
+			return "Unknown Guild";
+		endif
+	endforeach
+
+	return "";
+endfunction
+
+function ShowHouseSignGump (character, sign, owner_name, house_type, decay_display, lockdowns, secures, guild_house_name, can_manage)
 	GFInitGump();
 	GFNoDispose();
 	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
@@ -578,6 +614,10 @@ function ShowHouseSignGump (character, sign, owner_name, house_type, decay_displ
 	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
 	GFTextLine(135, 233, 2020, "Number of Teleporters:");
 	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
+	if(guild_house_name)
+		GFTextLine(135, 256, 2020, "Guild House:");
+		GFTextLine(220, 256, 2590, guild_house_name);
+	endif
 	if (!can_manage)
 		return GFSendGump (character);
 	endif
@@ -753,7 +793,7 @@ function AddBan (hsign, who)
 		SendSysMessage (who, "This person is already banned!", color := 42);
 		return;
 	endif
-	if (targetchr.multi.serial == GetObjProperty (hsign, "house_serial"))
+	if (targetchr.multi.serial == ResolveCustomHouseSerial (hsign))
 		MoveObjectToLocation (targetchr, hsign.x, hsign.y, hsign.z, hsign.realm);
 	endif
 	if (targetchr.serial == GetObjProperty (hsign, "ownerserial"))

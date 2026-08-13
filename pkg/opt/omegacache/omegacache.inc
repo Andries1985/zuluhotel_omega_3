@@ -860,26 +860,33 @@ endfunction
 // 2026-08-10: house/staticHousing/customhousing access resolution.
 //
 // :house:utility's GetHouseSignFromObject() (which IsCowner()/IsFriend()
-// depend on to find a sign from a house/multi) only resolves via a
-// "signserial" cprop on the multi or a "houseserial" cprop on a nearby sign,
-// checked against a hardcoded sign-objtype list that predates customhousing's
-// current sign objtype. house's own multis populate "signserial" so it works
-// there, but staticHousing's signs never populate any multi-serial link at
-// all (they track coverage purely via footage-box geometry), and
-// customhousing's sign->multi link is a differently-named cprop
-// ("house_serial", not "houseserial") that this helper never checks. Net
-// effect: IsCowner()/IsFriend() silently fall back to the legacy "Friends"
-// array format for two of the three packages, and none of the three
-// populate that array anymore (they're on the shared :house: sign core's
-// friendlist/coowners/perm_* now) -- so cache access for co-owners/friends
-// was broken for staticHousing and customhousing houses.
+// depend on to find a sign from a house/multi) resolves via a "signserial"
+// cprop on the multi or a "houseserial" cprop on a nearby sign, checked
+// against a hardcoded sign-objtype list. house's own multis populate
+// "signserial" so it works there; staticHousing's signs never populate any
+// multi-serial link at all (they track coverage purely via footage-box
+// geometry), so IsCowner()/IsFriend() still fall back to the legacy
+// "Friends" array format for staticHousing -- and nothing populates that
+// array anymore (everything's on the shared :house: sign core's
+// friendlist/coowners/perm_* now), so cache access for co-owners/friends is
+// still broken there.
 //
-// Fixed here with a self-contained resolver scoped to Omega Cache only,
-// rather than touching GetHouseSignFromObject/IsCowner/IsFriend themselves
+// customhousing used to be broken here too (its sign->multi link was the
+// differently-named "house_serial" cprop, and its sign objtype wasn't in
+// GetHouseSignFromObject()'s list at all) -- both are now fixed upstream
+// (guilds.inc's ResolveHouseSign duplicated this same resolver for the same
+// reason; consolidated into :house:utility's copy instead, 2026-08-13:
+// customhousing signs now write "houseserial"/"signserial" like house's own,
+// with ResolveCustomHouseSerial() in customhousing's include/house.inc
+// self-healing any sign placed before that change). So this function no
+// longer needs its own customhousing-specific fallback -- only staticHousing
+// still needs the footage-geometry match below.
+//
+// Kept as a self-contained resolver scoped to Omega Cache rather than
+// routing through GetHouseSignFromObject()/IsCowner()/IsFriend() directly
 // (those are used shard-wide well beyond housing/caching, and auditing every
-// other caller is out of scope for this change). Resolves the sign via each
-// package's own linkage first (house/customhousing's serial cprops), falling
-// back to a footage-geometry match (IsObjectInsideHouse) for staticHousing.
+// other caller for the staticHousing gap above is out of scope for this
+// function).
 // 2026-08-10: radius bumped 24 -> 50. When called from placecache.src's
 // lazy-init (before a placement location is known), near_item is the house
 // multi itself, so the search center is the multi's placement anchor tile,
@@ -894,9 +901,6 @@ function FindOmegaCacheHouseSign(house, near_item)
 			continue;
 		endif
 		if(CInt(GetObjProperty(candidate, "houseserial")) == house.serial)
-			return candidate;
-		endif
-		if(CInt(GetObjProperty(candidate, "house_serial")) == house.serial)
 			return candidate;
 		endif
 		if(candidate.IsObjectInsideHouse(near_item))

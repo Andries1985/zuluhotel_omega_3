@@ -1,0 +1,161 @@
+// Synopsis: Move every item from one of your bags into another, consolidating stacks
+use uo;
+
+include "include/client";
+include "include/canstack";
+include ":mdgumps:yesNo";
+
+const STACK_CAP := 60000;
+
+program movebag(who)
+
+	SendSysMessage(who, "Target the container you wish to empty.");
+	var src := Target(who);
+
+	if (!src.isa(POLCLASS_CONTAINER))
+		SendSysMessage(who, "You must target a container.");
+		return 0;
+	elseif (!InBackpack(who, src))
+		SendSysMessage(who, "The container must be in your backpack.");
+		return 0;
+	endif
+
+	SendSysMessage(who, "Target the container you wish to move everything into.");
+	var dest := Target(who);
+
+	if (!dest.isa(POLCLASS_CONTAINER))
+		SendSysMessage(who, "You must target a container.");
+		return 0;
+	elseif (!InBackpack(who, dest))
+		SendSysMessage(who, "The container must be in your backpack.");
+		return 0;
+	elseif (dest.serial == src.serial)
+		SendSysMessage(who, "You can't move a container's contents into itself.");
+		return 0;
+	endif
+
+	var all := YesNo(who, "Move everything from one bag into another?");
+	if(all)
+		var matches := array{};
+		foreach item in EnumerateItemsInContainer(src, ENUMERATE_ROOT_ONLY)
+			if (item.serial != dest.serial && Accessible(who, item))
+				matches.Append(item);
+			endif
+		endforeach
+
+		SetObjProperty(who, "#FastLooting", 1);
+		var count := MoveConsolidated(matches, dest);
+		EraseObjProperty(who, "#FastLooting");
+
+		if (count == 0)
+			SendSysMessage(who, "No items were moved.");
+		elseif (count < 2)
+			SendSysMessage(who, count+" item moved to the container.");
+		else
+			SendSysMessage(who, count+" items moved to the container.");
+		endif
+	endif
+
+endprogram
+
+// Manual scan instead of item.HasExistingStack() -- that builtin only reports
+// a stack as a candidate when the WHOLE incoming item's amount fits under the
+// cap, so it never surfaces a partially-fillable target for the overflow case.
+function FindOpenStack(item, cont)
+	foreach dest in EnumerateItemsInContainer(cont, ENUMERATE_ROOT_ONLY)
+		if (dest.stackable && dest.amount < STACK_CAP && CanStack(item, dest))
+			return dest;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function RegisterCarrier(byref carriers, key, carrier)
+	var group := carriers[key];
+	if (!group)
+		group := array{};
+	endif
+	group.Append(carrier);
+	carriers[key] := group;
+endfunction
+
+// Movebag can be moving many unrelated stackable types at once (gold, ingots,
+// reagents, ...), so unlike .move there's no single carrier -- we keep one
+// active carrier per objtype (verified with CanStack, since same objtype can
+// still differ in color/quality/etc) and top each off to STACK_CAP before
+// starting a new one for that group.
+function FindOrCreateCarrier(item, cont, byref carriers)
+	var key := item.objtype;
+	var group := carriers[key];
+
+	if (group)
+		foreach carrier in group
+			if (carrier.amount < STACK_CAP && CanStack(item, carrier))
+				return carrier;
+			endif
+		endforeach
+	endif
+
+	var found := FindOpenStack(item, cont);
+	if (found)
+		RegisterCarrier(carriers, key, found);
+		return found;
+	endif
+
+	return 0;
+endfunction
+
+function MoveConsolidated(matches, cont)
+
+	var count := 0;
+	var carriers := dictionary;
+
+	foreach item in matches
+		if (!item.stackable)
+			if (MoveItemToContainer(item, cont))
+				count := count + 1;
+			endif
+		else
+			var carrier := FindOrCreateCarrier(item, cont, carriers);
+			if (carrier)
+				var space := STACK_CAP - carrier.amount;
+				if (item.amount <= space)
+					AddAmount(carrier, item.amount);
+					SubtractAmount(item, item.amount);
+					count := count + 1;
+				else
+					AddAmount(carrier, space);
+					SubtractAmount(item, space);
+					if (MoveItemToContainer(item, cont))
+						count := count + 1;
+						RegisterCarrier(carriers, item.objtype, item);
+					endif
+				endif
+			else
+				if (MoveItemToContainer(item, cont))
+					count := count + 1;
+					RegisterCarrier(carriers, item.objtype, item);
+				endif
+			endif
+		endif
+	endforeach
+
+	return count;
+
+endfunction
+
+function InBackpack(who, thing)
+
+	if (thing.serial == who.backpack.serial)
+		return 1;
+	endif
+
+	foreach item in EnumerateItemsInContainer(who.backpack)
+		if (item.serial == thing.serial)
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+
+endfunction

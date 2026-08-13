@@ -2,6 +2,10 @@
 use uo;
 
 include "include/client";
+include "include/canstack";
+include ":mdgumps:yesNo";
+
+const STACK_CAP := 60000;
 
 program move(who)
 
@@ -28,18 +32,19 @@ program move(who)
 	endif
 
 	var originalcontainer := what.container;
-	var all := MoveAll(who);
+	var all := YesNo(who, "Move all items of the targeted type to the selected container?");
 	if(all)
 		var count := 0;
-		foreach item in EnumerateItemsInContainer(who.backpack, ENUMERATE_ROOT_ONLY)
+		var matches := array{};
+		foreach item in EnumerateItemsInContainer(originalcontainer, ENUMERATE_ROOT_ONLY)
 			if (item.objtype == what.objtype && item != cont && Accessible( who, item ) && item.container != cont)
-				if (all || item.container == originalcontainer)
-					if (MoveItemToContainer(item, cont))
-						count := count + 1;
-					endif
-				endif
+				matches.Append(item);
 			endif
 		endforeach
+
+		SetObjProperty(who, "#FastLooting", 1);
+		count := count + MoveConsolidated(matches, cont);
+		EraseObjProperty(who, "#FastLooting");
 
 		if (count == 0)
 			SendSysMessage(who, "No items were moved.");
@@ -51,6 +56,69 @@ program move(who)
 	endif
 
 endprogram
+
+// Manual scan instead of item.HasExistingStack() -- that builtin only reports
+// a stack as a candidate when the WHOLE incoming item's amount fits under the
+// cap, so it never surfaces a partially-fillable target for the overflow case.
+function FindOpenStack(item, cont)
+	foreach dest in EnumerateItemsInContainer(cont, ENUMERATE_ROOT_ONLY)
+		if (dest.stackable && dest.amount < STACK_CAP && CanStack(item, dest))
+			return dest;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+// Streams every matched stackable item's amount through a single "carrier"
+// stack in the destination, topping it off to STACK_CAP before starting a
+// new carrier, so only the final stack ends up partially filled.
+function MoveConsolidated(matches, cont)
+
+	var count := 0;
+	var stackables := array{};
+
+	foreach item in matches
+		if (item.stackable)
+			stackables.append(item);
+		else
+			if (MoveItemToContainer(item, cont))
+				count := count + 1;
+			endif
+		endif
+	endforeach
+
+	if (stackables.size() == 0)
+		return count;
+	endif
+
+	var carrier := FindOpenStack(stackables[0], cont);
+
+	foreach item in stackables
+		if (carrier && carrier.amount < STACK_CAP && CanStack(item, carrier))
+			var space := STACK_CAP - carrier.amount;
+			if (item.amount <= space)
+				AddAmount(carrier, item.amount);
+				SubtractAmount(item, item.amount);
+				count := count + 1;
+			else
+				AddAmount(carrier, space);
+				SubtractAmount(item, space);
+				if (MoveItemToContainer(item, cont))
+					count := count + 1;
+					carrier := item;
+				endif
+			endif
+		else
+			if (MoveItemToContainer(item, cont))
+				count := count + 1;
+				carrier := item;
+			endif
+		endif
+	endforeach
+
+	return count;
+
+endfunction
 
 function InBackpack(who, thing)
 
@@ -65,41 +133,5 @@ function InBackpack(who, thing)
 	endforeach
 
 	return 0;
-
-endfunction
-
-
-function MoveAll(who)
-
-	var gflayout := {
-			"nodispose",                                                // You did not want to hit esc, did you?
-			"page 0",                                                   // We initialize the first page which is the background
-			"GumpPic 260 100 9460",		                           		// We want a nice picture
-			"text 308 130 238 0",                                       // The main headline 
-			"page 1",	                                                // Initialize the page
-			"text 293 160 190 1",
-			"text 293 175 190 2",
-			"button 306 220 243 241 1 0 1",                             // Cancel button
-			"button 406 220 249 248 1 0 2"                            	// Okay button
-		};
-
-	var gfdata := {
-			"<[ MOVE ITEMS MENU ]>",
-			"Move items from one container",
-			"to another container?"
-		};
-
-	var gump := SendDialogGump( who, gflayout, gfdata );
-
-    if( !gump )
-        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
-    	return 0;
-    endif
-    
-	case( gump[0] )
-		1:	SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
-			return 0;
-		2:	return 1;
-	endcase
 
 endfunction
