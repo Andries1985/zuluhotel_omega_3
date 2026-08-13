@@ -25,9 +25,19 @@ exported function MegaCliloc( who, byref packet )
 	var xObject := SystemFindObjectBySerial(packet.GetInt32(OFFSET_OBJECT_SERIAL));
 
 	if ( xObject.IsA(POLCLASS_ITEM) )
-		packet.SetSize(15);
-		
-		var Object_Name := xObject.desc;
+    packet.SetSize(15);
+
+		var Object_Name;
+		var xContainer := xObject.container;
+		// If the item is in a Vendor Storage Bag, use the singular description. Otherwise, use the plural description.
+		if ( xContainer && xContainer.objtype == 0x1966A )
+			// Vendor Storage Bag, Singular Description
+			Object_Name := FormatItemDescription(xObject.name, 1, xObject.name_suffix);
+		else
+			// Everywhere Else, Plural Description
+			Object_Name := xObject.desc;
+		endif
+
 		var Object_Color := GetObjectColor( xObject );
 		if(Object_Color)
 			Object_Name := CAscZ("<BASEFONT COLOR=" + Object_Color + ">" +Object_Name);

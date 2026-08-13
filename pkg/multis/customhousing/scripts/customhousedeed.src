@@ -107,7 +107,14 @@ program usehousedeed (character, deed)
 		created.house.setcustom(1);
 		SetObjProperty (created.house, "customhouse_paidparts", 0);
 		sign :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax+1, where.z+7, 0xFFF4, 1, where.realm );
-		SetObjProperty(sign, "house_serial", created.house.serial);
+		// Sign<->house link under the :house: package's own property names
+		// ("houseserial"/"signserial", no underscore) instead of a
+		// customhousing-only "house_serial" -- ResolveCustomHouseSerial()
+		// (include/house.inc) is now the only place that reads this link, and
+		// it already bridges any pre-existing sign that still only has the
+		// legacy "house_serial" property, so new signs never need to write it.
+		SetObjProperty(sign, "houseserial", created.house.serial);
+		SetObjProperty(created.house, "signserial", sign.serial);
 		sign.movable:=0;
 		component.append (sign.serial);
 		SetObjProperty (sign, "lockid", lockid );
@@ -120,12 +127,12 @@ program usehousedeed (character, deed)
 		SetObjProperty (sign, "houseprice", extracharges);
 		//make bracket
 		item :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax+1, where.z+7, 0x0b9c, 1, where.realm );
-		SetObjProperty(item, "house_serial", created.house.serial);
+		SetObjProperty(item, "houseserial", created.house.serial);
 		item.movable:=0;
 		component.append (item.serial);
 		//make pole
 		item :=CreateItemAtLocation( where.x+dims.xmin, where.y+dims.ymax, where.z+7, 0x09, 1, where.realm );
-		SetObjProperty(item, "house_serial", created.house.serial);
+		SetObjProperty(item, "houseserial", created.house.serial);
 		item.movable:=0;
 		component.append (item.serial);
 	endif
