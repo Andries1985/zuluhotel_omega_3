@@ -404,6 +404,131 @@ function ApplyMembershipRankChanges(guild, row_serials, row_count, keys)
 
 endfunction
 
+// Reads back a single stored permission flag for rank, defaulting to 0 for
+// an unset rank or unset key (a rank with no entry yet, or a freshly added
+// permission category on an older save).
+function GuildHousePermFlag(perms, rank, key)
+	var rank_perms := perms[rank];
+	if (!rank_perms || rank_perms.errortext)
+		return 0;
+	endif
+	var flag := rank_perms[key];
+	if (!flag || flag.errortext)
+		return 0;
+	endif
+	return CInt(flag);
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ShowGuildHouseManagementGump() - Guild master function. Lists every guild rank (leader
+// included, as a normal editable row -- unlike the Membership gump's fixed leader row, the
+// current guild master isn't guaranteed to be the house's actual owner) with a per-rank
+// permission row mirroring :house:'s own house-friends gump: View/Add/Remove secures,
+// Recall/GateTo/GateFrom, plus Lockdown and House Manager. Headers, checkboxes, and
+// ApplyGuildHousePermsChanges()'s unpacking all read off the same GUILD_HOUSE_PERM_COLUMN_*
+// arrays (guildconstants.inc) so they can't drift out of sync with each other.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ShowGuildHouseManagementGump(who)
+
+	var guild := who.guild;
+	var perms := GetGuildHousePerms(guild);
+
+	var gump := GFCreateGump(0, 0, 960, 420);
+	GFResizePic(gump, 50, 30, 9260, 860, 350);
+
+	GFGumpPic(gump, 0, 60, 10440);
+	GFGumpPic(gump, 838, 60, 10441);
+
+	GFPage(gump, 1);
+
+	GFResizePic(gump, 90, 45, 9200, 780, 25);
+	GFHTMLArea(gump, 90, 48, 780, 22, "<CENTER>Guild House Management", 0, 0);
+
+	GFResizePic(gump, 90, 74, 9200, 780, 40);
+	GFTextLine(gump, 100, 76, 999, "Rank");
+	GFTextLine(gump, 300, 76, 999, "Secures");
+	GFTextLine(gump, 550, 76, 999, "Recall / Gate");
+
+	var header_col;
+	for (header_col := 1; header_col <= GUILD_HOUSE_PERM_COLUMN_X.size(); header_col := header_col + 1)
+		GFTextLine(gump, GUILD_HOUSE_PERM_COLUMN_X[header_col], 96, 999, GUILD_HOUSE_PERM_COLUMN_LABEL[header_col]);
+	endfor
+
+	var y := 122;
+	var row;
+	for (row := 1; row <= GUILD_HOUSE_PERM_RANKS.size(); row := row + 1)
+		var rank := GUILD_HOUSE_PERM_RANKS[row];
+		var base := row * 10;
+
+		GFTextLine(gump, 100, y, 89, rank);
+
+		var col;
+		for (col := 1; col <= GUILD_HOUSE_PERM_COLUMN_X.size(); col := col + 1)
+			GFCheckBox(gump, GUILD_HOUSE_PERM_COLUMN_X[col], y, 210, 211, GuildHousePermFlag(perms, rank, GUILD_HOUSE_PERM_COLUMN_KEY[col]), base + col);
+		endfor
+
+		y := y + 30;
+	endfor
+
+	GFHTMLArea(gump, 100, 272, 740, 45, "<I>Secures and Recall/Gate grant direct use of already-placed containers and teleporters. Lockdown only works inside the House Management tool, and House Manager is required to reach that tool (friends list, bans, ejects, and lock/secure/teleporter administration) at all.", 0, 0);
+
+	GFAddButton(gump, 400, 325, 2128, 2129, GF_CLOSE_BTN, 9000);
+	GFTextLine(gump, 425, 327, 999, "Okay");
+
+	GFAddButton(gump, 480, 325, 2119, 2120, GF_CLOSE_BTN, 0);
+	GFTextLine(gump, 505, 327, 999, "Cancel");
+
+	var data := GFSendGump(who, gump);
+	case (data[0])
+		9000:
+			ApplyGuildHousePermsChanges(guild, data.keys);
+			SendSysMessage(who, "Guild house permissions updated.", 3, 67);
+			return GuildMasterGump(who);
+		default:
+			SendSysMessage(who, "Cancelled.");
+			return GuildMasterGump(who);
+	endcase
+
+endfunction
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// ApplyGuildHousePermsChanges() - Writes the submitted checkbox choices to the registry
+// datafile. Columns sharing a stored key (View/Add/Remove all -> "secure";
+// Recall/GateTo/GateFrom all -> "teleporter") OR together -- checking any one of the three is
+// enough to grant that category, exactly matching :house:'s own SaveHouseFriendData() collapse.
+//
+////////////////////////////////////////////////////////////////////////////////////////////////
+function ApplyGuildHousePermsChanges(guild, keys)
+
+	var perms := dictionary;
+	var row;
+	for (row := 1; row <= GUILD_HOUSE_PERM_RANKS.size(); row := row + 1)
+		var rank := GUILD_HOUSE_PERM_RANKS[row];
+		var base := row * 10;
+
+		var rank_perms := dictionary;
+		rank_perms[GUILD_HOUSE_PERM_SECURE] := 0;
+		rank_perms[GUILD_HOUSE_PERM_TELEPORTER] := 0;
+		rank_perms[GUILD_HOUSE_PERM_LOCKDOWN] := 0;
+		rank_perms[GUILD_HOUSE_PERM_MANAGER] := 0;
+
+		var col;
+		for (col := 1; col <= GUILD_HOUSE_PERM_COLUMN_KEY.size(); col := col + 1)
+			if ((base + col) in keys)
+				rank_perms[GUILD_HOUSE_PERM_COLUMN_KEY[col]] := 1;
+			endif
+		endfor
+
+		perms[rank] := rank_perms;
+	endfor
+
+	SetGuildHousePerms(guild, perms);
+
+endfunction
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
 //
@@ -1021,6 +1146,9 @@ else
 	GFAddbutton(gump, 300, 130, 9026, 9027, 1, 20);
 endif
 
+GFTextLine(gump, 330, 190, 78, "Guild Management");
+GFAddbutton(gump, 300, 190, 9026, 9027, 1, 23);
+
 GFHTMLArea(gump, 90, 340, 420, 130, "This is the main guildmaster menu. Here you can recruit applicants and manage guild relations, titles and colors." ,1,1 );
 
 
@@ -1039,6 +1167,7 @@ case (data[0])
 	20: ManageGuildstone(who);
 	21: RemoveGuildstone(who);
 	22: ShowMembershipGump(who);
+	23: ShowGuildHouseManagementGump(who);
 	0: GuildGump(who);
 endcase
 

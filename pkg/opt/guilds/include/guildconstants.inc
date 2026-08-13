@@ -83,6 +83,38 @@ const GUILD_MEMBER_RANKS_PROP := "MemberRanks";
 var GUILD_ASSIGNABLE_RANKS := {GUILD_RANK_OFFICER, GUILD_RANK_VETERAN, GUILD_RANK_MEMBER, GUILD_RANK_RECRUIT};
 var GUILD_RANK_COLUMN_X := {354, 438, 522, 606};
 
+// Guild house permissions -- per-rank secure/teleporter/lockdown/manager
+// access to the guild's own house, mirroring :house:'s friend permission
+// system. Stored in the registry datafile (GetGuildHousePerms()/
+// SetGuildHousePerms() in guilds.inc), read directly (no shared include) by
+// :house:multiSign/method.src's HasHousePermission() -- see that function's
+// GuildRankHasHousePermission() for the consuming side. These 4 string
+// values are the actual perm_key strings HasHousePermission() expects; keep
+// them in sync with that file if ever renamed.
+const GUILD_HOUSE_PERM_SECURE := "secure";
+const GUILD_HOUSE_PERM_TELEPORTER := "teleporter";
+const GUILD_HOUSE_PERM_LOCKDOWN := "lockdown";
+const GUILD_HOUSE_PERM_MANAGER := "house_manager";
+
+const GUILD_HOUSE_PERMS_PROP := "HousePerms";
+
+// Unlike GUILD_ASSIGNABLE_RANKS (Membership gump, leader excluded -- fixed,
+// uncheckable there), the Guild Management gump gives the leader its own
+// normal, editable row: the current guild master isn't guaranteed to be the
+// house's actual owner if leadership changed hands since the house was set,
+// so without a configurable row a new leader could be locked out.
+var GUILD_HOUSE_PERM_RANKS := {GUILD_RANK_LEADER, GUILD_RANK_OFFICER, GUILD_RANK_VETERAN, GUILD_RANK_MEMBER, GUILD_RANK_RECRUIT};
+
+// x position, header label, and stored-flag key for each of the 8
+// permission checkboxes, in column order -- one shared source for the gump's
+// headers, its checkboxes, and ApplyGuildHousePermsChanges()'s unpacking, so
+// the three can't independently drift out of sync (the button-id -> rank
+// mistake this exact pattern was introduced to prevent, see
+// GUILD_ASSIGNABLE_RANKS above).
+var GUILD_HOUSE_PERM_COLUMN_X := {270, 350, 430, 510, 590, 670, 750, 830};
+var GUILD_HOUSE_PERM_COLUMN_LABEL := {"View", "Add", "Remove", "Recall", "Gate To", "Gate From", "Lockdown", "Manager"};
+var GUILD_HOUSE_PERM_COLUMN_KEY := {GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_LOCKDOWN, GUILD_HOUSE_PERM_MANAGER};
+
 // guild clothes
 var CLOTHING := {0x1EFD, 0x1EFF, 0x1F01, 0x1F03, 0x1F7B, 0x1F9F, 0x1FA1, 0x1FFD, 0x1FFE, 0x1515, 0x1516, 0x1517, 0x152E, 0x1537, 0x1539, 0x153B, 0x153D, 0x1541, 0x153F, 0x1543, 0x141b, 0x1545, 0x1547, 0x1549, 0x154c, 0x1713, 0x1714, 0x1715, 0x1716, 0x1717, 0x1718, 0x1719, 0x171A, 0x171B, 0x171C, 0x170B, 0x170D, 0x170F, 0x1711};
 

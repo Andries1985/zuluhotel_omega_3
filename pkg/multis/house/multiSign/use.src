@@ -331,7 +331,12 @@ program Mulit_House_sign(who, sign)
 	var decay_display := GetHouseDecayDisplay(sign);
 	var result;
 	var acct := GetObjProperty(sign, "owneracct");
-	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2))
+	// A guild member whose rank has been granted "house_manager" access to
+	// this (their own guild's) house gets the same reach as any friend --
+	// checked last since it's the only one of these that can touch a
+	// datafile, and every cheaper check above already short-circuits it for
+	// the common owner/co-owner/staff/friend cases.
+	if((cown == 1) || (friend_ == 1) || (who.acctname == acct) || (who.cmdlevel > 2) || sign.HasHousePermission(who, "house_manager"))
 		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 1);
 	else
 		result := ShowHouseSignGump(who, sign, owner_name, house_type, decay_display, remaining_lockdowns, remaining_secures, guild_house_name, declare_text, 0);
@@ -1768,6 +1773,10 @@ endfunction
 // management for house teleporters was previously unreachable by any path.
 
 function HandleLockdownRelease(sign, house, who, mode)
+	if(!sign.HasHousePermission(who, "lockdown"))
+		SendSysMessage(who, "You do not have lockdown permission.", color := 33);
+		return;
+	endif
 	var itemt := Target(who, TGTOPT_NOCHECK_LOS);
 	if(!itemt)
 		SendSysMessageCL(who, 1042023, color := 33);

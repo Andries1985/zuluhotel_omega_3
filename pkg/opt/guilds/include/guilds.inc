@@ -179,6 +179,59 @@ function SetGuildMemberRanks(guild, ranks)
 	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
 endfunction
 
+// Returns {rank string -> {"secure":0/1, "teleporter":0/1, "lockdown":0/1,
+// "house_manager":0/1}} for guild's own house, read from the registry
+// datafile -- the sole source of truth (no guild CProp mirror), same as
+// MemberRanks. Consumed directly (not via this function) by
+// :house:multiSign/method.src's GuildRankHasHousePermission(), which reads
+// the same datafile/property independently to avoid a :house: -> :guilds:
+// package dependency.
+function GetGuildHousePerms(guild)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return dictionary;
+	endif
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return dictionary;
+	endif
+	var perms := dictionary;
+	var elem := df.FindElement(name);
+	if(elem)
+		var stored := elem.GetProp(GUILD_HOUSE_PERMS_PROP);
+		if(stored && !stored.errortext)
+			perms := stored;
+		endif
+	endif
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+	return perms;
+endfunction
+
+function SetGuildHousePerms(guild, perms)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return;
+	endif
+
+	var elem := df.FindElement(name);
+	if(!elem)
+		elem := df.CreateElement(name);
+	endif
+	if(!elem)
+		UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+		return;
+	endif
+
+	elem.SetProp(GUILD_HOUSE_PERMS_PROP, perms);
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+endfunction
+
 // Call when a guild is disbanded, to drop its datafile entry entirely.
 function DeleteGuildRegistryEntry(guild)
 	var name := guild.getprop(GUILD_NAME);

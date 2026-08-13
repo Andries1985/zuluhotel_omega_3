@@ -3,6 +3,8 @@
 
 use uo;
 use os;
+use guilds;
+use datafile;
 
 include "include/housing";
 //include ":multistatichousing:settings";
@@ -1347,14 +1349,96 @@ exported function IsFullHouseManager(sign, byref mobile)
 	return 0;
 endfunction
 
+// Guild-house rank permission bridge -- :guilds: extends this friend/co-owner
+// system with per-rank secure/teleporter/lockdown/house_manager access to a
+// guild's own house, stored in the shared guild registry datafile
+// (":guilds:guild_registry", keyed by guild name -- see
+// pkg/opt/guilds/include/guilds.inc's GetGuildHousePerms()/
+// SetGuildHousePerms(), GUILD_MEMBER_RANKS_PROP="MemberRanks",
+// GUILD_HOUSE_PERMS_PROP="HousePerms"). Read directly here instead of
+// including anything from :guilds: -- that package already depends on
+// :house:, so the reverse would be circular, and :house: is foundational
+// enough that it shouldn't gain a feature-package dependency either way.
+// Rank resolution (leader-or-MemberRanks-lookup, default "Member") mirrors
+// guilds.inc's GetGuildMemberRank(); kept in sync by comment, not by shared
+// code. Short-circuits to 0 (no datafile touched) for the overwhelming
+// majority of checks: any mobile without a guild, and any house that isn't
+// that mobile's own guild's house.
+function GuildRankHasHousePermission(sign, byref mobile, perm_key)
+	if(!mobile.guild)
+		return 0;
+	endif
+
+	var house := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "houseserial")));
+	if(!house)
+		return 0;
+	endif
+
+	var guild_house_id := GetObjProperty(house, "GuildHouse");
+	if(!guild_house_id || guild_house_id.errortext)
+		return 0;
+	endif
+	if(CInt(guild_house_id) != CInt(mobile.guild.guildid))
+		return 0;
+	endif
+
+	var name := mobile.guild.getprop("GuildName");
+	if(!name || name.errortext)
+		return 0;
+	endif
+
+	var rank := "Member";
+	var master := mobile.guild.getprop("GuildMaster");
+	if(master && !master.errortext && CInt(master) == mobile.serial)
+		rank := "Guild Leader";
+	endif
+
+	var df := OpenDataFile(":guilds:guild_registry");
+	if(!df)
+		CreateDataFile(":guilds:guild_registry", DF_KEYTYPE_STRING);
+		df := OpenDataFile(":guilds:guild_registry");
+	endif
+	if(!df)
+		return 0;
+	endif
+
+	var granted := 0;
+	var elem := df.FindElement(name);
+	if(elem)
+		if(rank != "Guild Leader")
+			var ranks := elem.GetProp("MemberRanks");
+			if(ranks && !ranks.errortext)
+				var stored := ranks[CInt(mobile.serial)];
+				if(stored && !stored.errortext)
+					rank := stored;
+				endif
+			endif
+		endif
+
+		var perms := elem.GetProp("HousePerms");
+		if(perms && !perms.errortext)
+			var rank_perms := perms[rank];
+			if(rank_perms && !rank_perms.errortext)
+				var flag := rank_perms[perm_key];
+				if(flag && !flag.errortext && CInt(flag))
+					granted := 1;
+				endif
+			endif
+		endif
+	endif
+
+	UnloadDataFile(":guilds:guild_registry");
+	return granted;
+endfunction
+
 exported function HasHousePermission(sign, byref mobile, perm_key)
 	if(IsFullHouseManager(sign, mobile))
 		return 1;
 	endif
-	if(!IsAFriend(sign, mobile))
-		return 0;
+	if(IsAFriend(sign, mobile) && (mobile.serial in GetPermList(sign, perm_key)))
+		return 1;
 	endif
-	if(mobile.serial in GetPermList(sign, perm_key))
+	if(GuildRankHasHousePermission(sign, mobile, perm_key))
 		return 1;
 	endif
 	return 0;
