@@ -153,6 +153,13 @@ function DemolishAbandonedCustomHouse (sign)
 
 	var house_serial := house.serial;
 	DestroyMulti (house);
+
+	// Cache containers above were force-cleared regardless of contents, so
+	// nothing further can be recovered from this DataFile either way --
+	// drop it instead of leaving an orphaned entry for a house that no
+	// longer exists.
+	DeleteOmegaCacheStore (house_serial);
+
 	Print ("Custom house demolished due to decay: sign=" + sign.serial + " house=" + house_serial);
 endfunction
 
@@ -421,28 +428,38 @@ endfunction
 //  releases all locked down and secured items in the house.  Used when the house is destroyed
 ///////////////////
 
+// 2026-08-13: was routing each item through run_script_to_completion(
+// ":housing:lockunlock", parms) -- there is no ":housing:" package anywhere
+// in this repo (only house/customhousing/statichousing), so that call
+// always failed to resolve and no item was ever actually released before
+// the caller destroys the house/multi right after this returns. Rewritten
+// to release items inline instead, mirroring how :house:'s own demolish()
+// (multiSign/use.src) does it: just clear the marking CProp and restore
+// movable/usescript directly, no external script involved.
 function ReleaseAll (owner, sign)
 	var homeinfo := GetObjProperty (sign, "homeinfo");
-//	foreach item in ListObjectsInBox (sign.x-32, sign.y-32, -128, sign.x+32, sign.y+32, +127, sign.realm)
 	foreach item in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], +127, sign.realm)
 		if (!item.movable and item.isa (POLCLASS_ITEM))
-//			if ( (item.x >= homeinfo[2] and item.x <= homeinfo[4]) and
-//					(item.y >= homeinfo[3] and item.y <= homeinfo[5]) )
 			if (!IsGMLockedDownItem (owner, item))
-				var parms := array{};
-				parms[1] := sign;
-				parms[2] := owner;
-				parms[3] := item;
-				parms[4] := 0;
 				if (GetObjProperty (item, "displaycontainer") == sign.serial)
-					parms[4] := HOUSE_DISPLAY_ITEM;
-					run_script_to_completion (":housing:lockunlock", parms);
-				elseif (GetObjProperty (item, "lockeddown") == sign.serial)
-					parms[4] := HOUSE_LOCKDOWN_ITEM;
-					run_script_to_completion (":housing:lockunlock", parms);
+					item.movable := 1;
+					item.decayat := ReadGameClock() + 1;
+					EraseObjProperty (item, "displaycontainer");
+					EraseObjProperty (item, "lockeddown");
 				elseif (GetObjProperty (item, "secured") == sign.serial)
-					parms[4] := HOUSE_SECURE_CONTAINER;
-					run_script_to_completion (":housing:lockunlock", parms);
+					item.movable := 1;
+					item.decayat := ReadGameClock() + 1;
+					var oldscript := GetObjProperty (item, "oldscript");
+					if (oldscript == error)
+						oldscript := "";
+					endif
+					item.usescript := oldscript;
+					EraseObjProperty (item, "secured");
+					EraseObjProperty (item, "oldscript");
+				elseif (GetObjProperty (item, "lockeddown") == sign.serial)
+					item.movable := 1;
+					item.decayat := ReadGameClock() + 1;
+					EraseObjProperty (item, "lockeddown");
 				endif
 			endif
 		endif
@@ -514,13 +531,24 @@ function ChangeOwner (who, sign)
 	SetObjProperty (sign, "ownerserial", newowner.serial);
 	RegisterAccountHouseSign (sign, newowner.acctname);
 
-	if (GetObjProperty (sign, "homeinfo"))
-		var homeinfo := GetObjProperty (sign, "homeinfo");
+	var homeinfo := GetObjProperty (sign, "homeinfo");
+	if (homeinfo)
 		homeinfo[1] := newowner.serial;
 		SetObjProperty (sign, "homeinfo", homeinfo);
-	else
-		var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
+	endif
+
+	// 2026-08-13: previously only set on the multi when homeinfo was absent
+	// (the else-branch above) -- when homeinfo was present (the normal
+	// case), the house multi's own ownerserial/owneracct were left pointing
+	// at the old owner. guilds.inc's IsGuildHouseOwner()/
+	// GetOwnedGuildCandidateHouses() read those properties directly off the
+	// multi (not resolved via the sign), so a house transferred through
+	// here couldn't be selected as a guild house by its new owner. Always
+	// mirror both onto the multi now, regardless of homeinfo.
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
+	if (house)
 		SetObjProperty (house, "ownerserial", newowner.serial);
+		SetObjProperty (house, "owneracct", newowner.acctname);
 	endif
 
 	SetObjProperty (sign, "lastownername", newowner.name);

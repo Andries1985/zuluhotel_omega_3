@@ -111,7 +111,10 @@ var GUILD_HOUSE_PERM_RANKS := {GUILD_RANK_LEADER, GUILD_RANK_OFFICER, GUILD_RANK
 // the three can't independently drift out of sync (the button-id -> rank
 // mistake this exact pattern was introduced to prevent, see
 // GUILD_ASSIGNABLE_RANKS above).
-var GUILD_HOUSE_PERM_COLUMN_X := {270, 350, 430, 510, 590, 670, 750, 830};
+// 2026-08-13: shifted left from {270, 350, ... 830} -- the last column sat
+// right under the panel's right-side dragon decoration (x=838 in
+// ShowGuildHouseManagementGump), running "Manager" off the edge.
+var GUILD_HOUSE_PERM_COLUMN_X := {215, 295, 375, 455, 535, 615, 695, 775};
 var GUILD_HOUSE_PERM_COLUMN_LABEL := {"View", "Add", "Remove", "Recall", "Gate To", "Gate From", "Lockdown", "Manager"};
 var GUILD_HOUSE_PERM_COLUMN_KEY := {GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_TELEPORTER, GUILD_HOUSE_PERM_LOCKDOWN, GUILD_HOUSE_PERM_MANAGER};
 

@@ -20,6 +20,18 @@ include ":houseExtras:settings";
 // Included directly here, matching customhousedeed.src's choice of package.
 include ":gumps:yesno";
 
+// 2026-08-13: sign.objtype == 0x17060 ("static" custom house, see DisownHouse
+// below and GetHouseValueOfSign's commented-out branch in include/house.inc)
+// appears to be unreachable in practice. The only deed script in this
+// package, scripts/customhousedeed.src's usehousedeed, is the sole place
+// that ever creates a house sign here, and it only ever creates one with
+// objtype 0xFFF4 (both of its deed types -- housetype 0x113ec/0x1147b --
+// go through the same branch). Nothing in this package places a 0x17060
+// sign, so unless one was hand-spawned by staff, this branch (and
+// DisownHouse, and the 0x17060 cases in include/house.inc's
+// FindHouseSign()/FindHouseSignAtLocation(), which are themselves unused
+// elsewhere) is dead code. Left in place rather than removed since that
+// hasn't been confirmed with certainty.
 program use_house_sign (character, sign)
 	//If its a deeded house, make sure its house exists...
 	if (sign.objtype != 0x17060)
@@ -101,6 +113,7 @@ program use_house_sign (character, sign)
 				// the (now confirmed empty) containers to clean up below.
 				var homeinfo := GetObjProperty (sign, "homeinfo");
 				var cache_items := array {};
+				var cache_serials := array {};
 				if (homeinfo)
 					foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
 						if (thing.objtype == OMEGACACHE_OBJTYPE)
@@ -109,6 +122,7 @@ program use_house_sign (character, sign)
 								return;
 							endif
 							cache_items.append (thing);
+							cache_serials.append (CInt (GetObjProperty (thing, "houseserial")));
 						endif
 					endforeach
 				endif
@@ -119,6 +133,12 @@ program use_house_sign (character, sign)
 				foreach thing in cache_items
 					EraseObjProperty (thing, "houseserial");
 					DestroyItem (thing);
+				endforeach
+				// Already confirmed empty above -- safe to drop the DataFile(s)
+				// instead of leaving them registered forever for a house that's
+				// about to stop existing.
+				foreach cache_serial in cache_serials
+					DeleteOmegaCacheStore (cache_serial);
 				endforeach
 				var addons := GetObjProperty (house, "components");
 				if (addons.size())

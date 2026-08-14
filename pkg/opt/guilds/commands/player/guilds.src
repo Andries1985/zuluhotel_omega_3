@@ -350,12 +350,12 @@ function ShowMembershipGump(who, startat := 1)
 	endif
 
 	// OK / Cancel centered along the bottom of the panel (panel spans
-	// x:50-730, so 390 is the horizontal midpoint).
+	// x:50-730, so 390 is the horizontal midpoint). No separate GFTextLine
+	// labels -- button art 2128/2129 and 2119/2120 already render "OKAY"/
+	// "CANCEL" themselves; a second label on top just overlapped it.
 	GFAddButton(gump, 340, 520, 2128, 2129, GF_CLOSE_BTN, 9000);
-	GFTextLine(gump, 365, 522, 999, "Okay");
 
 	GFAddButton(gump, 420, 520, 2119, 2120, GF_CLOSE_BTN, 0);
-	GFTextLine(gump, 445, 522, 999, "Cancel");
 
 	var data := GFSendGump(who, gump);
 
@@ -435,11 +435,14 @@ function ShowGuildHouseManagementGump(who)
 	var guild := who.guild;
 	var perms := GetGuildHousePerms(guild);
 
-	var gump := GFCreateGump(0, 0, 960, 420);
-	GFResizePic(gump, 50, 30, 9260, 860, 350);
+	var gump := GFCreateGump(0, 0, 960, 440);
+	GFResizePic(gump, 50, 30, 9260, 860, 370);
 
+	// Right dragon sits 32px in from the panel's actual right edge (50+860=910),
+	// matching the inset GuildMasterGump/ChangeGuildHouse use (550-518=32) --
+	// was at 838, leaving the panel/header bar visibly running on past it.
 	GFGumpPic(gump, 0, 60, 10440);
-	GFGumpPic(gump, 838, 60, 10441);
+	GFGumpPic(gump, 878, 60, 10441);
 
 	GFPage(gump, 1);
 
@@ -448,8 +451,8 @@ function ShowGuildHouseManagementGump(who)
 
 	GFResizePic(gump, 90, 74, 9200, 780, 40);
 	GFTextLine(gump, 100, 76, 999, "Rank");
-	GFTextLine(gump, 300, 76, 999, "Secures");
-	GFTextLine(gump, 550, 76, 999, "Recall / Gate");
+	GFTextLine(gump, 285, 76, 999, "Secures");
+	GFTextLine(gump, 535, 76, 999, "Recall / Gate");
 
 	var header_col;
 	for (header_col := 1; header_col <= GUILD_HOUSE_PERM_COLUMN_X.size(); header_col := header_col + 1)
@@ -465,20 +468,30 @@ function ShowGuildHouseManagementGump(who)
 		GFTextLine(gump, 100, y, 89, rank);
 
 		var col;
-		for (col := 1; col <= GUILD_HOUSE_PERM_COLUMN_X.size(); col := col + 1)
-			GFCheckBox(gump, GUILD_HOUSE_PERM_COLUMN_X[col], y, 210, 211, GuildHousePermFlag(perms, rank, GUILD_HOUSE_PERM_COLUMN_KEY[col]), base + col);
-		endfor
+		if (rank == GUILD_RANK_LEADER)
+			// The leader always has full house access (see
+			// GuildRankHasHousePermission's short-circuit in :house:
+			// method.src) -- nothing to configure, so this row gets plain
+			// static checkmark art instead of real checkboxes.
+			for (col := 1; col <= GUILD_HOUSE_PERM_COLUMN_X.size(); col := col + 1)
+				GFGumpPic(gump, GUILD_HOUSE_PERM_COLUMN_X[col], y, 211);
+			endfor
+		else
+			for (col := 1; col <= GUILD_HOUSE_PERM_COLUMN_X.size(); col := col + 1)
+				GFCheckBox(gump, GUILD_HOUSE_PERM_COLUMN_X[col], y, 210, 211, GuildHousePermFlag(perms, rank, GUILD_HOUSE_PERM_COLUMN_KEY[col]), base + col);
+			endfor
+		endif
 
 		y := y + 30;
 	endfor
 
-	GFHTMLArea(gump, 100, 272, 740, 45, "<I>Secures and Recall/Gate grant direct use of already-placed containers and teleporters. Lockdown only works inside the House Management tool, and House Manager is required to reach that tool (friends list, bans, ejects, and lock/secure/teleporter administration) at all.", 0, 0);
+	GFHTMLArea(gump, 100, 272, 740, 60, "<I>Secures and Recall/Gate grant direct use of already-placed containers and teleporters. Lockdown only works inside the House Management tool, and House Manager is required to reach that tool (friends list, bans, ejects, and lock/secure/teleporter administration) at all.", 0, 0);
 
-	GFAddButton(gump, 400, 325, 2128, 2129, GF_CLOSE_BTN, 9000);
-	GFTextLine(gump, 425, 327, 999, "Okay");
+	// No separate GFTextLine labels -- button art 2128/2129 and 2119/2120
+	// already render "OKAY"/"CANCEL" themselves.
+	GFAddButton(gump, 400, 340, 2128, 2129, GF_CLOSE_BTN, 9000);
 
-	GFAddButton(gump, 480, 325, 2119, 2120, GF_CLOSE_BTN, 0);
-	GFTextLine(gump, 505, 327, 999, "Cancel");
+	GFAddButton(gump, 480, 340, 2119, 2120, GF_CLOSE_BTN, 0);
 
 	var data := GFSendGump(who, gump);
 	case (data[0])
@@ -1073,6 +1086,17 @@ endfunction
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 function GuildMasterGump(who)
+
+	// 2026-08-13: GuildGump() only shows the button that reaches this gump
+	// when who is the guild master -- that's a client-side rendering
+	// choice, not enforcement, since a gump-response packet can name any
+	// button id regardless of what was drawn. Every action dispatched from
+	// here (disband, change guild master/house, guildstone, membership
+	// ranks, house permissions...) needs the real check to live server-side.
+	if (!who.guild || (who.guild.getprop("GuildMaster") != who.serial))
+		SendSysMessage(who, "Only the guild master can access this.", color := 33);
+		return GuildGump(who);
+	endif
 
 // Main Window
 var gump := GFCreateGump(0, 0, 540, 540);

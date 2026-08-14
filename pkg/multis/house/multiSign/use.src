@@ -1085,7 +1085,10 @@ function demolish(house, sign, who, bank_region)
 				endif
 			endif
 		endforeach
-		CloseOmegaCacheStore(house.serial);
+		// House is being demolished for good and IsOmegaCacheEmpty() already
+		// gated entry to this branch, so the cache's DataFile can go too
+		// instead of sitting around as a permanently orphaned empty file.
+		DeleteOmegaCacheStore(house.serial);
 		if(who and who.acctname)
 			UnregisterAccountHouseSign(sign, who.acctname);
 		endif

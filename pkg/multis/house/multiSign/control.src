@@ -11,6 +11,7 @@ include "include/attributes";
 include "include/sysevent";
 include "include/objtype";
 include "include/housing";
+include "include/omegacache_utils";
 
 program SignListener(sign)
 	var house := GetObjProperty(sign, "houseserial");
@@ -451,6 +452,16 @@ function demolish(sign)
 			endif
 		endif
 	endforeach
+
+	// 2026-08-13: this decay teardown never touched Omega Cache at all,
+	// unlike the manual redeed path in multiSign/use.src (which blocks on a
+	// non-empty cache first). Only delete the DataFile when it's actually
+	// empty, so an abandoned house with unclaimed cache contents doesn't
+	// silently lose them on top of already losing the house.
+	if(IsOmegaCacheEmpty(house.serial))
+		DeleteOmegaCacheStore(house.serial);
+	endif
+
 	DestroyMulti(house );
 	return;
 endfunction
