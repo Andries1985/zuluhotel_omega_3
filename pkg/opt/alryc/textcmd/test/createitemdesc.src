@@ -1,0 +1,87 @@
+// Synopsis: Spawn and lock down every item from a package's itemdesc.cfg, in rows of 20.
+use os;
+use uo;
+use cfgfile;
+
+const DEFAULT_PER_ROW := 20;
+const MAX_PER_ROW := 50;
+const X_SPACING := 1;
+const Y_SPACING := 2;
+
+program createitemdesc(who, text)
+    if (text == "" || text == "?" || Lower(text) == "help")
+        SendSysMessage(who, "Usage: .createitemdesc <package> [perrow]", color := 88);
+        return;
+    endif
+
+    var args := SplitWords(text);
+    var pkgname := args[1];
+
+    var per_row := DEFAULT_PER_ROW;
+    if (len(args) >= 2)
+        per_row := CInt(args[2]);
+    endif
+    if (per_row < 1 OR per_row > MAX_PER_ROW)
+        SendSysMessage(who, "perrow must be between 1 and " + MAX_PER_ROW + ".", color := 33);
+        return;
+    endif
+
+    var cfg := ReadConfigFile(":" + pkgname + ":itemdesc");
+    if (!cfg)
+        SendSysMessage(who, "Could not load itemdesc.cfg for package '" + pkgname + "'.", color := 33);
+        return;
+    endif
+
+    var keys := GetConfigIntKeys(cfg);
+    if (!keys || len(keys) < 1)
+        SendSysMessage(who, "No items found in itemdesc.cfg for package '" + pkgname + "'.", color := 33);
+        return;
+    endif
+
+    var loc := TargetCoordinates(who);
+    if (!loc)
+        SendSysMessage(who, "Targeting canceled.");
+        return;
+    endif
+
+    var created := 0;
+    var skipped := 0;
+    var i;
+    for (i := 1; i <= len(keys); i := i + 1)
+        var objtype := keys[i];
+        if (objtype <= 0)
+            skipped := skipped + 1;
+            continue;
+        endif
+
+        var col := (i - 1) % per_row;
+        var row := CInt((i - 1) / per_row);
+        var x := loc.x + (col * X_SPACING);
+        var y := loc.y + (row * Y_SPACING);
+
+        var item := CreateItemAtLocation(x, y, loc.z, objtype, 1, loc.realm);
+        if (item)
+            created := created + 1;
+            item.movable := 0;
+            SetObjProperty(item, "StaffCreatedSerial", who.serial);
+            SetObjProperty(item, "StaffCreatedName", who.name);
+
+            var elem := FindConfigElem(cfg, objtype);
+            var item_name := "";
+            if (elem)
+                item_name := GetConfigString(elem, "Name");
+            endif
+
+            if (item_name && item_name != "")
+                item.name := CStr(Hex(objtype)) + " : " + item_name;
+            else
+                item.name := CStr(Hex(objtype));
+            endif
+        else
+            skipped := skipped + 1;
+        endif
+        sleepms(1);
+    endfor
+
+    SendSysMessage(who, "Created and locked down " + created + " items from '" + pkgname + "' itemdesc.cfg (" + skipped + " skipped).");
+endprogram
