@@ -1,0 +1,138 @@
+// Synopsis: List all treasure map dig locations and teleport to the selected chest spawn spot
+use uo;
+use os;
+use polsys;
+use cfgfile;
+
+include ":staff:staff";
+include ":gumps:gumps";
+
+program goto_treasuremap( who )
+
+	var cfg := ReadConfigFile( "treasure" );
+	if( !cfg )
+		SendSysMessage( who, "Unable to load the treasure map location config." );
+		return 0;
+	endif
+
+	var maxkey := GetConfigMaxIntKey( cfg );
+	if( !maxkey )
+		SendSysMessage( who, "There are no treasure map locations configured." );
+		return 0;
+	endif
+
+	var locations := {};
+	var elem;
+	var loc;
+	var i;
+
+	for( i := 1; i <= maxkey; i := i + 1 )
+		elem := FindConfigElem( cfg, i );
+		if( elem )
+			loc := struct;
+			loc.+x := GetConfigInt( elem, "X" );
+			loc.+y := GetConfigInt( elem, "Y" );
+			loc.+z := GetConfigInt( elem, "Z" );
+			loc.+r := GetConfigString( elem, "R" );
+			locations.append( loc );
+		endif
+	endfor
+
+	if( !locations.size() )
+		SendSysMessage( who, "There are no treasure map locations configured." );
+		return 0;
+	endif
+
+	var picked := MakeAndProcessGump( who, locations );
+	if( picked )
+		var moved := MoveObjectToLocation( who, picked.x, picked.y, picked.z, picked.r, MOVEOBJECT_FORCELOCATION );
+		if( moved.errortext )
+			SendSysMessage( who, "Unable to teleport: " + moved.errortext );
+		else
+			SendSysMessage( who, "Teleported to the " + RealmDisplayName( picked.r ) + " treasure spot at (" + picked.x + ", " + picked.y + ", " + picked.z + ")." );
+			LogCommand( who, GetProcess(GetPid()).name, "Went to treasure spot: " + picked.x + "," + picked.y + "," + picked.z + "," + picked.r, "" );
+		endif
+	endif
+
+endprogram
+
+
+function RealmDisplayName( r )
+
+	if( r == "britannia" )
+		return "Felucca";
+	elseif( r == "britannia_alt" )
+		return "Sosaria";
+	elseif( r == "malas" )
+		return "Malas";
+	elseif( r == "tokuno" )
+		return "Tokuno";
+	elseif( r == "ilshenar" )
+		return "Ilshenar";
+	elseif( r == "termur" )
+		return "Termur";
+	endif
+
+	return r;
+
+endfunction
+
+
+function MakeAndProcessGump( who, locations )
+
+	var gump := GFCreateGump(20, 20, 500, 720);
+	GFDisposable(gump, 0);
+	var y := 185;
+	var perpage := 20;
+	var page := 1;
+	var i;
+
+	// Main background
+	GFResizePic(gump, 20, 20, 9250, 500, 725);
+
+	// Area backgrounds
+	GFResizePic(gump, 38, 180, 9200, 464, 528);
+	GFResizePic(gump, 38, 140, 9200, 464, 40);
+
+	// Title
+	GFResizePic(gump, 130, 35, 9200, 240, 20);
+	GFTextLine(gump, 135, 35, 67, "Treasure Map Locations");
+
+	// Column headers
+	GFTextLine(gump, 55, 150, 900, "#");
+	GFTextLine(gump, 90, 150, 900, "Realm");
+	GFTextLine(gump, 250, 150, 900, "Location");
+	GFTextLine(gump, 450, 150, 900, "Goto");
+
+	GFTextLine(gump, 240, 708, 1000, "Page 1");
+	GFPage(gump, 1);
+
+	for( i := 1; i <= locations.size(); i := i + 1 )
+
+		if( perpage <= 0 )
+			GFAddButton(gump, 450, 705, 4005, 4006, 0, page+1); // Next Page button
+			GFPage(gump, page + 1);
+			GFAddButton(gump, 50, 705, 4014, 4015, 0, page); // Prev Page button
+			page := page + 1;
+			GFTextLine(gump, 240, 708, 1000, "Page "+page);
+			y := 185;
+			perpage := 20;
+		endif
+
+		GFTextLine(gump, 55, y, 0, "" + i);
+		GFTextLine(gump, 90, y, 0, RealmDisplayName( locations[i].r ) );
+		GFTextLine(gump, 250, y, 0, locations[i].x + ", " + locations[i].y + ", " + locations[i].z );
+		GFAddButton(gump, 450, y, 5540, 5541, GF_CLOSE_BTN, i);
+
+		perpage := perpage - 1;
+		y := y + 25;
+	endfor
+
+	var result := GFSendGump(who, gump);
+	if( !result || result.errortext || !result[0] )
+		return 0;
+	endif
+
+	return locations[Cint(result[0])];
+
+endfunction
