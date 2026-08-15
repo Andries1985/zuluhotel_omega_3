@@ -2,11 +2,14 @@
 //include ":customhousing:housefriends";
 use uo;
 use os;
+use guilds;
 
 include "housefriends";
 include "include/objtype";
 include ":house:multihouse_settings";
 include "include/omegacache_utils";
+include ":guilds:include/guildconstants";
+include ":guilds:items/guildstone/companions";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;
@@ -125,6 +128,20 @@ function DemolishAbandonedCustomHouse (sign)
 		foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
 			if (thing.objtype == OMEGACACHE_OBJTYPE)
 				EraseObjProperty (thing, "houseserial");
+				DestroyItem (thing);
+			elseif (thing.objtype == GUILDSTONE_OBJTYPE)
+				// The guildstone (and any statue-set companion pieces) can
+				// only ever sit inside the guild's own house, so it can't
+				// survive the house decaying away -- this path previously
+				// didn't sweep for one at all, leaving it orphaned in place
+				// once DestroyMulti ran below.
+				DestroyGuildstoneCompanions (thing);
+				foreach guild in ListGuilds ()
+					if (guild.getprop (GUILD_STONE) == thing.serial)
+						guild.eraseprop (GUILD_STONE);
+						break;
+					endif
+				endforeach
 				DestroyItem (thing);
 			endif
 		endforeach

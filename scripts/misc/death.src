@@ -91,7 +91,7 @@ program npcdeath(corpse)
 		if (resnum < 4 and GetObjProperty(corpse,"master") != 0) 
 			heart := CreateItemAtLocation(corpse.x,corpse.y,corpse.z,0x1CED,1,corpse.realm);
 			heart.newbie := 1;	
-			heart.color := 1172;
+			heart.color := 2750;
 			heart.usescript := "";
 			heart.name := "The Heart of "+GetObjProperty(corpse,"Name");
 			SetObjProperty(heart,"Str",GetObjProperty(corpse,"Str"));

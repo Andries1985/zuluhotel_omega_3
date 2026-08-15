@@ -511,7 +511,7 @@ function EquipStaffRobe( who, item )
 		4:	if( GetObjProperty( who, "head" ) )
 				item.color := 0x07A1;
 			else
-				item.color := 0x0485;
+				item.color := 0x0aac;
 			endif
 			SetBaseStrength(who, 6000);
 			SetBaseDexterity(who, 6000);

@@ -11,6 +11,8 @@ include ":house:multihouse_settings";
 include "include/housing";
 include "include/omegacache_utils";
 include ":mdgumps:old-gumps";
+include ":guilds:include/guildconstants";
+include ":guilds:items/guildstone/companions";
 
 const UOBJECT_DOORS_START := 0x0675;
 const UOBJECT_DOORS_END   := 0x06f4;
@@ -860,7 +862,6 @@ function demolish(house, sign, who, bank_region)
 	var lists := GetObjProperty(sign, "footage");
 	var itemlist := {};
 	var holder;
-	var has_guildstone := 0;
 	var has_vendor := 0;
 	var builtdeed_error := 0;
 	foreach thing in lists
@@ -869,22 +870,18 @@ function demolish(house, sign, who, bank_region)
 			itemlist.append(thing);
 		endforeach
 	endforeach
-	foreach thing in itemlist
-		if(thing.objtype == 0x1A390)
-			has_guildstone := 1;
-			break;
-		endif
-	endforeach
+	// 2026-08-14: no longer blocks redeeding when a guildstone is present --
+	// the guild-house check above already guarantees this isn't any guild's
+	// *active* house, so a leftover guildstone here can only be a stale one
+	// (e.g. left behind by an old data inconsistency). It's destroyed inline
+	// in the release loop below (GUILDSTONE_OBJTYPE branch) instead of
+	// forcing the owner to hunt it down and remove it by hand first.
 	foreach npc in (house.mobiles)
 		if(npc.npctemplate == "playervendor")
 			has_vendor := 1;
 			break;
 		endif
 	endforeach
-	if(has_guildstone)
-		SendSysMessage(who, "You cannot redeed a house while it has a guildstone.", color := 33);
-		return;
-	endif
 	if(has_vendor)
 		SendSysMessage(who, "You cannot redeed a house with vendors in it.", color := 33);
 		return;
@@ -1077,12 +1074,22 @@ function demolish(house, sign, who, bank_region)
 				EraseObjProperty(thing, "houseserial" );
 				EraseObjProperty(thing, "lockeddown");
 			elseif (thing.movable == 0)
-				if(thing.objtype == 0x1A390)
-					MoveObjectToLocation(thing, thing.x, thing.y, house.z, house.realm, MOVEOBJECT_FORCELOCATION);
-					thing.decayat := ReadGameClock() + 1;
-				else
-					DestroyItem(thing);
+				// The guildstone (and any statue-set companion pieces) can
+				// only ever sit inside the guild's own house, so it can't
+				// survive the house being redeeded -- destroy it outright
+				// instead of the old "nudge it to the ground and let it
+				// decay" handling, and clear the guild's own stone
+				// reference too if the owning guild can still be found.
+				if(thing.objtype == GUILDSTONE_OBJTYPE)
+					DestroyGuildstoneCompanions(thing);
+					foreach guild in ListGuilds()
+						if(guild.getprop(GUILD_STONE) == thing.serial)
+							guild.eraseprop(GUILD_STONE);
+							break;
+						endif
+					endforeach
 				endif
+				DestroyItem(thing);
 			endif
 		endforeach
 		// House is being demolished for good and IsOmegaCacheEmpty() already
