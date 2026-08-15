@@ -1382,15 +1382,37 @@ Coordinates in `regions.cfg`/`specialNPCs.cfg` (`wanderinghealer 2748 660 0`); p
 graphic/objtype blocks in `townstones/upgrades.cfg` and `itemUtils/config/offset.cfg`;
 `landtiles.cfg`/`tiles.cfg`/decoratefacets decoration dumps; `clilocs.cfg` cliloc IDs.
 
+**Revision note (2026-08-14):** the shard owner spotted crystal ore still showing the old
+color after the first pass. Root cause: the search only checked for the literal decimal
+`2748`, but several items in the same "shadowlord" ice/crystal family store their color as hex
+`0xabc` (=2748) instead — a blind spot the same as the `0x0NNN` padded-hex gap found earlier
+in this project, just triggered by "target value has multiple encodings" instead of "source
+value does." A follow-up `0x0?abc\b` sweep (case-insensitive) found 7 more real hits, all
+missed by the first pass:
+
+| File | Item(s) |
+|---|---|
+| `config/equip.cfg` | `Equipment shadowlord` — `Equip 0x76d7`, `Equip 0x76a4` |
+| `config/itemdesc.cfg` | ice arrow (Desc "ice arrow%s") |
+| `pkg/systems/combat/config/itemdesc.cfg` | 5x Icebow / Kobold Icebow, Blue Bone Helm AR50, Blue Bone Gloves AR10 |
+| `pkg/std/tailoring/itemdesc.cfg` | icecrystalhide |
+| `pkg/std/mining/itemdesc.cfg` | CrystalOre, CrystalIngot |
+
+All 7 changed from `0xabc` to `0x8c3` (hex for 2243). False positives excluded: `landtiles.cfg`
+`landtile 0xabc` and `nonanimatedgraphics.cfg` `Tile 0xabc` (graphic/landtile IDs, not colors),
+`pkg/items/carpets/config/itemdesc.cfg` `Item 0x0ABC` (objtype ID, not a color), and the
+`ainotes/Hue names list.txt` reference dump.
+
 ### Post-change verification
 
-Full sweep for `2748` re-run after the edit; only the known false-positive files remain, plus
-the one intentionally-untouched reserved-block entry in `guildconstants.inc`.
+Full sweep for decimal `2748` AND hex `0x0?abc\b` (case-insensitive) re-run after both edit
+passes; only the known false-positive files remain, plus the one intentionally-untouched
+reserved-block entry in `guildconstants.inc`.
 
 ### Revert procedure
 
-Restore the locations above from `2243` back to `2748`. Uncommitted — `git diff` /
-`git checkout -- <file>` also works.
+Restore the locations above from `2243`/`0x8c3` back to `2748`/`0xabc`. Uncommitted — `git
+diff` / `git checkout -- <file>` also works.
 
 ---
 
