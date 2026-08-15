@@ -13,6 +13,8 @@ include "include/housefriends";
 include "include/omegacache_utils";
 include ":mdgumps:old-gumps";
 include ":houseExtras:settings";
+include ":guilds:include/guildconstants";
+include ":guilds:items/guildstone/companions";
 // 2026-08-10: YesNo() used below (Continue?/Sell it?/Remove? prompts) --
 // used to come transitively via housefriends.inc's ":mdgumps:yesNo" include,
 // which was removed as dead weight (nothing in housefriends.inc itself used
@@ -20,6 +22,18 @@ include ":houseExtras:settings";
 // Included directly here, matching customhousedeed.src's choice of package.
 include ":gumps:yesno";
 
+// 2026-08-13: sign.objtype == 0x17060 ("static" custom house, see DisownHouse
+// below and GetHouseValueOfSign's commented-out branch in include/house.inc)
+// appears to be unreachable in practice. The only deed script in this
+// package, scripts/customhousedeed.src's usehousedeed, is the sole place
+// that ever creates a house sign here, and it only ever creates one with
+// objtype 0xFFF4 (both of its deed types -- housetype 0x113ec/0x1147b --
+// go through the same branch). Nothing in this package places a 0x17060
+// sign, so unless one was hand-spawned by staff, this branch (and
+// DisownHouse, and the 0x17060 cases in include/house.inc's
+// FindHouseSign()/FindHouseSignAtLocation(), which are themselves unused
+// elsewhere) is dead code. Left in place rather than removed since that
+// hasn't been confirmed with certainty.
 program use_house_sign (character, sign)
 	//If its a deeded house, make sure its house exists...
 	if (sign.objtype != 0x17060)
@@ -101,6 +115,13 @@ program use_house_sign (character, sign)
 				// the (now confirmed empty) containers to clean up below.
 				var homeinfo := GetObjProperty (sign, "homeinfo");
 				var cache_items := array {};
+				var cache_serials := array {};
+				// 2026-08-14: this redeed path never swept for a guildstone at
+				// all (unlike :house:'s equivalent), so one left standing here
+				// would just orphan in place with no house around it once
+				// DestroyMulti ran below. Collected in the same box sweep as
+				// the Omega Cache containers, destroyed after MakeADeed below.
+				var guildstones := array {};
 				if (homeinfo)
 					foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
 						if (thing.objtype == OMEGACACHE_OBJTYPE)
@@ -109,6 +130,9 @@ program use_house_sign (character, sign)
 								return;
 							endif
 							cache_items.append (thing);
+							cache_serials.append (CInt (GetObjProperty (thing, "houseserial")));
+						elseif (thing.objtype == GUILDSTONE_OBJTYPE)
+							guildstones.append (thing);
 						endif
 					endforeach
 				endif
@@ -118,6 +142,26 @@ program use_house_sign (character, sign)
 				endif
 				foreach thing in cache_items
 					EraseObjProperty (thing, "houseserial");
+					DestroyItem (thing);
+				endforeach
+				// Already confirmed empty above -- safe to drop the DataFile(s)
+				// instead of leaving them registered forever for a house that's
+				// about to stop existing.
+				foreach cache_serial in cache_serials
+					DeleteOmegaCacheStore (cache_serial);
+				endforeach
+				// The guildstone (and any statue-set companion pieces) can only
+				// ever sit inside the guild's own house, so it can't survive
+				// the house being redeeded. Clear the guild's own stone
+				// reference too if the owning guild can still be found.
+				foreach thing in guildstones
+					DestroyGuildstoneCompanions (thing);
+					foreach guild in ListGuilds ()
+						if (guild.getprop (GUILD_STONE) == thing.serial)
+							guild.eraseprop (GUILD_STONE);
+							break;
+						endif
+					endforeach
 					DestroyItem (thing);
 				endforeach
 				var addons := GetObjProperty (house, "components");

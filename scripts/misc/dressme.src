@@ -308,17 +308,17 @@ function DressWar(me,gender)
 		2: orecolor := 0x602;
 		3: orecolor := 0x455;
 		4: orecolor := 0x6b8;
-		5: orecolor := 1159;
+		5: orecolor := 2734;
 		6: orecolor := 0x4df;
 		7: orecolor := 1111;
-		8: orecolor := 1158;
+		8: orecolor := 2733;
 		9: orecolor := 383;
-		10: orecolor := 1765;
+		10: orecolor := 2669;
 		11: orecolor := 1223;
 		12: orecolor := 1134;
 		13: orecolor := 1152;
 		14: orecolor := 1001;
-		15: orecolor := 1155;
+		15: orecolor := 2730;
 		16: orecolor := 633;
 		17: orecolor := 1131;
 		18: orecolor := 0x852;
@@ -329,13 +329,13 @@ function DressWar(me,gender)
 		23: orecolor := 0x0499;
 		24: orecolor := 0x049c;
 		25: orecolor := 0x0500;
-		26: orecolor := 0x048b;
+		26: orecolor := 0x0ab6;
 		27: orecolor := 0x0501;
 		28: orecolor := 0x0492;
 		29: orecolor := 0x049f;
 		30: orecolor := 1184;
-		31: orecolor := 1172;
-		32: orecolor := 1176;
+		31: orecolor := 2750;
+		32: orecolor := 2729;
 		33: orecolor := 0;
 	endcase
 
@@ -349,22 +349,22 @@ function DressWar(me,gender)
 		3: hidecolor := 0x0852;
 		4: hidecolor := 0x08fd;
 		5: hidecolor := 0x415;
-		6: hidecolor := 1157;
-		7: hidecolor := 0x486;
+		6: hidecolor := 2732;
+		7: hidecolor := 0xaad;
 		8: hidecolor := 84;
 		9: hidecolor := 0x0496;
 		10: hidecolor := 1645;
-		11: hidecolor := 1159;
+		11: hidecolor := 2734;
 		12: hidecolor := 48;
 		13: hidecolor := 1102;
 		14: hidecolor := 44;
 		15: hidecolor := 0x0492;
-		16: hidecolor := 1765;
+		16: hidecolor := 2669;
 		17: hidecolor := 1285;
 		18: hidecolor := 1054;
-		19: hidecolor := 1165;
+		19: hidecolor := 2744;
 		20: hidecolor := 1154;
-		21: hidecolor := 1281;
+		21: hidecolor := 2299;
 		22: hidecolor := 0;
 	endcase
 
@@ -677,22 +677,22 @@ function DressLeather(me,gender)
 		3: hidecolor := 0x0852;
 		4: hidecolor := 0x08fd;
 		5: hidecolor := 0x415;
-		6: hidecolor := 1157;
-		7: hidecolor := 0x486;
+		6: hidecolor := 2732;
+		7: hidecolor := 0xaad;
 		8: hidecolor := 84;
 		9: hidecolor := 0x0496;
 		10: hidecolor := 1645;
-		11: hidecolor := 1159;
+		11: hidecolor := 2734;
 		12: hidecolor := 48;
 		13: hidecolor := 1102;
 		14: hidecolor := 44;
 		15: hidecolor := 0x0492;
-		16: hidecolor := 1765;
+		16: hidecolor := 2669;
 		17: hidecolor := 1285;
 		18: hidecolor := 1054;
-		19: hidecolor := 1165;
+		19: hidecolor := 2744;
 		20: hidecolor := 1154;
-		21: hidecolor := 1281;
+		21: hidecolor := 2299;
 		22: hidecolor := 0;
 	endcase
 

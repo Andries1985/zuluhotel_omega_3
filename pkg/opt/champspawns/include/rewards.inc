@@ -12,7 +12,7 @@ function RainDownMoney(corpse)
 		blocked := 0;
 		var altar := ListItemsAtLocation( corpse.x+i, corpse.y+j, corpse.z );
 		foreach item in altar
-			if(item.color == 1157)
+			if(item.color == 2732)
 				blocked := 1;
 			endif
 		endforeach

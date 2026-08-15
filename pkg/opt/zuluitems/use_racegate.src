@@ -45,11 +45,11 @@ DWARF.+RaceName		:= "Dwarf";
 DWARF.+GumpColour		:= 1120;
 
 var OMEGA := struct;
-OMEGA.+GateColour	:= 1765;
-OMEGA.+RaceColour	:= 1765;
+OMEGA.+GateColour	:= 2669;
+OMEGA.+RaceColour	:= 2669;
 OMEGA.+GateName		:= "Omega Race Gate";
 OMEGA.+RaceName		:= "Omega";
-OMEGA.+GumpColour	:= 1765;
+OMEGA.+GumpColour	:= 2669;
 
 var ORC := struct;
 ORC.+GateColour	:= 2212;

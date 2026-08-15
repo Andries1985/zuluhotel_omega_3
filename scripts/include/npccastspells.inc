@@ -344,9 +344,9 @@ function SpecialChampFire(caster, cast_on, element)
 	case(element)
 		"EARTH": elecolor := 1134;
 		"WATER": elecolor := 1167;
-		"FIRE": elecolor := 1172;
-		"AIR": elecolor := 1161;
-		"NECRO": elecolor := 1157;
+		"FIRE": elecolor := 2750;
+		"AIR": elecolor := 2736;
+		"NECRO": elecolor := 2732;
 		"HOLY": elecolor := 1153;
 	endcase
 

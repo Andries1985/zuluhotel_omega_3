@@ -115,6 +115,23 @@ function CloseOmegaCacheStore(house_serial)
 	UnloadDataFile(":omegacache:house_" + house_serial);
 endfunction
 
+// 2026-08-13: was going to also DeleteDataFile() here so a torn-down house's
+// cache file didn't sit around forever -- turns out DeleteDataFile isn't
+// actually available in this engine build (commented out in datafile.em,
+// unlike CreateDataFile/OpenDataFile/UnloadDataFile which are real). There's
+// no file-deletion call exposed to EScript at all, so the file itself can't
+// be removed from here; this just unloads it, same as CloseOmegaCacheStore.
+// Kept as its own name (rather than reverting every caller back to
+// CloseOmegaCacheStore) so the teardown call sites still read as "this
+// house is gone for good" rather than "just closing for now", and so a
+// real delete can be dropped in here later if the engine ever adds one.
+function DeleteOmegaCacheStore(house_serial)
+	if(!house_serial)
+		return;
+	endif
+	UnloadDataFile(":omegacache:house_" + house_serial);
+endfunction
+
 // Returns 1 if the house's Omega Cache has no stored items, 0 otherwise.
 // Returns 1 if the DataFile doesn't exist (no items = empty).
 function IsOmegaCacheEmpty(house_serial)

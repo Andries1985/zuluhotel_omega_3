@@ -523,9 +523,9 @@ function CarveLogs( character, logs )
 				theitem.color := logs.color;
 				if (special and theitem.color == 0 )
 					if (theitem.objtype == 0x6050)
-						theitem.color := 1172;
+						theitem.color := 2750;
 					elseif (theitem.objtype == 0xb201)
-						theitem.color := 1170;
+						theitem.color := 2243;
 					elseif (theitem.objtype == 0x1403)
 						theitem.color := 1282;
 					endif

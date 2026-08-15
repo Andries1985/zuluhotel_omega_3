@@ -33,7 +33,7 @@ program santaman(who, santa)
 		PrintTextAbovePrivate(santa, "Here have some coal.", who);
 		var coal := CreateItemInBackpack(who, 0x3C52);
 		coal.name := "Coal";
-		coal.color := 1157;
+		coal.color := 2732;
 	else
 		var presentType := random(3);
 		Case (presentType)

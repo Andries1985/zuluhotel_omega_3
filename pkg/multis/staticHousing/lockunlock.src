@@ -73,7 +73,27 @@ program lockunlockitem (parms)
 		return;
 	endif
 
-	if (!house_sign.IsAFriend ( character))
+	var lockdownoption := parms[4];
+	if (!lockdownoption)
+		lockdownoption := HOUSE_LOCKDOWN_ITEM;
+	endif
+
+	// 2026-08-13: was `!house_sign.IsAFriend(character)`, which the house
+	// owner themselves fails -- they're never added to their own house's
+	// friend list (sign/use.src erases friendlist on purchase), so this
+	// silently blocked owners from ever locking down/securing/displaying/
+	// raising/lowering items in their own house. HasHousePermission()
+	// covers owner/co-owner/staff/friend-permission/guild-rank in one call,
+	// matching what decorate.src and sign/use.src's HandleHouseManagementAction
+	// already check before reaching this program.
+	var required_perm := "lockdown";
+	case (lockdownoption)
+		HOUSE_SECURE_CONTAINER:
+		HOUSE_RELEASE_CONTAINER:
+			required_perm := "secure";
+	endcase
+
+	if (!house_sign.HasHousePermission(character, required_perm))
 		if (!character.cmdlevel)
 			return;
 		else
@@ -92,11 +112,6 @@ program lockunlockitem (parms)
 			SendSysMessage(character, "Canceled.");
 			return;
 		endif
-	endif
-
-	var lockdownoption := parms[4];
-	if (!lockdownoption)
-		lockdownoption := HOUSE_LOCKDOWN_ITEM;
 	endif
 
 	case (lockdownoption)

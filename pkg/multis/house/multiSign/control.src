@@ -4,6 +4,7 @@ use uo;
 use os;
 use basic;
 use cliloc;
+use guilds;
 
 include ":house:multihouse_settings";
 include "include/eventid";
@@ -11,6 +12,9 @@ include "include/attributes";
 include "include/sysevent";
 include "include/objtype";
 include "include/housing";
+include "include/omegacache_utils";
+include ":guilds:include/guildconstants";
+include ":guilds:items/guildstone/companions";
 
 program SignListener(sign)
 	var house := GetObjProperty(sign, "houseserial");
@@ -442,15 +446,33 @@ function demolish(sign)
 				EraseObjProperty(thing, "signserial");
 				EraseObjProperty(thing, "lockeddown");
 			elseif (thing.movable == 0)
-				if(thing.objtype == 0x1A390)
-					MoveObjectToLocation(thing, thing.x, thing.y, (thing.z - 7), thing.realm, MOVEOBJECT_FORCELOCATION);
-					thing.decayat := ReadGameClock() + 1;
-				else
-					DestroyItem(thing);
+				// 2026-08-14: same as multiSign/use.src's manual redeed path --
+				// the guildstone (and any statue-set companions) can't survive
+				// the house being gone, so destroy it outright instead of
+				// nudging it to the ground and leaving it to decay.
+				if(thing.objtype == GUILDSTONE_OBJTYPE)
+					DestroyGuildstoneCompanions(thing);
+					foreach guild in ListGuilds()
+						if(guild.getprop(GUILD_STONE) == thing.serial)
+							guild.eraseprop(GUILD_STONE);
+							break;
+						endif
+					endforeach
 				endif
+				DestroyItem(thing);
 			endif
 		endif
 	endforeach
+
+	// 2026-08-13: this decay teardown never touched Omega Cache at all,
+	// unlike the manual redeed path in multiSign/use.src (which blocks on a
+	// non-empty cache first). Only delete the DataFile when it's actually
+	// empty, so an abandoned house with unclaimed cache contents doesn't
+	// silently lose them on top of already losing the house.
+	if(IsOmegaCacheEmpty(house.serial))
+		DeleteOmegaCacheStore(house.serial);
+	endif
+
 	DestroyMulti(house );
 	return;
 endfunction

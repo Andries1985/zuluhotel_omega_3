@@ -66,6 +66,11 @@ program StaticHouseDestruction(sgn)
 			// this teardown path is also terminal, and erasing the house link
 			// before destroying avoids the DestroyScript's non-empty block
 			// orphaning the container.
+			// 2026-08-13: cache containers here are force-cleared regardless
+			// of contents (same as customhousing's decay path), so nothing
+			// further can be recovered from the DataFile either way -- drop
+			// it too instead of leaving an orphaned entry behind.
+			DeleteOmegaCacheStore(CInt(GetObjProperty(thing, "houseserial")));
 			EraseObjProperty(thing, "houseserial");
 			DestroyItem(thing);
 		elseif(GetObjProperty(thing, "houseserial") == sign.serial)

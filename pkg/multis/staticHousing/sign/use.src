@@ -1083,6 +1083,14 @@ function RelinquishHouse(sign, who)
 	SetObjProperty(sign, "lastownerserial", GetObjProperty(sign, "ownerserial"));
 
 	var removed := RemoveInteriorDecorations(sign);
+
+	// Already confirmed empty above, and the cache container itself was
+	// just destroyed by RemoveInteriorDecorations -- drop the DataFile too
+	// instead of leaving it orphaned for a house the sign no longer tracks.
+	if(omegacache_serial)
+		DeleteOmegaCacheStore(omegacache_serial);
+	endif
+
 	var builtdeed := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "builtdeed")));
 	if(builtdeed)
 		DestroyItem(builtdeed);

@@ -1393,6 +1393,14 @@ function GuildRankHasHousePermission(sign, byref mobile, perm_key)
 		rank := "Guild Leader";
 	endif
 
+	// The guild leader always has full house access -- the Guild House
+	// Management gump (guilds.src) shows their row as fixed, non-editable
+	// checkmarks rather than real checkboxes, so there's nothing meaningful
+	// stored under "Guild Leader" in HousePerms to look up.
+	if(rank == "Guild Leader")
+		return 1;
+	endif
+
 	var df := OpenDataFile(":guilds:guild_registry");
 	if(!df)
 		CreateDataFile(":guilds:guild_registry", DF_KEYTYPE_STRING);
@@ -1405,13 +1413,11 @@ function GuildRankHasHousePermission(sign, byref mobile, perm_key)
 	var granted := 0;
 	var elem := df.FindElement(name);
 	if(elem)
-		if(rank != "Guild Leader")
-			var ranks := elem.GetProp("MemberRanks");
-			if(ranks && !ranks.errortext)
-				var stored := ranks[CInt(mobile.serial)];
-				if(stored && !stored.errortext)
-					rank := stored;
-				endif
+		var ranks := elem.GetProp("MemberRanks");
+		if(ranks && !ranks.errortext)
+			var stored := ranks[CInt(mobile.serial)];
+			if(stored && !stored.errortext)
+				rank := stored;
 			endif
 		endif
 
