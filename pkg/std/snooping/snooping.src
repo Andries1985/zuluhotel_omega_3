@@ -189,11 +189,6 @@ program snoop(who)
 				setobjproperty(stealitem,"stealdiff", stealdiff);
 				setobjproperty(stealitem, "victimserial", victim.serial);
 
-				if (getobjproperty(victim, "snoopme"))
-					var dodgy:= getobjproperty(victim, "snoopme");
-					setobjproperty(stealitem, "dodgy", dodgy);
-				endif
-
 			endif
 
 		endfor

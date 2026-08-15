@@ -19,7 +19,7 @@ if (thisone<50 )
 elseif (thisone<100)
 	fishtype := Random(UOBJ_SFISH_END - UOBJ_SFISH_START);
 	fishtype := UOBJ_SFISH_START + fishtype;
-elseif (thisone<130)
+else
         fishtype := Random(9) + 0xA368;
 endif
 return fishtype;

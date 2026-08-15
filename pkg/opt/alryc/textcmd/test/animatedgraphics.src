@@ -1,4 +1,4 @@
-// Synopsis: Spawn configured animated graphics groups at a target location from selected group down to 1
+// Synopsis: Spawn configured animated graphics groups at a target location from group 1 up to selected group
 use uo;
 use cfgfile;
 
@@ -54,7 +54,7 @@ program animatedgraphics(who, text)
     var group_index := 0;
     var g;
 
-    for (g := group_id; g >= 1; g := g - 1)
+    for (g := 1; g <= group_id; g := g + 1)
         var elem := FindConfigElem(cfg, g);
         if (!elem)
             groups_missing := groups_missing + 1;
@@ -76,7 +76,7 @@ program animatedgraphics(who, text)
         endif
 
         var start_x := loc.x;
-        var start_y := loc.y - (group_index * GROUP_Y_STEP);
+        var start_y := loc.y + (group_index * GROUP_Y_STEP);
         var z := loc.z;
         var i;
         for (i := 1; i <= len(tiles); i := i + 1)
@@ -122,6 +122,6 @@ program animatedgraphics(who, text)
         group_index := group_index + 1;
     endfor
 
-    SendSysMessage(who, "Spawned " + created + " items from groups " + group_id + " down to 1.");
+    SendSysMessage(who, "Spawned " + created + " items from groups 1 up to " + group_id + ".");
     SendSysMessage(who, "Groups spawned: " + groups_spawned + ", missing: " + groups_missing + ", empty: " + groups_empty + ", too large: " + groups_too_large + ".");
 endprogram

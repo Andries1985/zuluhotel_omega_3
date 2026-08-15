@@ -64,9 +64,6 @@ program use_fishpole( character , pole )
 		return 0;
 	endif
 
-	// Disabled random graphics from GM fishing rod as they would remain occasionally.
-	//var anis := {"Sacrifice1", "Sacrifice2", "Sacrifice3", "Sacrifice4", "Sacrifice5", "Sacrifice6", "Sacrifice7", "0x2101", "0x2103", "Sacrifice10", "Sacrifice11", "Sacrifice12", "Sacrifice13", "0x2123", "Sacrifice15"};
-	//var sacri, splashy;
 	Autoloop_init (character);
 
  	while (Autoloop_more() && NOT character.dead)
@@ -77,7 +74,6 @@ program use_fishpole( character , pole )
 	Performaction(character, UACTION_FISHING);
 	PlaySoundEffect(character, SFX_SKILL_FISHING);
 
-	// Remove the code below and enable the commented out if/else statement if you want the random graphics.
 	newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z, 0x352d, 1, use_on.realm);
 	newsplash.movable := 0;
 	sleepms(800);
@@ -88,35 +84,6 @@ program use_fishpole( character , pole )
 	newsplash.graphic := 0x3530;
 	sleepms(800);
 	DestroyItem(newsplash);
-/* 	if(!tool_bon)
-		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
-		newsplash.movable := 0;
-		sleepms(500);
-		newsplash.graphic := 0x352e;
-		sleepms(500);
-		newsplash.graphic := 0x352f;
-		sleepms(500);
-		newsplash.graphic := 0x3530;
-		sleepms(500);
-		DestroyItem(newsplash);
-	else
-		sacri := Random(14)+1;
-		sacri := anis[sacri];
-		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
-		splashy := CreateItemAtLocation(use_on.x, use_on.y, use_on.z+3, sacri, 1, use_on.realm);
-		splashy.movable := 0;
-		newsplash.movable := 0;
-		sleepms(500);
-		newsplash.graphic := 0x352e;
-		sleepms(500);
-		newsplash.graphic := 0x352f;
-		sleepms(500);
-		newsplash.graphic := 0x3530;
-		sleepms(500);
-		DestroyItem(splashy);
-		DestroyItem(newsplash);
-	endif
- */
 	var x := character.x;
 	var y := character.y;
 	var loop := 2;
