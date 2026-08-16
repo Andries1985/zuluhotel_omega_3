@@ -22,8 +22,8 @@ include "include/classes";
 Const UOBJECT_TREASURE_CHEST := 0x0E40;
 Const UACTION_FISHING := 0x9;
 Const SFX_SKILL_FISHING	:= 0x0240;
-Const UOBJ_SOS_BOTLE_TILE := 0xA365;
-Const UOBJ_SOS_BOTLE := 0xA360;
+Const UOBJ_SOS_BOTLE_TILE := 0x9602;
+Const UOBJ_SOS_BOTLE := 0x9600;
 Const FISHING_RANGE := 6;
 
 program use_fishpole( character , pole )
@@ -36,7 +36,7 @@ program use_fishpole( character , pole )
 
 	if (!use_on) SendSysMessage(character, "Canceled"); return; endif
 
-	if (use_on.item.objtype == 41827)
+	if (use_on.item.objtype == 0x9601)
 		if (FetchBottle(character)==1) 
 			return;
 		else
@@ -153,7 +153,7 @@ function do_something(character)
 	var it;
 	case (tnum)
 		1:	
-			CreateItemInBackpack( character,0xa366,1);
+			CreateItemInBackpack( character,0x9603,1);
 			SendSysmessage(character, "You just found a special fishing net.");
 		
 		2:	
@@ -223,7 +223,7 @@ function FetchBottle(who)
 	var msgy;
 	var done := 0 ;
 	foreach item in EnumerateItemsInContainer( who.backpack )
-	 if (item.objtype == 0xa363 and done == 0)
+	 if (item.objtype == 0x9601 and done == 0)
 		msgx := GetObjProperty(item,"tileX");
 		msgy := GetObjProperty(item,"tileY"); 
 		if ( (tfm.x > (msgx-6) and tfm.x < (msgx+6)) and (tfm.y > (msgy-6) and tfm.y < (msgy+6)) )

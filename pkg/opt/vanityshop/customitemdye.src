@@ -62,6 +62,13 @@ program CustomItemDye (who, omegadye)
 		return;
 	endif
 
+	if (GetObjProperty(item, "Undyable"))
+		SendSysmessage( who, "That item cannot be dyed!" );
+		Releaseitem(omegadye);
+		Releaseitem(item);
+		return;
+	endif
+
 	var old_color := item.color;
 	//item.color := new_color;
 	//charges -= 1;
