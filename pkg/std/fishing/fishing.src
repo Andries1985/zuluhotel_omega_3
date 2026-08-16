@@ -64,6 +64,8 @@ program use_fishpole( character , pole )
 		return 0;
 	endif
 
+	var deep_water := IsDeepWater(use_on.x, use_on.y, use_on.realm);
+
 	Autoloop_init (character);
 
  	while (Autoloop_more() && NOT character.dead)
@@ -134,7 +136,7 @@ program use_fishpole( character , pole )
 			if( tool_bon )
 				fish_amount	:= fish_amount * tool_bon;
 			endif
-			createfish( character,RandomFish(character),fish_amount, equipped );
+			createfish( character,RandomFish(character),fish_amount, equipped, deep_water );
 		endif
 	else
 		SendSysMessage(character, "They don't seem to be biting.");

@@ -25,7 +25,7 @@ endif
 return fishtype;
 endfunction
 
-function createfish( who,fish,fish_amount, equipped )
+function createfish( who,fish,fish_amount, equipped, deepwater := 1 )
 
 
 	if (equipped==1 or fish == 0xA84 or fish == 0xA85 or fish == 0xA86 or fish == 0xA87 or fish == 0xA88 or fish == 0xA89 or fish == 0xA8A or fish == 0xA8B or fish == 0xA8C )
@@ -33,7 +33,11 @@ function createfish( who,fish,fish_amount, equipped )
 	else
 		PlaySoundEffect(who, SFX_57);
 		PerformAction( who, ANIM_SALUTE );
-		CreateItemInBackpack(who, UOBJ_FISHSTEAK, (4 * fish_amount));
+		var steaks_per_fish := 4;
+		if (!deepwater)
+			steaks_per_fish := 1;
+		endif
+		CreateItemInBackpack(who, UOBJ_FISHSTEAK, (steaks_per_fish * fish_amount));
 		SendSysmessage(who, "You carve up the fish.");
 	endif
 
