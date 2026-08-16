@@ -10,6 +10,7 @@ include "include/eventid";
 include "include/sounds";
 include ":mdgumps:gumps";
 include ":multiCommands:multicommands";
+include ":keys:key";
 
 // Global Variables
 var g_cmd_cfg;
@@ -321,9 +322,14 @@ function DryDock( byref mobile, boat )
 	elseif( !ConfirmDryDock( mobile ))
 		return 0;
 	endif
-	// Destroy the key.
-	var dunsel_key := DestroyBoatKey(mobile, boat);
-	if(!dunsel_key)
+	// Destroy the boat's key(s), wherever the owner is keeping them (backpack, bank, keyring).
+	var lock_ids := {};
+	var hold_lockid := GetObjProperty(boat.hold, "LockID");
+	if(hold_lockid)
+		lock_ids.append(hold_lockid);
+	endif
+	var destroyed_keys := KP_DestroyOwnedKeysForLockIDs(mobile, CP_DEFAULT_AREA, lock_ids);
+	if(!destroyed_keys)
 		SysLog("Error --> :boat/multi/listener.src - Could not find key for boat ser# " + Cstr(boat.serial));
 	endif
 	foreach item in ( boat.items )
@@ -458,27 +464,3 @@ function GetMobileBoat( boat )
 	return 0;
 endfunction
 
-function DestroyBoatKey(byref mobile, boat)
-	// Find the ship's key in mobile's backpack.
-	var keyLockID;
-	foreach item in EnumerateItemsInContainer(mobile.backpack, ENUMERATE_ROOT_ONLY)
-		if(item.IsKey())
-			keyLockID := GetObjProperty (item, "LockID");
-			if (item.KeyMatchesLock(boat.hold))
-					DestroyItem(item);
-				return 1;
-			endif
-		endif
-		if(item.IsKeyRing())
-			foreach key in EnumerateItemsInContainer (item)
-				keyLockID := GetObjProperty (key, "LockID");
-				if (key.KeyMatchesLock(boat.hold))
-					MoveItemToContainer(key, mobile.backpack);
-					DestroyItem(key);
-					return 1;
-				endif
-			endforeach
-		endif
-	endforeach
-	return 0;
-endfunction
