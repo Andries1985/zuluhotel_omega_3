@@ -1,35 +1,43 @@
 use uo;
 use cfgfile;
 use os;
+use basicio;
 
 include "include/client";
 include "include/random";
 include "include/itemutil";
 include "include/attributes";
+include "include/skillpoints";
 
-function RandomFish(character)
+//Dead code - superseded by PickCaughtFish()/ResolveFishCatch() below.
+//function RandomFish(character)
+//
+//var currentskill := GetEffectiveSkill( character, SKILLID_FISHING);
+//var thisone := Random(currentskill) + 1;
+//var fishtype;
+//
+//if (thisone<50 )
+//	fishtype := Random(UOBJ_FISH_END - UOBJ_FISH_START);
+//	fishtype := UOBJ_FISH_START + fishtype;
+//elseif (thisone<100)
+//	fishtype := Random(UOBJ_SFISH_END - UOBJ_SFISH_START);
+//	fishtype := UOBJ_SFISH_START + fishtype;
+//else
+//        fishtype := Random(9) + 0xA84;
+//endif
+//return fishtype;
+//endfunction
 
-var currentskill := GetEffectiveSkill( character, SKILLID_FISHING);
-var thisone := Random(currentskill) + 1;
-var fishtype;
+function createfish( who,fish,fish_amount, equipped, deepwater := 1, tier := "Regular" )
 
-if (thisone<50 )
-	fishtype := Random(UOBJ_FISH_END - UOBJ_FISH_START);
-	fishtype := UOBJ_FISH_START + fishtype;
-elseif (thisone<100)
-	fishtype := Random(UOBJ_SFISH_END - UOBJ_SFISH_START);
-	fishtype := UOBJ_SFISH_START + fishtype;
-else
-        fishtype := Random(9) + 0xA84;
-endif
-return fishtype;
-endfunction
+	//A blade equipped for something unrelated shouldn't silently carve a rare/legendary
+	//catch - players opt in via :togglerarecarve.
+	var protect_rare := (tier == "Rare" or tier == "Legendary") and !GetObjProperty(who, "AutoCarveRareFish");
 
-function createfish( who,fish,fish_amount, equipped, deepwater := 1 )
-
-
-	if (equipped==1 or fish == 0xA84 or fish == 0xA85 or fish == 0xA86 or fish == 0xA87 or fish == 0xA88 or fish == 0xA89 or fish == 0xA8A or fish == 0xA8B or fish == 0xA8C )
-		CreateItemInBackpack(who, cint(fish), cint(fish_amount));
+	if (equipped==1 or protect_rare or fish == 0xA84 or fish == 0xA85 or fish == 0xA86 or fish == 0xA87 or fish == 0xA88 or fish == 0xA89 or fish == 0xA8A or fish == 0xA8B or fish == 0xA8C )
+		//Returned so ResolveFishCatch can read .desc for the catch message; 0 (below) means
+		//it was carved into steaks instead.
+		return CreateItemInBackpack(who, cint(fish), cint(fish_amount));
 	else
 		PlaySoundEffect(who, SFX_57);
 		PerformAction( who, ANIM_SALUTE );
@@ -39,6 +47,201 @@ function createfish( who,fish,fish_amount, equipped, deepwater := 1 )
 		endif
 		CreateItemInBackpack(who, UOBJ_FISHSTEAK, (steaks_per_fish * fish_amount));
 		SendSysmessage(who, "You carve up the fish.");
+		return 0;
+	endif
+
+endfunction
+
+//Resolves the character's region via the engine (GetRegionNameAtLocation), then reads that
+//region's Type directly from regions.cfg.
+function IsFishingInDungeon(character)
+
+	var region_name := GetRegionNameAtLocation(character.x, character.y, character.realm);
+	var regions_cfg := ReadConfigFile("::regions/regions");
+	var elem := FindConfigElem(regions_cfg, region_name);
+	var region_type := "";
+	if (elem)
+		region_type := Lower(CStr(elem.Type));
+	endif
+	UnloadConfigFile("::regions/regions");
+
+	return (region_type == "dungeon");
+
+endfunction
+
+//Safe area halves skill gain (checked first, overrides all), dungeon doubles it, deep water
+//gives 1.5x, otherwise normal shore rate. in_safe_area/in_dungeon are cached once per fishing
+//session by the caller; deep_water is refreshed every cast since a boat-anchored character can
+//have the water under them shift between deep/shallow without ever moving themselves.
+function GetFishingPointsMultiplier(deep_water, in_safe_area, in_dungeon)
+
+	var mult := 1;
+
+	if (in_safe_area)
+		mult := 0.5;
+	elseif (in_dungeon)
+		mult := 2;
+	elseif (deep_water)
+		mult := 1.5;
+	else
+		mult := 1;
+	endif
+
+	return mult;
+
+endfunction
+
+//Same three buckets fish are catalogued under in catchtable.cfg/itemdesc.cfg's Location CProp.
+//Dungeons beats Deep Water since the two are mutually exclusive by design.
+function GetFishingLocation(deep_water, in_dungeon)
+
+	var location;
+
+	if (in_dungeon)
+		location := "Dungeons";
+	elseif (deep_water)
+		location := "Deep Water";
+	else
+		location := "Shores";
+	endif
+
+	return location;
+
+endfunction
+
+//Filters catchtable.cfg down to the species eligible for "tier" at this location/realm/skill.
+//Location/Realm are optional per species - unset matches anything. Returns 0 if nothing
+//qualifies, otherwise a random pick's Objtype (Regular) or a random East/South pick
+//(Rare/Legendary, which were built with both facings).
+function PickFishFromTier(tier, location, realm, skill)
+
+	var cfg := ReadConfigFile("catchtable");
+	var keys := GetConfigStringKeys(cfg);
+	var candidates := {};
+
+	foreach key in keys
+		var elem := cfg[key];
+		if (elem.Tier == tier)
+			if ( (!elem.Location or elem.Location == location) and
+			     (!elem.Realm or elem.Realm == realm) and
+			     (!elem.MinSkill or skill >= CInt(elem.MinSkill)) )
+				candidates.append(elem);
+			endif
+		endif
+	endforeach
+
+	UnloadConfigFile("catchtable");
+
+	if (!len(candidates))
+		return 0;
+	endif
+
+	var chosen := candidates[Random(len(candidates))+1];
+	var picked_objtype;
+
+	if (chosen.ObjtypeEast)
+		if (Random(2))
+			picked_objtype := CInt(chosen.ObjtypeEast);
+		else
+			picked_objtype := CInt(chosen.ObjtypeSouth);
+		endif
+	else
+		picked_objtype := CInt(chosen.Objtype);
+	endif
+
+	return picked_objtype;
+
+endfunction
+
+//Rolls Legendary (1/legendary_divisor), then Rare (1/rare_divisor), else Regular. Falls back a
+//tier at a time if nothing's eligible at this location/realm/skill, rather than wasting the
+//catch. Returns {objtype, tier} - tier is the tier actually resolved after any fallback, which
+//the caller needs to size the bonus skill-point award.
+function PickCaughtFish(character, location, rare_divisor, legendary_divisor)
+
+	var skill := GetEffectiveSkill(character, SKILLID_FISHING);
+	var realm := character.realm;
+
+	var tier := "Regular";
+	if (Random(legendary_divisor) == 0)
+		tier := "Legendary";
+	elseif (Random(rare_divisor) == 0)
+		tier := "Rare";
+	endif
+
+	var fish := PickFishFromTier(tier, location, realm, skill);
+
+	if (!fish and tier == "Legendary")
+		tier := "Rare";
+		fish := PickFishFromTier(tier, location, realm, skill);
+	endif
+
+	if (!fish and tier != "Regular")
+		tier := "Regular";
+		fish := PickFishFromTier(tier, location, realm, skill);
+	endif
+
+	return {fish, tier};
+
+endfunction
+
+//Shared by the pole (fishing.src) and the net (fishingnet.src) so both catch from the same
+//tables - only rare_divisor/legendary_divisor differ between them. thepoints is whatever base
+//skill-gain value the caller's own CheckSkill call used; the Rare/Legendary bonus award is
+//sized relative to it (2x/5x), on top of the normal gain CheckSkill already granted.
+//
+//Preserves the old "magic" stat-boost fish (0xA84-0xA8C) as an independent roll ahead of the
+//tiered tables, unchanged from its original odds.
+//
+//location is pre-computed by the caller (see PickCaughtFish); deep_water is passed separately
+//since createfish()'s carve-into-steaks math cares specifically about deep water.
+function ResolveFishCatch(character, fish_amount, equipped, deep_water, location, tool_bon, rare_divisor, legendary_divisor, thepoints)
+
+	var currentskill := GetEffectiveSkill(character, SKILLID_FISHING);
+	if (Random(currentskill) + 1 >= 100)
+		if (tool_bon)
+			fish_amount := fish_amount * tool_bon;
+		endif
+		createfish(character, Random(9) + 0xA84, fish_amount, equipped, deep_water);
+		return;
+	endif
+
+	var caught := PickCaughtFish(character, location, rare_divisor, legendary_divisor);
+	var caught_objtype := caught[1];
+	var caught_tier := caught[2];
+
+	if (!caught_objtype)
+		//Safety net - shouldn't happen if catchtable.cfg covers every Location/Realm combo.
+		SendSysmessage(character, "The fish slips off your hook!");
+		return;
+	endif
+
+	if (caught_tier == "Regular")
+		if (tool_bon)
+			fish_amount := fish_amount * tool_bon;
+		endif
+	else
+		fish_amount := 1;
+	endif
+
+	//0 if createfish() carved the catch into steaks instead of handing it over - no name
+	//message in that case.
+	var caughtitem := createfish(character, caught_objtype, fish_amount, equipped, deep_water, caught_tier);
+
+	if (caught_tier == "Rare")
+		AwardSkillPoints(character, SKILLID_FISHING, Cint(thepoints * 2));
+		if (caughtitem)
+			//Yellow hue (1731), matching RandomYellowHue()'s range in
+			//pkg/utils/itemUtils/include/colors.inc.
+			SendSysmessage(character, "You caught a rare "+caughtitem.desc+"!", 3, 1731);
+		endif
+	elseif (caught_tier == "Legendary")
+		AwardSkillPoints(character, SKILLID_FISHING, Cint(thepoints * 5));
+		if (caughtitem)
+			//Orange hue (1531), matching RandomOrangeHue()'s range in
+			//pkg/utils/itemUtils/include/colors.inc.
+			SendSysmessage(character, "You caught a legendary "+caughtitem.desc+"!", 3, 1531);
+		endif
 	endif
 
 endfunction
@@ -161,7 +364,7 @@ function IsDeepWater(x, y, realm, radius := 16)
 	return 1;
 endfunction
 
-//Depreciated Code
+//Deprecated code
 /*
 function povernut(ch, us)
     var xd, yd;

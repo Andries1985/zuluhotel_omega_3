@@ -1,0 +1,14 @@
+// Synopsis: Toggle whether rare/legendary fish get auto-carved into steaks when caught with a blade equipped
+use uo;
+
+program togglerarecarve(who)
+
+	if(GetObjProperty(who, "AutoCarveRareFish"))
+		EraseObjProperty(who, "AutoCarveRareFish");
+		SendSysMessage(who, "You will no longer auto-carve rare or legendary fish, even with a blade equipped.");
+	else
+		SetObjProperty(who, "AutoCarveRareFish", 1);
+		SendSysMessage(who, "You will now auto-carve rare and legendary fish into steaks if you have a blade equipped.");
+	endif
+
+endprogram
