@@ -20,7 +20,7 @@ elseif (thisone<100)
 	fishtype := Random(UOBJ_SFISH_END - UOBJ_SFISH_START);
 	fishtype := UOBJ_SFISH_START + fishtype;
 else
-        fishtype := Random(9) + 0xA368;
+        fishtype := Random(9) + 0xA84;
 endif
 return fishtype;
 endfunction
@@ -28,7 +28,7 @@ endfunction
 function createfish( who,fish,fish_amount, equipped )
 
 
-	if (equipped==1 or fish == 0xA368 or fish == 0xA369 or fish == 0xA36A or fish == 0xA36B or fish == 0xA36C or fish == 0xA36D or fish == 0xA36E or fish == 0xA36F or fish == 0xA370 )
+	if (equipped==1 or fish == 0xA84 or fish == 0xA85 or fish == 0xA86 or fish == 0xA87 or fish == 0xA88 or fish == 0xA89 or fish == 0xA8A or fish == 0xA8B or fish == 0xA8C )
 		CreateItemInBackpack(who, cint(fish), cint(fish_amount));
 	else
 		PlaySoundEffect(who, SFX_57);
@@ -82,6 +82,79 @@ function check_for_water (theobj)
 	else
 		return 0;
 	endif
+endfunction
+
+function IsWaterTile(x, y, realm)
+	var info := GetMapInfo(x, y, realm);
+	var tile := info.landtile;
+
+	if( tile >= 0x04c and tile <= 0x06f )
+		return 1;
+	elseif( tile >= 0x0a8 and tile <= 0x0ab )
+		return 1;
+	elseif( tile == 0x0136 or tile == 0x0137 )
+		return 1;
+	elseif( tile >= 0x3ff0 and tile <= 0x3ff3 )
+		return 1;
+	endif
+
+	return 0;
+endfunction
+
+function IsPlankObjtype(objtype)
+	if( (objtype >= 0x1CB and objtype <= 0x1CE) or
+	    (objtype == 0x3A5) or
+	    (objtype >= 0x3AA and objtype <= 0x3B0) or
+	    (objtype >= 0x4A1 and objtype <= 0x4A4) or
+	    (objtype >= 0x4C6 and objtype <= 0x4E1) or
+	    (objtype == 0x7C9) or
+	    (objtype >= 0x7CC and objtype <= 0x7D0) or
+	    (objtype == 0x3E84) or (objtype == 0x3E86) or (objtype == 0x3E89) or
+	    (objtype >= 0x3ED3 and objtype <= 0x3ED5) )
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsNearDockPlanks(x, y, realm, radius)
+	foreach item in ListItemsNearLocation(x, y, LIST_IGNORE_Z, radius, realm)
+		if(IsPlankObjtype(item.objtype))
+			return 1;
+		endif
+	endforeach
+
+	foreach item in ListStaticsNearLocation(x, y, LIST_IGNORE_Z, radius, 0, realm)
+		if(IsPlankObjtype(item.objtype))
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+endfunction
+
+function IsDeepWater(x, y, realm, radius := 16)
+	var r, dx, dy;
+
+	if(!IsWaterTile(x, y, realm))
+		return 0;
+	endif
+
+	if(IsNearDockPlanks(x, y, realm, radius))
+		return 0;
+	endif
+
+	for(r:=1; r<=radius; r:=r+1)
+		for(dx:=-r; dx<=r; dx:=dx+1)
+			if(!IsWaterTile(x+dx, y-r, realm)) return 0; endif
+			if(!IsWaterTile(x+dx, y+r, realm)) return 0; endif
+		endfor
+		for(dy:=-r+1; dy<=r-1; dy:=dy+1)
+			if(!IsWaterTile(x-r, y+dy, realm)) return 0; endif
+			if(!IsWaterTile(x+r, y+dy, realm)) return 0; endif
+		endfor
+	endfor
+
+	return 1;
 endfunction
 
 //Depreciated Code
@@ -182,7 +255,7 @@ var color := cint(elem.color);
 
 // syslog(X+" "+Y+" "+Z);
 
-var bottle :=CreateItemInContainer(char.backpack, 0xa360);
+var bottle :=CreateItemInContainer(char.backpack, 0x9600);
 
 SetObjProperty(bottle, "tileX", X);
 SetObjProperty(bottle, "tileY", Y);

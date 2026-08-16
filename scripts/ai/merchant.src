@@ -1341,7 +1341,6 @@ function BuyBag (byref you)
 									+ " Gold: " + itemprice );
 						endif
 						DestroyItem (item);
-						sleepms (100);
 					else
 						break;
 					endif
@@ -1417,7 +1416,6 @@ function BuyAll (byref you)
 			if (totalsale + (itemprice * itemamount) < 50000)
 				totalsale := totalsale + (itemprice * itemamount);
 				DestroyItem (item);
-				sleepms (100);
 			else
 				break;
 			endif

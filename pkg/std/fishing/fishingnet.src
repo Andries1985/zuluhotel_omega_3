@@ -5,18 +5,12 @@ use cfgfile;
 //include "include/client";
 include "include/utility";
 include "fishing";
-include "include/checkcity";
 //include "include/random";
 //include "include/itemutil";
 
 program use_net( character, net )
 
 if(!ReserveItem(net)) return; endif
-
-if (CheckCity(character)==1)
-SendSysmessage(character,"You can only use nets in the deep sea.");
-return;
-endif
 
 var use_on := Targetcoordinates( character);
 
@@ -29,6 +23,11 @@ endif
 
 if(!IsWater(use_on))
         SendSysmessage(character,"You can't use that on this.");
+        return;
+endif
+
+if(!IsDeepWater(use_on.x, use_on.y, use_on.realm, 16))
+        SendSysmessage(character,"You must be in deep water in order to throw the net.");
         return;
 endif
 
@@ -53,7 +52,7 @@ case (foundwhat)
 4:
 5: SendSysmessage(character, "You caught some fish.");
    magicfish:=RandomFish(character);
-   if (magicfish>=0xA368 and magicfish<=0xA370)
+   if (magicfish>=0xA84 and magicfish<=0xA8C)
    createfish( character,magicfish,Random(2)+1,1 );
    CheckSkill(character, SKILLID_FISHING, -1, 150);
    else

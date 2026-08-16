@@ -9,9 +9,9 @@ include "include/starteqp";
 include "include/coords";
 include "include/random";
 
-Const UOBJ_SOS_BOTLE_TILE := 0xA365;
-Const UOBJ_SOS_BOTLE := 0xA360;
-Const UOBJ_SOS_MESSAGE := 0xA363;
+Const UOBJ_SOS_BOTLE_TILE := 0x9602;
+Const UOBJ_SOS_BOTLE := 0x9600;
+Const UOBJ_SOS_MESSAGE := 0x9601;
 Const MSG_COUNT := 5;
 
 program use_bottle( who, bottle )
