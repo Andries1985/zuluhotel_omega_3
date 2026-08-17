@@ -1,32 +1,46 @@
 # Developer Changelog - v3.0.7
 
-Range: Patch-3.0.6..Patch-3.0.7 (commit `541e883`..`a642726`, plus uncommitted working-tree changes as of this writing)
+Range: Patch-3.0.6..Patch-3.0.7 (commit `541e883`..`60949cb`)
 Branch: Patch-3.0.7
-Date: 2026-08-13
+Date: 2026-08-16
 
 ---
 
 ## Scope Summary
 
-- Total files changed: 36
-- Status breakdown: 25 modified, 11 added
-- Net textual delta: 4868 insertions, 286 deletions
+- Total files changed: 131
+- Status breakdown: 105 modified, 25 added, 1 renamed, 0 deleted
+- Net textual delta: 19747 insertions, 3641 deletions
 - Largest shifts:
-  - `pkg/opt/guilds/config/guildstonegraphics.cfg` (+1568 / -0, new file) - full catalog of eligible single-piece guildstone graphics for the picker gump
-  - `pkg/opt/guilds/commands/player/guilds.src` (+545 / -5 net across the range) - Membership gump rework, new Guild House Management gump, guildstone workflow, GuildMasterGump authorization fix
-  - `pkg/multis/house/config/itemdesc.cfg` (+127 / -127) - guild-related itemdesc entries
-  - `pkg/opt/guilds/config/guildstonesets.cfg` (+298 / -0, new file) - multi-piece statue-set guildstone catalog
-  - `pkg/opt/guilds/include/guilds.inc` (+337 / -2) - guild registry, house/rank/permission datafile helpers, guildstone lifecycle, shared sign resolution
-  - `pkg/opt/guilds/include/guildstonepicker.inc` (+335 / -0, new file) - graphic/set picker gump plus set-placement footprint validation
-  - `pkg/opt/alryc/textcmd/test/guildstonelist.src` (+457 / -0, new file) - developer reference tool
-  - `scripts/ai/banker.src` (+104 / -6) - per-currency balance speech + Help gump
+  - `pkg/std/fishing/itemdesc.cfg` (+4331 / -~450) - fish catalog moved onto a dedicated objtype block and rebuilt for the tiered Regular/Rare/Legendary catch system, plus new crustacean/trap/buoy item entries
+  - `ainotes/Hue names list.txt` (+3000, new file) - reference doc backing the hue-correction sweep
+  - `pkg/opt/guilds/config/guildstonegraphics.cfg` (+1598 net across the full range) - guildstone catalog, initially added then extended
+  - `ainotes/Hues Audit.md` (+1544, new file) - per-hue-swap audit trail (methodology, every confirmed live location, revert reference)
+  - `regions/wood.cfg` (+844 net) - realm-scoped resource region blocks (see Theme 19); `regions/ore.cfg` (+468), `regions/sand.cfg` (+448), `regions/clay.cfg` (+619), `regions/fish.cfg` (+316) follow the same pattern
+  - `pkg/items/containers/config/itemdesc.cfg` (+526 net) - 18 new treasure-chest container variants
+  - `config/npcdesc.cfg` (538 changed lines) - hue corrections + mount/ethereal death-sound fixes
+  - `pkg/items/doors/config/itemdesc.cfg` (+410, new file) - 24 of 182 audited missing door registrations
+  - `pkg/std/fishing/fishing.inc` (+328 net) / `pkg/std/fishing/fishing.src` (+315 net) - core fishing rewrite
+  - `pkg/std/fishing/crustaceantrap.inc` (+194, new) / `crustaceantable.cfg` (+177, new) / `crustaceansweeper.src` (+158, new) - new crustacean trapping subsystem
+  - `pkg/opt/guilds/commands/player/guilds.src` (+545 net across the range) - Membership gump rework, new Guild House Management gump, guildstone workflow, GuildMasterGump authorization fix
   - `scripts/textcmd/player/move.src` (+75 / -43) - stack-consolidation rewrite
-  - `scripts/textcmd/player/movebag.src` / `movebankcoin.src` (+161 / +150, new files) - new player commands sharing the same consolidation logic
-- Non-merge commits in range:
-  - Initial Guild Updates: guild stones, guild gump updates, customhouse/housing sign fixes for guilds, banker balance fixes, banker/high priest Help gumps, move/movebag/movebankcoin fixes (`edc8a64`)
-  - Wired guilds into housing permissions (`a642726`)
-  - Plus a substantial amount of uncommitted work carried out in this session on top of `a642726` (see Themes 3-12 below), not yet committed as of this writing.
-- No merge commits in range.
+- Non-merge commits in range (oldest to newest):
+  - `edc8a64` Initial Guild Updates: guild stones, guild gump updates, customhouse/housing sign fixes for guilds, banker balance fixes, banker/high priest Help gumps, move/movebag/movebankcoin fixes
+  - `a642726` Wired guilds into housing permissions
+  - `165ac24` Latest core changes
+  - `3f7a10c` Patchnotes: Guild housing updates
+  - `68000b7` New create itemdesc command
+  - `9c6c080` Tons of Hue fixes / Guildstone removed on house destroy
+  - `00c5358` Hue fix
+  - `4e80db9` Treasure Map updates
+  - `9d6d0bc` Powerscroll animation fix
+  - `dc2885f` Update chests for dig treasure
+  - `efae7d2` Snooping/stealing stacking fix / New containers added / Dig treasure updates
+  - `3acf1af` Doors fixes / Fishing update / resources fix for realms
+  - `e09d049` Fishing changes / Crabs/lobsters / Boat key fix
+  - `3ffee6c` Fishing Updates
+  - `60949cb` Crustacean Fishing
+- Themes 1-15 below (guild stones, membership gump, house permissions, colour cooldown, sign consolidation, custom housing migration, GuildMasterGump auth fix, static housing lockdown fix, custom housing teardown fix, ChangeOwner fix, Omega Cache cleanup, dead-code note, banker/high priest speech, move/movebag/movebankcoin, tooltip fix) cover `541e883..a642726` and were written up when that slice shipped; Themes 16+ cover everything added afterward, up to `60949cb`.
 
 ---
 
@@ -34,8 +48,24 @@ Date: 2026-08-13
 
 Legend: `Status | File`
 
+- A | ainotes/Hue names list.txt
+- A | ainotes/Hues Audit.md
+- A | ainotes/missing-doors-audit-20260815.md
 - M | config/command_synopses.cfg
+- M | config/equip.cfg
+- M | config/itemdesc.cfg
 - M | config/mrcspawn.cfg
+- M | config/npcdesc.cfg
+- M | core-changes.txt
+- A | patchnotes/developer-changelog-v3.0.7.md
+- M | patchnotes/developer-changelog.md
+- M | patchnotes/launchernotes.md
+- A | patchnotes/patch-v3.0.7.md
+- M | pkg/items/containers/config/itemdesc.cfg
+- M | pkg/items/currency/config/itemdesc.cfg
+- M | pkg/items/deed/config/itemdesc.cfg
+- M | pkg/items/doors/config/itemdesc.cfg
+- M | pkg/multis/boat/multi/listener.src
 - M | pkg/multis/customhousing/include/house.inc
 - M | pkg/multis/customhousing/scripts/customhousedeed.src
 - M | pkg/multis/customhousing/sign.src
@@ -48,8 +78,22 @@ Legend: `Status | File`
 - M | pkg/multis/staticHousing/lockunlock.src
 - M | pkg/multis/staticHousing/sign/destroy.src
 - M | pkg/multis/staticHousing/sign/use.src
+- M | pkg/opt/GMItems/bowofshadows_usescript.src
+- M | pkg/opt/GMItems/itemdesc.cfg
+- M | pkg/opt/alchemyplus/alchemyplus.cfg
+- M | pkg/opt/alchemyplus/itemdesc.cfg
+- M | pkg/opt/alryc/textcmd/test/animatedgraphics.src
 - A | pkg/opt/alryc/textcmd/test/createguildstone.src
+- A | pkg/opt/alryc/textcmd/test/createitemdesc.src
 - A | pkg/opt/alryc/textcmd/test/guildstonelist.src
+- M | pkg/opt/astralfights/itemdesc.cfg
+- M | pkg/opt/botanik/itemdesc.cfg
+- M | pkg/opt/champspawns/include/rewards.inc
+- M | pkg/opt/champspawns/scripts/oncreate.src
+- M | pkg/opt/christmas/Christmasgifts.src
+- M | pkg/opt/crafterboost/itemdesc.cfg
+- M | pkg/opt/earth/itemdesc.cfg
+- M | pkg/opt/farming/itemdesc.cfg
 - M | pkg/opt/guilds/commands/player/guilds.src
 - A | pkg/opt/guilds/config/guildstonegraphics.cfg
 - A | pkg/opt/guilds/config/guildstonesets.cfg
@@ -60,16 +104,81 @@ Legend: `Status | File`
 - A | pkg/opt/guilds/items/guildstone/companions.inc
 - A | pkg/opt/guilds/items/guildstone/destroy.src
 - A | pkg/opt/guilds/items/guildstone/use.src
+- M | pkg/opt/loot/itemdesc.cfg
+- M | pkg/opt/lootlottery/itemdesc.cfg
+- M | pkg/opt/omegacache/categories.cfg
 - M | pkg/opt/omegacache/omegacache.inc
+- M | pkg/opt/powerscrolls/powerscroll.src
+- R | pkg/opt/powerscrolls/textcmd/admin/raisecaps.src -> pkg/opt/powerscrolls/textcmd/test/raisecaps.src
+- M | pkg/opt/rituals/config/itemdesc.cfg
+- M | pkg/opt/shilitems/itemdesc.cfg
+- M | pkg/opt/shilitems/trashcanofwonders.src
+- M | pkg/opt/shrink/itemdesc.cfg
+- M | pkg/opt/songbook/itemdesc.cfg
+- M | pkg/opt/townstones/itemdesc.cfg
+- M | pkg/opt/vanityshop/customitemdye.src
+- M | pkg/opt/versebook/itemdesc.cfg
+- M | pkg/opt/zuluitems/itemdesc.cfg
+- M | pkg/opt/zuluitems/use_racegate.src
+- M | pkg/packethooks/megacliloc/itemdata.src
 - M | pkg/packethooks/megacliloc/toolTips.src
+- M | pkg/std/cooking/itemdesc.cfg
+- A | pkg/std/fishing/catchtable.cfg
+- A | pkg/std/fishing/crustaceansweeper.src
+- A | pkg/std/fishing/crustaceantable.cfg
+- A | pkg/std/fishing/crustaceantrap.inc
+- A | pkg/std/fishing/crustaceantrap.src
+- A | pkg/std/fishing/crustaceantrapbuoy.src
+- M | pkg/std/fishing/fishing.inc
+- M | pkg/std/fishing/fishing.src
+- M | pkg/std/fishing/fishingnet.src
+- M | pkg/std/fishing/itemdesc.cfg
+- M | pkg/std/fishing/sosarea.cfg
+- M | pkg/std/fishing/sosbottle.src
+- M | pkg/std/lumberjacking/itemdesc.cfg
+- M | pkg/std/mining/itemdesc.cfg
+- M | pkg/std/snooping/itemdesc.cfg
+- M | pkg/std/snooping/snooping.src
+- M | pkg/std/snooping/stealing.src
+- M | pkg/std/stealing/stealing.src
+- M | pkg/std/tailoring/itemdesc.cfg
+- M | pkg/std/treasuremap/digtreasure.src
+- A | pkg/std/treasuremap/textcmd/admin/gototreasuremap.src
+- M | pkg/std/treasuremap/treasure.cfg
+- M | pkg/systems/combat/config/itemdesc.cfg
+- M | pkg/systems/combat/config/modenchantdesc.cfg
+- M | pkg/utils/itemUtils/config/sets.cfg
 - M | pkg/utils/mdgumps/include/yesNo.inc
+- M | pol.exe (binary rebuild)
+- M | poltool.exe (binary rebuild)
+- M | regions/clay.cfg
+- M | regions/fish.cfg
+- M | regions/ore.cfg
+- M | regions/regions.cfg
+- M | regions/sand.cfg
+- M | regions/wood.cfg
 - M | scripts/ai/banker.src
 - M | scripts/ai/bankerbalancegump.src
 - M | scripts/ai/highpriest.src
+- M | scripts/ai/merchant.src
+- M | scripts/control/skilladvancerequip.src
+- M | scripts/ecompile.exe (binary rebuild)
+- M | scripts/include/npccastspells.inc
 - M | scripts/include/omegacache_utils.inc
+- M | scripts/items/bladed.src
+- M | scripts/items/pvp.src
+- M | scripts/items/pvp2vs2.src
+- M | scripts/misc/death.src
+- M | scripts/misc/dressme.src
+- M | scripts/modules/polsys.em
+- M | scripts/runecl.exe (binary rebuild)
+- M | scripts/start.src
 - M | scripts/textcmd/player/move.src
 - A | scripts/textcmd/player/movebag.src
 - A | scripts/textcmd/player/movebankcoin.src
+- A | scripts/textcmd/player/togglerarecarve.src
+- M | uoconvert.exe (binary rebuild)
+- M | uotool.exe (binary rebuild)
 
 ---
 
@@ -245,10 +354,147 @@ Notable functional changes: item tooltips inside a Vendor Storage Bag (objtype `
 
 Expected impact: items shown inside a Vendor Storage Bag display a grammatically correct singular name/count instead of always reading as a plural.
 
+### 16. Fishing — Tiered Catch System Rewrite
+
+Files involved: `pkg/std/fishing/fishing.inc`, `pkg/std/fishing/fishing.src`, `pkg/std/fishing/fishingnet.src`, `pkg/std/fishing/sosbottle.src`, `pkg/std/fishing/sosarea.cfg`, `pkg/std/fishing/catchtable.cfg` (new), `pkg/std/fishing/itemdesc.cfg`, `pkg/packethooks/megacliloc/itemdata.src`, `scripts/textcmd/player/togglerarecarve.src` (new), `config/command_synopses.cfg`, `regions/regions.cfg`
+
+Notable functional changes:
+- Every pole/net catch now rolls a **Regular / Rare / Legendary** tier (pole: 1/500 Rare, 1/5000 Legendary; net: 5x better at 1/100 / 1/1000). If no entry in the new `catchtable.cfg` matches the roll against the caster's current Location (Deep Water / Shores / Dungeons), Realm, and skill (`MinSkill` gates Rare/Legendary), the catch falls back a tier rather than being wasted. `catchtable.cfg` catalogs 69 species (42 Regular / 13 Rare / 14 Legendary).
+- All fish objtypes relocated onto a dedicated `0x30300`+ block, replacing the old `0x09cc`-`0x0dd9` range that overlapped unrelated items; SOS bottle/message/tile objtypes similarly renumbered off legacy `0xa360`-range IDs onto `0x9600`-`0x9602` for the same reason. `pkg/opt/omegacache/categories.cfg`'s magic-fish icon entries were updated to match.
+- New `IsDeepWater()` replaces the old fixed/no-op check: flood-fills a configurable radius (default 16 tiles) of water tiles and rejects if `IsNearDockPlanks()` finds dock planking nearby; recomputed on every cast so a boat-anchored caster's water classification can change without the caster moving.
+- New `IsFishingInDungeon()` reads `GetRegionNameAtLocation()` and checks the new `Type World` marker added to the Sosaria/Ilshenar/Malas/Tokuno/Ter Mur top-level realm regions in `regions.cfg` (see Theme 19) — a region lacking `Type World` is treated as a dungeon.
+- Skill-gain multiplier: 0.5x in safe/guarded areas, 2x in dungeons, 1.5x in deep water, 1x on shores.
+- The old `GetHarvestDifficulty`-based "nothing here" gate (which produced false aborts) was removed in favor of trusting `HarvestResource()`'s actual return, matching the existing mining/lumberjacking pattern; a genuinely depleted pool now returns a clear "fished these waters dry" message instead of a confusing silent failure.
+- Rare/Legendary catches are hued (yellow 1731 / orange 1531) in the sysmessage and now also in the item's tooltip via a new `FishTier` MegaCliloc line in `itemdata.src`.
+- New player command **`.togglerarecarve`**: a blade equipped while fishing previously auto-carved *any* catch, including rares, into fish steaks; Rare/Legendary catches are now protected from auto-carve unless the player opts in via this toggle. Shallow-water catches also now yield 1 steak when carved vs. 4 for deep-water catches.
+- Dead/unreachable SOS-bottle spawn code (`FetchBottle`, `CreateChest`, `FindSpot`, `CleanSos`) confirmed unreachable (SOS bottles are never spawned in this build) and commented out with an explanatory note rather than left silently dead.
+- `fishingnet.src`: removed an obsolete `CheckCity`-based "deep sea only" gate, replaced with the real `IsDeepWater()` check; net catches now route through the same tiered `ResolveFishCatch()` as the pole.
+
+Expected impact: fishing/net catches now surface visibly distinct Rare/Legendary tiers (name, color, tooltip); depletion messaging is accurate instead of misleading; a new opt-in toggle protects valuable catches from accidental carving; shallow-water catches yield less than deep-water ones.
+
+### 17. Crustacean Trapping (New Feature)
+
+Files involved: `pkg/std/fishing/crustaceantrap.inc` (new), `crustaceantrap.src` (new), `crustaceantrapbuoy.src` (new), `crustaceansweeper.src` (new), `crustaceantable.cfg` (new), `scripts/start.src`
+
+Notable functional changes:
+- New placeable item, the crustacean trap (objtype `0x3037E`): placed into water within 10 tiles, LOS-checked, not from inside a house, not within 2 tiles of another trap. Placing it spawns a buoy (`0x3037F`) — the interactive world object the owner later retrieves.
+- New background sweeper (`crustaceansweeper.src`, modeled on the existing donation-box sweeper pattern) ticks every 5 seconds: a buoy is destroyed if its owner logs off/disconnects or wanders past the 10-tile leash, or after 15 minutes unretrieved ("washed away"). Every 60 seconds a trap "bobs" — an escalating 5%-per-bob loss chance, and on a surviving bob a 35% chance to add one crustacean catch (max 5 per trap, matching OSI behavior).
+- Crustacean catches use the same Regular/Rare/Legendary roll structure as fish, via a parallel `crustaceantable.cfg` (12 Regular, 3 Rare, 5 Legendary crab/lobster species) — reachable only through the trap, not the pole or net.
+- Max 5 simultaneously active traps per player. Retrieving (double-click the buoy, owner-only, must be within leash range) returns the physical trap item plus all accumulated catches with rare/legendary sysmessages, then tears down the buoy.
+- `scripts/start.src` wires the sweeper via `start_script(":fishing:crustaceansweeper")` on every server boot, and force-scans all 5 realms for stray orphaned buoys (registry state isn't trusted to have survived an unclean shutdown); also force-clears the sweeper's persistent single-instance guard property so a real restart doesn't permanently block it from ever starting again.
+
+Expected impact: a new crab/lobster trapping minigame independent of pole/net fishing, with its own Rare/Legendary tier structure and a passive "check back later" placement/retrieval loop.
+
+### 18. Boat Key Destruction Fix
+
+Files involved: `pkg/multis/boat/multi/listener.src`
+
+Notable functional changes: `DestroyBoatKey()` previously only searched the boat owner's backpack root items and keyrings for a matching key when dry-docking, silently failing (logged an error, left the key undestroyed) if the key was anywhere else — bank box, secure container, etc. Replaced with `KP_DestroyOwnedKeysForLockIDs()` from the shared `:keys:key` include, which searches more broadly across the owner's held containers for every key matching the boat hold's `LockID`.
+
+Expected impact: dry-docking a boat now reliably destroys its keys regardless of where the owner is storing them.
+
+### 19. Resource Realm-Bleed Fix
+
+Files involved: `regions/fish.cfg`, `regions/ore.cfg`, `regions/wood.cfg`, `regions/sand.cfg`, `regions/clay.cfg`, `regions/regions.cfg`
+
+Notable functional changes: each resource type previously had a single `Region "The Whole World"` block with no `Realm` field, so the engine's depletion pool (tied to the Region object, not `(x,y,realm)`) was shared across every realm using the same raw coordinates — e.g. Tokuno's `0-1447,0-1447` box aliased directly onto Britannia's heavily-fished NW corner. Fixed by adding one additional realm-scoped Region block per resource type, each with an explicit `Realm` field and correct facet bounds: Sosaria (`Realm britannia_alt`, `0 0 7167 4095`), Ilshenar (`Realm ilshenar`, `0 0 2303 1599`), Malas (`Realm malas`, `0 0 2559 2047`), Tokuno (`Realm tokuno`, `0 0 1447 1447`), Ter Mur (`Realm termur`, `0 0 1279 4095`); the original "Whole World" block also gained an explicit `Realm britannia`. `fish.cfg` additionally dropped landtiles `76-111`/`0x01AA`-`0x01AB` (verified via `tiledata.mul` as not actually water-flagged) and added `0x00AA`-`0x00AB` (the missing other half of a 4-tile water texture set). `regions.cfg` also tags `Type World` onto the Sosaria/Ilshenar/Malas/Tokuno/Ter Mur top-level realm regions (consumed by the new `IsFishingInDungeon()`, Theme 16) and fixes a duplicate/conflicting `MIDI` line on Ilshenar and Malas.
+
+Expected impact: fishing/mining/lumberjacking/sand-mining/clay resource pools in Tokuno, Malas, Ilshenar, and Ter Mur no longer silently share depletion state with Felucca/Trammel at the same raw coordinates — each realm now regrows and depletes independently.
+
+### 20. Doors — Partial Fix for Missing Door Registrations
+
+Files involved: `pkg/items/doors/config/itemdesc.cfg` (new), `ainotes/missing-doors-audit-20260815.md` (new)
+
+Notable functional changes: the audit doc catalogs 182 door-flagged tiledata tiles with zero `itemdesc.cfg` registration (no `Door {}` block ⇒ engine never classifies the objtype as `POLCLASS_DOOR` ⇒ inert in-game, per prior investigation). This commit registers 24 of the 182: Bar Door (`0x190E`-`0x190F`), Moon Door Alt Set (`0x319C`-`0x319F`), Crystal wall (`0x35E7`-`0x35E8`), Shadow door (`0x3640`-`0x3643`, `0x3645`-`0x3646`), QC Wall b (`0x5128`-`0x5129`), and Wallset3 South/East doors (`0x409B`-`0x40A2`, flagged `UNVERIFIED` in-file — pattern-matched from the confirmed Wallset1 behavior, not independently checked in UOFiddler).
+
+**Gap:** the headline bug that motivated the audit — Gargish Grey Door / Wallset1 family (`0x41CF`-`0x41D6`) — is still not fixed, nor are GargoyleDoor, Wallset2 Sun Door, Gargish Set Door (A1a-D2b), RuinDoor, QueenDoor/QueenDoorH, Gargish Red Door, Door South01, castle-era metal doors (32 tiles), or castle-era wooden gates (13 tiles) — roughly 158 of the original 182 remain unregistered.
+
+Expected impact: a handful of newer-era decorative doors (bar doors, alt moon doors, crystal-wall doors, shadow doors, two stone wall-door variants) now open/close correctly. The majority of the previously-identified broken catalog — including the specific multis flagged in the prior audit (Gothic Rose Castle, Castle of Oceania, Sandalwood Keep, Keep Incarcerated, Sally Trees Refurbished Keep, Clovers Keep, Terrace Gardens) — remains affected. This is a partial pass, not the full fix.
+
+### 21. Treasure Map / Dig Treasure
+
+Files involved: `pkg/std/treasuremap/digtreasure.src`, `pkg/std/treasuremap/treasure.cfg`, `pkg/std/treasuremap/textcmd/admin/gototreasuremap.src` (new), `pkg/items/containers/config/itemdesc.cfg`, `config/command_synopses.cfg`, `config/mrcspawn.cfg`
+
+Notable functional changes:
+- Treasure chests previously always spawned the single graphic `0x0E40` regardless of map level. `GetTreasureChestObjtype(lvl)` now picks randomly from a level-appropriate pool of 18 new dedicated Container objtypes (`0xB4A6`-`0xB4B9`): Small (levels 1-3, 8 variants: Basic/Adorned/Menacing x South/East), Medium (levels 4-5, 6 variants), Large (level 6+, 6 variants). Chest identification for cleanup switched from `objtype == UOBJECT_TREASURE_CHEST` to a `treasurechest` CProp check since the objtype is now variable.
+- New "bardic intuition" mechanic: on a level-6 dig, a Bard-class digger has a `bard_level`%-scaled chance to upgrade the dig to an effective level 7 — spawns 3 guardians from the level-6 guardian table and prints "Your bardic intuition senses something extraordinary here!" Non-bard/non-triggered rolls keep the existing level 1-3 / level 4+ escalation behavior; guardian-spawn branching was refactored (variable hoisting, cleaner branches) without changing that behavior.
+- `dig_treasure`'s unused `shovel` parameter dropped.
+- `treasure.cfg`: dig sites relocated off the unused `"britannia"` realm onto the shard's actual playable realms — 15 sites moved to `britannia_alt` (Sosaria), plus new sites added on `ilshenar` (6), `tokuno` (6), `malas` (3).
+- New GM/admin tool **`.gototreasuremap`**: paginated gump listing every configured dig location (realm, X/Y/Z) with one-click teleport, for spot-checking dig sites.
+- `mrcspawn.cfg`: removed dead `fish1`-`fish8` entries from the merchant "Fish" restock group (objtypes no longer exist post-fishing-rewrite) and added `Diggingtool` to the "MapItems" restock group.
+
+Expected impact: treasure chests now look distinct (and progressively fancier) by map difficulty instead of one generic graphic; Bard-class characters get a rare bonus-tier chance on level-6 maps; treasure maps spawn their dig sites in the realms players can actually reach (Sosaria/Ilshenar/Tokuno/Malas) instead of the dead Britannia facet.
+
+### 22. Snooping/Stealing — Stack Consolidation
+
+Files involved: `pkg/std/stealing/stealing.src` (live script, bound via `attributes.cfg`), `pkg/std/snooping/stealing.src` (confirmed dead/unused, patched for consistency and commented as such), `pkg/std/snooping/snooping.src`
+
+Notable functional changes: same root-cause class as the prior Gold Stack Overflow fix — stolen items were always placed into the thief's backpack via a plain `MoveItemToContainer`, which never merges into a matching existing stack, so every successful steal of a stackable item created a brand-new stack with no protection against the 60,000 cap. New `StealIntoContainer()`/`FindOpenStack()` helpers (added to both `stealing.src` files) find a compatible existing stack via `CanStack()`, top it up to `STACK_CAP := 60000`, and only spill the remainder into a new stack if it doesn't fully fit. Also removed a leftover, no-longer-referenced `"dodgy"` CProp that `snoop()` was setting/copying.
+
+Expected impact: stealing a stackable item (reagents, ingots, arrows, etc.) now merges into an existing matching stack in the thief's pack instead of always creating a separate one, with correct 60,000-cap overflow handling.
+
+### 23. Hue Corrections (Broad Sweep)
+
+Files involved: ~35 `itemdesc.cfg`/`npcdesc.cfg`/`equip.cfg`/`sets.cfg`/`modenchantdesc.cfg` files across `config/`, `pkg/opt/*`, `pkg/std/*`, `pkg/systems/combat/*`; hardcoded-color references in `scripts/control/skilladvancerequip.src`, `scripts/items/bladed.src`, `scripts/misc/death.src`, `scripts/items/pvp.src`, `scripts/items/pvp2vs2.src`, `scripts/include/npccastspells.inc`, `pkg/opt/champspawns/{include/rewards.inc,scripts/oncreate.src}`; new reference docs `ainotes/Hue names list.txt` and `ainotes/Hues Audit.md`
+
+Notable functional changes: a systematic, audited hue-value migration, not scattered spot-fixes. `Hues Audit.md` documents one section per swap with search methodology (full-repo regex scan for the old numeric hue, every hit classified as real color-use vs. false positive like a coordinate/objtype/array-index collision), every confirmed live location, and a revert reference. Confirmed swaps in this range: `1765`→`2669` ("New Zulu" signature color), `1155`-`1166`→`2730`-`2745` (sequential remap covering fire/lava/elemental colors), `1170`→`2243`, plus scattered hex-form individual hues (`0x0492`→`0x8c3`, `0x0494`→`0xabe`, `0x0485`→`0xaac`, `0x048b`→`0x0ab6`, `0x0486`→`0xaad`, and others). These land across NPC body colors, armor/weapon dyes, GM-item enchant colors, PvP arena fences/stones, champion-altar pieces, elemental spell-cast effect colors, quest stones, and book items — every hardcoded use of the old (apparently reused/conflicting) hue IDs was moved onto the new dedicated range. `config/npcdesc.cfg` separately picked up correct, distinct `deathsnd` values for several mount templates (`mountbeetle`, `mountkirin`, `mountraptalon`, `mountwolf`, `mounthairiyo`) and ethereal creatures (horse, llama, ostard, kirin) and `runebeetle` that previously shared a generic placeholder sound or had none. `pkg/opt/vanityshop/customitemdye.src` now also checks a new `Undyable` CProp and refuses to dye a tagged item — this is what protects the new fishing gear (poles, nets, hooks, buoys, traps, all tagged `Undyable` elsewhere in this patch) from being recolored via the dye tub. `config/itemdesc.cfg` also moved `PvPStone` off objtype `0xa392` onto `0xa394` (freeing the old slot as part of the fishing/crustacean/SOS objtype renumbering) and fixed several commented-out `DecayOnMultis`→`DecaysOnMultis` typos in disabled reference blocks (dead code, no live effect).
+
+Expected impact: a broad, mostly invisible-unless-you-knew-it-was-wrong visual correction — many items/effects/NPCs render in a different (intended) color than before; several mounts get correct death sounds instead of a generic placeholder; new fishing gear can't be re-dyed.
+
+### 24. Guildstone Cleanup on Custom House Redeed
+
+Files involved: `pkg/multis/customhousing/sign.src`
+
+Notable functional changes: redeeding a custom house via its sign never swept for a guildstone inside it, so a guildstone (and any statue-set companion pieces) left in the house orphaned in place once `DestroyMulti` ran, with the owning guild's stone reference left dangling. Fixed by collecting any `GUILDSTONE_OBJTYPE` item found in the same box-sweep the sign already runs for Omega Cache containers, calling the existing `DestroyGuildstoneCompanions()` cleanup, clearing the `GUILD_STONE` property on the owning guild if still resolvable, then destroying the stone.
+
+**Scope caveat:** this fix only touches `pkg/multis/customhousing/sign.src`; the classic house sign path (`pkg/multis/house/multiSign/method.src`) and static housing (`pkg/multis/staticHousing/sign/*`) have no equivalent guildstone-cleanup code — a guildstone left in a classic (non-custom) house that gets redeeded would still orphan.
+
+Expected impact: a guildstone in a custom house is now correctly removed when that house is redeeded; the same is not yet true for classic/static houses.
+
+### 25. Powerscroll Read Animation Fix
+
+Files involved: `pkg/opt/powerscrolls/powerscroll.src`, `pkg/opt/powerscrolls/textcmd/admin/raisecaps.src` (renamed to `textcmd/test/raisecaps.src`), `config/command_synopses.cfg`
+
+Notable functional changes: reading a power scroll played `PlayObjectCenteredEffect(who, 0x33EA, 0x1, 10)`, which is not the intended "wings" visual — changed to `0x6F61`, keeping the accompanying sparkle effect (`0x373A`) and sound unchanged. In the same commit, `raisecaps` was moved from `admin`/`CmdLevel 4` to `test`/`CmdLevel 5` in both its file location and `command_synopses.cfg`, restricting an already-admin-only command further to developer-tier access.
+
+Expected impact: power scroll use shows the correct visual effect; `raisecaps` is further access-restricted (no player-facing effect either way).
+
+### 26. New `.createitemdesc` Developer Tool
+
+Files involved: `pkg/opt/alryc/textcmd/test/createitemdesc.src` (new)
+
+Notable functional changes: `.createitemdesc <package> [perrow]` loads a package's `itemdesc.cfg` and spawns/locks down one of every item objtype it defines at the caller's location, arranged in rows (default 20/row, max 50), each auto-named `"<hex objtype> : <config Name>"` for visual review of an entire item catalog at once — used during this patch to eyeball the new fishing/crustacean/treasure-chest catalogs.
+
+Expected impact: none (developer tool only).
+
+### 27. Core Engine Changes
+
+Files involved: `core-changes.txt`, `pol.exe`/`poltool.exe`/`uoconvert.exe`/`uotool.exe`/`scripts/ecompile.exe`/`scripts/runecl.exe` (binary rebuilds), `scripts/modules/polsys.em`
+
+Notable functional changes (per the `08-10-2026 Nando:` engine-changelog entry, prepended to `core-changes.txt`):
+- Added `polsys::CheckItemIntegrity()` (exposed via the new `scripts/modules/polsys.em` line) — validates every item's container/corpse-layer/storage/cursor/world-zone bookkeeping agrees both ways, logs disagreements without changing anything, returns `{checks, violations}`; the `.integ` text command now runs it and reports both counts.
+- Added `corpse.equipped_items` — the items a corpse visually shows worn, in layer order, matching the client.
+- Changed: `item.layer` now reads 0 until an item is actually worn across all four equip paths (previously `uo::EquipItem`/world-load set it early while the client's own equip paths never did); scripts needing the eventual layer should read `item.tile_layer`. An unworn item no longer reports/saves a stale layer value. A corpse now shows what its owner was wearing at death and keeps showing it until an item is looted; re-adding a looted item afterward is ordinary loot, not re-dressing.
+- Fixed: a race-changer crash on a hair/beard id the core accepts but shard tiledata lacks; a worn item whose EquipScript rejected it during world load used to halt server startup entirely, now goes to backpack instead; `uo::EquipItem` crash when an item's own EquipScript made it unequippable mid-run, now returns an error instead; `uo::MoveItemToContainer` could destroy an item still listed in its origin container (delayed crash), now refused instead; a house component moved out of the house stayed on the house's component list, so destroying the house destroyed the item wherever it ended up; an item could get double-registered as a boat traveller (moved twice per step, listed twice after restart); dropping an item while another was already on the cursor sent no reply, leaving the dropped item stuck to the cursor client-side; `uo::DestroyItem` on a cursor-held item left the character unable to pick anything else up; an equipped item rejected by `uo::MoveItemToSecureTradeWin` went to backpack instead of back onto its original layer; corpses showed no equipment visually after a restart despite the data being intact; corpses held onto every item ever shown as equipment indefinitely, blocking those items from being freed; container slots (`UseContainerSlots`) were effectively non-functional (slot assignment not saved, free-slot search only checked the first item, full containers still reported room) — now slots persist via a new `SlotIndex` save line (old worlds unaffected, only written for items that have one), free-slot detection is correct, and full containers are properly refused; splitting a stack gave the new slot to the split-off portion instead of the part left behind; an item moved off a boat stayed listed as travelling with it until the boat's next move, briefly visible to nearby players in places it shouldn't be; destroying worn equipment left the status window showing stale weight; `CreateItemAtLocation`/`CreateItemCopyAtLocation` could return an item not actually at the requested location if the item's own create-script relocated it mid-creation — the requested location now always wins.
+
+Expected impact: mostly invisible server-stability and correctness fixes (several server-crash/shutdown bugs fixed); container slot systems, corpse equipment display, and boat item-tracking should behave visibly more correctly.
+
+### 28. Miscellaneous
+
+Files involved: `scripts/ai/merchant.src`, `pkg/opt/alryc/textcmd/test/animatedgraphics.src`, `scripts/include/omegacache_utils.inc`
+
+Notable functional changes:
+- `merchant.src`: removed two `sleepms(100)` per-item pauses in `BuyBag`/`BuyAll` (bulk vendor sell-all) — reduces delay/lag when selling a full backpack to a vendor.
+- `animatedgraphics.src` (dev tool): fixed a spawn-order/direction bug — was spawning configured animation groups from the selected group down to 1 (reverse order), each subsequent group offset in the negative Y direction; now spawns group 1 up to the selected group, offset in the positive Y direction. Synopsis/sysmessage text updated to match.
+- `scripts/include/omegacache_utils.inc` adds `DeleteOmegaCacheStore()`, currently functionally identical to the existing `CloseOmegaCacheStore()` (just unloads the datafile) since the engine still has no exposed file-deletion call — kept as a distinct, forward-looking name so teardown call sites read as "gone for good" and a real delete can be dropped in later.
+
+Expected impact: faster vendor bulk-sell; no other player-visible effect (dev tool + internal naming only).
+
 ---
 
 ## Validation Notes
 
-- Diff range: `git diff 541e883` (working tree, uncommitted changes included) for the full Patch-3.0.7 scope; `git log --oneline 541e883..HEAD` and `git show <hash>` for per-commit detail on `edc8a64`/`a642726`; `git diff --numstat` (working tree only) to isolate this session's own uncommitted contribution (Themes 3, 5-12 above) from the two already-committed commits (Themes 1-2, 4, 13-15).
-- Working tree state: **not clean** — 11 modified files remain uncommitted as of this writing (`pkg/multis/customhousing/include/house.inc`, `pkg/multis/customhousing/sign.src`, `pkg/multis/house/multiSign/control.src`, `pkg/multis/house/multiSign/method.src`, `pkg/multis/house/multiSign/use.src`, `pkg/multis/staticHousing/lockunlock.src`, `pkg/multis/staticHousing/sign/destroy.src`, `pkg/multis/staticHousing/sign/use.src`, `pkg/opt/guilds/commands/player/guilds.src`, `pkg/opt/guilds/include/guildconstants.inc`, `scripts/include/omegacache_utils.inc`). This changelog covers them as part of the patch's scope on the assumption they'll be committed before release; the file inventory and scope numbers above already include them.
-- Compile validation: `scripts/ecompile.exe -b -r -u` (compile all updated scripts) run twice. First run surfaced one real error — `Unknown identifier 'DeleteDataFile'` in `scripts/include/omegacache_utils.inc`, affecting every script that includes it (6 scripts failed) — fixed per Theme 11 above. Second run: 0 errors across all 26 recompiled scripts. Remaining warnings (unused local variables in `pkg/utils/mdgumps/include/gumpPrompt.inc`, `pkg/opt/omegacache/cacheinsert.src`, `pkg/opt/omegacache/omegacache.src`, `scripts/include/resourcemanager.inc`, `scripts/include/classes.inc`, `pkg/std/cartography/cartography.src`, `pkg/multis/house/multiSign/use.src:127`) are pre-existing and unrelated to this patch's changes.
+- Diff range for this update: `git diff a642726..HEAD` and `git log --oneline a642726..HEAD` for the newly-covered slice (Themes 16-28); `git diff 541e883..HEAD` for the full-patch scope numbers in the Scope Summary above. Individual theme detail derived via `git show <hash>` and `git diff <range> -- <path>` per file/commit.
+- Working tree state: **clean** as of this update — all work through `60949cb` (Crustacean Fishing) is committed.
+- The engine-level changes in Theme 27 come from `core-changes.txt`'s own changelog entry, not independently re-verified against the C++ source in this pass — treat that section as the core team's own record of their work.
+- Compile validation for Themes 1-15 (`541e883..a642726`) was performed at the time (see prior note, retained implicitly): `scripts/ecompile.exe -b -r -u` run twice, one real error found and fixed (`DeleteDataFile`), 0 errors on the second pass. Compile validation for Themes 16-28 (`a642726..HEAD`) was **not independently re-run as part of this documentation pass** — per repo convention the user compiles EScript changes themselves; this changelog reflects source-level analysis of the committed diff, not a fresh compile check.
