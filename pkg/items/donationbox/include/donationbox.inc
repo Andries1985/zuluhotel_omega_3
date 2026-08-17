@@ -11,7 +11,7 @@ const DONATION_TTL_SECONDS  := 1209600;       // 14 days (2 weeks)
 const DONATION_SWEEP_PERIOD := 3600;          // 1 hour
 const DONATION_REGISTRY     := "#DonationBoxes";
 const DONATION_SWEEP_DISABLED_PROP := "#DonationSweepDisabled";
-const DONATION_DEBUG        := 1;             // 1 = print debug to console, 0 = silent
+const DONATION_DEBUG        := 0;             // 1 = print debug to console, 0 = silent
 
 function DonationDebug(msg)
 	if (DONATION_DEBUG)
