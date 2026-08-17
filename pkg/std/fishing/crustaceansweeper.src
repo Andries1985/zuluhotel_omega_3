@@ -1,0 +1,158 @@
+/*
+	Crustacean trap sweeper.
+
+	Single always-on background process (modeled on :donationbox:scripts/sweeper) that owns
+	the entire post-deployment trap lifecycle: leash distance, idle timeout, owner logoff/
+	disconnect, and the live 60-second "bob" rolls. Runs a boot-time cleanup pass first so a
+	server restart never leaves orphaned buoys cluttering the world.
+
+	Start once at server boot: start_script(":fishing:crustaceansweeper");
+	Re-running is harmless because of the global guard property below.
+*/
+use uo;
+use os;
+use cfgfile;
+use basicio;
+
+include "include/random";
+include "fishing";
+include "crustaceantrap";
+
+const SWEEPER_GUARD := "#CrustaceanTrapSweeperRunning";
+
+program crustacean_trap_sweeper()
+
+	//Single-instance guard - if the script restarts after a hard reload we want exactly
+	//one sweeper running, same as the donation box sweeper.
+	if (GetGlobalProperty(SWEEPER_GUARD))
+		return;
+	endif
+	SetGlobalProperty(SWEEPER_GUARD, 1);
+
+	set_script_option(SCRIPTOPT_NO_RUNAWAY, 1);
+
+	//Boot-time cleanup - a buoy should never legitimately survive a restart. This does NOT
+	//trust the registry (a GlobalProperty write can lose a race with the save cycle on an
+	//unclean shutdown even though the item itself survives fine) and does NOT force a save
+	//to fix that either (too expensive to do on every deploy/retrieve). Instead it scans
+	//every realm directly for leftover buoy items - a one-time cost at boot only,
+	//independent of whatever state the registry happened to save in.
+	SweepRealmForStrayBuoys("britannia_alt", 0, 0, 7167, 4095);
+	SweepRealmForStrayBuoys("ilshenar", 0, 0, 2303, 1599);
+	SweepRealmForStrayBuoys("malas", 0, 0, 2559, 2047);
+	SweepRealmForStrayBuoys("tokuno", 0, 0, 1447, 1447);
+	SweepRealmForStrayBuoys("termur", 0, 0, 1279, 4095);
+
+	SetGlobalProperty(TRAP_REGISTRY, array{});
+
+	while (1)
+		Sleep(TRAP_SWEEP_PERIOD);
+		SweepAllTraps();
+	endwhile
+
+endprogram
+
+//Bounds match the Range values already used per-realm in regions/fish.cfg's fishing
+//regions. Z spans the full -128..127 range since a buoy could in principle sit at any
+//legal water height.
+function SweepRealmForStrayBuoys(realm, x1, y1, x2, y2)
+	var found := ListItemsInBoxOfObjType(UOBJ_CRUSTACEANTRAP_BUOY, x1, y1, -128, x2, y2, 127, realm);
+	foreach buoy in found
+		DestroyItem(buoy);
+	endforeach
+endfunction
+
+//Deliberately does NOT snapshot-then-overwrite the whole registry in one shot - a deploy
+//happening mid-tick would register its buoy in between our read and our write, and a bulk
+//overwrite here would silently clobber that fresh registration right back out (the buoy item
+//would still exist in the world but never be tracked again). Every mutation instead goes
+//through TrapBuoyRegister()/TrapBuoyUnregister() individually, which each do their own fresh
+//read-modify-write against the current registry.
+function SweepAllTraps()
+	var list := TrapBuoyList();
+	if (!len(list))
+		return;
+	endif
+
+	var now := ReadGameClock();
+
+	foreach serial in list
+		var buoy := SystemFindObjectBySerial(CInt(serial));
+		if (!buoy)
+			TrapBuoyUnregister(CInt(serial));
+			continue; //gone (GM deleted it, etc) - drop from registry
+		endif
+
+		SweepOneTrap(buoy, now);
+	endforeach
+endfunction
+
+//Returns 1 if the buoy survives this tick, 0 if it was destroyed.
+function SweepOneTrap(buoy, now)
+
+	var owner_serial := CInt(GetObjProperty(buoy, PROP_TRAP_OWNER));
+	var placed_at := CInt(GetObjProperty(buoy, PROP_TRAP_PLACED_AT));
+	var owner := SystemFindObjectBySerial(owner_serial);
+	var age := now - placed_at;
+
+	//Owner offline covers logoff and disconnect alike - SystemFindObjectBySerial without
+	//the offline-search flag only resolves a mobile that's currently in the world.
+	if (!owner or Distance(owner, buoy) > TRAP_LEASH_DISTANCE)
+		DestroyTrap(buoy, owner, "Your crustacean trap washed away - you were too far from it.");
+		return 0;
+	endif
+
+	//Never retrieved in time.
+	if (age >= TRAP_MAX_LIFETIME)
+		DestroyTrap(buoy, owner, "Your crustacean trap has washed away.");
+		return 0;
+	endif
+
+	var last_bob := CInt(GetObjProperty(buoy, PROP_TRAP_LAST_BOB));
+	if (now - last_bob >= TRAP_BOB_INTERVAL)
+		if (!RollBob(buoy, owner, now))
+			return 0; //lost on this bob - already destroyed
+		endif
+	endif
+
+	return 1;
+
+endfunction
+
+//Returns 0 if the trap was lost on this bob (already destroyed), 1 otherwise.
+function RollBob(buoy, owner, now)
+
+	SetObjProperty(buoy, PROP_TRAP_LAST_BOB, now);
+	var bob_count := CInt(GetObjProperty(buoy, PROP_TRAP_BOB_COUNT)) + 1;
+	SetObjProperty(buoy, PROP_TRAP_BOB_COUNT, bob_count);
+
+	//Escalating loss chance matching OSI's "~50% by the tenth bob" (5% per bob, uncapped -
+	//the 15-minute max lifetime is the real ceiling, not an artificial cap here).
+	if (Random(100) < Min(bob_count * 5, 100))
+		DestroyTrap(buoy, owner, "Your crustacean trap was lost to the sea.");
+		return 0;
+	endif
+
+	var catches := GetObjProperty(buoy, PROP_TRAP_CATCHES);
+	if (TypeOf(catches) != "Array")
+		catches := array{};
+	endif
+
+	if (len(catches) < TRAP_MAX_CATCH and Random(100) < TRAP_CATCH_CHANCE)
+		var deep_water := IsDeepWater(buoy.x, buoy.y, buoy.realm);
+		var in_dungeon := IsFishingInDungeon(buoy);
+		var location := GetFishingLocation(deep_water, in_dungeon);
+
+		var result := PickCaughtCrustacean(owner, location);
+		var objtype := result[1];
+
+		if (objtype)
+			catches.append(objtype);
+			SetObjProperty(buoy, PROP_TRAP_CATCHES, catches);
+			SendSysmessage(owner, "Something moves in your crustacean trap.");
+		endif
+	endif
+
+	return 1;
+
+endfunction

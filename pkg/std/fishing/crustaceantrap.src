@@ -1,0 +1,76 @@
+use uo;
+use os;
+use cfgfile;
+use basicio;
+
+include "include/random";
+include "include/client";
+include "include/utility";
+include "fishing";
+include "crustaceantrap";
+
+program use_trap( character, trap )
+
+	if(!ReserveItem(trap)) return; endif
+
+	if (trap.container != character.backpack)
+		SendSysmessage(character, "The trap must be in your backpack to use it.");
+		return;
+	endif
+
+	if (CountOwnedTraps(character.serial) >= TRAP_MAX_PER_PLAYER)
+		SendSysmessage(character, "You already have the maximum of "+TRAP_MAX_PER_PLAYER+" traps out.");
+		return;
+	endif
+
+	var use_on := Targetcoordinates(character);
+
+	if (!use_on) SendSysMessage(character, "Canceled."); return; endif
+
+	if ( coordist(character.x, character.y, use_on.x, use_on.y) > TRAP_LEASH_DISTANCE )
+		SendSysmessage(character, "That is too far away.");
+		return;
+	endif
+
+	if (character.multi)
+		SendSysMessage(character, "You can't place a trap from a house.");
+		return;
+	endif
+
+	if( !CheckLosAt(character, use_on.x, use_on.y, use_on.z) )
+		SendSysMessage(character, "You can't see that.");
+		return;
+	endif
+
+	if (!IsWaterTile(use_on.x, use_on.y, use_on.realm))
+		SendSysmessage(character, "You must place the trap in water.");
+		return;
+	endif
+
+	//Mirrors OSI's "not within one tile of another trap" rule - loosened to a slightly
+	//wider radius since we're not restricted to a ship's deck here.
+	foreach nearby in ListItemsNearLocation(use_on.x, use_on.y, LIST_IGNORE_Z, 2, use_on.realm)
+		if (nearby.objtype == UOBJ_CRUSTACEANTRAP_BUOY)
+			SendSysmessage(character, "There is already a trap too close to that spot.");
+			return;
+		endif
+	endforeach
+
+	//Consumes exactly one trap from the stack, not the whole stack - DestroyItem(trap) would
+	//have destroyed the entire item object, amount and all, when double-clicked from a pile.
+	SubtractAmount(trap, 1);
+
+	var buoy := CreateItemAtLocation(use_on.x, use_on.y, use_on.z, UOBJ_CRUSTACEANTRAP_BUOY, 1, use_on.realm);
+
+	var now := ReadGameClock();
+	SetObjProperty(buoy, PROP_TRAP_OWNER, character.serial);
+	SetObjProperty(buoy, PROP_TRAP_PLACED_AT, now);
+	SetObjProperty(buoy, PROP_TRAP_LAST_BOB, now);
+	SetObjProperty(buoy, PROP_TRAP_BOB_COUNT, 0);
+	SetObjProperty(buoy, PROP_TRAP_CATCHES, array{});
+
+	TrapBuoyRegister(buoy.serial);
+
+	SendSysmessage(character, "You place the trap in the water.");
+
+endprogram
