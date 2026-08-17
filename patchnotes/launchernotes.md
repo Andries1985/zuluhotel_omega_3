@@ -149,10 +149,11 @@ Fishing has also been reworked from the ground up: every catch now rolls a Regul
 - Migrated custom housing's internal sign/house link to match the same property naming classic and static housing already use, with automatic backward-compatible migration for existing houses.
 - Started cleaning up how a house's Omega Cache storage record is released when the house is permanently torn down.
 - A batch of underlying engine (core) fixes landed alongside this patch: several rare server-crash and shutdown bugs are fixed, corpses now reliably show a dead character's equipment (including right after a server restart), and container "slot" behavior on items that use it now actually persists and works correctly.
+- Fixed a long-standing visual bug where a character killed while riding a mount could stay stuck in the mounted sitting pose (and keep mount movement speed) as a ghost, through resurrection, until mounting and dismounting an animal again.
 
 ### Player Impact
 
-- Most of this section has no direct gameplay change — it's internal cleanup and consistency work — but the engine fixes should mean fewer rare crashes and corpses that consistently show what a character was wearing when they died.
+- Most of this section has no direct gameplay change — it's internal cleanup and consistency work — but the engine fixes should mean fewer rare crashes, corpses that consistently show what a character was wearing when they died, and no more getting stuck looking (and moving) like you're still mounted after dying on one.
 
 ## Summary
 
@@ -171,6 +172,7 @@ Fishing has also been reworked from the ground up: every catch now rolls a Regul
 - Added per-currency balance speech commands and a Help command to bankers and high priests, plus a combined-total column on the balance gump.
 - Reworked `.move` to consolidate stacks, and added `.movebag`/`.movebankcoin` for the same behavior elsewhere.
 - Fixed Vendor Storage Bag tooltips showing plural item descriptions, and sped up vendor bulk-selling.
+- Fixed a long-standing bug where dying while mounted could leave a character visually stuck in the mounted pose/speed as a ghost until mounting and dismounting again.
 - Various internal housing/guild code consolidation and underlying engine stability fixes with no direct gameplay effect (beyond fewer rare crashes and more reliable corpse equipment display).
 
 Thanks for playing Zuluhotel Omega 3.
