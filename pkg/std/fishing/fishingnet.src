@@ -1,6 +1,7 @@
 use os;
 use uo;
 use cfgfile;
+use basicio;
 
 //include "include/client";
 include "include/utility";
@@ -37,7 +38,7 @@ PlaySoundEffect(character, SFX_26);
 subtractamount(net, 1);
 sleep(6);
 
-var it:=0, foundwhat := Random(9), magicfish;
+var it:=0, foundwhat := Random(9);
 
 CheckSkill(character, SKILLID_FISHING, -1, 100);
 case (foundwhat)
@@ -51,15 +52,14 @@ case (foundwhat)
    SendSysMessage(character,"You find something valuable!");
 4:
 5: SendSysmessage(character, "You caught some fish.");
-   magicfish:=RandomFish(character);
-   if (magicfish>=0xA84 and magicfish<=0xA8C)
-   createfish( character,magicfish,Random(2)+1,1 );
-   CheckSkill(character, SKILLID_FISHING, -1, 150);
-   else
-   var equipped :=whatequipped(character, 666);	
-   createfish( character,magicfish,Random(12)+6,equipped );
-   CheckSkill(character, SKILLID_FISHING, -1, 100);
-   endif
+   //Same Regular/Rare/Legendary tables the pole uses, at 5x the pole's rare/legendary odds
+   //(500->100, 5000->1000). Always deep water (required to throw the net at all); no
+   //FishingBonus tool CProp on a net, so tool_bon is 0. netpoints only sizes the Rare/
+   //Legendary bonus - base skill gain already happened via CheckSkill above.
+   var netpoints := 100;
+   var equipped := whatequipped(character, 666);
+   var net_location := GetFishingLocation(1, IsFishingInDungeon(character));
+   ResolveFishCatch(character, Random(12)+6, equipped, 1, net_location, 0, 100, 1000, netpoints);
 6: if (Random(10)>8)
 	it := CreateItemInBackpack( character,0x1E62,1);
         it.decay :=120;
