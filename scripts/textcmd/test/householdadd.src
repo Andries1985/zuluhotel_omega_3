@@ -1,0 +1,58 @@
+// Synopsis: Add a targeted account DiscordID to a household group
+use uo;
+
+include ":accounts:accounts";
+
+program textcmd_householdadd( who, household_id )
+
+	ACCT_DebugPrint( "householdadd invoked by " + who.name );
+	SendSysMessage( who, "Target a player to add to a household." );
+	var targ := Target( who );
+	if( !targ || !targ.acctname )
+		ACCT_DebugPrint( "householdadd cancelled before target selection." );
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		SendSysMessage( who, "Unable to resolve account Discord info." );
+		return 0;
+	endif
+
+	var discord_norm := info["DiscordIDNorm"];
+	if( !discord_norm )
+		SendSysMessage( who, "Target has no DiscordID set." );
+		return 0;
+	endif
+
+	household_id := ACCT_TrimDiscordID( household_id );
+	if( !household_id )
+		household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
+	endif
+	if( !household_id )
+		household_id := "hh_" + discord_norm;
+	endif
+
+	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "householdadd", targ.acctname ))
+		return 0;
+	endif
+
+	var result := ACCT_AssignAccountToHousehold( account, household_id, who.name );
+	if( result.errortext )
+		ACCT_DebugPrint( "householdadd failed for " + targ.acctname + ": " + result.errortext );
+		SendSysMessage( who, "Unable to assign household: " + result.errortext );
+		return 0;
+	endif
+
+	ACCT_DebugPrint( "householdadd success account=" + targ.acctname + " household=" + result["HouseholdId"] );
+	SendSysMessage( who, "Added " + targ.name + " to household " + result["HouseholdId"] + ".", 3, 53 );
+	SendSysMessage( who, "Household members: " + CStr( result["MemberCount"] ) + ", cap: " + CStr( result["HouseholdCap"] ) + "." );
+	return 1;
+endprogram

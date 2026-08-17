@@ -1,0 +1,213 @@
+// Synopsis: Delete your current mount and open a gump to mount a selected test mount
+use uo;
+use os;
+
+include ":gumps:gumps";
+include ":gumps:gumps_ex";
+include "include/constants/locations";
+include "include/dismount";
+
+program mounttest(who)
+	DeleteCurrentMount(who);
+
+	var mount_list := BuildMountList();
+	if (!mount_list || !mount_list.size())
+		SendSysMessage(who, "No mount templates are configured.");
+		return 0;
+	endif
+
+	var selected := ShowMountListGump(who, mount_list);
+	if (!selected)
+		return 0;
+	endif
+
+	var entry := mount_list[selected];
+	if (!entry)
+		SendSysMessage(who, "That mount entry is no longer available.");
+		return 0;
+	endif
+
+	CreateAndMount(who, entry);
+endprogram
+
+function DeleteCurrentMount(who)
+	var equipped_mount := GetEquipmentByLayer(who, 25);
+	if (equipped_mount)
+		dismount(who);
+		SleepMS(60);
+		MoveObjectToLocation(equipped_mount, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+		SetObjProperty(equipped_mount, "guardkill", 1);
+		ApplyRawDamage(equipped_mount, CInt(GetHP(equipped_mount) + 3));
+	endif
+
+	var mount_serial := CInt(GetObjProperty(who, "DMountSerial"));
+	if (mount_serial)
+		var old_mount := SystemFindObjectBySerial(mount_serial);
+		if (old_mount)
+			MoveObjectToLocation(old_mount, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+			SetObjProperty(old_mount, "guardkill", 1);
+			ApplyRawDamage(old_mount, CInt(GetHP(old_mount) + 3));
+		endif
+	endif
+
+	EraseObjProperty(who, "DonatorMounted");
+	EraseObjProperty(who, "DMountSerial");
+endfunction
+
+function BuildMountList()
+	var mounts := array;
+
+	mounts.append(array{"Dark Steed", "nightmare", 0x3EA9, 0});
+	mounts.append(array{"Ethereal Horse", "etherealhorse", 0x3EAA, 16385});
+	mounts.append(array{"Nightmare (Lightest)", "nightmare", 0x3EA7, 0});
+	mounts.append(array{"Silver Steed", "horse", 0x3EA8, 0});
+	mounts.append(array{"War Horse Purple", "horse2", 0x3EB2, 0});
+	mounts.append(array{"War Horse Light Blue", "horse2", 0x3EB1, 0});
+	mounts.append(array{"War Horse Blood Red", "horse2", 0x3EAF, 0});
+	mounts.append(array{"War Horse Light Green", "horse2", 0x3EB0, 0});
+	mounts.append(array{"Unicorn", "unicorn", 0x3EB4, 0});
+	mounts.append(array{"Ki-Rin", "kirin", 0x3EAD, 0});
+	mounts.append(array{"Sea Horse Medium Blue", "horse", 0x3EB3, 0});
+	mounts.append(array{"Giant Beetle", "beetle", 0x3E95, 0});
+	mounts.append(array{"Ethereal Llama", "etherealllama", 0x3EAB, 16385});
+	mounts.append(array{"Ethereal Ostard", "etherealostard", 0x3EAC, 16385});
+	mounts.append(array{"Nightmare 2", "nightmare2", 0x3EB5, 0});
+	mounts.append(array{"Nightmare 3", "nightmare3", 0x3EB6, 0});
+	mounts.append(array{"Nightmare 4", "nightmare4", 0x3EB7, 0});
+	mounts.append(array{"Ridgeback Savage", "savageridgeback", 0x3EBA, 0});
+	mounts.append(array{"Ridgeback", "ridgeback", 0x3EB8, 0});
+	mounts.append(array{"Fire Steed", "firesteed", 0x3E9E, 0});
+	mounts.append(array{"Ethereal Ki-Rin", "etherealkirin", 0x3E9C, 16385});
+	mounts.append(array{"Ethereal Unicorn", "etherealunicorn", 0x3E9D, 16385});
+	mounts.append(array{"Ethereal Ridgeback", "etherealridgeback", 0x3E9A, 16385});
+	mounts.append(array{"Ethereal Swamp Dragon", "etherealarmoredswampdragon", 0x3E98, 16385});
+	mounts.append(array{"Ethereal Giant Beetle", "etherealbeetle", 0x3E97, 16385});
+	mounts.append(array{"Horse Light Brown", "horse2", 0x3E9F, 0});
+	mounts.append(array{"Horse Dark Brown", "horse", 0x3EA2, 0});
+	mounts.append(array{"Desert Ostard", "desertostard", 0x3EA3, 0});
+	mounts.append(array{"Polar Bear", "donatorbear", 0x3EC5, 33784});
+	mounts.append(array{"Frenzied Ostard", "frenziedostard", 0x3EA4, 0});
+	mounts.append(array{"Forest Ostard", "forestostard", 0x3EA5, 0});
+	mounts.append(array{"Llama", "llama", 0x3EA6, 0});
+	mounts.append(array{"Horse Light Grey", "horse3", 0x3EA0, 0});
+	mounts.append(array{"Horse Grey Brown", "horse4", 0x3EA1, 0});
+	mounts.append(array{"Hai Riyo", "mounthairiyo", 0x3E94, 0});
+	mounts.append(array{"Raptalon", "mountraptalon", 0x3E90, 0});
+	mounts.append(array{"CuShidhe Storm Wolf", "mountwolf", 0x3E91, 0});
+	mounts.append(array{"Mondain's Steed", "horse", 0x3E92, 0});
+	mounts.append(array{"Boura", "horse", 0x3EC6, 0});
+	mounts.append(array{"Giant Beetle 2", "beetle", 0x3EBC, 0});
+	mounts.append(array{"Skeletal Mount", "horse", 0x3EBB, 0});
+	mounts.append(array{"Swamp Dragon", "swampdragon", 0x3EBD, 0});
+	mounts.append(array{"Armored Swamp Dragon", "armoredswampdragon", 0x3EBE, 0});
+	mounts.append(array{"Hell Hound", "horse", 0x3EC9, 0});
+	mounts.append(array{"Tiger", "horse", 0x3EC7, 0});
+	mounts.append(array{"Ethereal Tiger", "etherealtiger", 0x3EC8, 16385});
+	mounts.append(array{"Tarantula", "horse", 0x3ECA, 0});
+	mounts.append(array{"Lasher", "horse", 0x3ECB, 0});
+	mounts.append(array{"Palomino", "horse", 0x3ECD, 0});
+	mounts.append(array{"Windrunner", "horse", 0x3ECC, 0});
+	mounts.append(array{"Frost Mite", "horse", 0x3EDA, 0});
+	mounts.append(array{"Serpentine Dragon", "horse", 0x3ECE, 0});
+	mounts.append(array{"Peacock", "horse", 0x3ECF, 0});
+	mounts.append(array{"Skeletal Hound", "horse", 0x3ED0, 0});
+	mounts.append(array{"Coconut Crab", "horse", 0x3ED1, 0});
+	mounts.append(array{"War Boar", "horse", 0x3ED2, 0});
+	mounts.append(array{"Capybara", "horse", 0x3ED3, 0});
+	mounts.append(array{"Newfoundland", "horse", 0x3ED4, 0});
+	mounts.append(array{"Malamute", "horse", 0x3ED5, 0});
+	mounts.append(array{"Great Dane", "horse", 0x3ED6, 0});
+	mounts.append(array{"Saint Bernard", "horse", 0x3ED7, 0});
+	mounts.append(array{"Russian Terrier", "horse", 0x3ED8, 0});
+	mounts.append(array{"Rottweiler", "horse", 0x3ED9, 0});
+	mounts.append(array{"Clydsdale", "horse", 0x3EDE, 0});
+	mounts.append(array{"Horse Elemental Earth", "horseelementalearth", 0x3EDF, 0});
+	mounts.append(array{"Horse Elemental Fire", "horseelementalfire", 0x3EE0, 0});
+	mounts.append(array{"Horse Elemental Water", "horseelementalwater", 0x3EE1, 0});
+	mounts.append(array{"Horse Elemental Air", "horseelementalair", 0x3EE2, 0});
+
+	return mounts;
+endfunction
+
+function ShowMountListGump(who, mounts)
+	var per_page := 14;
+	var total_pages := CInt((mounts.size() + per_page - 1) / per_page);
+	if (total_pages < 1)
+		total_pages := 1;
+	endif
+
+	var gump := GFCreateGump(0, 0, 560, 620);
+	GFDisposable(gump, 0);
+	GFResizePic(gump, 0, 0, 3600, 560, 620);
+	GFTextMid(gump, 15, 20, 530, 1153, "Mount Test");
+	GFTextLine(gump, 25, 52, 1153, "Mount");
+	GFTextLine(gump, 350, 52, 1153, "Use");
+	GFAddButton(gump, 260, 565, 2119, 2120, GF_CLOSE_BTN, 999999);
+
+	var page := 1;
+	while (page <= total_pages)
+		GFPage(gump, page);
+		var start_index := ((page - 1) * per_page) + 1;
+		var end_index := start_index + per_page - 1;
+		if (end_index > mounts.size())
+			end_index := mounts.size();
+		endif
+
+		var y_pos := 75;
+		var index := start_index;
+		while (index <= end_index)
+			var entry := mounts[index];
+			GFTextCrop(gump, 25, y_pos, 300, 18, 0, entry[1]);
+			GFAddButton(gump, 355, y_pos - 1, 2117, 2118, GF_CLOSE_BTN, index);
+			y_pos := y_pos + 32;
+			index := index + 1;
+		endwhile
+
+		if (page > 1)
+			GFAddButton(gump, 380, 565, 4014, 4015, GF_PAGE_BTN, page - 1);
+			GFTextLine(gump, 410, 565, 1153, "Prev");
+		endif
+		if (page < total_pages)
+			GFAddButton(gump, 450, 565, 4005, 4006, GF_PAGE_BTN, page + 1);
+			GFTextLine(gump, 480, 565, 1153, "Next");
+		endif
+
+		page := page + 1;
+	endwhile
+
+	var input := GFSendGump(who, gump);
+	if (!input)
+		return 0;
+	endif
+
+	var choice := CInt(input[0]);
+	if (choice == 999999 || choice < 1 || choice > mounts.size())
+		return 0;
+	endif
+
+	return choice;
+endfunction
+
+function CreateAndMount(who, mount_entry)
+	var mount := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0x1F021, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
+	if (!mount)
+		SendSysMessage(who, "Could not create that mount.");
+		return 0;
+	endif
+
+	mount.graphic := CInt(mount_entry[3]);
+	if (CInt(mount_entry[4]))
+		mount.color := CInt(mount_entry[4]);
+	endif
+	SetObjProperty(mount, "npctemplate", mount_entry[2]);
+
+	if (!EquipItem(who, mount))
+		SendSysMessage(who, "Could not mount that creature.");
+		ApplyRawDamage(mount, CInt(GetHP(mount) + 3));
+		return 0;
+	endif
+
+	SetObjProperty(who, "DonatorMounted", 1);
+	SendSysMessage(who, "Mounted: " + mount_entry[1] + ".");
+	return 1;
+endfunction

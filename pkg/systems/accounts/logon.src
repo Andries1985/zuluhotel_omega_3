@@ -15,24 +15,17 @@ include ":accounts:accounts";
 program Logon( who )
 
         //Print("I am using accounts logon.src");
-        var stafflevel := who.cmdlevel;
+        var is_staff := ACCT_IsStaffCharacter( who );
 
         ACCT_SetLastLogin( who.acct );
 
         if( !CheckForMaxClientsOnline( who ))
-                if (!who.cmdlevel)
-                        SysLog( "LoginAccount() Error: trying to login too many accounts." );
-                        DisconnectClient( who );
-                        return 0;
-                endif
-                if (stafflevel == 0)
+                if( !is_staff )
                         SysLog( "LoginAccount() Error: trying to login too many accounts." );
                         DisconnectClient( who );
                         return 0;
                 endif
         endif
-
-        VerifyStaffOnline( who );
 
 	var speed_walk := GetObjProperty( who, "SpeedWalk" );
 	if( who.cmdlevel >= 2 )

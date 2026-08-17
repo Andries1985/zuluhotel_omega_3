@@ -1,0 +1,99 @@
+/*
+        Donation box sweeper.
+
+        Runs forever. Every DONATION_SWEEP_PERIOD seconds it walks every
+        registered donation box and destroys any item whose donatedat
+        timestamp is older than DONATION_TTL_SECONDS (one week).
+
+        Start once at server boot: start_script(":donationbox:scripts/sweeper");
+        Re-running is harmless because of the global guard property below.
+*/
+use uo;
+use os;
+
+include ":donationbox:include/donationbox";
+
+const SWEEPER_GUARD := "#DonationBoxSweeperRunning";
+
+program donation_sweeper()
+	// Single-instance guard. If the script restarts after a hard reload we
+	// want exactly one sweeper running.
+	if (GetGlobalProperty(SWEEPER_GUARD))
+		return;
+	endif
+	SetGlobalProperty(SWEEPER_GUARD, 1);
+
+	set_script_option(SCRIPTOPT_NO_RUNAWAY, 1);
+
+	DonationDebug("sweeper online. period=" + DONATION_SWEEP_PERIOD + "s ttl=" + DONATION_TTL_SECONDS + "s");
+	while (1)
+		sleep(DONATION_SWEEP_PERIOD);
+		if (DonationSweepEnabled())
+			SweepAllBoxes();
+		else
+			DonationDebug("tick skipped. sweeper disabled by global toggle.");
+		endif
+	endwhile
+endprogram
+
+function SweepAllBoxes()
+	var list := DonationBoxList();
+	DonationDebug("tick. registry size=" + list.size());
+	if (!list.size())
+		return 0;
+	endif
+
+	var now := ReadGameClock();
+	var cutoff := now - DONATION_TTL_SECONDS;
+	var live := array{};
+	var swept := 0;
+
+	foreach serial in list
+		var box := SystemFindObjectBySerial(serial);
+		if (!box)
+			DonationDebug("  box serial 0x" + Hex(serial) + " gone; dropping from registry.");
+			continue;
+		endif
+		live.append(serial);
+		swept := swept + SweepBox(box, cutoff, now);
+		sleepms(20);
+	endforeach
+
+	if (live.size() != list.size())
+		SetGlobalProperty(DONATION_REGISTRY, live);
+	endif
+
+	DonationDebug("tick done. destroyed=" + swept + " across " + live.size() + " box(es).");
+	if (swept > 0)
+		SysLog("[donationbox] swept " + swept + " expired item(s) across " + live.size() + " box(es).");
+	endif
+
+	return swept;
+endfunction
+
+function SweepBox(box, cutoff, now)
+	var destroyed := 0;
+	var scanned := 0;
+	foreach item in EnumerateItemsInContainer(box)
+		scanned := scanned + 1;
+		var donated_at := CInt(GetObjProperty(item, DONATED_AT_PROP));
+		// Items without a tag (e.g. created directly inside by a GM) get
+		// stamped now so they age from this moment instead of being culled.
+		if (!donated_at)
+			SetObjProperty(item, DONATED_AT_PROP, ReadGameClock());
+			DonationDebug("    untagged item 0x" + Hex(item.serial) + " objtype=0x" + Hex(item.objtype) + " -> stamped now.");
+			continue;
+		endif
+		var age := now - donated_at;
+		if (donated_at <= cutoff)
+			DonationDebug("    DESTROY item 0x" + Hex(item.serial) + " objtype=0x" + Hex(item.objtype) + " age=" + age + "s");
+			DestroyItem(item);
+			destroyed := destroyed + 1;
+		else
+			DonationDebug("    keep    item 0x" + Hex(item.serial) + " objtype=0x" + Hex(item.objtype) + " age=" + age + "s (< " + DONATION_TTL_SECONDS + ")");
+		endif
+		sleepms(5);
+	endforeach
+	DonationDebug("  box 0x" + Hex(box.serial) + ": scanned=" + scanned + " destroyed=" + destroyed);
+	return destroyed;
+endfunction

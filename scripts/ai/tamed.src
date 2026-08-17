@@ -15,7 +15,6 @@ include "include/spelldata";
 include "ai/setup/modsetup";
 include "include/random";
 include "include/attributes";
-//include ":housing:utility";
 include ":house:utility";
 
 const HALT_THRESHOLD := 10;
@@ -43,21 +42,26 @@ var poisoner;
 var summons := 0;
 var chaseloop := 0;
 
-var guarding :=0;
+var guarding := 0;
+var guardinghp := 0;
+var autonomous_defense := 0;
+var guardattackers := array;
+var selfattackers := array;
 var following := 0;
 var staying := 0;
 var nextwatch := ReadGameClock();
 var freetime := cint(ReadGameClock() + 2400);
+var lastspeechkey := "";
+var nextspeechallowed := 0;
+var awaitingtargetselection := 0;
+var ignorespeechuntil := 0;
 
 me.setmaster( master );
 
 if( me.name["<random>"] )
 	SetName ( me , RandomName( me ) );
 endif
-if (!me.backpack)
-	var newbackpack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
-	EquipItem(me, newbackpack);
-endif
+EnsureMyPack();
 
 if (getobjproperty(me,"freetime"))
 	freetime := GetObjProperty(me,"freetime");
@@ -72,6 +76,11 @@ if ( me.npctemplate["dragon"] )
 endif
 
 program TamedAI()
+
+	if (!master)
+		GoWild();
+		return;
+	endif
 
 	if (master.npctemplate)
 		if (getobjproperty(me,"#restarting"))
@@ -100,13 +109,14 @@ program TamedAI()
 	SetAnchor( me.x, me.y, 20, 0 );
 
 	var npccfg := readconfigfile("npcdesc");
-	if ((npccfg[me.npctemplate].script == "spellkillpcs") || (npccfg[me.npctemplate].script == "goodcaster"))
+	var poison_skill := GetConfigInt( npccfg[me.npctemplate], "Poisoning" );
+	spells := GetConfigStringArray( npccfg[me.npctemplate], "spell" );
+	if (Len(spells))
 		caster := 1;
-		spells := GetConfigStringArray( npccfg[me.npctemplate], "spell" );
 		saywords := npccfg[me.npctemplate].saywords;
 	elseif ((npccfg[me.npctemplate].script == "firebreather") || (npccfg[me.npctemplate].script == "chaosfirebreather"))
 		firebreather := 1;
-	elseif (npccfg[me.npctemplate].script == "poisonkillpcs")
+	elseif (poison_skill > 0)
 		poisoner := 1;
 	endif
 
@@ -131,6 +141,8 @@ function Fight( opponent )
 
 	var targetname := opponent.name;
 	var oldfollowing := following;
+	var oldguarding := guarding;
+	var oldstaying := staying;
 
 	SetDexterityMod(me, 0);
 	following := 0;
@@ -171,19 +183,15 @@ function Fight( opponent )
 				following := ev.target;
 			EVID_ALL_GUARD_CMD:
 				guarding := ev.target;
+				following := ev.target;
+				guardinghp := GetHP(ev.target);
 				PrintTextAbove(me,"*guarding " + guarding.name + "*");
 			SYSEVENT_SPEECH:
 				ProcessSpeech(ev);
 			SYSEVENT_ENGAGED:
+				turntoward( opponent );
 			SYSEVENT_DAMAGED:
 				if (ev.source)
-					if ( (ev.source.serial != opponent.serial) and (ev.source.serial != master.serial) and
-						 (ev.source.serial != me.serial) )
-						if( (!CheckLineOfSight( me, opponent )) or (Random(8)==1) )
-							opponent := ev.source;
-							SetOpponent( opponent );
-						endif
-					endif
 					turntoward( opponent );
 				endif
 				if (caster)
@@ -193,18 +201,16 @@ function Fight( opponent )
 						if( me.poisoned )
 							CastSpell(me,me,"cure");
 							Sleepms(500);
-							CastSpell(me,ev.source,"poison");
+							CastSpell(me,opponent,"poison");
 						endif
 					endif
-					if ((GetHP(me)*100/GetMaxHP(me)) < 10)
-						if (DEBUG_MODE)
-							PrintTextAbove(me, "fleeing due to dying");
-							PrintTextAbove(me, "GetHP "+GetHP(me));
-							PrintTextAbove(me, "GetMaxHP "+GetMaxHP(me));
-						endif
-						EraseObjProperty(me,"#flees");
-						flee(ev.source);
-					endif
+					// if ((GetHP(me)*100/GetMaxHP(me)) < 10)
+					// 	if (DEBUG_MODE)
+					// 		PrintTextAbove(me, "low hp - fighting to death");
+					// 		PrintTextAbove(me, "GetHP "+GetHP(me));
+					// 		PrintTextAbove(me, "GetMaxHP "+GetMaxHP(me));
+					// 	endif
+					// endif
 				endif
 			EVID_PEACEMADE:
 				SetWarMode( 0 );
@@ -227,10 +233,9 @@ function Fight( opponent )
 			endif
 		elseif (caster)
 			if ( nextbreath <= readgameclock() )
-
 				if (Random(3) != 1)
 					sleep(1);
-					cast_offensive_spell(me,opponent);
+					cast_offensive_spell( me, opponent );
 				endif
 				SetObjProperty(me,"#lastbreath",ReadGameClock() + 2);
 			endif
@@ -243,9 +248,13 @@ function Fight( opponent )
 
 		if ( loops > 100 )
 			if (DEBUG_MODE)
-				PrintTextAbove(me, "fleeing due to loops");
+				PrintTextAbove(me, "cannot reach target - returning to previous command");
 			endif
-			flee(opponent);
+			SetWarMode( 0 );
+			opponent := 0;
+			following := oldfollowing;
+			guarding := oldguarding;
+			staying := oldstaying;
 			return;
 		endif
 
@@ -254,17 +263,7 @@ function Fight( opponent )
 	SetWarMode( 0 );
 	opponent := 0;
 
-	foreach mob in ListHostiles( me, 9, 0 )
-		fight(mob);
-		return;
-	endforeach
-
-	if ( distance(me, master) < 8 )
-		following := oldfollowing;
-	else
-		following := 0;
-		staying := 0;
-	endif
+	following := oldfollowing;
 
 	if (dragonspeak) dragontalk("aftercombat", targetname); endif
 
@@ -293,19 +292,19 @@ function CloseDistance( opponent )
 		endif
 		
 		var d:=distance(me,opponent);
-		if ( d > 11 )
+		if ( d > 10 )
 			if (DEBUG_MODE)
 				PrintTextAbove(me, "d: "+d);
 			endif
 			WalkToward( opponent );
 			Sleepms(sleepdelay);
 			return 1;
-		elseif (d < 8)
+		elseif (d < 2)
 			if (GetMana(me) > (GetMaxMana(me)/3))
 				if (DEBUG_MODE)
 					PrintTextAbove(me, "good mana too close");
 				endif
-				if (RunAwayFrom( opponent ));
+				if (RunAwayFrom( opponent ))
 					Sleepms(sleepdelay);
 					return 1;
 				else
@@ -316,7 +315,7 @@ function CloseDistance( opponent )
 				if (DEBUG_MODE)
 					PrintTextAbove(me, "not enough mana");
 				endif
-				if(!WalkToward( opponent ));
+				if(!WalkToward( opponent ))
 					Sleepms(sleepdelay);
 					return 1;
 				else
@@ -357,7 +356,8 @@ function Transfer()
 
 	if( GetObjProperty( me , "summoned" ) or
 		GetObjProperty( me , "animated" ) or
-		GetObjProperty( me , "charmed" ) )
+		GetObjProperty( me , "charmed" ) or
+		GetObjProperty( me, "EBSummons" ) )
 		return;
 	endif
 
@@ -385,7 +385,7 @@ function Transfer()
 		return;
 	endif
 
-	if ( (firebreather) or (caster) )
+	if ( (firebreather) or (caster) or (poisoner) )
 
 		var npccfgfile := ReadConfigFile( "npcdesc" );
 		var tameskill := npccfgfile[me.npctemplate].tameskill;
@@ -428,9 +428,9 @@ function Release()
 			it.movable := 1;
 			PlaySoundEffect( me, SFX_SPELL_DISPEL );
 			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
-			MoveObjectToLocation(me, DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y , DEFAULT_LOCATION_ITEM_CREATION_Z, DEFAULT_LOCATION_ITEM_CREATION_R, MOVEOBJECT_FORCELOCATION);
+			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 			RevokePrivilege( me, "invul" );
-			ApplyRawdamage( me , GetMaxHP(me) + 3 );
+			me.kill();
 		set_critical(0);
 		else
 			say("*Argh*");
@@ -438,19 +438,19 @@ function Release()
 		endif
 	elseif( summoned )
 		PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
-		MoveObjectToLocation( me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
+		MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 		RevokePrivilege( me, "invul" );
-		ApplyRawDamage( me , GetMaxHP(me)+3 );
+		me.kill();
 	elseif( animated )
 		RevokePrivilege( me, "invul" );
-		ApplyRawDamage( me , GetMaxHP(me)+3 );
+		me.kill();
 	else
 		if( IsInSafeArea(me) || IsInSafeArea(me.master) )
 			SendSysmessage( master , "You can't release an animal here, it has been destroyed." );
 			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
 			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 			RevokePrivilege( me, "invul" );
-			ApplyRawDamage( me , GetMaxHP(me)+3 );
+			me.kill();
 			return;
 		elseif( IsInNOPKArea(me) || IsInGuardedArea(me) )
 			SendSysmessage( master , "You can't release an animal here!" );
@@ -462,12 +462,15 @@ function Release()
 endfunction
 
 function Fetch()
-
-	if ( Len(EnumerateItemsInContainer(mypack)) )
-		drop();
+	EnsureMyPack();
+	if (!mypack)
+		return;
 	endif
 
-	var tobj := Target(master);
+	var tobj := AcquireTargetWithSpeechLock();
+	if (!tobj)
+		return;
+	endif
 	if (tobj.container)
 		return;
 	endif
@@ -483,21 +486,69 @@ function Fetch()
 	endwhile
 
 	if (Accessible(me,tobj))
-		MoveItemToContainer(tobj, mypack);
+		if (!MoveItemToContainer(tobj, mypack))
+			SendSysmessage(master, me.name + " pack is full.");
+			return;
+		endif
 	endif
 
 endfunction
 
 
 function drop()
+	EnsureMyPack();
+	if (!mypack)
+		return;
+	endif
 
 	foreach myitems in EnumerateItemsInContainer(mypack)
 		if (myitems.container.serial == mypack.serial)
-			MoveObjectToLocation(myitems, me.x, me.y, me.z, me.realm, 0);
+			MoveObjectToLocation(myitems, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION);
 			sleepms(100);
 		endif
 	endforeach
 
+endfunction
+
+function EnsureMyPack()
+	if (!me.backpack)
+		var newbackpack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+		if (newbackpack)
+			EquipItem(me, newbackpack);
+		endif
+	endif
+
+	mypack := FindMyPack(me.serial);
+	if (!mypack)
+		mypack := me.backpack;
+	endif
+endfunction
+
+function AcquireTargetWithSpeechLock(options := 0)
+	awaitingtargetselection := 1;
+	var tgt;
+	if (options)
+		tgt := Target(master, options);
+	else
+		tgt := Target(master);
+	endif
+	awaitingtargetselection := 0;
+	ignorespeechuntil := ReadGameClock() + 2;
+	return tgt;
+endfunction
+
+function ReturnItemToSourcePackOrGround(item, source)
+	if (!item || !source)
+		return 0;
+	endif
+
+	var sourcepack := source.backpack;
+	if (sourcepack && MoveItemToContainer(item, sourcepack))
+		return 1;
+	endif
+
+	MoveObjectToLocation(item, source.x, source.y, source.z, source.realm, 0);
+	return 0;
 endfunction
 
 function speak()
@@ -561,7 +612,7 @@ function PetCount()
 				magic_pets := magic_pets + 1;
 			else
 				if ( GetObjProperty( mob , "Boss" ) )
-					pets := pets + 5;
+					pets := pets + 3;
 				else
 					pets := pets + 1;
 				endif
@@ -581,68 +632,80 @@ function PetCount()
 
 endfunction
 
-function SpecialFrenzyRelease( against )
+// function SpecialFrenzyRelease( against )
 
-	if( GetObjProperty( me, "DonatorMount") )
-		return;
-	endif
+// 	if( GetObjProperty( me, "DonatorMount") )
+// 		return;
+// 	endif
 
-	var npccfgfile := ReadConfigFile( "npcdesc" );
+// 	var npccfgfile := ReadConfigFile( "npcdesc" );
 
-	me.script	:= npccfgfile[me.npctemplate].script;
-	me.name		:= npccfgfile[me.npctemplate].name;
-	if( me.name["<random>"] )
-		SetName ( me , RandomName( me ) );
-	endif
+// 	me.script	:= npccfgfile[me.npctemplate].script;
+// 	me.name		:= npccfgfile[me.npctemplate].name;
+// 	if( me.name["<random>"] )
+// 		SetName ( me , RandomName( me ) );
+// 	endif
 
-	PrintTextAbove( me , me.name + " can roam free again!" );
-	me.setmaster( 0 );
-	EraseObjProperty( me , "master" );
-	SetObjProperty( me , "tametimer" , ReadGameClock() + 10000 );
-	RestartScript( me );
+// 	PrintTextAbove( me , me.name + " can roam free again!" );
+// 	me.setmaster( 0 );
+// 	EraseObjProperty( me , "master" );
+// 	SetObjProperty( me , "tametimer" , ReadGameClock() + 10000 );
+// 	RestartScript( me );
 
-	var ev := array;
-	ev.+ type;
-	ev.+ source;
-	ev.type := EVID_PEACEMADE;
-	ev.source := against;
-	SendEvent( me , ev );
+// 	var ev := array;
+// 	ev.+ type;
+// 	ev.+ source;
+// 	ev.type := EVID_PEACEMADE;
+// 	ev.source := against;
+// 	SendEvent( me , ev );
 
-	ev.type := SYSEVENT_ENGAGED;
-	SendEvent( me , ev );
+// 	ev.type := SYSEVENT_ENGAGED;
+// 	SendEvent( me , ev );
 
-endfunction
+// endfunction
 
 function OpenMyPack();
 
 	if (!master)
 		master := SystemFindObjectBySerial( masterserial );
-		me.setmaster( master );
+		if (!master)
+			master := SystemFindObjectBySerial( masterserial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+		endif
 	endif
 
+	if (!master)
+		return;
+	endif
+
+	me.setmaster( master );
+	EnsureMyPack();
+
 	if (distance(me,master) > 1)
+		if (DEBUG_MODE)
+			PrintTextAbove(me, "OpenMyPack denied: too far from master");
+		endif
 		return;
 	endif
 
 	case (me.graphic)
 		0x123:
 		0x124:
-			if (!me.backpack)
-				var newbackpack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X , DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
-				EquipItem(me, newbackpack);
+			if (mypack and me.backpack and (mypack.serial != me.backpack.serial))
+				foreach item in enumerateitemsincontainer(mypack)
+					if (item.container.serial == mypack.serial)
+						moveitemtocontainer(item, me.backpack);
+					endif
+				endforeach
 			endif
-
-			foreach item in enumerateitemsincontainer(mypack)
-				if (item.container.serial == mypack.serial)
-					moveitemtocontainer(item, me.backpack);
-				endif
-			endforeach
 
 			SendOpenSpecialContainer( master, me.backpack );
 			return;
 	endcase
 
-	if( GetObjProperty( me , "summoned" ) or GetObjProperty( me , "animated" ) or GetObjProperty( me , "charmed" ) )
+	if( GetObjProperty( me , "summoned" ) or GetObjProperty( me , "animated" ) or GetObjProperty( me , "charmed" ) or GetObjProperty( me , "EBSummons" ) )
+		if (DEBUG_MODE)
+			PrintTextAbove(me, "OpenMyPack denied: magical summon cannot mount");
+		endif
 		SendSysMessage( master , "You can't mount summoned or magically binded creatures." );
 		return;
 	endif
@@ -651,88 +714,85 @@ function OpenMyPack();
 
 	var alreadymounted := GetEquipmentByLayer( master, 25 );
 	if (alreadymounted || master.graphic == 0x2a)
+		if (DEBUG_MODE)
+			PrintTextAbove(me, "OpenMyPack denied: master already mounted");
+		endif
 		return;
 	endif
 
 	var mounttype := 0;
 
-	if (me.graphic == 0xd5 && me.npctemplate != "donatorbear")
-		return 0;
-	endif
-
 	case (me.graphic)
-		0xcc:	mounttype := 0x3ea2;	//dark brown/horse
-		0xc8:	mounttype := 0x3e9f;	//lightbrown/horse2
-		0xe2:	mounttype := 0x3ea0;	//light grey/horse3
-		0xe4: 	mounttype := 0x3ea1;	//greybrown/horse4
-		0xdc: 	mounttype := 0x3ea6;	//Llama
-		0xd5:	mounttype := 0x3ec5;	//Polar Bear
-		0xd2: 	mounttype := 0x3ea3;	//desert
-		0xda: 	mounttype := 0x3ea4;	//frenzied
-		0xdb:	mounttype := 0x3ea5;	// Forest Ostard
-		0x75: 	mounttype := 0x3ea8;	// Silver Steed
-		0x74:	mounttype := 0x3EA7;	// Nightmare 1 - Lightest
-		0xB1:	mounttype := 0x3EA7;	// Nightmare 2 - Darker
-		0xB2:	mounttype := 0x3EB6;	// Nightmare 3 - Darker
-		0xB3:	mounttype := 0x3EB7;	// Nightmare 4 - Darkest
-		0x72:	mounttype := 0x3EA9;	// Dark Steed
-		0xBE:	mounttype := 0x3e9e;	// Fire Steed
-		0x73:	mounttype := 0x3eaa;	// Ethereal Horse
-		0xAA:	mounttype := 0x3eab;	// Ethereal Llama
-		0xAB:	mounttype := 0x3eac;	// Ethereal Ostard
-		0xC3:	mounttype := 0x3e97;	// Ethereal Giant Beetle
-		0xC2:	mounttype := 0x3e98;	// Ethereal Swamp Dragon
-		0xC1:	mounttype := 0x3e9a;	// Ethereal Ridgeback
-		0xBF:	mounttype := 0x3E9C;	// Ethereal Kirin
-		0xC0:	mounttype := 0x3E9D;	// Ethereal Unicorn
-		//0x78:	mounttype := 0x3eaf;	// War Horse (Blood Red)		- No Corresponding Mount in NPCDESC.cfg
-		//0x79:	mounttype := 0x3eb0;	// War Horse (Light Green)		- No Corresponding Mount in NPCDESC.cfg
-		//0x77:	mounttype := 0x3eb1;	// War Horse (Light Blue)		- No Corresponding Mount in NPCDESC.cfg
-		//0x90:	mounttype := 0x3eb3;	// Sea Horse (Medium Blue)		- No Corresponding Mount in NPCDESC.cfg
-		0x84:	mounttype := 0x3ead;	// Kirin
-		//0x76:	mounttype := 0x3eb2;	// War Horse (Purple)			- No Corresponding Mount in NPCDESC.cfg
-		0x7A:	mounttype := 0x3eb4;	// Unicorn
-		0xBB:	mounttype := 0x3eb8;	// Ridgeback
-		0xBC:	mounttype := 0x3eba;	// Ridgeback, Savage
-
-		0xF3:	mounttype := 0x3e94;	// Hai Riyo
-		0x114:	mounttype := 0x3e90;	// Raptalon
-		0x115:	mounttype := 0x3e91;	// CuShidhe aka Storm Wolf
-		0x11C:	mounttype := 0x3e92;	// Mondain's Steed
-		0x319:	mounttype := 0x3ebb;	// Skeletal Mount
-		0xA9:	mounttype := 0x3e95;	// Giant Beetle
-		//0x317:	mounttype := 0x3ebc;	// Giant Beetle 2			- No Corresponding Mount in NPCDESC.cfg (Same graphic as other beetle)
-		0x31A:	mounttype := 0x3ebd;	// SwampDragon
-		0x31F:	mounttype := 0x3ebe;	// Armored Swamp Dragon
-		
-		0x1B0:	mounttype := 0x3EC6;	// Boura
-		0x4E6:	mounttype := 0x3EC7;	// Tiger
-		0x4E7:	mounttype := 0x3EC8;	// Ethereal Tiger
-		0x42D:	mounttype := 0x3EC9;	// Hell Hound
-		0x579:	mounttype := 0x3ECA;	// Tarantula				- No Corresponding Mount in NPCDESC.cfg (No Graphic)
-		0x57F:	mounttype := 0x3ECB;	// Lasher - a rainbow highlighted unicorn.
-		0x580:	mounttype := 0x3ECD;	// Palomino
-		0x582:	mounttype := 0x3ECC;	// Windrunner
-		0x59A:	mounttype := 0x3ECE;	// Serpentine Dragon		- No Corresponding Mount in NPCDESC.cfg (No Graphic)
-		0x5A0:	mounttype := 0x3ECF;	// Peacock
-		0x5A1:	mounttype := 0x3ED0;	// Skeletal Hound
-		0x5E6:	mounttype := 0x3ED1;	// Coconut Crab
-		0x5F6:	mounttype := 0x3ED2;	// War Boar
-		0x5F7:	mounttype := 0x3ED3;	// Capybara
-		0x60A:	mounttype := 0x3ED4;	// Newfoundland
-		0x60B:	mounttype := 0x3ED5;	// Malamute
-		0x60C:	mounttype := 0x3ED6;	// Great Dane
-		0x60D:	mounttype := 0x3ED7;	// Saint Bernard
-		0x60F:	mounttype := 0x3ED8;	// Russian Terrier
-		0x610:	mounttype := 0x3ED9;	// Rottweiler
-		0x590:	mounttype := 0x3EDA;	// Frost Mite				- No Corresponding Mount in NPCDESC.cfg (Converts to horse when ridden)
-	
-		//0x9:	mounttype := 0x3f6f;	// Demon (looks awful)			- No idea where this comes from
-		//0x3E9B	- Set as mounts, but no corresponding graphics
-		//0x3EB5	- Set as mounts, but no corresponding graphics
-		//0x3EC3	- Set as mounts, but no corresponding graphics
-		//0x3F3A	- Set as mounts, but no corresponding graphics
-		
+		0x0072:     mounttype := 0x3EA9;    //Dark Steed
+		0x0073:     mounttype := 0x3EAA;    //Ethereal Horse
+		0x0074:     mounttype := 0x3EA7;    //Nightmare 1 - Lightest
+		0x0075:     mounttype := 0x3EA8;    //Silver Steed
+		0x0076:     mounttype := 0x3EB2;    //War Horse (Purple) - No Corresponding Mount in NPCDESC.cfg
+		0x0077:     mounttype := 0x3EB1;    //War Horse (Light Blue) - No Corresponding Mount in NPCDESC.cfg
+		0x0078:     mounttype := 0x3EAF;    //War Horse (Blood Red) - No Corresponding Mount in NPCDESC.cfg
+		0x0079:     mounttype := 0x3EB0;    //War Horse (Light Green) - No Corresponding Mount in NPCDESC.cfg
+		0x007A:     mounttype := 0x3EB4;    //Unicorn
+		0x0084:     mounttype := 0x3EAD;    //Kirin
+		0x0090:     mounttype := 0x3EB3;    //Sea Horse (Medium Blue) - No Corresponding Mount in NPCDESC.cfg
+		0x00A9:     mounttype := 0x3E95;    //Giant Beetle
+		0x00AA:     mounttype := 0x3EAB;    //Ethereal Llama
+		0x00AB:     mounttype := 0x3EAC;    //Ethereal Ostard - No Corresponding Mount in NPCDESC.cfg
+		0x00B1:     mounttype := 0x3EB5;    //Nightmare 2 - Darker
+		0x00B2:     mounttype := 0x3EB6;    //Nightmare 3 - Darker
+		0x00B3:     mounttype := 0x3EB7;    //Nightmare 4 - Darkest
+		0x00BB:     mounttype := 0x3EBA;    //Ridgeback, Savage
+		0x00BC:     mounttype := 0x3EB8;    //Ridgeback
+		0x00BE:     mounttype := 0x3E9E;    //Fire Steed
+		0x00BF:     mounttype := 0x3E9C;    //Ethereal Kirin
+		0x00C0:     mounttype := 0x3E9D;    //Ethereal Unicorn
+		0x00C1:     mounttype := 0x3E9A;    //Ethereal Ridgeback
+		0x00C2:     mounttype := 0x3E98;    //Ethereal Swamp Dragon
+		0x00C3:     mounttype := 0x3E97;    //Ethereal Giant Beetle
+		0x00C8:     mounttype := 0x3E9F;    //horse2 / Light Brown
+		0x00CC:     mounttype := 0x3EA2;    //horse / Dark Brown
+		0x00D2:     mounttype := 0x3EA3;    //Desert Ostard
+		0x00D5:     mounttype := 0x3EC5;    //Polar Bear
+		0x00DA:     mounttype := 0x3EA4;    //Frenzied Ostard
+		0x00DB:     mounttype := 0x3EA5;    //Forest Ostard
+		0x00DC:     mounttype := 0x3EA6;    //Llama
+		0x00E2:     mounttype := 0x3EA0;    //horse3 / Light Grey
+		0x00E4:     mounttype := 0x3EA1;    //horse4 / Grey Brown
+		0x00F3:     mounttype := 0x3E94;    //Hai Riyo
+		0x0114:     mounttype := 0x3E90;    //Raptalon
+		0x0115:     mounttype := 0x3E91;    //CuShidhe aka Storm Wolf
+		0x011C:     mounttype := 0x3E92;    //Mondain's Steed
+		0x01B0:     mounttype := 0x3EC6;    //Boura
+		0x0317:     mounttype := 0x3EBC;    //Giant Beetle 2 - No Corresponding Mount in NPCDESC.cfg (Same graphic as other beetle)
+		0x0319:     mounttype := 0x3EBB;    //Skeletal Mount
+		0x031A:     mounttype := 0x3EBD;    //SwampDragon
+		0x031F:     mounttype := 0x3EBE;    //Armored Swamp Dragon
+		0x042D:     mounttype := 0x3EC9;    //Hell Hound
+		0x04E6:     mounttype := 0x3EC7;    //Tiger
+		0x04E7:     mounttype := 0x3EC8;    //Ethereal Tiger
+		0x0579:     mounttype := 0x3ECA;    //Tarantula
+		0x057F:     mounttype := 0x3ECB;    //Lasher - a rainbow highlighted unicorn.
+		0x0580:     mounttype := 0x3ECD;    //Palomino
+		0x0582:     mounttype := 0x3ECC;    //Windrunner
+		0x0590:     mounttype := 0x3EDA;    //Frost Mite - No Corresponding Mount in NPCDESC.cfg (Converts to horse when ridden)
+		0x059A:     mounttype := 0x3ECE;    //Serpentine Dragon - No Corresponding Mount in NPCDESC.cfg (No Graphic)
+		0x05A0:     mounttype := 0x3ECF;    //Peacock
+		0x05A1:     mounttype := 0x3ED0;    //Skeletal Hound
+		0x05E6:     mounttype := 0x3ED1;    //Coconut Crab
+		0x05F6:     mounttype := 0x3ED2;    //War Boar
+		0x05F7:     mounttype := 0x3ED3;    //Capybara
+		0x060A:     mounttype := 0x3ED4;    //Newfoundland
+		0x060B:     mounttype := 0x3ED5;    //Malamute
+		0x060C:     mounttype := 0x3ED6;    //Great Dane
+		0x060D:     mounttype := 0x3ED7;    //Saint Bernard
+		0x060F:     mounttype := 0x3ED8;    //Russian Terrier
+		0x0610:     mounttype := 0x3ED9;    //Rottweiler
+		0x0673:     mounttype := 0x3EDE;	//Clydsdale
+		0x0674:     mounttype := 0x3EDF;    //Horse_Elemental_Earth - No Corresponding Mount in NPCDESC.cfg
+		0x0675:     mounttype := 0x3EE0;    //Horse_Elemental_Fire - No Corresponding Mount in NPCDESC.cfg
+		0x0678:     mounttype := 0x3EE1;    //Horse_Elemental_Water - No Corresponding Mount in NPCDESC.cfg
+		0x0679:     mounttype := 0x3EE2;    //Horse_Elemental_Air - No Corresponding Mount in NPCDESC.cfg
+		//0x09:       mounttype := 0x3F6F;    //Daemon Graphic (looks awful)
+			
 	endcase
 
 	if (mounttype)
@@ -749,8 +809,7 @@ function OpenMyPack();
 			setobjproperty(mount,"petmana",GetMana(me));
 			setobjproperty(mount,"freetime",freetime);
 			setobjproperty(mount,"npctemplate",me.npctemplate);
-
-			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X , DEFAULT_LOCATION_NPC_RELOCATION_Y , DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
 			if(master.graphic != 400 && master.graphic != 401)
 				master.graphic := master.trueobjtype;
 			endif
@@ -764,7 +823,7 @@ function OpenMyPack();
 			endif
 			RevokePrivilege( me, "invul" );
 			setobjproperty(me,"guardkill",1);
-			ApplyRawdamage( me, GetMaxHP(me) + 3 );
+			me.kill();
 
 			set_critical(0);
 			
@@ -784,7 +843,7 @@ endfunction
 //				0xe4:
 //				0xc8:
 //				0xe2:
-//				0x123:	poopoo := //CreateItemAtLocation(me.x,me.y,me.z,0x0f3c,1,me.realm);
+//				0x123:	poopoo := //CreateItemAtLocation(me.x,me.y,me.z,0x0f3c,1);
 //				default: return;
 //
 //			endcase
@@ -821,15 +880,19 @@ function TakeItem(ev)
 	endif
 
 	if ( (me.graphic == 0x123 ) or (me.graphic == 0x124) )
-		if (!me.backpack)
-			var newbackpack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
-			EquipItem(me, newbackpack);
+		EnsureMyPack();
+		var tookitem := 0;
+		if (mypack)
+			tookitem := MoveItemToContainer(ev.item, mypack);
 		endif
-		MoveItemToContainer(ev.item,me.backpack);
+
+		if (!tookitem)
+			ReturnItemToSourcePackOrGround(ev.item, ev.source);
+		endif
+
 		PlaySoundEffect(me,0x49);
 	else
-		var yourpack := ev.source.backpack;
-		MoveItemToContainer(ev.item,yourpack);
+		ReturnItemToSourcePackOrGround(ev.item, ev.source);
 	endif
 
 endfunction
@@ -850,6 +913,7 @@ function MainAILoop()
 
 	var loops := 60;
 	var firstwander := 1;
+	var firstloop := 1;
 
 	while (1)
 		ev := os::wait_for_event( waittime );
@@ -865,7 +929,13 @@ function MainAILoop()
 				SYSEVENT_DAMAGED:
 					if (ev.source)
 						if (dragonspeak) dragontalk("attacked", ev.source.name); endif
-						Fight( ev.source );
+						if (ev.type == SYSEVENT_DAMAGED)
+							if (guarding)
+								EnqueueGuardAttacker(ev.source);
+							else
+								EnqueueSelfAttacker(ev.source);
+							endif
+						endif
 					endif
 				SYSEVENT_DOUBLECLICKED:
 					if (ev.source.serial == masterserial)
@@ -876,14 +946,56 @@ function MainAILoop()
 						TakeItem(ev);
 					endif
 				EVID_ALL_ATTACK_CMD:
+					autonomous_defense := 0;
+					ClearAttackQueues();
+					guarding := 0;
 					fight(ev.target);
 				EVID_ALL_FOLLOW_CMD:
+					autonomous_defense := 0;
+					ClearAttackQueues();
+					guarding := 0;
 					following := ev.target;
 				EVID_ALL_GUARD_CMD:
+					autonomous_defense := 0;
+					ClearAttackQueues();
 					guarding := ev.target;
+					following := ev.target;
+					guardinghp := GetHP(ev.target);
 					PrintTextAbove(me,"*guarding " + guarding.name + "*");
 			endcase
 		endif
+
+		if (guarding)
+			var guardtarget := DequeueNextGuardAttacker();
+			if (guardtarget)
+				Fight(guardtarget);
+			endif
+		elseif (!staying)
+			var selftarget := DequeueNextSelfAttacker();
+			if (selftarget)
+				Fight(selftarget);
+			endif
+		endif
+
+		// Owner dead: behave like "all stop" and protect self.
+		if (master and master.dead)
+			if (!autonomous_defense or following or guarding)
+				autonomous_defense := 1;
+				guarding := 0;
+				guardinghp := 0;
+				following := 0;
+				ClearAttackQueues();
+			endif
+		endif
+
+		if (master and !autonomous_defense and !guarding and !staying and !following)
+			if (firstloop and (GetObjProperty(me, "summoned") or GetObjProperty(me, "animated") or GetObjProperty(me, "charmed")))
+				autonomous_defense := 1;
+			else
+				following := master;
+			endif
+		endif
+		firstloop := 0;
 
 		if ( (following) and (master) )
 			waittime := 0;
@@ -899,8 +1011,11 @@ function MainAILoop()
 			SetAnchor( me.x, me.y, 20, 0 );
 			Guard();
 		else
-			following := 0;
 			guarding := 0;
+			guardinghp := 0;
+			if (!autonomous_defense)
+				ClearAttackQueues();
+			endif
 			//ZHS STABILITY FIX
 			if ( firstwander )
 				SetAnchor( me.x, me.y, 2, 80 );// ZHS Stability Removed This
@@ -958,20 +1073,34 @@ endfunction
 
 function Guard()
 
+	if (guarding)
+		following := guarding;
+	endif
+
+	if (guarding)
+		if (!guardinghp)
+			guardinghp := GetHP(guarding);
+		endif
+		var currenthp := GetHP(guarding);
+		if (currenthp < guardinghp)
+			foreach mob in ListHostiles( guarding, 9, 0 );
+				EnqueueGuardAttacker(mob);
+			endforeach
+		endif
+		guardinghp := currenthp;
+	endif
+
 	if ( nextwatch <= readgameclock() )
 		nextwatch := readgameclock() + 7;
 		if ( Random(20)==1 )
 			PrintTextAbove(me,"*guarding " + guarding.name + "*");
 		endif
-		foreach mob in ListHostiles( guarding, 9, 0 );
-			if (dragonspeak) dragontalk("guardingattacked", mob.name); endif
-			Fight(mob);
-			return;
-		endforeach
 	endif
 
 	if ( (!GetBaseStrength(guarding)) or (guarding.dead) or (distance(me,guarding) > 15) )
 		guarding := 0;
+		guardinghp := 0;
+		guardattackers := array;
 	endif
 
 endfunction
@@ -990,25 +1119,18 @@ function Follow()
 		if( !Iscowner( master, multi3 ) and !Iscowner( master, multi2 ))
 			if( !IsFriend( master, multi3) and !IsFriend( master, multi2))
 				if (following.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!following.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !following.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and following.multi)
-					following := 0;
 					return;
 				elseif(!CheckLineOfSight(me, following))
-					following := 0;
 					return;
 				endif
 			endif
@@ -1019,25 +1141,18 @@ function Follow()
 		if( !Iscowner( master, multi2 ))
 			if( !IsFriend( master, multi2))
 				if (following.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!following.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !following.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and following.multi)
-					following := 0;
 					return;
 				elseif(!CheckLineOfSight(me, following))
-					following := 0;
 					return;
 				endif
 			endif
@@ -1048,25 +1163,18 @@ function Follow()
 		if( !Iscowner( master, multi3 ))
 			if( !IsFriend( master, multi3))
 				if (following.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!following.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !master.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and master.multi)
-					following := 0;
 					return;
 				elseif (me.multi and !following.multi)
-					following := 0;
 					return;
 				elseif (!me.multi and following.multi)
-					following := 0;
 					return;
 				elseif(!CheckLineOfSight(me, following))
-					following := 0;
 					return;
 				endif
 			endif
@@ -1126,15 +1234,30 @@ function ProcessSpeech(ev)
 		RestartScript( me );
 	endif
 
-	speak();
+	if (awaitingtargetselection)
+		return;
+	endif
+	if (ReadGameClock() < ignorespeechuntil)
+		if (DEBUG_MODE)
+			PrintTextAbove(me, "*ignoring queued commands during targeting*");
+		endif
+		return;
+	endif
 
 	var evtext := lower(ev.text);
 	var mename := lower(me.name);
+	if (ShouldDebounceSpeech(evtext, mename))
+		return;
+	endif
+
+	speak();
 
 	if (evtext[mename + " kill"] or evtext[mename + " attack"] or
 		evtext["all kill"] or evtext["all attack"] )
-		var what := Target( master , TGTOPT_HARMFUL + TGTOPT_CHECK_LOS );
+		var what := AcquireTargetWithSpeechLock(TGTOPT_HARMFUL + TGTOPT_CHECK_LOS);
 		if (what)
+			autonomous_defense := 0;
+			ClearAttackQueues();
 			if (dragonspeak) dragontalk("attack", what.name); endif
 			if (evtext["all kill"] or evtext["all attack"] )
 				AllCommand(EVID_ALL_ATTACK_CMD, what);
@@ -1143,9 +1266,13 @@ function ProcessSpeech(ev)
 			endif
 		endif
 	elseif( evtext[mename + " stop"] or evtext["all stop"])
+		autonomous_defense := 1;
 		guarding := 0;
+		guardinghp := 0;
 		following := 0;
+		ClearAttackQueues();
 	elseif ((evtext[mename + " come"]) or (evtext["all come"]))
+		autonomous_defense := 0;
 		var done := 0;
 		chaseloop := 0;
 		while( done == 0 )
@@ -1156,46 +1283,60 @@ function ProcessSpeech(ev)
 			endif
 		endwhile
 	elseif (evtext[mename + " follow"])
+		autonomous_defense := 0;
+		ClearAttackQueues();
 		if (evtext["follow me"])
 			following := ev.source;
 		else
-			var what := Target( master , TGTOPT_CHECK_LOS );
+			var what := AcquireTargetWithSpeechLock(TGTOPT_CHECK_LOS);
 			if (what)
 				following := what;
 			endif
 		endif
-		if (dragonspeak) dragontalk("follow", following.name); endif
+		if (dragonspeak and following) dragontalk("follow", following.name); endif
 	elseif (evtext["all follow"])
+		autonomous_defense := 0;
+		ClearAttackQueues();
 		if (evtext["follow me"])
 			following	:= ev.source;
 		else
-			var what := Target( master , TGTOPT_CHECK_LOS );
+			var what := AcquireTargetWithSpeechLock(TGTOPT_CHECK_LOS);
 			if (what)
 				AllCommand(EVID_ALL_FOLLOW_CMD, what);
 			endif
 		endif
-		if (dragonspeak) dragontalk("follow", following.name); endif
+		if (dragonspeak and following) dragontalk("follow", following.name); endif
 	elseif (evtext[mename + " transfer"] or (evtext["all transfer"]))
 		Transfer();
 	elseif (evtext[mename + " release"] or (evtext["all release"]))
 		Release();
 	elseif (evtext[mename + " guard"])
+		autonomous_defense := 0;
+		ClearAttackQueues();
 		if (evtext["guard me"])
 			guarding := ev.source;
+			following := ev.source;
+			guardinghp := GetHP(ev.source);
 			PrintTextAbove(me,"*guarding " + guarding.name + "*");
 		else
-			var what := Target( master , TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
+			var what := AcquireTargetWithSpeechLock(TGTOPT_HELPFUL + TGTOPT_CHECK_LOS);
 			if (GetHP(what))
 				guarding := what;
+				following := what;
+				guardinghp := GetHP(what);
 				PrintTextAbove(me,"*guarding " + guarding.name + "*");
 			endif
 		endif
 	elseif (evtext["all guard"])
+		autonomous_defense := 0;
+		ClearAttackQueues();
 		if (evtext["guard me"])
 			guarding := ev.source;
+			following := ev.source;
+			guardinghp := GetHP(ev.source);
 			PrintTextAbove(me,"*guarding " + guarding.name + "*");
 		else
-			var what := Target( master , TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
+			var what := AcquireTargetWithSpeechLock(TGTOPT_HELPFUL + TGTOPT_CHECK_LOS);
 			if (GetHP(what))
 				AllCommand(EVID_ALL_GUARD_CMD, what);
 			endif
@@ -1206,12 +1347,140 @@ function ProcessSpeech(ev)
 	elseif (evtext[mename + " drop"])
 		if (dragonspeak) dragontalk("drop", master.name); endif
 		drop();
+	elseif (evtext["all drop"])
+		if (dragonspeak) dragontalk("drop", master.name); endif
+		drop();
 	elseif (evtext[mename + " speak"]	or (evtext["all speak"]))
 		speak();
 	elseif (evtext[mename + " stay"]	or (evtext["all stay"]))
 		staying := 1;
 	endif
 
+endfunction
+
+function ShouldDebounceSpeech(evtext, mename)
+	var key := "";
+
+	if (evtext["all follow"] and evtext["follow me"])
+		key := "all_follow_me";
+	elseif (evtext["all follow"])
+		key := "all_follow";
+	elseif (evtext[mename + " follow"] and evtext["follow me"])
+		key := "pet_follow_me";
+	elseif (evtext[mename + " follow"])
+		key := "pet_follow";
+	elseif (evtext["all guard"] and evtext["guard me"])
+		key := "all_guard_me";
+	elseif (evtext["all guard"])
+		key := "all_guard";
+	elseif (evtext[mename + " guard"] and evtext["guard me"])
+		key := "pet_guard_me";
+	elseif (evtext[mename + " guard"])
+		key := "pet_guard";
+	elseif (evtext["all come"])
+		key := "all_come";
+	elseif (evtext[mename + " come"])
+		key := "pet_come";
+	elseif (evtext["all stop"])
+		key := "all_stop";
+	elseif (evtext[mename + " stop"])
+		key := "pet_stop";
+	elseif (evtext["all stay"])
+		key := "all_stay";
+	elseif (evtext[mename + " stay"])
+		key := "pet_stay";
+	elseif (evtext["all drop"])
+		key := "all_drop";
+	elseif (evtext[mename + " drop"])
+		key := "pet_drop";
+	elseif (evtext[mename + " fetch"] or evtext[mename + " get"])
+		key := "pet_fetch";
+	endif
+
+	if (!key)
+		return 0;
+	endif
+
+	var now := ReadGameClock();
+	if ((lastspeechkey == key) and (now < nextspeechallowed))
+		if (DEBUG_MODE)
+			PrintTextAbove(me, "*debounced: " + key + "*");
+		endif
+		return 1;
+	endif
+
+	lastspeechkey := key;
+	nextspeechallowed := now + 2;
+	return 0;
+endfunction
+
+function ClearAttackQueues()
+	guardattackers := array;
+	selfattackers := array;
+endfunction
+
+function QueueHasSerial(queue, serial)
+	var i;
+	for(i := 1; i <= queue.size(); i := i + 1)
+		if (queue[i] == serial)
+			return 1;
+		endif
+	endfor
+	return 0;
+endfunction
+
+function EnqueueGuardAttacker(attacker)
+	if (!attacker)
+		return;
+	endif
+	if (attacker.serial == me.serial)
+		return;
+	endif
+	if (attacker.serial == masterserial)
+		return;
+	endif
+	if (!QueueHasSerial(guardattackers, attacker.serial))
+		guardattackers.append(attacker.serial);
+	endif
+endfunction
+
+function EnqueueSelfAttacker(attacker)
+	if (!attacker)
+		return;
+	endif
+	if (attacker.serial == me.serial)
+		return;
+	endif
+	if (attacker.serial == masterserial)
+		return;
+	endif
+	if (!QueueHasSerial(selfattackers, attacker.serial))
+		selfattackers.append(attacker.serial);
+	endif
+endfunction
+
+function DequeueNextGuardAttacker()
+	while(guardattackers.size() > 0)
+		var nextserial := guardattackers[1];
+		guardattackers.erase(1);
+		var nextobj := SystemFindObjectBySerial(nextserial);
+		if (nextobj and !nextobj.dead and !nextobj.hidden and !nextobj.concealed)
+			return nextobj;
+		endif
+	endwhile
+	return 0;
+endfunction
+
+function DequeueNextSelfAttacker()
+	while(selfattackers.size() > 0)
+		var nextserial := selfattackers[1];
+		selfattackers.erase(1);
+		var nextobj := SystemFindObjectBySerial(nextserial);
+		if (nextobj and !nextobj.dead and !nextobj.hidden and !nextobj.concealed)
+			return nextobj;
+		endif
+	endwhile
+	return 0;
 endfunction
 
 function AllCommand(evtype,what)
@@ -1252,8 +1521,16 @@ function DoPoison( you )
 
 	if ( (distance(me,you)<2) and (Random(8)==1) )
 
-		var p_level := Random(cint(GetMaxHP(me)/20));
-		if (p_level > 3) p_level := 3; endif
+		var poison_skill := Cint(GetEffectiveSkill(me, SKILLID_POISONING));
+		if (poison_skill > 150)
+			poison_skill := 150;
+		endif
+
+		var p_level := Cint(poison_skill / 25);
+		if (p_level < 1)
+			return;
+		endif
+
 		SetPoison(you, p_level, "You have been poisoned by " + me.name +"!");
 
 	endif
@@ -1261,69 +1538,78 @@ function DoPoison( you )
 endfunction
 
 
-function flee(opponent)
+// function flee(opponent)
 
-	var numflees := getobjproperty(me,"#flees");
+// 	var numflees := getobjproperty(me,"#flees");
 
-	if (numflees)
-		if ( numflees > 5 )
-			EraseObjProperty(me,"#flees");
-			var totem := Cint(GetObjProperty( me , "totem" ));
-			if (totem)
-				sleep(30);
-				return;
-			else
-				MoveObjectToLocation( me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-				RevokePrivilege( me, "invul" );
-				SetObjProperty(me,"guardkill",1);
-				ApplyRawdamage( me, GetMaxHP(me)+3 );
-			endif
-		else
-			numflees := numflees + 1;
-		endif
-	else
-		numflees := 1;
-	endif
+// 	if (numflees)
+// 		if ( numflees > 5 )
+// 			EraseObjProperty(me,"#flees");
+// 			var totem := Cint(GetObjProperty( me , "totem" ));
+// 			if (totem)
+// 				sleep(30);
+// 				return;
+// 			else
+// 				MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+// 				RevokePrivilege( me, "invul" );
+// 				SetObjProperty(me,"guardkill",1);
+// 				ApplyRawdamage( me, GetMaxHP(me)+3 );
+// 			endif
+// 		else
+// 			numflees := numflees + 1;
+// 		endif
+// 	else
+// 		numflees := 1;
+// 	endif
 
-	setobjproperty(me,"#flees",numflees);
+// 	setobjproperty(me,"#flees",numflees);
 
-	var runs := 0, sleepdelay;
-	while ( (distance(me, opponent) < 20) and (runs < 50) )
-		var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
-		if (sleepdelay < 0) 
-			sleepdelay := 0; 
-		endif
-		var MoveSpeed := GetObjProperty(me, "MoveSpeed");
-		if(MoveSpeed)
-			sleepdelay := GetSpeed(me, MoveSpeed);
-		endif
+// 	var runs := 0, sleepdelay;
+// 	while ( (distance(me, opponent) < 20) and (runs < 50) )
+// 		var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
+// 		if (sleepdelay < 0) 
+// 			sleepdelay := 0; 
+// 		endif
+// 		var MoveSpeed := GetObjProperty(me, "MoveSpeed");
+// 		if(MoveSpeed)
+// 			sleepdelay := GetSpeed(me, MoveSpeed);
+// 		endif
 
-		runawayfrom(opponent);
-		Sleepms(sleepdelay);
-		runs := runs +1;
-		wait_for_event(0);
-	endwhile
+// 		runawayfrom(opponent);
+// 		Sleepms(sleepdelay);
+// 		runs := runs +1;
+// 		wait_for_event(0);
+// 	endwhile
 
-	RestartScript( me );
+// 	RestartScript( me );
 
-endfunction
+// endfunction
 
 function GoWild()
 
 	if( GetObjProperty( me, "DonatorMount") )
+		var stone_serial := GetObjProperty(me, "DMountStoneSerial");
+		if (stone_serial)
+			var stone := SystemFindObjectBySerial(stone_serial);
+			if (stone)
+				SetObjProperty(stone, "MountHP", GetHP(me));
+				SetObjProperty(stone, "MountMana", GetMana(me));
+				SetObjProperty(stone, "MountStamina", GetStamina(me));
+				SetObjProperty(stone, "petname", me.name);
+				SetObjProperty(stone, "MountStored", 1);
+			endif
+		endif
+
+		if (master)
+			EraseObjProperty(master, "DonatorMounted");
+		endif
+
+		MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+		RevokePrivilege( me, "invul" );
+		SetObjProperty(me,"guardkill",1);
+		me.kill();
 		return;
 	endif
-
-	if( me.npctemplate == "donatorhorse")
-		return;
-	elseif( me.npctemplate == "donatorllama")
-		return;
-	elseif( me.npctemplate == "donatorostard")
-		return;
-	elseif( me.npctemplate == "donatorbear")
-		return;
-	endif
-
 
 	var npccfgfile := ReadConfigFile( "npcdesc" );
 	me.script := npccfgfile[me.npctemplate].script;
@@ -1341,7 +1627,6 @@ function GoWild()
 	EraseObjProperty(me, "master");
 	SetAnchor(me.x,me.y,10,1 );
 	RestartScript(me);
-
 
 endfunction
 

@@ -1,0 +1,70 @@
+// Synopsis: Spawn test NPCs using sequential animation graphics in 100-wide rows up to a max value.
+
+ // Test color ranges on different objects
+ //
+ //
+ //
+ //
+ //
+
+
+use os;
+use uo;
+
+program animationtest( who, text )
+	
+    if(text == "" || text == "?" || Lower(text) == "help")
+		SendSysMessage(who, "Usage is .animationtest maxgraphic", color := 88);
+		return;
+	endif
+
+	var params := SplitWords( text );
+    var maxgraphic := CInt(params[1]);
+
+    if (maxgraphic < 0)
+        SendSysMessage(who, "maxgraphic must be 0 or greater.", color := 88);
+        return;
+    endif
+
+    var props := struct;
+	props.+facing := who.facing;
+
+    var loc := TargetCoordinates(who);
+
+    RainDownAnimations(props, loc, maxgraphic);
+
+endprogram
+
+
+function RainDownAnimations(props, loc, maxgraphic)
+
+    var per_row := 100;
+    var graphic := 0;
+    var row := 0;
+
+    while (graphic <= maxgraphic)
+        var row_start_x := loc.x + (row * 4);
+        var row_start_y := loc.y + (row * 4);
+        var col;
+
+        for (col := 0; col < per_row && graphic <= maxgraphic; col := col + 1)
+            var x := row_start_x + (col * 2);
+            var y := row_start_y - (col * 2);
+            var tile := GetMapInfo(x, y, loc.realm);
+            if(tile)
+                var newitem := CreateNpcFromTemplate( "animationtest", x, y, loc.z, props, loc.realm);
+                if(newitem)
+                    newitem.graphic := graphic;
+                    newitem.name := "Graphic is : " + CStr(newitem.Graphic);
+                    newitem.frozen := 1;
+                    //newitem.movable := 0;
+                endif
+            endif
+            graphic := graphic + 1;
+            sleepms(50);
+        endfor
+
+        row := row + 1;
+    endwhile
+
+endfunction

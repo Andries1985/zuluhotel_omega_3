@@ -5,6 +5,7 @@ use basic;
 include "include/myutil";
 include "include/attributes";
 include "include/client";
+include "include/constants/locations";
 
 //function returns 0 if the animal couldn't be created and/or
 //if the mount wasn't destroyed
@@ -21,9 +22,7 @@ function dismount( me, mount := 0 )
 			if( !me.corpseType )
 				mount := GetEquipmentByLayer( me, LAYER_MOUNT );
 			else
-				foreach item in ListRootItemsInContainerOfObjtype(me, 0x1f021)
-					mount := item;
-				endforeach
+				mount := FindObjtypeInContainer(me, 0x1f021, FINDOBJTYPE_ROOT_ONLY);
 			endif
 		endif
 	endif
@@ -40,6 +39,18 @@ function dismount( me, mount := 0 )
 
 	var animal := CreateNpcFromTemplate(critter, me.x, me.y, me.z, 0, me.realm);
 	if( !animal )
+		// Death tiles can fail NPC spawn; fallback to relocation coords.
+		animal := CreateNpcFromTemplate(
+			critter,
+			DEFAULT_LOCATION_NPC_RELOCATION_X,
+			DEFAULT_LOCATION_NPC_RELOCATION_Y,
+			DEFAULT_LOCATION_NPC_RELOCATION_Z,
+			0,
+			DEFAULT_LOCATION_NPC_RELOCATION_R
+		);
+	endif
+	if( !animal )
+		Print( "dismount(): failed to spawn mount npc template '"+CStr(critter)+"' near "+CStr(me.x)+","+CStr(me.y)+","+CStr(me.z)+" in realm "+CStr(me.realm) );
 		set_critical(0);
 		return 0;
 	endif
@@ -67,6 +78,10 @@ function dismount( me, mount := 0 )
 		SetMana(animal, Getobjproperty(mount,"petmana"));
 	endif
 
+	if (Getobjproperty(mount,"petstamina"))
+		SetStamina(animal, Getobjproperty(mount,"petstamina"));
+	endif
+
 	if (Getobjproperty(mount,"DMountStoneSerial"))
 		SetObjProperty(animal,"DMountStoneSerial", Getobjproperty(mount,"DMountStoneSerial"));
 	endif
@@ -79,12 +94,14 @@ function dismount( me, mount := 0 )
 				animal.script := "tamed";
 				animal.setmaster( master );
 			endif
+			MoveObjectToLocation( animal, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION );
 			animal.facing := me.facing;
 			RestartScript(animal);
 		elseif( !me.npctemplate )
 			SetObjProperty( animal, "master", me.serial );
 			animal.setmaster( me );
 			animal.script := "tamed";
+			MoveObjectToLocation( animal, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION );
 			animal.facing := me.facing;
 			RestartScript(animal);
 		endif

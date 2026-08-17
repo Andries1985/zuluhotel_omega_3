@@ -1,0 +1,24 @@
+// Synopsis: Open your own account vault
+
+use uo;
+
+include ":staff:include/staff";
+include ":containers:storageAreas";
+
+program open_vault( who )
+
+	if( !who.acctname )
+		SendSysMessage( who, "You do not appear to have an account vault." );
+		return 0;
+	endif
+
+	var vault := CP_GetPlayerVaultContainerForMobile( who, CP_CREATE );
+	if( !vault )
+		SendSysMessage( who, "Unable to open your account vault." );
+		return 0;
+	endif
+
+	SendOpenSpecialContainer( who, vault );
+	return 1;
+
+endprogram

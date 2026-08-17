@@ -5,6 +5,7 @@ use util;
 include "include/spelldata";
 include "include/damages";
 include "include/dotempmods";
+include "include/constants/locations";
 
 program banishonhit( parms )
 

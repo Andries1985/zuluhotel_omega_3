@@ -11,11 +11,10 @@ include ":containers:checks";
 function SelectItemToID( who, delay )
 
 	var the_item;
-	delay := 4;
 	var skillID;
 	var intelligence := GetAttribute( who, ATTRIBUTEID_INTELLIGENCE );
 	const MIN_DELAYMS := 250;
-	const MIN_SKILLFORBATCH := 80;
+	const MIN_SKILLFORBATCH := 100;
 	const MIN_INTFORBATCH := 100;
 
 	if ( GetObjProperty( who , CLASSEID_BARD ) )
@@ -58,34 +57,43 @@ function SelectItemToID( who, delay )
 	SendSysMessage( who, "Select an object to identify." );
 	the_item := Target( who, TGTOPT_CHECK_LOS );
 	if( !the_item )
+		SendSysMessage( who, "Identification cancelled." );
 		return 0;
 	endif
 		
 	if( !Accessible( who , the_item ) )
 		SendSysMessage( who , "You can't reach that." );
-		return 1;
+		return 0;
 	endif
 	
 	if( Distance( who , the_item ) > 2 )
 		SendSysMessage( who , "That is too far." );
-		return 1;
+		return 0;
 	endif
 		
 	if( !the_item.IsA(POLCLASS_ITEM) )
 		SendSysMessage( who , "That's not an item!" );
-		return 1;
+		return 0;
+	endif
+
+	if( !ReserveItem( the_item ) )
+		SendSysMessage( who, "That item is currently in use. Please try again." );
+		return 0;
 	endif
 
 	if( GetObjProperty( the_item , PROPID_CHEST_SPAWNPOINT_CHEST ) )
 		if( GetObjProperty( the_item , PROPID_CHEST_TRAP_TYPE ))
 			SendSysMessage( who, "You cannot identify a trapped chest!" );
-			return;
+			ReleaseItem( the_item );
+			return 0;
 		elseif( the_item.locked )
 			SendSysMessage( who, "You cannot identify a locked chest!" );
-			return;
+			ReleaseItem( the_item );
+			return 0;
 		elseif( the_item.IsSecured() )
 			SendSysMessage( who, "You cannot identify a secured chest!" );
-			return;
+			ReleaseItem( the_item );
+			return 0;
 		endif
 	endif
 
@@ -99,43 +107,57 @@ function SelectItemToID( who, delay )
 			endforeach
 			if (itemlist.Size() == 0)
 				SendSysMessage(who, "There's nothing to identify in there.");
-				return 1;
+				ReleaseItem( the_item );
+				return 0;
 			else
 				SendSysMessage(who,"Your vast intellect tries to uncover the mysteries of your hoard.", FONT_NORMAL, 2601 );
 				SendSysMessage(who,"There's "+itemlist.Size()+" magical items to identify.", FONT_NORMAL, 2601 );
+				var batch_idx := 0;
+				var batch_total := itemlist.Size();
 				foreach item in itemlist
-					if( !Accessible( who , item ) || Distance( who , the_item ) > 2)
+					batch_idx := batch_idx + 1;
+					if( !Accessible( who , item ) || Distance( who , item ) > 2)
 						SendSysMessage( who , "You can't reach that." );
-						return 1;
+						ReleaseItem( the_item );
+						return 0;
+					endif
+					if( !ReserveItem( item ) )
+						continue;
 					endif
 					ItemID( who, item);
-					sleepms( Max( delay * 1000, MIN_DELAYMS ) );
+					ReleaseItem( item );
+					if( batch_idx < batch_total )
+						sleepms( Max( delay * 1000, MIN_DELAYMS ) );
+					endif
 				endforeach
 			endif
+			ReleaseItem( the_item );
 			return 1;
 		else
 			SendSysMessage(who, "You cannot do that yet.");
-			return 1;
+			ReleaseItem( the_item );
+			return 0;
 		endif
 	endif
 	
 	if( !the_item.movable )
 		SendSysMessage( who, "You can't id unmovable items." );
-		return 1;
+		ReleaseItem( the_item );
+		return 0;
 	endif
 
-	var ided := CanBeIDed(the_item);
-	var hasdetails := GetItemDetails(who, the_item);
-	if(hasdetails && ided)
-		return 1;
+	if( GetObjProperty(the_item, "IDed") )
+		var hasdetails := GetItemDetails(who, the_item);
+		if( !hasdetails )
+			SendSysMessage( who, the_item.desc+" has already been identified.", FONT_NORMAL, 2595 );
+		endif
+		ReleaseItem( the_item );
+		return 0;
 	endif
 
-	if( ided )
-		SendSysMessage( who, the_item.desc+" has already been identified.", FONT_NORMAL, 2595 );
-		return 1;
-	endif
-
-	ItemID( who, the_item );
+	var identified := ItemID( who, the_item );
+	ReleaseItem( the_item );
+	return identified;
 
 endfunction
 
@@ -151,7 +173,7 @@ function ItemID( who, the_item )
 			return 1;
 		elseif( !CheckSkill( who , SKILLID_ITEMID , -2 , thepoints ) )
 			SendSysmessage (who, "I'm not sure . . .");
-			return 1;
+			return 0;
 		endif
 	endif 
 

@@ -46,7 +46,7 @@ endprogram
 
 function CheckIfCharacterExists( account )
 
-	for i:=1 to 5
+        for i:=1 to 7
 		var player := account.GetCharacter(i);
 		if( player )
 			return 1;

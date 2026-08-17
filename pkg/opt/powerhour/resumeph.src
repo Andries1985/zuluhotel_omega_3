@@ -1,0 +1,39 @@
+// Resume a personal powerhour after a disconnect. Sleeps for the remaining
+// duration, then sends the "ended" message and clears the props -- mirroring
+// the tail of activateph() in textcmd/player/setph.src.
+
+use uo;
+use os;
+
+include "include/client";
+
+program resumeph(params)
+
+	var who       := params[0];
+	var remaining := CInt(params[1]);
+
+	if( !who )
+		return;
+	endif
+	if( remaining <= 0 )
+		EraseObjProperty(who, "#PPHH");
+		EraseObjProperty(who, "#PPHC");
+		EraseObjProperty(who, "#PPHS");
+		return;
+	endif
+
+	Sleep(remaining);
+
+	if(GetObjProperty(who, "#PPHH"))
+		SendSysMessage( who, "Your Hunting Powerhour has ended!", FONT_BOLD, 2595 );
+	elseif(GetObjProperty(who, "#PPHC"))
+		SendSysMessage( who, "Your Half-Resources Powerhour has ended!", FONT_BOLD, 2595 );
+	elseif(GetObjProperty(who, "#PPHS"))
+		SendSysMessage( who, "Your Double-Skillgain Powerhour has ended!", FONT_BOLD, 2595 );
+	endif
+
+	EraseObjProperty(who, "#PPHH");
+	EraseObjProperty(who, "#PPHC");
+	EraseObjProperty(who, "#PPHS");
+
+endprogram

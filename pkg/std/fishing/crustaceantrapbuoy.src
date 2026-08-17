@@ -1,0 +1,26 @@
+use uo;
+use os;
+use cfgfile;
+use basicio;
+
+include "include/client";
+include "include/utility";
+include "crustaceantrap";
+
+program use_buoy( character, buoy )
+
+	var owner := CInt(GetObjProperty(buoy, PROP_TRAP_OWNER));
+
+	if (character.serial != owner)
+		SendSysmessage(character, "This isn't your trap.");
+		return;
+	endif
+
+	if ( coordist(character.x, character.y, buoy.x, buoy.y) > TRAP_LEASH_DISTANCE )
+		SendSysmessage(character, "You need to be closer to the trap to retrieve it.");
+		return;
+	endif
+
+	CollectTrap(character, buoy);
+
+endprogram

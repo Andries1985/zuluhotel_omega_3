@@ -51,6 +51,7 @@ program addtoshardlibrary(who)
 
 	if(selected_books.errortext == "No option was selected.")
 		SendSysMessage(who, "No books were selected.", color := 33);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	// This is where the magic happens.
@@ -104,5 +105,7 @@ program addtoshardlibrary(who)
 		Sleepms(5);
 	endforeach		// ...selected_title in selected_books
 	SendSysMessage(who, "Finnished adding the selected books to the Shard Library.", color := 66);
+
+	UnloadDataFile("shard_library");
 
 endprogram

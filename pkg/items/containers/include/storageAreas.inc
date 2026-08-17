@@ -28,7 +28,8 @@ CONST CP_CREATE                 := 0x1;
 //CONST CP_AUCTION_AREA           := "Auction Storage";
 CONST CP_BANK_AREA              := "World Bank";
 CONST CP_DEFAULT_AREA           := "World Bank";
-//CONST CP_KEYRING_AREA           := "Keyring Storage";
+CONST CP_KEYRING_AREA           := "Key Storage";
+CONST CP_PLAYER_VAULT_AREA      := "Player Vault Storage";
 CONST CP_MERCHANT_AREA          := "Merchant Storage";
 CONST CP_SNOOPING_AREA          := "Snooping Storage";
 
@@ -54,7 +55,7 @@ var STORAGE_DEBUG	:= 1;
 function CP_ListStorageAreas()
 
     //return { CP_AUCTION_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_MERCHANT_AREA, CP_SNOOPING_AREA };
-	return { CP_SNOOPING_AREA, CP_BANK_AREA, CP_MERCHANT_AREA };
+	return { CP_SNOOPING_AREA, CP_BANK_AREA, CP_KEYRING_AREA, CP_PLAYER_VAULT_AREA, CP_MERCHANT_AREA };
 endfunction
 
 /*
@@ -103,6 +104,32 @@ function CP_GetStorageContainerForMobile( mobile, storage_area_name:=0, create:=
 	var root_container := CP_GetStorageAreaContainer( container_id, storage_area_name, create );
 
 	return root_container;
+endfunction
+
+function CP_GetVaultContainerIDForMobile( mobile )
+	if( !mobile || !mobile.acctname )
+		return 0;
+	endif
+
+	return CStr(mobile.acctname);
+endfunction
+
+function CP_GetPlayerVaultContainerForMobile( mobile, create:=CP_NOCREATE )
+	var container_id := CP_GetVaultContainerIDForMobile( mobile );
+	if( !container_id )
+		return 0;
+	endif
+
+	return CP_GetStorageAreaContainer( container_id, CP_PLAYER_VAULT_AREA, create );
+endfunction
+
+function CP_RemovePlayerVaultContainerForMobile( mobile )
+	var container_id := CP_GetVaultContainerIDForMobile( mobile );
+	if( !container_id )
+		return 0;
+	endif
+
+	return CP_RemoveStorageAreaContainer( container_id, CP_PLAYER_VAULT_AREA );
 endfunction
 
 /*

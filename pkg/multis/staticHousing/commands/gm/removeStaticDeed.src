@@ -1,0 +1,205 @@
+use uo;
+use os;
+use vitals;
+
+// Synopsis: Removes a static house entry and all related linked objects.
+
+include "include/housing";
+include ":gumps:yesno";
+include ":statichousing:include/staticHousing";
+
+function SHDebug(msg)
+	if(STH_IsDebugEnabled())
+		Print("[STATIC-HOUSING-DEBUG][removeStaticDeed] " + msg);
+	endif
+endfunction
+
+program textcmd_removestaticdeed(who)
+	SHDebug("Command used by " + who.name);
+	SendSysMessage(who, "Target a static house sign to delete the entire static house entry.", color := 88);
+	var target_item := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!target_item)
+		SendSysMessage(who, "Cancelled.", color := 33);
+		return 0;
+	endif
+
+	if(!target_item.IsStaticHouseSign())
+		SendSysMessage(who, "That is not a static house sign.", color := 33);
+		return 0;
+	endif
+
+	if(!YesNo(who, "Delete this static house entry and all related data? This cannot be undone."))
+		SHDebug("Command cancelled by " + who.name);
+		SendSysMessage(who, "Cancelled.", color := 33);
+		return 0;
+	endif
+
+	var signserial := target_item.serial;
+	var removed := PurgeStaticHouseEntry(target_item);
+	SHDebug("Static house entry purged by " + who.name + ": sign=" + signserial + " removed=" + removed);
+	SendSysMessage(who, "Static house entry deleted.", color := 66);
+	SendSysMessage(who, CStr(removed) + " linked object(s) removed.", color := 66);
+	return 1;
+endprogram
+
+function PurgeStaticHouseEntry(sign)
+	var removed := 0;
+	var signserial := CInt(sign.serial);
+	var itemlist := sign.GetItemsInHouse();
+	foreach thing in itemlist
+		if(!thing)
+			continue;
+		elseif(thing.serial == sign.serial)
+			continue;
+		elseif(thing.IsDoor())
+			continue;
+		elseif(thing.IsStaticHouseSign())
+			continue;
+		endif
+		DestroyItem(thing);
+		removed := removed + 1;
+		sleepms(1);
+	endforeach
+
+	// Fallback sweep in case sign.GetItemsInHouse() missed anything.
+	var footage := GetObjProperty(sign, "footage");
+	if(footage)
+		foreach box in footage
+			foreach thing in ListObjectsInBox(box[1], box[2], box[3], box[4], box[5], box[6], sign.realm)
+				if(!thing)
+					continue;
+				elseif(thing.serial == signserial)
+					continue;
+				elseif(thing.IsDoor())
+					continue;
+				elseif(thing.IsStaticHouseSign())
+					continue;
+				endif
+				if(DestroyItem(thing))
+					removed := removed + 1;
+				endif
+				sleepms(1);
+			endforeach
+		endforeach
+	endif
+
+	foreach mobile in GetHouseMobiles(sign)
+		if(mobile && mobile.npctemplate == "playervendor")
+			RevokePrivilege(mobile, "invul");
+			ApplyRawDamage(mobile, GetVital(mobile, "Life") + 100);
+			removed := removed + 1;
+		endif
+	endforeach
+
+	var builtdeed := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "builtdeed")));
+	if(builtdeed)
+		DestroyItem(builtdeed);
+		removed := removed + 1;
+	endif
+
+	foreach thing in GetObjProperty(sign, "bantiles")
+		var tile := SystemFindObjectBySerial(CInt(thing));
+		if(tile)
+			DestroyItem(tile);
+			removed := removed + 1;
+		endif
+	endforeach
+
+	// Also remove any lingering static ban tiles linked by signserial, even if not tracked in cprop.
+	if(footage)
+		foreach box in footage
+			foreach tile in ListObjectsInBox(box[1], box[2], box[3], box[4], box[5], box[6], sign.realm)
+				if(!tile)
+					continue;
+				endif
+				if(tile.objtype == 0x260FC && CInt(GetObjProperty(tile, "signserial")) == signserial)
+					if(DestroyItem(tile))
+						removed := removed + 1;
+					endif
+				endif
+			endforeach
+		endforeach
+	endif
+
+	// Perimeter sweep: catches sign-linked ban tiles placed just outside footprint (e.g. on steps).
+	if(footage)
+		var minx := 999999;
+		var miny := 999999;
+		var minz := 999999;
+		var maxx := -999999;
+		var maxy := -999999;
+		var maxz := -999999;
+		foreach fbox in footage
+			if(fbox[1] < minx)
+				minx := fbox[1];
+			endif
+			if(fbox[2] < miny)
+				miny := fbox[2];
+			endif
+			if(fbox[3] < minz)
+				minz := fbox[3];
+			endif
+			if(fbox[4] > maxx)
+				maxx := fbox[4];
+			endif
+			if(fbox[5] > maxy)
+				maxy := fbox[5];
+			endif
+			if(fbox[6] > maxz)
+				maxz := fbox[6];
+			endif
+		endforeach
+
+		var margin := 5;
+		foreach tile in ListObjectsInBox(minx - margin, miny - margin, minz - 20, maxx + margin, maxy + margin, maxz + 20, sign.realm)
+			if(!tile)
+				continue;
+			endif
+			if(tile.objtype == 0x260FC && CInt(GetObjProperty(tile, "signserial")) == signserial)
+				if(DestroyItem(tile))
+					removed := removed + 1;
+				endif
+			endif
+		endforeach
+	else
+		// Safety net when footprint is missing.
+		foreach tile in ListObjectsInBox(sign.x - 40, sign.y - 40, sign.z - 30, sign.x + 40, sign.y + 40, sign.z + 30, sign.realm)
+			if(!tile)
+				continue;
+			endif
+			if(tile.objtype == 0x260FC && CInt(GetObjProperty(tile, "signserial")) == signserial)
+				if(DestroyItem(tile))
+					removed := removed + 1;
+				endif
+			endif
+		endforeach
+	endif
+
+	foreach thing in GetObjProperty(sign, "components")
+		var comp := SystemFindObjectBySerial(CInt(thing));
+		if(comp)
+			EraseObjProperty(comp, "LockID");
+			comp.locked := 0;
+		endif
+	endforeach
+
+	foreach thing in GetObjProperty(sign, "exteriordoors")
+		var door := SystemFindObjectBySerial(CInt(thing));
+		if(door)
+			EraseObjProperty(door, "signserial");
+			EraseObjProperty(door, "LockID");
+			door.locked := 0;
+		endif
+	endforeach
+
+	var box := ListObjectsInBox(sign.x - 1, sign.y - 1, sign.z - 10, sign.x + 1, sign.y + 1, sign.z + 10, sign.realm);
+	foreach obj in box
+		if(obj && (obj.objtype == 0x0b98 || obj.objtype == 0x0b99))
+			DestroyItem(obj);
+			removed := removed + 1;
+		endif
+	endforeach
+
+	DestroyItem(sign);
+	return removed + 1;
+endfunction

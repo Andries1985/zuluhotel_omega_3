@@ -41,5 +41,7 @@ program spawnshelfdatawipe(who);
 		Sleepms(5);
 	endforeach
 
+	UnloadDataFile("spawnedbookshelves");
+
 endprogram
 

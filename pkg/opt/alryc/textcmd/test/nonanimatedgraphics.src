@@ -1,0 +1,127 @@
+// Synopsis: Spawn configured non-animated graphics groups at a target location from selected group down to 1
+use uo;
+use cfgfile;
+
+const DEFAULT_PER_ROW := 50;
+const MAX_PER_ROW := 50;
+const MAX_SPAWN := 500;
+const GROUP_Y_STEP := 2;
+const X_SPACING := 1;
+
+program nonanimatedgraphics(who, text)
+    var cfg := ReadConfigFile(":alryc:nonanimatedgraphics");
+    if (!cfg)
+        SendSysMessage(who, "nonanimatedgraphics.cfg could not be loaded from :alryc:config.");
+        return;
+    endif
+
+    var tiles_cfg := ReadConfigFile("::tiles");
+
+    var args := SplitWords(text);
+    if (len(args) < 1)
+        var keys := GetConfigIntKeys(cfg);
+        SendSysMessage(who, "Usage: .nonanimatedgraphics <group> [perrow]");
+        SendSysMessage(who, "Configured groups: " + len(keys));
+        return;
+    endif
+
+    var group_id := CInt(args[1]);
+    if (group_id <= 0)
+        SendSysMessage(who, "Group must be a positive integer.");
+        return;
+    endif
+
+    var per_row := DEFAULT_PER_ROW;
+    if (len(args) >= 2)
+        per_row := CInt(args[2]);
+    endif
+    if (per_row < 1 OR per_row > MAX_PER_ROW)
+        SendSysMessage(who, "perrow must be between 1 and " + MAX_PER_ROW + ".");
+        return;
+    endif
+
+    var loc := TargetCoordinates(who);
+    if (!loc)
+        SendSysMessage(who, "Targeting canceled.");
+        return;
+    endif
+
+    var created := 0;
+    var groups_spawned := 0;
+    var groups_missing := 0;
+    var groups_empty := 0;
+    var groups_too_large := 0;
+    var group_index := 0;
+    var g;
+
+    for (g := group_id; g >= 1; g := g - 1)
+        var elem := FindConfigElem(cfg, g);
+        if (!elem)
+            groups_missing := groups_missing + 1;
+            group_index := group_index + 1;
+            continue;
+        endif
+
+        var tiles := GetConfigStringArray(elem, "Tile");
+        if (!tiles OR len(tiles) < 1)
+            groups_empty := groups_empty + 1;
+            group_index := group_index + 1;
+            continue;
+        endif
+
+        if (len(tiles) > MAX_SPAWN)
+            groups_too_large := groups_too_large + 1;
+            group_index := group_index + 1;
+            continue;
+        endif
+
+        var start_x := loc.x;
+        var start_y := loc.y - (group_index * GROUP_Y_STEP);
+        var z := loc.z;
+        var i;
+        for (i := 1; i <= len(tiles); i := i + 1)
+            var tile_id := tiles[i];
+            var objtype := CInt(tile_id);
+            if (objtype <= 0)
+                continue;
+            endif
+
+            var col := (i - 1) % per_row;
+            var row := CInt((i - 1) / per_row);
+            var x := start_x + (col * X_SPACING);
+            var y := start_y + row;
+
+            var item := CreateItemAtLocation(x, y, z, objtype, 1, loc.realm);
+            if (item)
+                created := created + 1;
+                item.movable := 0;
+                SetObjProperty(item, "StaffCreatedSerial", who.serial);
+                SetObjProperty(item, "StaffCreatedName", who.name);
+
+                var tile_elem := 0;
+                var tile_desc := "";
+                if (tiles_cfg)
+                    tile_elem := FindConfigElem(tiles_cfg, objtype);
+                    if (!tile_elem)
+                        tile_elem := FindConfigElem(tiles_cfg, tile_id);
+                    endif
+                    if (tile_elem)
+                        tile_desc := GetConfigString(tile_elem, "Desc");
+                    endif
+                endif
+
+                if (tile_desc)
+                    item.name := "Graphic ID: " + tile_id + " Desc:" + tile_desc;
+                else
+                    item.name := "Graphic ID: " + tile_id;
+                endif
+            endif
+        endfor
+
+        groups_spawned := groups_spawned + 1;
+        group_index := group_index + 1;
+    endfor
+
+    SendSysMessage(who, "Spawned " + created + " items from groups " + group_id + " down to 1.");
+    SendSysMessage(who, "Groups spawned: " + groups_spawned + ", missing: " + groups_missing + ", empty: " + groups_empty + ", too large: " + groups_too_large + ".");
+endprogram

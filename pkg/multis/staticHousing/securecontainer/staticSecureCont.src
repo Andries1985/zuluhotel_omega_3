@@ -1,0 +1,85 @@
+use os;
+use uo;
+include ":statichousing:include/settings";
+
+function SHDebug(msg)
+	if(STH_IsDebugEnabled())
+		Print("[STATIC-HOUSING-DEBUG][securecontainer] " + msg);
+	endif
+endfunction
+
+program use_securecontainer(who, item)
+	var house := SystemFindObjectBySerial( GetObjProperty( item, "houseserial" ));
+	if(!house)
+		SHDebug("Denied open: missing house link for item " + item.serial + " by " + who.name);
+		SendSysMessage(who, "This secure is no longer linked to a house sign.", 1, 33);
+		return 0;
+	endif
+	var securitylevel := 0;					// The security level of the person trying to access the container.
+	var securedlevel := 0;					// The security level that is assigned to the container.
+	var seclevel := GetObjProperty(item, "SecuredLevel");
+	var coownerinfo := GetObjProperty(house, "coowners");
+	var friendinfo := GetObjProperty(house,"friendlist");
+	if(!coownerinfo)
+		coownerinfo := {};
+	endif
+	if(!friendinfo)
+		friendinfo := {};
+	endif
+
+	// GMs and above have access to all secured things.
+	if(who.cmdlevel >= 3)
+		if(item.isA(POLCLASS_CONTAINER))
+			SendViewContainer( who, item );
+			SendSysMessage( who, "You open the secure container.", color := 66 );
+			return 1;
+		endif
+	endif
+	// SecuredLevels are: O = owner, C = co-owners, F = friends, A = all house affiliates.
+
+	case(seclevel)
+		"O": securedlevel := 1;				// Secured for owner
+		"C": securedlevel := 2;				// Secured for co-owner
+		"F": securedlevel := 3;				// Secured for friends
+		"A": securedlevel := 4;				// Secured for all house affiliates, ie. owner, co-owners and friends have access.
+	endcase
+	if(!securedlevel)
+		securedlevel := 4;
+	endif
+
+	var owneracct := GetObjProperty(house, "owneracct");
+
+	if((CInt(GetObjProperty( house, "ownerserial" )) == who.serial) || (owneracct == who.acctname))
+		securitylevel := 1;
+	elseif(who.serial in coownerinfo)
+		securitylevel := 2;
+	elseif(who.serial in friendinfo)
+		securitylevel := 3;
+	endif
+
+	var allow := 0;
+	if(securitylevel == 1)
+		allow := 1;
+	elseif((securitylevel == 2) && (securedlevel >= 2))
+		allow := 1;
+	elseif((securitylevel == 3) && (securedlevel >= 3))
+		allow := 1;
+	endif
+
+	if(allow)
+		if(item.isA(POLCLASS_CONTAINER))
+			SHDebug("Allowed open: item=" + item.serial + " who=" + who.name + " security=" + securitylevel + " required=" + securedlevel + " house=" + house.serial);
+			SendViewContainer( who, item );
+			SendSysMessage( who, "You open the secure container.", 1, 66 );
+			var oldscript := GetObjProperty(item, "oldscript");
+			if(oldscript == "wear_and_tear" || oldscript == ":carpentry:wear_and_tear")
+				Start_Script(":carpentry:wear_and_tear", item);
+			endif
+			return 1;
+		endif
+	else
+		SHDebug("Denied open: item=" + item.serial + " who=" + who.name + " security=" + securitylevel + " required=" + securedlevel + " house=" + house.serial);
+		SendSysMessage( who, "You can't use this.", 1, 33 );
+		return 0;
+	endif
+endprogram

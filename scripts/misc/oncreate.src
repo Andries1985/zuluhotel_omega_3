@@ -23,6 +23,33 @@ program oncreate(who,skillids)
 
     Print( "Character created: "+who.name );
 
+    // Force unsupported client races to human at creation time.
+    if ( who.graphic in { UOBJ_ELF_FEMALE, UOBJ_GARGOYLE_FEMALE } )
+        var hair := GetEquipmentByLayer( who, LAYER_HAIR );
+        if ( hair )
+            DestroyItem( hair );
+        endif
+
+        who.graphic := 401;
+        who.trueobjtype := 401;
+        who.race := 0;
+        who.truecolor := 0;
+        who.color := 0;
+    endif
+
+    if ( who.graphic in { UOBJ_GARGOYLE_MALE, UOBJ_ELF_MALE } )
+        var hair := GetEquipmentByLayer( who, LAYER_HAIR );
+        if ( hair )
+            DestroyItem( hair );
+        endif
+
+        who.graphic := 400;
+        who.color := 0;
+        who.truecolor := 0;
+        who.trueobjtype := 400;
+        who.race := 0;
+    endif
+
 	// Set light level for 5 minutes. Green acres is dark!
     who.setlightlevel(0, 300);	
     CreateStartingEquipment(who,skillids);
@@ -34,7 +61,7 @@ program oncreate(who,skillids)
     SetObjProperty(who, "DiscordID", who.acct.getprop("DiscordID"));
     // The starting area
 
-	var move := MoveObjectToLocation( who, 1433, 1861, 36, "britannia_alt", MOVEOBJECT_FORCELOCATION);
+	var move := MoveObjectToLocation( who, 1261, 1841, 61, "britannia_alt", MOVEOBJECT_FORCELOCATION);
 	if(!move)
 		Print("Move errortext " + move);
 	endif

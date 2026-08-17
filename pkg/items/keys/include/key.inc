@@ -82,6 +82,81 @@ function AllocateLockID()
 	return lock_id;
 endfunction
 
+function FindMyKey( serial )
+	return CP_GetStorageAreaContainer( CStr(serial), CP_KEYRING_AREA, CP_CREATE );
+endfunction
+
+function FindExistingKey( serial )
+	return CP_GetStorageAreaContainer( CStr(serial), CP_KEYRING_AREA, CP_NOCREATE );
+endfunction
+
+function DestroyMyKey( serial )
+	return CP_RemoveStorageAreaContainer( CStr(serial), CP_KEYRING_AREA );
+endfunction
+
+function KP_DestroyStoredKeysForLockIDs( keyring, byref lock_ids )
+	if( !keyring || !keyring.IsKeyring() )
+		return 0;
+	endif
+
+	var key_storage := FindExistingKey( keyring.serial );
+	if( !key_storage )
+		return 0;
+	endif
+
+	var destroyed := 0;
+	foreach stored_key in EnumerateItemsInContainer( key_storage )
+		var lock_id := GetObjProperty( stored_key, "LockID" );
+		if( lock_id && lock_id in lock_ids )
+			if( DestroyItem( stored_key ) )
+				destroyed := destroyed + 1;
+			endif
+		endif
+	endforeach
+
+	if( !EnumerateItemsInContainer( key_storage, ENUMERATE_ROOT_ONLY ).Size() )
+		DestroyMyKey( keyring.serial );
+	endif
+
+	return destroyed;
+endfunction
+
+function KP_DestroyKeysForLockIDsInContainer( container, byref lock_ids )
+	if( !container )
+		return 0;
+	endif
+
+	var destroyed := 0;
+	foreach thing in EnumerateItemsInContainer( container )
+		if( thing.IsKeyring() )
+			destroyed := destroyed + KP_DestroyStoredKeysForLockIDs( thing, lock_ids );
+		endif
+
+		var lock_id := GetObjProperty( thing, "LockID" );
+		if( lock_id && lock_id in lock_ids )
+			if( DestroyItem( thing ) )
+				destroyed := destroyed + 1;
+			endif
+		endif
+	endforeach
+
+	return destroyed;
+endfunction
+
+function KP_DestroyOwnedKeysForLockIDs( owner, bank_region, byref lock_ids )
+	if( !owner )
+		return 0;
+	endif
+
+	var destroyed := KP_DestroyKeysForLockIDsInContainer( owner.backpack, lock_ids );
+	var bankbox := CP_GetStorageContainerForMobile( owner, bank_region, CP_CREATE );
+	if( bankbox )
+		destroyed := destroyed + KP_DestroyKeysForLockIDsInContainer( bankbox, lock_ids );
+	endif
+
+	return destroyed;
+endfunction
+
 /*
 function Create_ChestKey( chest )
 
@@ -154,7 +229,7 @@ function DuplicateKeyRing( byref keyring )
 		LockID := 0,
 		key_desc := 0,
 		key := 0,
-		on_ring := FindMyPack( keyring.serial );
+		on_ring := FindMyKey( keyring.serial );
 
 	if( !on_ring )
 		return 0;
@@ -177,7 +252,7 @@ function DuplicateKeyRing( byref keyring )
 	endforeach
 
 	if( !failed )
-		CP_RemoveStorageAreaContainer(keyring.serial);
+		DestroyMyKey( keyring.serial );
 		return 1;
 	endif
 

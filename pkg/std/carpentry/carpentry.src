@@ -31,6 +31,7 @@ include "include/difficulty";
 //include "include/chests";
 include ":karmafame:karmafame";
 include ":crafting:craftingfunctions";
+include "include/resourcemanager";
 
 //const GOLD_COLOR	:= 0x0033;
 const CARPENTER_SOUND	:= 0x23e;
@@ -242,6 +243,8 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	//var undyeable;
 	var CraftedBy;
 	var deedname;
+	var primaryRequest;
+	var secondaryRequest;
 
 	item := item.objtype;
 
@@ -256,6 +259,11 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	else
 		return;
 	endif
+
+	primaryRequest := MakeBackpackRequest( character, use_on );
+	if( use_with )
+		secondaryRequest := MakeBackpackRequest( character, use_with );
+	endif
 	//Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
 		material := CInt(Ceil(material/2));
@@ -264,22 +272,25 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 		endif
 	endif
 
+	LeaseResource( character, primaryRequest, material );
+	if( secondaryRequest and material2 )
+		LeaseResource( character, secondaryRequest, material2 );
+	endif
+
 	AutoLoop_init( character );
-	while( AutoLoop_more() && use_on.amount >= material && NOT character.dead)
+	while( AutoLoop_more() && GetAvailableResource(character, primaryRequest).total >= material && NOT character.dead)
 	
 	// check for comaterial
 	if( use_with )
-		if( use_with.amount >= material2 )
+		if( GetAvailableResource(character, secondaryRequest).total >= material2 )
 			// refreshing skill2 stuff
 			skillid2 := element.CoSkillid;
 			skill2 := element.CoSkill;
 		else
-			AutoLoop_finish();
-			return;
+			break;
 		endif
-	elseif( material2 && use_with.amount < material2 )
-		AutoLoop_finish();
-		return;
+	elseif( material2 && GetAvailableResource(character, secondaryRequest).total < material2 )
+		break;
 	endif
 
 	// refreshing stuff 
@@ -344,7 +355,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 			to_be_destroyed	:= 1;
 		endif
 		
-		SubtractAmount( use_on , to_be_destroyed );
+		ConsumeResource( character , primaryRequest , to_be_destroyed );
 		var res_name1 := GetRessourceName( use_on );
 
 		if( use_with )
@@ -353,7 +364,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 			if( to_be_destroyed2 < 1 )
 				to_be_destroyed2	:= 1;
 			endif
-			SubtractAmount( use_with , to_be_destroyed2 );	
+			ConsumeResource( character , secondaryRequest , to_be_destroyed2 );
 			SendSysmessage( character , "You destroyed " + to_be_destroyed + " " + res_name1 + " and " + to_be_destroyed2 + " " + res_name2 + "." );
 		else
 			SendSysmessage( character , "You destroyed " + to_be_destroyed + " " + res_name1 + "." );
@@ -382,14 +393,14 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				to_be_destroyed	:= 1;
 			endif
 			
-			SubtractAmount( use_on , to_be_destroyed );
+			ConsumeResource( character , primaryRequest , to_be_destroyed );
 		
 			var to_be_destroyed2	:= Cint( material2 * destroy / 100 );
 			if( to_be_destroyed2 < 1 )
 				to_be_destroyed2	:= 1;
 			endif
 			
-			SubtractAmount( use_with , to_be_destroyed2 );
+			ConsumeResource( character , secondaryRequest , to_be_destroyed2 );
 			SendSysmessage( character , "You destroyed " + to_be_destroyed + " " + res_name1 + " and " + to_be_destroyed2 + " " + res_name2 + "." );
 
 		// if second check goes ok as well or there is no second check GO ON
@@ -431,7 +442,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				if( give_deed )
 					Print("Creating exceptional deed item");
 					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, use_on, 1, character, SKILLID_CARPENTRY, deedname);
+					ApplyMaterialPropertiesDeed(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
 					itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem , itemname );
@@ -441,7 +452,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 					//Non Deed Item
 					Print("Creating Non Deed Exceptional Item");
 					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, use_on, 1, character, SKILLID_CARPENTRY);
+					ApplyMaterialProperties(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY);
 					theitem := CreateItemInBackpack( character , product_desc );
 					//itemname := GetObjProperty( theitem , "BaseName" );
 				endif
@@ -459,7 +470,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 			if( give_deed )
 				//Print("Creating normal deed item: " + give_deed );
 				var product_desc := GetItemDescriptor(CInt(give_deed));
-				ApplyMaterialPropertiesDeed(product_desc, use_on, 0, character, SKILLID_CARPENTRY, deedname);
+				ApplyMaterialPropertiesDeed(product_desc, primaryRequest, 0, character, SKILLID_CARPENTRY, deedname);
 				theitem := CreateItemInBackpack( character , product_desc );
 				itemname := GetObjProperty( theitem , "DeedName" );
 				SetName( theitem , itemname );
@@ -469,7 +480,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				//Non Deed Item
 				//Print("Creating Non Deed Normal Item");
 				var product_desc := GetItemDescriptor(CInt(item));
-				ApplyMaterialProperties(product_desc, use_on, 0, character, SKILLID_CARPENTRY);
+				ApplyMaterialProperties(product_desc, primaryRequest, 0, character, SKILLID_CARPENTRY);
 				theitem := CreateItemInBackpack( character , product_desc );
 				//itemname := GetObjProperty( theitem , "BaseName" );
 			endif
@@ -676,9 +687,9 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 		// SetName( theitem , itemname );
 		// IncRevision(theitem);
 		
-		SubtractAmount( use_on , material );
+		ConsumeResource( character , primaryRequest , material );
 		if( use_with )
-			SubtractAmount( use_with , material2 );
+			ConsumeResource( character , secondaryRequest , material2 );
 		endif
 		
 
@@ -688,7 +699,20 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 	// endif for second check else
 	endif
 
+		if( !ExtendResourceLease(primaryRequest, character, material) )
+			break;
+		endif
+		if( secondaryRequest and material2 )
+			if( !ExtendResourceLease(secondaryRequest, character, material2) )
+				break;
+			endif
+		endif
+
 	endwhile
+	ReleaseResourceLease(primaryRequest);
+	if( secondaryRequest )
+		ReleaseResourceLease(secondaryRequest);
+	endif
 	AutoLoop_finish();
 
 endfunction
@@ -836,13 +860,17 @@ function CanMake( who , key , ressource )
 
 	if( GetEffectiveSkill( who , SKILLID_CARPENTRY ) >= ( diff + APPEAR_AT ) )
 		var material := carpenter_cfg[key].Material;
+		var primaryRequest := MakeBackpackRequest( who, ressource );
 		//Require half resources during Crafting PH
 		if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
 			material := CInt(Ceil(material/2));
 		endif
-		if( ressource.amount >= material )
+		if( GetAvailableResource(who, primaryRequest).total >= material )
 			var skillid2 := carpenter_cfg[key].CoSkillid;
 			if( skillid2 )
+				if( !use_with )
+					return 0;
+				endif
 				var diff2 := carpenter_cfg[key].CoSkill + Cint( use_with_diff / DIVIDER );
 				if( diff2 < 1 )
 					diff2 := 1;
@@ -852,12 +880,13 @@ function CanMake( who , key , ressource )
 
 				if( GetEffectiveSkill( who , skillid2 ) >= ( diff2 + APPEAR_AT ) )
 					var material2 := carpenter_cfg[key].CoMaterial;
+					var secondaryRequest := MakeBackpackRequest( who, use_with );
 					//Require half resources during Crafting PH
 					if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
 						material2 := CInt(Ceil(material2/2));
 					endif
 
-					if( use_with.amount >= material2 )
+					if( GetAvailableResource(who, secondaryRequest).total >= material2 )
 						return 1;
 					endif
 				endif
@@ -893,12 +922,13 @@ endfunction
 
 function MakeYoungOakStaff( character , oak )
 	var ammount_required := 15;
+	var oakRequest := MakeBackpackRequest( character, oak );
 	//Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
 		ammount_required := CInt(Ceil(ammount_required/2));
 	endif
 	
-	if( oak.amount < ammount_required )
+	if( GetAvailableResource(character, oakRequest).total < ammount_required )
 		SendSysMessage( character , "You don't have enough young oak wood to make a staff." );
 		return;
 	endif
@@ -912,7 +942,7 @@ function MakeYoungOakStaff( character , oak )
 
 	var diff := 100;
 	SendSysmessage( character , "Difficulty: "+diff );
-	SubtractAmount( oak , ammount_required );
+	ConsumeResource( character , oakRequest , ammount_required );
 	if( CheckSkill( character , cint(SKILLID_CARPENTRY) , cint(diff) , cint(diff * POINTS_MULTIPLIER) ) )
 		CreateItemInBackpack( character , 0xBA28 );
 		SendSysMessage( character , "You successfully crafted a young oak staff." );

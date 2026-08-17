@@ -4,11 +4,16 @@ use os;
 include "include/client";
 include "include/camouflage";
 include "include/dotempmods";
+include "include/attributes";
+include "include/possess";
+include ":areas:include/areafunctions";
+include ":accounts:accounts";
 
 
 program logoff(who)
 
 	print("Logoff: "+who.name);
+	ACCT_ClearPendingLoginReservation( who );
 
 	DisplayLogoff( who );
 
@@ -32,6 +37,18 @@ program logoff(who)
 		 eraseobjproperty(who, "tg");
 	endif
 
+	// #2 Polymorph graphic restore: golem-wand and liche spell save the
+	// player's pre-transform graphic in "origform" before mutating
+	// who.graphic. If logoff happens while polymorphed, neither script
+	// gets to restore it -> player stays a golem/liche across sessions.
+	// Restore then erase, same restore-then-erase pattern as the liche
+	// stat-mod cleanup at the bottom of program logoff().
+	temp := GetObjProperty(who, "origform");
+	if (temp)
+		who.graphic := temp;
+		EraseObjProperty(who, "origform");
+	endif
+
 	temp := GetObjProperty(who,"#BrowsingGuild");
 	if (temp)
 		EraseObjProperty(who,"#BrowsingGuild");
@@ -48,9 +65,61 @@ program logoff(who)
 		who.concealed := 0;
 		EraseObjProperty(who, "#ViewingBeast");
 	endif
-	
+
+	// Beastal Bond cleanup: if logoff happens mid-verse the bard's
+	// Beastal_Bond script may never run BringBackToPosition, leaving the
+	// player permanently concealed/frozen and the wisp AI alive.
+	// Clear all bond state; ai_beastal_bond exits on its own once
+	// BeastalBond is missing on the master.
+	if (GetObjProperty(who, "BeastalBond") || GetObjProperty(who, "BeastalBondTimer") || GetObjProperty(who, "#StopPlaying"))
+		who.frozen := 0;
+		who.concealed := 0;
+		EraseObjProperty(who, "BeastalBond");
+		EraseObjProperty(who, "BeastalBondTimer");
+		EraseObjProperty(who, "#StopPlaying");
+		EraseObjProperty(who, "#ViewingBeast");
+	endif
+
 	//Erase #Casting just to be sure!
 	EraseObjProperty(who, "#Casting");
+
+	// Transient in-progress action / UI flags. Any script that owns one of
+	// these clears it on its own happy path, but a logoff mid-action can
+	// leave them set, which blocks future use of the same system on
+	// reconnect. Safe to unconditionally erase here.
+	EraseObjProperty(who, "#BoulderSelection");  // Bardic_Boulders target picker
+	EraseObjProperty(who, "#BoulderTarget");     // Bardic_Boulders chosen target serial
+	EraseObjProperty(who, "#StopPlaying");       // Verse cancel flag
+	EraseObjProperty(who, "#Flock");             // Spirit_Flock active flock array
+	EraseObjProperty(who, "#Messaging");         // pkg/opt/msg conversation buffer
+	EraseObjProperty(who, "#MerchantID");        // merchantidentify in-flight
+	EraseObjProperty(who, "#DaggerThrow");       // balanceddagger in-flight
+	EraseObjProperty(who, "#SpellMove");         // summoning/checkmove interrupt flag
+	EraseObjProperty(who, "spelldata");          // cast textcmd spell state
+	EraseObjProperty(who, "DoingVet");           // veterinary in-flight
+	EraseObjProperty(who, "IsMeditating");       // meditation in-flight
+	EraseObjProperty(who, "banker_making_check"); // banker check-creation in-flight
+	EraseObjProperty(who, "StatsState");         // dye stat gump state
+	EraseObjProperty(who, "Detsoob");            // booststone selection state
+	EraseObjProperty(who, "#TryAddVerse");       // versescroll add-verse pending response
+
+	// #3 / #4 Poison residue: poison_heal.src tracks active poison ticks
+	// in "#PoisonPIDs" and the running poison level in "#PoisonAmt".
+	// The #RunningScripts loop below kills the tick processes, but the
+	// props persist -- next time the player gets poisoned, the new
+	// amount stacks on top of stale level with no live ticks. Erase
+	// both; effective poison state is gone the instant the processes die.
+	EraseObjProperty(who, "#PoisonPIDs");
+	EraseObjProperty(who, "#PoisonAmt");
+
+	// Possession cleanup (#30-34): if staff logs off while possessing an
+	// NPC, fully unpossess so the staff body is restored to its real
+	// name/prefix/suffix/graphic/skills/stats and the puppet NPC has its
+	// hidden/frozen flags cleared. Without this the staff char stays
+	// stuck with the npc's appearance & the puppet remains hidden/frozen.
+	if (GetObjProperty(who, "possess"))
+		unpossess(who);
+	endif
 
 	var scripts := GetObjProperty( who, "#RunningScripts" );
 	if( scripts )
@@ -63,12 +132,8 @@ program logoff(who)
 		endforeach
 	endif
 	
-	// Remove personal powerhour upon logoff.
-	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
-		EraseObjProperty(who, "#PPHH");
-		EraseObjProperty(who, "#PPHC");
-		EraseObjProperty(who, "#PPHS");
-	endif
+	// Personal powerhour persists through logoff. logon.src resumes
+	// the remaining time (or clears stale props if expired).
 
 //	setchat(who);
 
@@ -119,10 +184,67 @@ program logoff(who)
 			SetIntelligenceMod(who, GetIntelligencemod(who)-int_modulation);
 	endif
 
+	// #9 / #10 PvP arena (pvp.src / pvp2vs2.src) backs up the player's
+	// real Karma/Fame in "lkarma"/"lfame" on entry and restores them on
+	// exit. If the player logs off mid-match, the arena script never
+	// gets to restore -> player keeps whatever karma/fame the match
+	// applied, and the real values are stranded in lkarma/lfame.
+	// Restore then erase. (Full arena exit -- teleport, pvping/pvptype,
+	// pvpmurd/pvpcrim -- is intentionally NOT done here yet.)
+	var saved_karma := GetObjProperty(who, "lkarma");
+	if (saved_karma)
+		SetObjProperty(who, "Karma", saved_karma);
+	endif
+	EraseObjProperty(who, "lkarma");
+	var saved_fame := GetObjProperty(who, "lfame");
+	if (saved_fame)
+		SetObjProperty(who, "Fame", saved_fame);
+	endif
+	EraseObjProperty(who, "lfame");
+
+	// #5 / #6 PvP arena exit on logoff. If the player disconnects while
+	// inside the arena (pvp.src / pvp2vs2.src), the arena script can't
+	// teleport them out or restore murderer/criminal status. Mirror the
+	// arena's normal exit just for this player:
+	//   - restore murderer/criminal from pvpmurd/pvpcrim backup props
+	//   - teleport to the arena drop-off coords
+	//   - re-apply safe-area properties
+	//   - clear pvping/pvptype/pvpmurd/pvpcrim
+	// NOTE: this does NOT clean up the opponent/partners or kill the
+	// arena process or clear the ArenaInUse globalprop -- the surviving
+	// arena script remains responsible for the match it started.
+	if (GetObjProperty(who, "pvping"))
+		var pvpmurd := GetObjProperty(who, "pvpmurd");
+		var pvpcrim := GetObjProperty(who, "pvpcrim");
+		who.setmurderer(pvpmurd);
+		who.setcriminal(pvpcrim);
+		EraseObjProperty(who, "pvpmurd");
+		EraseObjProperty(who, "pvpcrim");
+
+		MoveObjectToLocation(who, 5507, 1653, 22, "britannia", MOVEOBJECT_FORCELOCATION);
+		SetSafeAreaProperties(who);
+
+		EraseObjProperty(who, "pvping");
+		EraseObjProperty(who, "pvptype");
+	endif
+
 	Broadcast( "Player " + who.name + " has departed");
 
 endprogram
 
+/*
+ * DEAD CODE BELOW — commented out 2026-05.
+ *
+ * setchat(): old per-character chat list maintenance. Call site in
+ * program logoff() is already commented out (line ~115).
+ *
+ * fixchr() / fixcolor(): legacy "restore polymorphed/disguised player on
+ * logoff" routine. The single call site is commented out (the
+ * `if (TypeOf(getobjproperty(who,"ctfloc"))="Integer") ... else fixchr(who);`
+ * block above). Kept here only for reference — origform / cmfc /
+ * polymorph-on-logoff handling, if it is ever re-introduced, should
+ * follow this pattern (restore-then-erase, like the IsLiche cleanup).
+ *
 function setchat(who)
 
 	while (getglobalproperty("plylock") ==1 )
@@ -221,6 +343,9 @@ function fixcolor(who)
 	who.color := newcolor;
 
 endfunction
+ *
+ * END DEAD CODE
+ */
 
 function DisplayLogoff( mobile )
 
@@ -232,6 +357,7 @@ function DisplayLogoff( mobile )
         
         shrink_mobile.invisible := 1;
         shrink_mobile.saveonexit := 0;
+        shrink_mobile.color := 2473; // pink so staff can distinguish from spawnpoint markers
         
         SetName( shrink_mobile, mobile.name );
         

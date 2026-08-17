@@ -83,20 +83,12 @@ if ( IsCowner( who, sign ) )
 	return 1;
 endif
 
-// Only friends now, with different level of access
-var friends := GetObjProperty(sign, "Friends");
+if (IsFriend(who, sign, REMOVE_FROM_SECURE))
+	SetObjProperty(item, "#SecureRemove", {container.serial,ReadGameClock()}); // used to allow viewers to put items back
+	return 1;
+endif
 
-foreach friend in friends
-	if (friend[1] == who.serial)
-		if (friend[REMOVE_FROM_SECURE] == 1)
-			SetObjProperty(item, "#SecureRemove", {container.serial,ReadGameClock()}); // used to allow viewers to put items back
-			return 1;
-		else
-			SendSysMessage(who, "You don't have the permission level to move items.");
-			return 0;
-		endif	
-	endif
-endforeach
+SendSysMessage(who, "You don't have the permission level to move items.");
 
 return 0;
 

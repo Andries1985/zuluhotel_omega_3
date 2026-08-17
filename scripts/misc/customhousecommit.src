@@ -1,0 +1,41 @@
+// See documentation at https://docs.polserver.com/pol100/scripttypes.php#CustomHouseCommitScript on suggested actions
+
+use uo;
+use os;
+
+Const CUSTOMHOUSE_PRICE_PER_TILE := 500;
+
+program CustomHouseCommitScript(who, house)
+	if (who.concealed)
+		who.concealed := 0;
+	endif
+
+	var newparts := house.house_parts;
+	if (!newparts)
+		newparts := array{};
+	endif
+	var newcount := newparts.size();
+
+	var paidparts := 0;
+	if ("customhouse_paidparts" in GetObjPropertyNames (house))
+		paidparts := GetObjProperty (house, "customhouse_paidparts");
+	else
+		//house predates per-tile billing; grandfather its existing design in for
+		//free instead of retroactively billing everything already built
+		paidparts := newcount;
+	endif
+
+	var delta := newcount - paidparts;
+	if (delta > 0 and who.cmdlevel == 0)
+		var cost := delta * CUSTOMHOUSE_PRICE_PER_TILE;
+		if (!who.spendgold (cost))
+			SendSysMessage (who, "You don't have enough gold to make these changes. It would cost " + cost + " gold.");
+			house.acceptcommit (who, 0);
+			return;
+		endif
+		SendSysMessage (who, "You are charged " + cost + " gold for the new construction.");
+	endif
+
+	SetObjProperty (house, "customhouse_paidparts", newcount);
+	house.acceptcommit (who, 1);
+endprogram

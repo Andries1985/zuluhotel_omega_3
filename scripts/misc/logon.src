@@ -64,6 +64,12 @@ program logon( who )
 	if (stafflevel == 0)		
 		who.concealed := 0;
 	endif
+
+	// Clear stuck movement-blocking flags on logon. Players who logged out
+	// while frozen (e.g. mid-cast, mid-verse) or paralyzed (paralyze spell,
+	// stun) should not stay locked in place after logging back in.
+	who.frozen := 0;
+	who.paralyzed := 0;
 	
 	if(!GetObjProperty(who, "OrgName"))
 		SetObjProperty(who, "OrgName", who.name);
@@ -86,7 +92,36 @@ program logon( who )
 	else
 		Broadcast( who.name + " has come online and is here to help!");
 	endif
-	
+
+	// Resume personal powerhour if one was active when the player disconnected.
+	// The original activateph() instance (setph.src) does not survive a server
+	// reboot, so #SettingPH/#PPHPid would otherwise be stuck forever -- only
+	// that dead instance's own cleanup, or a GM .resetph, would ever clear them.
+	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
+		// A plain disconnect (not a reboot) does NOT kill the original activateph()
+		// instance -- it keeps sleeping toward the same end time. Kill it here so
+		// resumeph.src below is the only thing still counting down; otherwise both
+		// finish at once and the player gets the "has ended!" message twice.
+		var old_pid := GetObjProperty(who, "#PPHPid");
+		if(old_pid)
+			var old_process := GetProcess(CInt(old_pid));
+			if(old_process)
+				old_process.kill();
+			endif
+		endif
+
+		var pph_start := CInt(GetObjProperty(who, "pph_use_time"));
+		var remaining := (pph_start + 3600) - POLCore().systime;
+		if( remaining > 0 )
+			start_script(":powerhour:resumeph", {who, remaining});
+		else
+			EraseObjProperty(who, "#PPHH");
+			EraseObjProperty(who, "#PPHC");
+			EraseObjProperty(who, "#PPHS");
+		endif
+		EraseObjProperty(who, "#SettingPH");
+		EraseObjProperty(who, "#PPHPid");
+	endif
 
 endprogram
 

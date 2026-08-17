@@ -1,0 +1,116 @@
+// Synopsis: Reset poll data on a targeted town stone without resetting the whole stone
+use uo;
+use datafile;
+
+const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
+
+program textcmd_resetpoll(who)
+
+    SendSysMessage(who, "Select townstone to reset poll data.");
+    var stone := Target(who);
+
+    if(!stone)
+        SendSysMessage(who, "Cancelled.");
+        return;
+    endif
+
+    var town_id := CInt(GetObjProperty(stone, "town"));
+    if(!town_id)
+        SendSysMessage(who, "That target is not a valid town stone.");
+        return;
+    endif
+
+    var had_poll := GetObjProperty(stone, "pleibicito");
+    var had_result := GetObjProperty(stone, "Pleibicito_Result");
+
+    EraseObjProperty(stone, "pleibicito");
+    EraseObjProperty(stone, "Pleibicito_Result");
+    SetObjProperty(stone, "candidatos", {});
+    SetObjProperty(stone, "votos", 0);
+    SetObjProperty(stone, "votepercent", 0);
+
+    // Polls and elections are mutually exclusive. Keep timer if election is running.
+    if(!CInt(GetObjProperty(stone, "eleicao")))
+        EraseObjProperty(stone, "timer");
+    endif
+
+    if(had_poll or had_result)
+        SendSysMessage(who, "Poll data has been reset for this town stone.");
+    else
+        SendSysMessage(who, "No active poll data was found, but poll fields were reset.");
+    endif
+
+    SyncTownstoneState(stone);
+
+endprogram
+
+
+function OpenTownstoneDataFile()
+    var df := OpenDataFile(TOWNSTONE_DATAFILE);
+    if(!df)
+        CreateDataFile(TOWNSTONE_DATAFILE, flags := DF_KEYTYPE_STRING);
+        df := OpenDataFile(TOWNSTONE_DATAFILE);
+    endif
+    return df;
+endfunction
+
+
+function SyncTownstoneState(stone)
+    if(!stone)
+        return;
+    endif
+
+    var town_id := CInt(GetObjProperty(stone, "town"));
+    if(!town_id)
+        return;
+    endif
+
+    var town_list := GetGlobalProperty("townlist");
+    var region_name := "";
+    if(town_list and town_list[town_id])
+        region_name := CStr(town_list[town_id]);
+    endif
+    if(!region_name)
+        region_name := CStr(GetObjProperty(stone, "regionname"));
+    endif
+    if(!region_name)
+        return;
+    endif
+
+    var df := OpenTownstoneDataFile();
+    if(!df)
+        return;
+    endif
+
+    var elem := df.FindElement(region_name);
+    if(!elem)
+        elem := df.CreateElement(region_name);
+    endif
+    if(!elem)
+        UnloadDataFile(TOWNSTONE_DATAFILE);
+        return;
+    endif
+
+    var gold := CInt(elem.GetProp("gold"));
+    if(gold < 0)
+        gold := 0;
+    endif
+
+    elem.SetProp("gold", gold);
+    elem.SetProp("town_id", town_id);
+    elem.SetProp("stone_serial", stone.serial);
+    elem.SetProp("mayor", GetObjProperty(stone, "mayor"));
+    elem.SetProp("mayorserial", CInt(GetObjProperty(stone, "mayorserial")));
+    elem.SetProp("populacao", CInt(GetObjProperty(stone, "populacao")));
+    elem.SetProp("eleicao", CInt(GetObjProperty(stone, "eleicao")));
+    elem.SetProp("pleibicito", GetObjProperty(stone, "pleibicito"));
+    elem.SetProp("candidatos", GetObjProperty(stone, "candidatos"));
+    elem.SetProp("votos", CInt(GetObjProperty(stone, "votos")));
+    elem.SetProp("votepercent", CInt(GetObjProperty(stone, "votepercent")));
+    elem.SetProp("timer", CInt(GetObjProperty(stone, "timer")));
+    elem.SetProp("Pleibicito_Result", GetObjProperty(stone, "Pleibicito_Result"));
+    elem.SetProp("nextcitizenelection", CInt(GetObjProperty(stone, "nextcitizenelection")));
+    elem.SetProp("citizen", GetObjProperty(stone, "citizen"));
+
+    UnloadDataFile(TOWNSTONE_DATAFILE);
+endfunction

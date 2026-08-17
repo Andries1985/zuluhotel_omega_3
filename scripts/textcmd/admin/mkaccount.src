@@ -1,4 +1,4 @@
-// Synopsis: Create a new player account with name, password, and email
+// Synopsis: Create a new player account with name, password, discordID, and pin
 use uo;
 use os;
 
@@ -9,29 +9,28 @@ include ":accounts:settings";
 program mkaccount(who, text)
 
 	if ( !text)
-		SendSysMessage( who, ".mkaccount <accountname> <temppassword> <discordID> <email> <pin>" );
+		SendSysMessage( who, ".mkaccount <accountname> <temppassword> <discordID> <pin>" );
 		return;
 	endif
 
 	var params := SplitWords( text );
 
-	if (Len(params)<>5)
-		SendSysMessage( who, ".mkaccount <accountname> <temppassword> <discordID> <email> <pin>" );
+	if (Len(params)<>4)
+		SendSysMessage( who, ".mkaccount <accountname> <temppassword> <discordID> <pin>" );
 		return;
 	endif
 
 	var UserName		:= params[1];
 	var UserPassword	:= params[2];
 	var DiscordID		:= params[3];
-	var UserEmail		:= params[4];
-	var Pin				:= Cint(params[5]);
+	var Pin				:= Cint(params[4]);
 	var account;
 
 	//var ret := CreateNewAccount( UserName, UserPassword, 1 );
 
 	var settings := ACCT_GetSettingsCfgElem( "Settings" );
 
-	var ret := CreateNewAccount( username, UserPassword, DiscordID, UserEmail, Pin, settings.DefaultExpansion );
+	var ret := CreateNewAccount( username, UserPassword, DiscordID, Pin, settings.DefaultExpansion );
 
 	if( ret == error )
 		SendSysMessage( who, "Sorry, account creation failed.");

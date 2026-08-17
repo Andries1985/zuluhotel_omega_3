@@ -2,6 +2,10 @@ use os;
 use uo;
 
 include "include/math";
+include "include/client";
+
+const CITIZEN_ELECTION_COOLDOWN := (60*24*3600); // 2 months in seconds
+const ELECTION_DURATION := (7*24*3600); // 1 week in seconds
 
 function countvotes(item)
 
@@ -44,6 +48,53 @@ function countvotes(item)
 
 endfunction
 
+function GetTopTiedOptionNames(item)
+	var counts := {};
+	var maxvotes := 0;
+	var i;
+
+	foreach runa in EnumerateItemsInContainer(item)
+		if(runa.objtype == 0xa321)
+			var voto := CInt(GetObjProperty(runa, "opcao"));
+			if(!counts[voto])
+				counts[voto] := 1;
+			else
+				counts[voto] := counts[voto] + 1;
+			endif
+
+			if(counts[voto] > maxvotes)
+				maxvotes := counts[voto];
+			endif
+		endif
+	endforeach
+
+	if(maxvotes <= 0)
+		return "No options";
+	endif
+
+	var result_text := "";
+	for(i := 1; i <= counts.size(); i := i + 1)
+		if(counts[i] == maxvotes)
+			var option_name := CStr(candidatos[(2 * i)]);
+			if(!option_name)
+				option_name := "Option " + CStr(i);
+			endif
+
+			if(result_text)
+				result_text := result_text + ", " + option_name;
+			else
+				result_text := option_name;
+			endif
+		endif
+	endfor
+
+	if(!result_text)
+		return "No options";
+	endif
+
+	return result_text;
+endfunction
+
 
 function SetVotepercentage(item)
 	var retval := 0.00;
@@ -52,7 +103,7 @@ function SetVotepercentage(item)
 	retval := retval * 100;
 	retval := cint(retval);
 	SetObjProperty(item, "votepercent", retval);
-	return 1;
+	return retval;
 endfunction
 
 
@@ -72,67 +123,39 @@ function GetTownName(town)
 	return name;
 endfunction
 
+function SyncTownstoneState(item)
+	if(!item)
+		return;
+	endif
 
-function Append_data(original, newdata)
-	var i;
-	for(i:=1; i<=newdata.size();i:=i+1);
-		original.append(newdata[i]);
-	endfor
-	return original;
+	var region_name := "";
+	var town_id := CInt(GetObjProperty(item, "town"));
+	if(town_id)
+		region_name := GetTownName(town_id);
+	endif
+
+	if(!region_name)
+		return;
+	endif
+
+	TouchTownstoneRegionEntry(item, region_name);
 endfunction
 
+function BroadcastSystemLine(message)
+	Broadcast(CStr(message), FONT_SHADOW, 25);
+endfunction
 
-function votemenu(who, item, type)
-	//build vote menu
-	var i;
-	var curpage := 2;
-	var textY;
-	var posicao := 1;
-	var size := (candidatos.size()/2);
-	var lastpage := 1 + high(size,6);
-	var firstdata := data.size();
+function EnsureTownstoneElectionWatcher()
+	if(GetGlobalProperty("#TownstoneElectionWatcherRunning"))
+		return;
+	endif
 
-	//loop
-	for(i:=1; i<=size; i:=i+1)
-
-		//setting the header and the scrollers
-
-		if (posicao == 1)
-			layout.append(cstr("page " + curpage));
-			if(curpage !=2)
-				layout.append(cstr("button 435 220 250 251 0 " + (curpage-1) + " 0 "));
-			endif
-			if(lastpage != curpage)
-				layout.append(cstr("button 435 410 252 253 0 " + (curpage+1) + " 0 "));
-			endif
-			curpage := curpage +1;
-		endif
-
-
-		//text
-		textY := (275 + (cint(posicao) * 20)) -(type*20);
-
-		layout.append(cstr("text 165 " +textY+ " 0 " + (firstdata-1+i)));
-
-
-		//button
-		layout.append(cstr("button 330 " + cstr(textY) + " 5230 5231 1 0 " + cstr(i)));
-
-		//endloop increases
-		if (posicao <6)
-			posicao := posicao +1;
-		else
-			posicao := 1;
-		endif
-
-		//data
-		data[(firstdata+i)] :=  cstr(candidatos[(2*i)] );
-
-	endfor
+	Start_Script(":townstone:electionwatch");
 endfunction
 
 
 function candidato(who, item)
+
 	var i;
 	if(who.serial == mayorserial)
 		SendSysMessage(who, "You can't be candidate again");
@@ -143,6 +166,7 @@ function candidato(who, item)
 	for(i:=1;i<=candidatos.size();i:=i+2)
 		if(candidatos[i] == who.serial)
 			SendSysMessage(who, "You are already a candidate");
+			set_critical(0);
 			return 0;
 		endif
 	endfor
@@ -152,12 +176,13 @@ function candidato(who, item)
 	set_critical(0);
 	SendSysMessage(who, "Now you are a candidate, there are  " + (candidatos.size()/2) + " others.");
 	SetObjProperty(item, "candidatos", candidatos);
+	SyncTownstoneState(item);
+
 endfunction
 
 
 
 function voteto(who, item, choose)
-
 	//verifica se fulando jah votou
 	foreach runa in EnumerateItemsInContainer( item )
 		if (runa.objtype == 0xa321)
@@ -176,35 +201,24 @@ function voteto(who, item, choose)
 	votos := votos+1;
 	SetObjProperty(item, "votos",  votos);
 
-	SendSysMessage(who, "You just voted to " + candidatos[(2*choose)] );
-	SetVotepercentage(item);
+	SendSysMessage(who, "You just voted for " + candidatos[(2*choose)] );
+	var current_votepercent := SetVotepercentage(item);
+	SyncTownstoneState(item);
 
-	if(votos > 5 and votos >= (populacao*2/3) and timer < ReadGameClock() )
+	if(pleibicito and current_votepercent >= 100)
+		eleicao(item);
+		var poll_result := GetObjProperty(item, "Pleibicito_Result");
+		if(poll_result and poll_result.size() >= 2)
+			SendSysMessage(who, "Poll ended: " + CStr(poll_result[2]));
+		else
+			SendSysMessage(who, "Poll ended.");
+		endif
+		return;
+	endif
+
+	if(timer < ReadGameClock())
 		eleicao(item);
 	endif
-endfunction
-
-
-function EleicoesMenu(who, item)
-
-	layout := Append_data(layout, eleicaolayout);
-	data := Append_data(data, eleicaodata);
-
-	data[13] := candidatos.size()/2;
-	data[14] := votepercent + "%";
-
-	votemenu(who, item, 0);
-
-endfunction
-
-
-function PleibicitoMenu(who, item)
-
-	layout := Append_data(layout, pleibicitolayout);
-	data := Append_data(data, pleibicitodata);
-	data[11] := pleibicito;
-	data[14] :=  votepercent + "%";
-	votemenu(who, item, 1);
 
 endfunction
 
@@ -222,35 +236,99 @@ function eleicao(item);
 	endif
 
 	case(type)
-		1: if(choose)
-			Broadcast(" " +city+ " has a new leader: " + candidatos[choose*2]);
+		1: if(votos < 3)
+			BroadcastSystemLine("Election Result");
+			BroadcastSystemLine("Town: " + city);
+			BroadcastSystemLine("Winner: No winner (not enough votes)");
+			SetObjProperty(item, "eleicao", 0);
+			SetObjProperty(item, "candidatos", { });
+			SetObjProperty(item, "votos", 0);
+			SetObjProperty(item, "votepercent", 0);
+			SetObjProperty(item, "timer", 0);
+		elseif(choose)
+			BroadcastSystemLine("Election Result");
+			BroadcastSystemLine("Town: " + city);
+			BroadcastSystemLine("Winner: " + candidatos[choose*2]);
 			SetObjProperty(item, "mayor",  candidatos[choose*2]);
 			SetObjProperty(item, "mayorserial",  candidatos[choose*2-1]);
 			SetObjProperty(item, "eleicao", 0);
+			SetObjProperty(item, "nextcitizenelection", ReadGameClock() + CITIZEN_ELECTION_COOLDOWN);
+			SetObjProperty(item, "candidatos", { });
+			SetObjProperty(item, "votos", 0);
+			SetObjProperty(item, "votepercent", 0);
+			SetObjProperty(item, "timer", 0);
+		else
+			BroadcastSystemLine("Election Result");
+			BroadcastSystemLine("Town: " + city);
+			BroadcastSystemLine("Winner: No winner (tie)");
+			SetObjProperty(item, "eleicao", 0);
+			SetObjProperty(item, "candidatos", { });
+			SetObjProperty(item, "votos", 0);
+			SetObjProperty(item, "votepercent", 0);
+			SetObjProperty(item, "timer", 0);
+			if(GetObjProperty(item, "mayorserial"))
+				SetObjProperty(item, "nextcitizenelection", ReadGameClock() + CITIZEN_ELECTION_COOLDOWN);
 			else
-			Broadcast("Elections in "+city+" are a tie, new counting delayed");
-			timer := ReadGameclock() + (3600*6);
-			SetObjProperty(item, "timer", timer);
+				SetObjProperty(item, "nextcitizenelection", 0);
 			endif
+		endif
 
 		2: if(choose)
+			BroadcastSystemLine("Poll Result");
+			BroadcastSystemLine("Town: " + city + " | Question: " + CStr(pleibicito));
+			BroadcastSystemLine("Result: " + candidatos[choose*2]);
 			SetObjProperty(item, "Pleibicito_Result", {pleibicito, candidatos[choose*2]} );
 			SetObjProperty(item, "pleibicito", 0);
+			SetObjProperty(item, "candidatos", { });
+			SetObjProperty(item, "votos", 0);
+			SetObjProperty(item, "votepercent", 0);
+			SetObjProperty(item, "timer", 0);
 		else
-			timer := ReadGameclock() + (3600*6);
-			SetObjProperty(item, "timer", timer);
+			if(populacao > 0 and votos >= populacao)
+				var tied_options := GetTopTiedOptionNames(item);
+				BroadcastSystemLine("Poll Result");
+				BroadcastSystemLine("Town: " + city + " | Question: " + CStr(pleibicito));
+				BroadcastSystemLine("Result: Tie: " + tied_options);
+				SetObjProperty(item, "Pleibicito_Result", {pleibicito, "Tie: " + tied_options});
+				SetObjProperty(item, "pleibicito", 0);
+				SetObjProperty(item, "candidatos", { });
+				SetObjProperty(item, "votos", 0);
+				SetObjProperty(item, "votepercent", 0);
+				SetObjProperty(item, "timer", 0);
+			else
+				timer := ReadGameclock() + (3600*6);
+				SetObjProperty(item, "timer", timer);
+			endif
 		endif
 
 	endcase
+
+	SyncTownstoneState(item);
 
 endfunction
 
 
 
 function ConvocarEleicoes(who, item)
+
 	if(eleicoes or pleibicito)
-		SendSysMessage(who, "Election running");
+		SendSysMessage(who, "Elections running.");
 		return;
+	endif
+
+	if(who.serial != mayorserial)
+		if(populacao < 3)
+			SendSysMessage(who, "You need at least 3 town members before you can call an election.");
+			return;
+		endif
+
+		if(mayorserial)
+			var next_election_time := cint(GetObjProperty(item, "nextcitizenelection"));
+			if(next_election_time and ReadGameClock() < next_election_time)
+				SendSysMessage(who, "Citizens can only call elections every 2 months while a mayor exists.");
+				return;
+			endif
+		endif
 	endif
 
 	foreach runa in EnumerateItemsInContainer( item )
@@ -260,16 +338,19 @@ function ConvocarEleicoes(who, item)
 	SetObjProperty(item, "candidatos", { });
 	SetObjProperty(item, "eleicao", 1);
 	SetObjProperty(item, "votos", 0);
-	SetObjProperty(item, "timer", ReadGameClock() + (12*3600) );
+	SetObjProperty(item, "timer", ReadGameClock() + ELECTION_DURATION );
 	SetObjProperty(item, "votepercent", 0);
+	SyncTownstoneState(item);
+	EnsureTownstoneElectionWatcher();
 
-	BroadCast("Elections on " + city + " are open");
+			BroadcastSystemLine("Elections for " + city + " are open!");
 
 endfunction
 
 function ConvocarPleibicito(who, item)
+
 	if(eleicoes or pleibicito)
-		SendSysMessage(who, "Election runing");
+		SendSysMessage(who, "Elections running.");
 		return;
 	endif
 
@@ -285,11 +366,11 @@ function ConvocarPleibicito(who, item)
 		return;
 	endif
 
-	SendSysMessage(who, "Type now the options, press ENTER to finish");
+	SendSysMessage(who, "Type the options, press ENTER to finish");
 
 	repeat
 
-	temp := SendTextEntryGump( who, "Diga a opcao " +(opcoes.size()/2+1) , 50);
+	temp := SendTextEntryGump( who, "Enter Option " +(opcoes.size()/2+1) , 50);
 	if(temp)
 		opcoes.append(0);
 		opcoes.append(temp);
@@ -300,11 +381,13 @@ function ConvocarPleibicito(who, item)
 	SetObjProperty(item, "candidatos", opcoes);
 	SetObjProperty(item, "pleibicito", pergunta);
 	SetObjProperty(item, "votos", 0);
-	SetObjProperty(item, "timer", ReadGameClock() + (12*3600) );
+	SetObjProperty(item, "timer", ReadGameClock() + (7*24*3600) );
 	SetObjProperty(item, "votepercent", 0);
 	SetObjProperty(item, "Pleibicito_Result", {});
+	SyncTownstoneState(item);
+	EnsureTownstoneElectionWatcher();
 
-	BroadCast("New pool on " + city );
+	BroadcastSystemLine("New poll for " + city );
 
 endfunction
 

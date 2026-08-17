@@ -39,14 +39,26 @@ program MountStone( who, item)
 		SendSysMessage( who, "The "+item.name+" now has "+3+" Rebirth Potions.", FONT_NORMAL, 100);
 	endif
 
-	
-	var has_mount := GetObjProperty( who, "DonatorMounted" );
-	if (!has_mount)
-		CreateMount( who, item );
-	else
+	var mounted := GetEquipmentByLayer( who, 25 );
+	if( mounted )
+		var mounted_stone_serial := CInt(GetObjProperty(mounted, "DMountStoneSerial"));
+		if( mounted_stone_serial )
+			// Heal stale state so store always works after reconnect/desync.
+			if( !GetObjProperty( who, "DonatorMounted" ) )
+				SetObjProperty( who, "DonatorMounted", 1 );
+			endif
+			SetObjProperty( who, "DMountSerial", mounted.serial );
+			StoreMount( who, item );
+			SendSysMessage( who, "Your mount has been stored!", FONT_NORMAL, MSG_COLOR );
+		else
+			SendSysMessage( who, "You are already mounted on a non-stone mount!", FONT_NORMAL, MSG_COLOR );
+		endif
+	elseif( GetObjProperty( who, "DonatorMounted" ) )
 		StoreMount( who, item );
 		SendSysMessage( who, "Your mount has been stored!", FONT_NORMAL, MSG_COLOR );
-	endif	
+	else
+		CreateMount( who, item );
+	endif
 	IncRevision(item);
 	ReleaseItem(item);
 	
@@ -90,6 +102,9 @@ function CreateMount( who, item )
 	var name := GetObjProperty( item, "petname");
 	var mount_template := GetObjProperty( item, "MountTemplate");
 	var mount_tile := GetObjProperty( item, "MountTile");
+	var mount_hp := GetObjProperty( item, "MountHP" );
+	var mount_mana := GetObjProperty( item, "MountMana" );
+	var mount_stamina := GetObjProperty( item, "MountStamina" );
 
 	var mount := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0x1F021, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
 	mount.color := item.color;
@@ -97,6 +112,15 @@ function CreateMount( who, item )
 	
 	if (name)
 		SetObjProperty( mount, "petname", name);
+	endif
+	if (mount_hp != error)
+		SetObjProperty( mount, "pethp", mount_hp );
+	endif
+	if (mount_mana != error)
+		SetObjProperty( mount, "petmana", mount_mana );
+	endif
+	if (mount_stamina != error)
+		SetObjProperty( mount, "petstamina", mount_stamina );
 	endif
 	SetObjProperty( mount, "npctemplate", mount_template);
 	SetObjProperty( mount, "DMountStoneSerial", item.serial);
@@ -112,16 +136,29 @@ function StoreMount( who, item )
 		
 	var mounted := GetEquipmentByLayer( who, 25 );
 	if( mounted)
+		if( !GetObjProperty( who, "DMountSerial" ) )
+			SetObjProperty( who, "DMountSerial", mounted.serial );
+		endif
 		dismount(who);
 	endif
 
-	var mountserial := GetObjProperty( who, "DMountSerial" );
-	var mount := SystemFindObjectBySerial( mountserial );
+	var mountserial := CInt(GetObjProperty( who, "DMountSerial" ));
+	var mount := 0;
+	if( mountserial )
+		mount := SystemFindObjectBySerial( mountserial );
+	endif
+	if( !mount )
+		SendSysMessage( who, "Could not find your stone mount to store.", FONT_NORMAL, MSG_COLOR );
+		return 0;
+	endif
 	PlayStationaryEffectEX(mount.x, mount.y, mount.z, mount.realm, FX_SMOKE, FX_SPEED, FX_LOOP, mount.color, 4);
 	MoveObjectToLocation( mount, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
-	var original_stone := GetObjProperty( mount, "DMountStoneSerial" );
-	if (item.serial != original_stone) 
-		item := SystemFindObjectBySerial( original_stone );
+	var original_stone := CInt(GetObjProperty( mount, "DMountStoneSerial" ));
+	if( original_stone and item.serial != original_stone )
+		var original_item := SystemFindObjectBySerial( original_stone );
+		if( original_item )
+			item := original_item;
+		endif
 	endif
 	SetObjProperty(item, "MountHP", mount.hp);
 	SetObjProperty(item, "MountMana", mount.mana);

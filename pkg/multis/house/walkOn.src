@@ -1,19 +1,25 @@
 use cfgfile;
 use cliloc;
+use math;
 use os;
 use uo;
 
 
 include ":house:multihouse_settings";
 
+// Items that mark a ban tile -- if a candidate drop spot has one of these on
+// it, dropping a banned player there could immediately re-trigger a ban and
+// loop. Keep in sync with the bantile Item blocks in config/itemdesc.cfg.
+var BANTILE_OBJTYPES		:= { 0x18889, 0x260FC };
+Const BANTILE_DROP_SEARCH_RADIUS	:= 6;
+
 program walk_on_bantile(who, tile)
 	var hsign := GetHSign( who, tile );
+	if(!hsign)
+		return;
+	endif
 	var ownerser := hsign.GetOwnerSerial();
-	var	coownerinfo := coownerinfo := hsign.GetCoOwnerList();
 	if(ownerser == who.serial)
-		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
-//		SendSysMessage(who, "Your house is refreshed.", color := 66);
-	elseif(who.serial in coownerinfo)
 		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
 //		SendSysMessage(who, "Your house is refreshed.", color := 66);
 	endif
@@ -23,15 +29,106 @@ program walk_on_bantile(who, tile)
 		return;
 	endif
 	if(who.serial in banlist)
-		MoveObjectToLocation( who, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
+		var dropspot := GetBanTileDropSpot(hsign);
+		MoveObjectToLocation( who, dropspot.x, dropspot.y, dropspot.z, hsign.realm, MOVEOBJECT_FORCELOCATION );
 		SendSysMessageCL(who, 501340, color := 33); // You have been banned from this house.
 	endif
 endprogram
 
+// 2026-08-12: banned players used to be dropped on the sign's own tile,
+// which can sit inside the house envelope (or under another ban tile) and
+// cause an immediate re-ban -> re-teleport loop. Instead, drop them one
+// tile past the south-east corner of the house's real footprint (from the
+// "footage" boxes already tracked on the sign), then use the engine's own
+// standing-coordinate search to make sure the spot is actually walkable
+// (not inside a wall/tree/etc) and isn't itself another ban tile, widening
+// the search radius until a safe spot is found.
+function GetBanTileDropSpot(hsign)
+	var footage := GetObjProperty(hsign, "footage");
+
+	var xmin;
+	var xmax;
+	var ymax;
+	foreach box in footage
+		if(!xmin || box[1] < xmin)
+			xmin := box[1];
+		endif
+		if(!xmax || box[4] > xmax)
+			xmax := box[4];
+		endif
+		if(!ymax || box[5] > ymax)
+			ymax := box[5];
+		endif
+	endforeach
+
+	if(xmax && ymax)
+		var sespot := FindBanTileDropNear(xmax + 1, ymax + 1, hsign.realm);
+		if(sespot)
+			return sespot;
+		endif
+	endif
+
+	// South-east corner had nothing walkable within the search radius --
+	// try the south-west corner with the same pattern before giving up.
+	if(xmin && ymax)
+		var swspot := FindBanTileDropNear(xmin - 1, ymax + 1, hsign.realm);
+		if(swspot)
+			return swspot;
+		endif
+	endif
+
+	// Neither corner turned up a walkable, non-bantile spot -- fall back to
+	// the south-west corner's raw coordinates rather than the sign (which
+	// can sit inside the envelope or under another ban tile).
+	var fallbackx := hsign.x;
+	var fallbacky := hsign.y;
+	if(xmin && ymax)
+		fallbackx := xmin - 1;
+		fallbacky := ymax + 1;
+	endif
+	var fallback := GetStandingHeight(fallbackx, fallbacky, -128, hsign.realm);
+	if(fallback.errortext)
+		return struct{ x := fallbackx, y := fallbacky, z := hsign.z };
+	endif
+	return struct{ x := fallbackx, y := fallbacky, z := fallback.z };
+endfunction
+
+function FindBanTileDropNear(dropx, dropy, realm)
+	var radius := 0;
+	while(radius <= BANTILE_DROP_SEARCH_RADIUS)
+		var best;
+		var bestdist := -1;
+		foreach spot in GetStandingCoordinates(dropx, dropy, radius, -128, 127, realm)
+			if(IsBanTileSpot(spot.x, spot.y, spot.z, realm))
+				continue;
+			endif
+			var dist := Abs(spot.x - dropx) + Abs(spot.y - dropy);
+			if(bestdist == -1 || dist < bestdist)
+				best := spot;
+				bestdist := dist;
+			endif
+		endforeach
+		if(best)
+			return best;
+		endif
+		radius := radius + 1;
+	endwhile
+	return 0;
+endfunction
+
+function IsBanTileSpot(x, y, z, realm)
+	foreach thing in ListItemsAtLocation(x, y, z, realm)
+		if(thing.objtype in BANTILE_OBJTYPES)
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
 function GetHSign( byref who, byref tile )
 
 	foreach sign in ListObjectsInBox (who.x-32, who.y-32, -128, who.x+32, who.y+32, +127, who.realm)
-		if(sign.objtype in {0xBD2, 0xBD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
+		if(sign.objtype in {0xBCF, 0xBD1, 0xBD2, 0xBD0, 0x20BD1, 0x20BD2, 0x20BCF, 0x20BD0, 0x260FA})
 			if(CInt(GetObjProperty(sign, "houseserial")) == CInt(GetObjProperty(tile, "houseserial")))
 				if(GetObjProperty(sign, "footage"))
 					return sign;

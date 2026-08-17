@@ -1,0 +1,462 @@
+// Synopsis: Spawn the curated set of statue and gravestone tiles as non-movable reference items in 20-wide rows, keeping multi-piece statues together
+use uo;
+
+program guildstonelist(who)
+
+	var loc := TargetCoordinates(who);
+	if (!loc)
+		SendSysMessage(who, "Targeting canceled.");
+		return;
+	endif
+
+	var tiles := array{
+		array{0x224, "statue", "", 0, 0, 0},
+		array{0x225, "statue", "", 0, 0, 0},
+		array{0x28d, "statue", "", 0, 0, 0},
+		array{0x28e, "statue", "", 0, 0, 0},
+		array{0x28f, "statue", "", 0, 0, 0},
+		array{0x290, "statue", "", 0, 0, 0},
+		array{0x2c1, "statue", "", 0, 0, 0},
+		array{0x2c2, "statue", "", 0, 0, 0},
+		array{0x2c3, "statue", "", 0, 0, 0},
+		array{0x2c4, "statue", "", 0, 0, 0},
+		array{0x2c5, "statue", "", 0, 0, 0},
+		array{0x2c6, "statue", "", 0, 0, 0},
+		array{0x2dc, "dragon statue", "", 0, 0, 0},
+		array{0x2dd, "dragon statue", "", 0, 0, 0},
+		array{0x2ed, "gryphon statue", "", 0, 0, 0},
+		array{0x2ee, "gryphon statue", "", 0, 0, 0},
+		array{0x2f5, "dark elf statue", "", 0, 0, 0},
+		array{0x2f6, "statue", "", 0, 0, 0},
+		array{0x2f7, "statue", "", 0, 0, 0},
+		array{0x2f8, "statue", "", 0, 0, 0},
+		array{0x301, "dwarven statue", "", 0, 0, 0},
+		array{0x302, "dwarven statue", "", 0, 0, 0},
+		array{0x303, "dwarven statue", "", 0, 0, 0},
+		array{0x304, "statue", "", 0, 0, 0},
+		array{0x305, "statue", "", 0, 0, 0},
+		array{0x306, "statue", "", 0, 0, 0},
+		array{0x307, "statue", "", 0, 0, 0},
+		array{0x308, "dark elf statue", "", 0, 0, 0},
+		array{0x309, "dark elf statue", "", 0, 0, 0},
+		array{0x30a, "wizard statue", "", 0, 0, 0},
+		array{0x30b, "wizard statue", "", 0, 0, 0},
+		array{0x30c, "wizard statue", "", 0, 0, 0},
+		array{0x30d, "wizard statue", "", 0, 0, 0},
+		array{0x30e, "wizard statue", "", 0, 0, 0},
+		array{0x30f, "wizard statue", "", 0, 0, 0},
+		array{0x310, "statue", "", 0, 0, 0},
+		array{0x311, "statue", "", 0, 0, 0},
+		array{0x312, "statue", "", 0, 0, 0},
+		array{0x313, "statue", "", 0, 0, 0},
+		array{0x37e, "statue", "", 0, 0, 0},
+		array{0x3a1, "statue", "", 0, 0, 0},
+		array{0x3a2, "statue", "", 0, 0, 0},
+		array{0x3a3, "statue", "", 0, 0, 0},
+		array{0x3a4, "statue", "", 0, 0, 0},
+		array{0x3b1, "statue", "", 0, 0, 0},
+		array{0x3b2, "dwarven statue", "", 0, 0, 0},
+		array{0x3e3, "dwarven statue", "", 0, 0, 0},
+		array{0x3e4, "dwarven statue", "", 0, 0, 0},
+		array{0x3e5, "dwarven statue", "", 0, 0, 0},
+		array{0x3e6, "dwarven statue", "", 0, 0, 0},
+		array{0x3e7, "dwarven statue", "", 0, 0, 0},
+		array{0x3e8, "dwarven statue", "", 0, 0, 0},
+		array{0x3e9, "dwarven statue", "", 0, 0, 0},
+		array{0x3ea, "wizard statue", "", 0, 0, 0},
+		array{0x3eb, "wizard statue", "", 0, 0, 0},
+		array{0x3ec, "monster statue", "", 0, 0, 0},
+		array{0x3ed, "monster statue", "", 0, 0, 0},
+		array{0x403, "statue", "", 0, 0, 0},
+		array{0x404, "statue", "", 0, 0, 0},
+		array{0x405, "statue", "", 0, 0, 0},
+		array{0x406, "statue", "", 0, 0, 0},
+		array{0x407, "statue", "", 0, 0, 0},
+		array{0x408, "statue", "", 0, 0, 0},
+		array{0x409, "statue", "Set 1 (1/2)", 2, 0, 0},
+		array{0x40a, "statue", "Set 1 (2/2)", 0, 1, 0},
+		array{0x436, "statue", "Set 19 (1/2)", 2, 0, 0},
+		array{0x437, "statue", "Set 19 (2/2)", 0, 1, 0},
+		array{0x454, "statue", "Set 2 (1/2)", 2, 0, 0},
+		array{0x455, "statue", "Set 2 (2/2)", 0, 1, 0},
+		array{0x456, "statue", "Set 3 (1/2)", 2, 0, 0},
+		array{0x457, "statue", "Set 3 (2/2)", 0, 1, 0},
+		array{0x458, "statue", "Set 4 (1/2)", 2, 0, 0},
+		array{0x467, "statue", "Set 4 (2/2)", 0, 1, 0},
+		array{0x468, "statue", "Set 5 (1/2)", 2, 0, 0},
+		array{0x469, "statue", "Set 5 (2/2)", 0, 1, 0},
+		array{0x470, "statue", "Set 6 (1/2)", 2, 0, 0},
+		array{0x471, "statue", "Set 6 (2/2)", 0, 1, 0},
+		array{0x472, "statue", "Set 7 (1/3)", 3, 0, 0},
+		array{0x473, "statue", "Set 7 (2/3)", 0, 2, 0},
+		array{0x474, "statue", "Set 7 (3/3)", 0, 2, -2},
+		array{0x499, "statue", "", 0, 0, 0},
+		array{0x49a, "statue", "", 0, 0, 0},
+		array{0x52d, "statue", "", 0, 0, 0},
+		array{0x52e, "statue", "", 0, 0, 0},
+		array{0x5d5, "statue", "", 0, 0, 0},
+		array{0x5ed, "statue", "", 0, 0, 0},
+		array{0x5ee, "statue", "", 0, 0, 0},
+		array{0x63f, "statue", "", 0, 0, 0},
+		array{0x640, "statue", "", 0, 0, 0},
+		array{0x641, "statue", "", 0, 0, 0},
+		array{0x642, "statue", "", 0, 0, 0},
+		array{0x643, "statue", "", 0, 0, 0},
+		array{0x644, "statue", "", 0, 0, 0},
+		array{0x645, "statue", "", 0, 0, 0},
+		array{0x646, "statue", "", 0, 0, 0},
+		array{0x647, "statue", "", 0, 0, 0},
+		array{0x6fb, "statue", "", 0, 0, 0},
+		array{0x6fc, "statue", "", 0, 0, 0},
+		array{0x701, "statue", "", 0, 0, 0},
+		array{0x702, "statue", "", 0, 0, 0},
+		array{0x703, "statue", "", 0, 0, 0},
+		array{0x704, "statue", "", 0, 0, 0},
+		array{0x705, "statue", "", 0, 0, 0},
+		array{0x706, "statue", "", 0, 0, 0},
+		array{0x707, "statue", "", 0, 0, 0},
+		array{0x708, "statue", "", 0, 0, 0},
+		array{0x7d1, "statue", "", 0, 0, 0},
+		array{0x7d2, "statue", "", 0, 0, 0},
+		array{0x7d3, "statue", "", 0, 0, 0},
+		array{0x7d4, "statue", "", 0, 0, 0},
+		array{0x7d5, "statue", "", 0, 0, 0},
+		array{0x7db, "statue", "", 0, 0, 0},
+		array{0x7dc, "statue", "", 0, 0, 0},
+		array{0x7dd, "statue", "", 0, 0, 0},
+		array{0x7de, "statue", "", 0, 0, 0},
+		array{0x819, "statue", "", 0, 0, 0},
+		array{0x81a, "statue", "", 0, 0, 0},
+		array{0x81b, "statue", "", 0, 0, 0},
+		array{0x81c, "statue", "", 0, 0, 0},
+		array{0x81e, "statue", "", 0, 0, 0},
+		array{0x81f, "statue", "", 0, 0, 0},
+		array{0x820, "statue", "", 0, 0, 0},
+		array{0x88c, "statue", "", 0, 0, 0},
+		array{0x88d, "statue", "", 0, 0, 0},
+		array{0x88e, "statue", "", 0, 0, 0},
+		array{0x88f, "statue", "", 0, 0, 0},
+		array{0x890, "statue", "", 0, 0, 0},
+		array{0x891, "statue", "", 0, 0, 0},
+		array{0x892, "statue", "", 0, 0, 0},
+		array{0x893, "statue", "", 0, 0, 0},
+		array{0x894, "statue", "", 0, 0, 0},
+		array{0x895, "statue", "", 0, 0, 0},
+		array{0x896, "statue", "", 0, 0, 0},
+		array{0x897, "statue", "", 0, 0, 0},
+		array{0x898, "statue", "", 0, 0, 0},
+		array{0x8a7, "statue", "", 0, 0, 0},
+		array{0x8a8, "statue", "", 0, 0, 0},
+		array{0x8a9, "statue", "", 0, 0, 0},
+		array{0x8aa, "statue", "", 0, 0, 0},
+		array{0x919, "statue", "", 0, 0, 0},
+		array{0x96d, "statue", "", 0, 0, 0},
+		array{0x96e, "statue", "", 0, 0, 0},
+		array{0xed4, "gravestone", "", 0, 0, 0},
+		array{0xed5, "gravestone", "", 0, 0, 0},
+		array{0xed6, "gravestone", "", 0, 0, 0},
+		array{0xed7, "gravestone", "", 0, 0, 0},
+		array{0xed8, "gravestone", "", 0, 0, 0},
+		array{0xedb, "gravestone", "", 0, 0, 0},
+		array{0xedc, "gravestone", "", 0, 0, 0},
+		array{0xedd, "gravestone", "", 0, 0, 0},
+		array{0xede, "gravestone", "", 0, 0, 0},
+		array{0x1163, "snowy gravestone", "", 0, 0, 0},
+		array{0x1164, "snowy gravestone", "", 0, 0, 0},
+		array{0x1165, "gravestone", "", 0, 0, 0},
+		array{0x1166, "gravestone", "", 0, 0, 0},
+		array{0x1167, "gravestone", "", 0, 0, 0},
+		array{0x1168, "gravestone", "", 0, 0, 0},
+		array{0x1169, "gravestone", "", 0, 0, 0},
+		array{0x116a, "gravestone", "", 0, 0, 0},
+		array{0x116b, "gravestone", "", 0, 0, 0},
+		array{0x116c, "gravestone", "", 0, 0, 0},
+		array{0x116d, "gravestone", "", 0, 0, 0},
+		array{0x116e, "gravestone", "", 0, 0, 0},
+		array{0x116f, "gravestone", "", 0, 0, 0},
+		array{0x1170, "gravestone", "", 0, 0, 0},
+		array{0x1171, "gravestone", "", 0, 0, 0},
+		array{0x1172, "gravestone", "", 0, 0, 0},
+		array{0x1173, "gravestone", "", 0, 0, 0},
+		array{0x1174, "gravestone", "", 0, 0, 0},
+		array{0x1175, "gravestone", "", 0, 0, 0},
+		array{0x1176, "gravestone", "", 0, 0, 0},
+		array{0x1177, "gravestone", "", 0, 0, 0},
+		array{0x1178, "gravestone", "", 0, 0, 0},
+		array{0x1179, "gravestone", "", 0, 0, 0},
+		array{0x117a, "gravestone", "", 0, 0, 0},
+		array{0x117b, "gravestone", "", 0, 0, 0},
+		array{0x117c, "gravestone", "", 0, 0, 0},
+		array{0x117d, "gravestone", "", 0, 0, 0},
+		array{0x117e, "gravestone", "", 0, 0, 0},
+		array{0x117f, "gravestone", "", 0, 0, 0},
+		array{0x1180, "gravestone", "", 0, 0, 0},
+		array{0x1181, "gravestone", "", 0, 0, 0},
+		array{0x1182, "gravestone", "", 0, 0, 0},
+		array{0x118a, "snowy gravestone", "", 0, 0, 0},
+		array{0x11cd, "snowy gravestone", "", 0, 0, 0},
+		array{0x120d, "snowy gravestone", "", 0, 0, 0},
+		array{0x1224, "statue", "", 0, 0, 0},
+		array{0x1225, "statue", "", 0, 0, 0},
+		array{0x1226, "statue", "", 0, 0, 0},
+		array{0x1227, "statue", "", 0, 0, 0},
+		array{0x1228, "statue", "", 0, 0, 0},
+		array{0x129f, "statue", "Set 8 (1/3)", 3, 0, 0},
+		array{0x12a0, "statue", "Set 8 (2/3)", 0, 0, -1},
+		array{0x12a1, "statue", "Set 8 (3/3)", 0, -1, 0},
+		array{0x12a2, "statue", "Set 9 (1/3)", 3, 0, 0},
+		array{0x12a3, "statue", "Set 9 (2/3)", 0, 0, -1},
+		array{0x12a4, "statue", "Set 9 (3/3)", 0, -1, 0},
+		array{0x12ae, "statue", "Set 10 (1/2)", 2, 0, 0},
+		array{0x12af, "statue", "Set 10 (2/2)", 0, 0, -1},
+		array{0x12b0, "statue", "Set 11 (1/4)", 4, 0, 0},
+		array{0x12d5, "statue", "Set 11 (2/4)", 0, 2, 0},
+		array{0x12d6, "statue", "Set 11 (3/4)", 0, 2, -1},
+		array{0x12d7, "statue", "Set 11 (4/4)", 0, 1, 0},
+		array{0x12d8, "statue", "", 0, 0, 0},
+		array{0x12d9, "statue", "", 0, 0, 0},
+		array{0x139a, "statue", "", 0, 0, 0},
+		array{0x139b, "statue", "", 0, 0, 0},
+		array{0x139c, "statue", "", 0, 0, 0},
+		array{0x139d, "statue", "", 0, 0, 0},
+		array{0x139e, "statue", "Set 12 (1/3)", 3, 0, 0},
+		array{0x139f, "statue", "Set 12 (2/3)", 0, -1, 0},
+		array{0x13a0, "statue", "Set 12 (3/3)", 0, 0, -1},
+		array{0x13a1, "statue", "Set 13 (1/3)", 3, 0, 0},
+		array{0x13a2, "statue", "Set 13 (2/3)", 0, -1, 0},
+		array{0x13a3, "statue", "Set 13 (3/3)", 0, 0, -1},
+		array{0x1947, "blessed statue", "", 0, 0, 0},
+		array{0x1948, "blessed statue", "", 0, 0, 0},
+		array{0x1949, "blessed statue", "", 0, 0, 0},
+		array{0x194a, "blessed statue", "", 0, 0, 0},
+		array{0x207c, "statue of the faie", "", 0, 0, 0},
+		array{0x2a9e, "statue", "Set 14 (1/3)", 3, 0, 0},
+		array{0x2a9f, "statue", "Set 14 (2/3)", 0, 0, -1},
+		array{0x2aa0, "statue", "Set 14 (3/3)", 0, -1, 0},
+		array{0x2d0e, "arcanist statue", "", 0, 0, 0},
+		array{0x2d0f, "arcanist statue", "", 0, 0, 0},
+		array{0x2d10, "squirrel statue", "", 0, 0, 0},
+		array{0x2d11, "squirrel statue", "", 0, 0, 0},
+		array{0x2d12, "warrior statue", "", 0, 0, 0},
+		array{0x2d13, "warrior statue", "", 0, 0, 0},
+		array{0x2ff6, "contribution statue", "", 0, 0, 0},
+		array{0x306c, "minotaur statue", "Set 15 (1/3)", 3, 0, 0},
+		array{0x306d, "minotaur statue", "Set 15 (2/3)", 0, -1, 0},
+		array{0x306e, "minotaur statue", "Set 15 (3/3)", 0, 0, -1},
+		array{0x306f, "minotaur statue", "Set 16 (1/3)", 3, 0, 0},
+		array{0x3070, "minotaur statue", "Set 16 (2/3)", 0, -1, 0},
+		array{0x3071, "minotaur statue", "Set 16 (3/3)", 0, 0, -1},
+		array{0x3072, "minotaur statue", "Set 17 (1/2)", 2, 0, 0},
+		array{0x3073, "minotaur statue", "Set 17 (2/2)", 0, 0, -1},
+		array{0x3074, "minotaur statue", "Set 18 (1/3)", 3, 0, 0},
+		array{0x3075, "minotaur statue", "Set 18 (2/3)", 0, -1, 0},
+		array{0x3076, "minotaur statue", "Set 18 (3/3)", 0, 0, -1},
+		array{0x35f8, "crystal statue", "", 0, 0, 0},
+		array{0x35f9, "crystal statue", "", 0, 0, 0},
+		array{0x35fa, "crystal statue", "", 0, 0, 0},
+		array{0x35fb, "crystal statue", "", 0, 0, 0},
+		array{0x35fc, "crystal statue", "", 0, 0, 0},
+		array{0x35fd, "crystal statue", "", 0, 0, 0},
+		array{0x364b, "fire demon statue", "", 0, 0, 0},
+		array{0x364c, "shadow statue", "", 0, 0, 0},
+		array{0x369b, "fire demon statue", "", 0, 0, 0},
+		array{0x3b0f, "island statue", "", 0, 0, 0},
+		array{0x40bc, "statue", "", 0, 0, 0},
+		array{0x42bb, "statue", "", 0, 0, 0},
+		array{0x42c2, "warrior statue", "", 0, 0, 0},
+		array{0x4f7c, "Cupid Statue EAST", "", 0, 0, 0},
+		array{0x4f7d, "Cupid Statue SOUTH", "", 0, 0, 0},
+		array{0xa2c6, "Nixie_Statue_South", "", 0, 0, 0},
+		array{0xa2c7, "Nixie_statue_East", "", 0, 0, 0},
+		array{0xa565, "statue", "", 0, 0, 0},
+		array{0xa566, "statue", "", 0, 0, 0},
+		array{0xafa1, "Queen Zhah Statue S", "", 0, 0, 0},
+		array{0xafa2, "Queen Zhah Statue E", "", 0, 0, 0},
+		array{0xb2b1, "Manticore Statue So", "", 0, 0, 0},
+		array{0xb2b2, "Manticore Statue Ea", "", 0, 0, 0},
+		array{0xb44e, "Break Free Statue S", "", 0, 0, 0},
+		array{0xb44f, "Break Free Statue E", "", 0, 0, 0},
+		array{0xb1bf, "Hildebrandt Dragon", "", 0, 0, 0},
+		array{0xb44c, "Shardfall War Horn S", "", 0, 0, 0},
+		array{0xb44d, "Shardfall War Horn E", "", 0, 0, 0},
+		array{0x9f4a, "Platinum Dragon Statue S", "", 0, 0, 0},
+		array{0x9f4b, "Platinum Dragon Statue E", "", 0, 0, 0},
+		array{0x3ca7, "", "", 0, 0, 0},
+		array{0x3ca8, "", "", 0, 0, 0},
+		array{0x3ca9, "", "", 0, 0, 0},
+		array{0x3caa, "", "", 0, 0, 0},
+		array{0x3cab, "", "", 0, 0, 0},
+		array{0x3cac, "", "", 0, 0, 0},
+		array{0x3caf, "", "Set 20 (1/3)", 3, 0, 0},
+		array{0x3cb0, "", "Set 20 (2/3)", 0, 1, -1},
+		array{0x3cb1, "", "Set 20 (3/3)", 0, 2, -2},
+		array{0x3cb2, "", "", 0, 0, 0},
+		array{0x3cc4, "", "", 0, 0, 0},
+		array{0x3cc5, "", "", 0, 0, 0},
+		array{0x3cc6, "", "", 0, 0, 0},
+		array{0x3cc7, "", "", 0, 0, 0},
+		array{0x3cca, "", "", 0, 0, 0},
+		array{0x3ccb, "", "", 0, 0, 0},
+		array{0x3cd2, "", "", 0, 0, 0},
+		array{0x3cd3, "", "", 0, 0, 0},
+		array{0x3cd5, "", "", 0, 0, 0},
+		array{0x3cd8, "", "", 0, 0, 0},
+		array{0x3cd9, "", "", 0, 0, 0},
+		array{0x3cdb, "", "", 0, 0, 0},
+		array{0x3cdc, "", "", 0, 0, 0},
+		array{0x3cdd, "", "", 0, 0, 0},
+		array{0x3cde, "", "", 0, 0, 0},
+		array{0x3cdf, "", "", 0, 0, 0},
+		array{0x3ce0, "", "", 0, 0, 0},
+		array{0x3ce3, "", "", 0, 0, 0},
+		array{0x3ce4, "", "", 0, 0, 0},
+		array{0x3ce5, "", "", 0, 0, 0},
+		array{0x3ce6, "", "", 0, 0, 0},
+		array{0x3ce7, "", "", 0, 0, 0},
+		array{0x3ce8, "", "", 0, 0, 0},
+		array{0x3ce9, "", "", 0, 0, 0},
+		array{0x3cea, "", "", 0, 0, 0},
+		array{0x3d6c, "", "", 0, 0, 0},
+		array{0x3d6d, "", "", 0, 0, 0},
+		array{0x3d5c, "", "", 0, 0, 0},
+		array{0x3d5d, "", "", 0, 0, 0},
+		array{0x3d5f, "", "", 0, 0, 0},
+		array{0x3d60, "", "", 0, 0, 0},
+		array{0x3d61, "", "", 0, 0, 0},
+		array{0x3d62, "", "", 0, 0, 0},
+		array{0x42c0, "horse", "", 0, 0, 0},
+		array{0x42c1, "horse", "", 0, 0, 0},
+		array{0x42c3, "elven stove", "", 0, 0, 0},
+		array{0x42c5, "", "", 0, 0, 0}
+	};
+
+	SpawnGuildstoneList(who, loc, tiles);
+
+endprogram
+
+function SpawnGuildstoneList(who, loc, tiles)
+
+	var created := 0;
+
+	// Pass 1: every standalone (non-set) tile, packed tight in the usual
+	// 20-wide diagonal grid.
+	var per_row := 20;
+	var row := 0;
+	var col := 0;
+	var i;
+
+	for (i := 1; i <= tiles.size(); i := i + 1)
+		var entry := tiles[i];
+		var set_label := entry[3];
+		if (set_label != "")
+			continue;
+		endif
+
+		var row_start_x := loc.x + (row * 4);
+		var row_start_y := loc.y + (row * 4);
+		var x := row_start_x + (col * 2);
+		var y := row_start_y - (col * 2);
+
+		created := created + SpawnGuildstoneItem(who, loc, x, y, entry);
+
+		col := col + 1;
+		if (col >= per_row)
+			col := 0;
+			row := row + 1;
+		endif
+	endfor
+
+	// Pass 2: multi-piece statue sets, grouped onto one shared row per
+	// piece-count (all doubles together, all triples together, and so on).
+	// Each piece is placed at its real measured offset from the set's
+	// anchor (piece 1), captured in-client by hand-positioning the pieces
+	// against each other -- these are NOT decorative spacing, they're what
+	// makes the pieces line up into one statue. SET_GAP is the padding
+	// between one set and the next on the same row (double the singles'
+	// tight per-tile spacing). Row offsets are flat tile counts (not row
+	// units like pass 1) -- calibrated against lava-tile markers placed
+	// in-client: first sets row starts SETS_ROW_GAP past the last singles
+	// row, each further size-row is SET_ROW_STEP past the previous one.
+	var SET_GAP := 4;
+	var SETS_ROW_GAP := 8;
+	var SET_ROW_STEP := 10;
+
+	var sets_base_offset := (row * 4) + SETS_ROW_GAP;
+	var size_to_row := dictionary;
+	var size_to_x := dictionary;
+	var next_size_row := 0;
+
+	i := 1;
+	while (i <= tiles.size())
+		var entry := tiles[i];
+		var group_size := entry[4];
+
+		if (group_size > 0)
+			if (!size_to_row[group_size])
+				size_to_row[group_size] := sets_base_offset + (next_size_row * SET_ROW_STEP);
+				size_to_x[group_size] := 0;
+				next_size_row := next_size_row + 1;
+			endif
+
+			var this_row := size_to_row[group_size];
+			var anchor_offset := size_to_x[group_size];
+			var anchor_x := loc.x + this_row + anchor_offset;
+			var anchor_y := loc.y + this_row - anchor_offset;
+
+			var min_dx := 0;
+			var max_dx := 0;
+			var piece;
+			for (piece := 0; piece < group_size; piece := piece + 1)
+				var piece_entry := tiles[i + piece];
+				var dx := piece_entry[5];
+				var dy := piece_entry[6];
+				var x := anchor_x + dx;
+				var y := anchor_y + dy;
+				created := created + SpawnGuildstoneItem(who, loc, x, y, piece_entry);
+
+				if (dx < min_dx)
+					min_dx := dx;
+				endif
+				if (dx > max_dx)
+					max_dx := dx;
+				endif
+			endfor
+
+			size_to_x[group_size] := anchor_offset + (max_dx - min_dx) + 1 + SET_GAP;
+
+			i := i + group_size;
+		else
+			i := i + 1;
+		endif
+	endwhile
+
+	SendSysMessage(who, "Created " + created + " of " + tiles.size() + " guildstone/statue items.");
+
+endfunction
+
+function SpawnGuildstoneItem(who, loc, x, y, entry)
+
+	var objtype := entry[1];
+	var desc := entry[2];
+	var set_label := entry[3];
+
+	var item := CreateItemAtLocation(x, y, loc.z, objtype, 1, loc.realm);
+	if (!item)
+		return 0;
+	endif
+
+	item.movable := 0;
+	var name := Hex(objtype);
+	if (desc != "")
+		name := name + " - " + desc;
+	endif
+	if (set_label != "")
+		name := name + " [" + set_label + "]";
+	endif
+	item.name := name;
+	SetObjProperty(item, "StaffCreatedSerial", who.serial);
+	SetObjProperty(item, "StaffCreatedName", who.name);
+
+	return 1;
+
+endfunction

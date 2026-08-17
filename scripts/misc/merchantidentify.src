@@ -3,6 +3,7 @@ use os;
 use math;
 
 include "include/client";
+include "include/itemutil";
 include "include/namingbyenchant";
 
 
@@ -22,6 +23,11 @@ const MIN_DELAYMS := 250;
 who := parms[1];
 me := parms[2];
 IDENTIFY := parms[3];
+
+if( GetObjProperty(who, "#MerchantID") )
+	PrintTextAbovePrivate( me, "Farewell", who );
+	return 0;
+endif
 
 // Set temp prop so player can't open multiple id's
 SetObjProperty(who, "#MerchantID", 1);
@@ -66,6 +72,31 @@ if (!valid)
 	return 0;
 endif
 
+if( !ReserveItem( item ) )
+	PrintTextAbovePrivate( me, "That item is currently in use. Please try again.", who );
+	EraseObjProperty(who, "#MerchantID");
+	return 0;
+endif
+
+if( GetObjProperty( item , PROPID_CHEST_SPAWNPOINT_CHEST ) )
+	if( GetObjProperty( item , PROPID_CHEST_TRAP_TYPE ))
+		PrintTextAbovePrivate( me, "I cannot identify a trapped chest.", who );
+		ReleaseItem( item );
+		EraseObjProperty(who, "#MerchantID");
+		return 0;
+	elseif( item.locked )
+		PrintTextAbovePrivate( me, "I cannot identify a locked chest.", who );
+		ReleaseItem( item );
+		EraseObjProperty(who, "#MerchantID");
+		return 0;
+	elseif( item.IsSecured() )
+		PrintTextAbovePrivate( me, "I cannot identify a secured chest.", who );
+		ReleaseItem( item );
+		EraseObjProperty(who, "#MerchantID");
+		return 0;
+	endif
+endif
+
 // If players wants a bag identified
 if (item.isa(POLCLASS_CONTAINER))
 	var iditems := {};
@@ -79,6 +110,7 @@ if (item.isa(POLCLASS_CONTAINER))
 
 	if (iditems.size() < 1)
 		PrintTextAbovePrivate( me, "I can not see any items that need to be identified in there.", who);
+		ReleaseItem( item );
 		EraseObjProperty(who, "#MerchantID");
 		return 0;
 
@@ -96,13 +128,22 @@ if (item.isa(POLCLASS_CONTAINER))
 		//endforeach
 		
 		SendSysMessage(who,"There's "+iditems.Size()+" magical items to identify.", FONT_NORMAL, 2601 );
-		foreach item in iditems
-			if( !Accessible( who , item ) || Distance( who , item ) > 2)
+		var batch_idx := 0;
+		var batch_total := iditems.Size();
+		foreach ident_item in iditems
+			batch_idx := batch_idx + 1;
+			if( !Accessible( who , ident_item ) || Distance( who , ident_item ) > 2)
 				SendSysMessage( who , "You can't reach that." );
-				return 1;
+				continue;
 			endif
-			ItemID(who,item);
-			sleepms( Max( delay, MIN_DELAYMS ) );
+			if( !ReserveItem( ident_item ) )
+				continue;
+			endif
+			ItemID(who,ident_item);
+			ReleaseItem( ident_item );
+			if( batch_idx < batch_total )
+				sleepms( MIN_DELAYMS );
+			endif
 		endforeach
 
 		PrintTextAbovePrivate( me, "All items in thy container are now identified", who);	
@@ -125,13 +166,14 @@ else
 
 		// Player has enough money identify
 		if (who.spendgold(IDENTIFY))
-			SetNameByEnchant( item );
+			ItemID(who,item);
 			PrintTextAbovePrivate( me, "That appears to be a "+item.desc, who);	
 		else
 			PrintTextAbovePrivate( me, "You do not have enough gold to pay for that", who);	
 		endif	
 endif
 
+ReleaseItem( item );
 EraseObjProperty(who, "#MerchantID");
 
 endprogram
@@ -165,22 +207,6 @@ function ItemID(who,the_item)
 	
 	return 1;
 		
-endfunction
-
-function IsIDable( item )
-
-	if( item.graphic >= 0x182a and item.graphic <= 0x1848 )
-		return 0;
-	elseif( item.graphic >= 0x0efb and item.graphic <= 0x0f0e )
-		return 0;
-	elseif( item.graphic >= 0x100e and item.graphic <= 0x1013 )
-		return 0;
-	elseif( IsStackable( item, item ) )
-		return 0;
-	else
-		return 1;
-	endif
-
 endfunction
 
 function GetItemDetails(who, the_item)

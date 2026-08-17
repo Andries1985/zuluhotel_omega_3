@@ -6,7 +6,7 @@ include "include/areas";
 include "include/client";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":statichousing:recallgatehelp";
+//include ":multistatichousing:recallgatehelp";
 
 program cast_mark( caster, spell_id )
 

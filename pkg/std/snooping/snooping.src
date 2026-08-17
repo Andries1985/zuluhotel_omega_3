@@ -104,6 +104,7 @@ program snoop(who)
 
 	if(Distance(who, victim)>1)
 		sendsysmessage(who, "You need to stay close to "+ victim.name+" !");
+		return;
 	endif
 
 	var snoopingskill:=GetEffectiveSkill(who, SKILLID_SNOOPING);
@@ -134,8 +135,18 @@ program snoop(who)
 
 		var npctemplateID := victim.npctemplate;
 		var elem := stealme_cfg[npctemplateID];
+		if (!elem)
+			sendsysmessage(who, "You fail to find anything worth stealing.");
+			return;
+		endif
 		var item := GetConfigStringArray(elem,"item");
                 var randum := GetConfigStringArray(elem,"random");
+		if (!item)
+			item := {};
+		endif
+		if (!randum)
+			randum := {};
+		endif
 
 
 		var stealitem;
@@ -176,11 +187,7 @@ program snoop(who)
 				stealitem.movable:= 0;
 				setobjproperty(stealitem,"cansteal", 1);
 				setobjproperty(stealitem,"stealdiff", stealdiff);
-
-				if (getobjproperty(victim, "snoopme"))
-					var dodgy:= getobjproperty(victim, "snoopme");
-					setobjproperty(stealitem, "dodgy", dodgy);
-				endif
+				setobjproperty(stealitem, "victimserial", victim.serial);
 
 			endif
 
@@ -197,24 +204,27 @@ program snoop(who)
 			randnum:= randomint(100) + bonus;
 			if (randnum <= thischance)
 				var elem1:= items_cfg[splitrandum[1]];
-				if(elem1)
-					item2 := GetConfigStringArray(elem1,"item");
+				if(!elem1)
+					continue;
+				endif
+				item2 := GetConfigStringArray(elem1,"item");
+				if (!item2 || !item2.size())
+					continue;
 				endif
 
 				var rand_item_num:=randomint(item2.size())+1;
-
-				amount[i]:=RandomDiceStr(amount[i]);
-				total_amount:=total_amount+amount[i];
+				total_amount:=total_amount+amount;
 
 			    var resolveditems := CInt( item2[rand_item_num] );
 				if (!resolveditems)
 					resolveditems := GetObjtypeByName( cstr(item2[rand_item_num]) );
 				endif
 
-				stealitem:=createitemincontainer(newpack,cint(resolveditems),Cint(amount[i]));
+				stealitem:=createitemincontainer(newpack,cint(resolveditems),CInt(amount));
 				stealitem.movable:= 0;
 				setobjproperty(stealitem,"cansteal", 1);
 				setobjproperty(stealitem,"stealdiff", stealdiff);
+				setobjproperty(stealitem, "victimserial", victim.serial);
 			endif
 
 		endfor

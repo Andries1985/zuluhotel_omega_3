@@ -20,14 +20,16 @@ var opposing  := 0;
 //500272 //You cannot build near the stairs.
 program Place_Deeded_Item ( who, deed )
 
+	var is_gm := CInt( who.cmdlevel ) > 0;
+
 	var hsign := GetHouseSign(who);
 	//Sign stuff
-	if ( !hsign )
+	if ( !hsign && !is_gm )
 		SendSysMessageCL(who, 500275, color := 33); // You can only build this in a house.
 		return 0;
 	endif
 
-	if ( !hsign.IsCoOwnerOrOwner( who ) )
+	if ( hsign && !hsign.IsCoOwnerOrOwner( who ) && !is_gm )
 		SendSysMessageCL(who, 1152907, color := 33); // You must be owner or co-owner of a house to place addons in it.
 		return 0;
 	endif
@@ -42,22 +44,24 @@ program Place_Deeded_Item ( who, deed )
 		return 0;
 	endif
 
-	foreach item in ListItemsNearLocation (who.x, who.y, who.z, 1, who.realm)
- 		if (item.IsDoor())
-			SendSysMessageCL(who, 500271, color := 33); // You cannot build near the door.
-			return;
-  		endif
-	endforeach
+	if ( !is_gm )
+		foreach item in ListItemsNearLocation (who.x, who.y, who.z, 1, who.realm)
+			if (item.IsDoor())
+				SendSysMessageCL(who, 500271, color := 33); // You cannot build near the door.
+				return;
+			endif
+		endforeach
+	endif
 
 	SendSysMessageCL( who, 1049780, color := 88 ); // Where would you like to place this decoration?
 	var start := TargetCoordinates( who );
 	if( !start )
 		SendSysMessageCL( who, 1042021, color := 33 ); // Cancelled
 		return 0;
-	elseif( !CheckLosAt( who, CInt( start.x ), CInt( start.y ), CInt( start.z )) )
+	elseif( !is_gm && !CheckLosAt( who, CInt( start.x ), CInt( start.y ), CInt( start.z )) )
 		SendSysMessageCL( who, 500950, color := 33 ); // You cannot see that.
 		return 0;
-	elseif( !hsign.IsLocationInsideHouse(start) )
+	elseif( !is_gm && !hsign.IsLocationInsideHouse(start) )
 		SendSysMessageCL( who, 500275, color := 33); // You can only build this in a house.
 		return 0;
 	endif
@@ -148,6 +152,7 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 		 zed := targ.z;
 	endif
 	var broken, newx, newy, newz, founddoor := 0, founditem := 0, outside := 0;
+	var is_gm := CInt( who.cmdlevel ) > 0;
 	//Let's check to ensure that this deed is placed properly, ensuring that the item does not
 	//pop out of the house, that there are no doors being blocked, no items other than carpets/rugs
 	//below the item.
@@ -158,21 +163,23 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 		newx := targ.x + CInt(broken[2]);
 		newy := targ.y + CInt(broken[3]);
 		newz := targStHt.z + CInt(broken[4]);
-		if ( !sign.IsLocationInsideHouse(struct{"x" := newx, "y" := newy, "z" := newz, "realm" := targ.realm}) )
+		if ( !is_gm && (!sign || !sign.IsLocationInsideHouse(struct{"x" := newx, "y" := newy, "z" := newz, "realm" := targ.realm})) )
 			outside := 1;
 		endif
 
-		foreach possitem in ListItemsAtLocation ( newx, newy, zed, targ.realm )
-			if( !possitem.IsCarpet () )
-				founditem := 1;
-			endif
-		endforeach
+		if ( !is_gm )
+			foreach possitem in ListItemsAtLocation ( newx, newy, zed, targ.realm )
+				if( !possitem.IsCarpet () )
+					founditem := 1;
+				endif
+			endforeach
 
-		foreach possdoor in ListItemsNearLocation ( newx, newy, zed, 1, targ.realm )
-			if (possdoor.IsDoor () )
-				founddoor := 1;
-			endif
-		endforeach
+			foreach possdoor in ListItemsNearLocation ( newx, newy, zed, 1, targ.realm )
+				if (possdoor.IsDoor () )
+					founddoor := 1;
+				endif
+			endforeach
+		endif
 	endforeach
 
 	var the_item, failed := 0;
@@ -222,10 +229,12 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 			SetObjProperty( part, "DeedColor", deed.color );
 			SetObjProperty( part, "DeedOwnerSerial", who.serial );
 			SetObjProperty( part, "OtherItems", the_serials );
-			SetObjProperty( part, "lockeddown", 1);
-			SetObjProperty( part, "signserial", sign.serial);
-			//SetObjProperty( sign, "RemainingLockdowns", GetObjProperty(sign, "RemainingLockdowns") - 1);
-			SendSysMessage( who, "Locked Down.", 3, 66);
+			if ( sign )
+				SetObjProperty( part, "lockeddown", 1);
+				SetObjProperty( part, "signserial", sign.serial);
+				//SetObjProperty( sign, "RemainingLockdowns", GetObjProperty(sign, "RemainingLockdowns") - 1);
+				SendSysMessage( who, "Locked Down.", 3, 66);
+			endif
 			//From Carpentry Deed
 			SetObjProperty( part , "BaseName" , itemname );
 			SetObjProperty( part , "DeedName" , deedname );
@@ -237,7 +246,7 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 
 	//	Let's place the lockdown property on only the last item placed by the deed
 	//	which is a "cheat" to only have deeded items take up one lockdown.
-			if ( _part_iter == created_size )
+			if ( sign && _part_iter == created_size )
 				// Added to prevent "That is not yours to lock down!" in SetLockdownInfo function.
 				part.movable := 1;
 				SetLockdownInfo( sign, who, part, "lockeddown" );

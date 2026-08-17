@@ -1,0 +1,120 @@
+use math;
+use os;
+use uo;
+
+include ":statichousing:include/settings";
+
+var settings := STH_GetSettingsCfgElem("Settings");
+
+// Items that mark a ban tile -- if a candidate drop spot has one of these on
+// it, dropping a banned player there could immediately re-trigger a ban and
+// loop. Keep in sync with the bantile Item blocks in config/itemdesc.cfg.
+var BANTILE_OBJTYPES		:= { 0x18889, 0x260FC };
+Const BANTILE_DROP_SEARCH_RADIUS	:= 6;
+
+program walk_on_bantile(who, tile)
+	var signserial := CInt(GetObjProperty(tile, "signserial"));
+	var sign := SystemFindObjectBySerial(signserial);
+	var banlist := GetObjProperty(sign, "banlist");
+	if(sign.IsCoOwnerOrOwner(who))
+		sign.RefreshHouse();
+	endif
+	if(!banlist)
+		return;
+	endif
+	if(who.serial in banlist)
+		var dropspot := GetBanTileDropSpot(sign);
+		MoveObjectToLocation( who, dropspot.x, dropspot.y, dropspot.z, sign.realm, MOVEOBJECT_FORCELOCATION );
+		SendSysMessage(who, "You are banned from that house and cannot enter it!");
+	endif
+endprogram
+
+// 2026-08-12: banned players used to be dropped on the sign's own tile,
+// which can sit inside the house envelope (or under another ban tile) and
+// cause an immediate re-ban -> re-teleport loop. Instead, drop them one
+// tile past the south-east corner of the house's real footprint (from the
+// "footage" boxes already tracked on the sign), then use the engine's own
+// standing-coordinate search to make sure the spot is actually walkable
+// (not inside a wall/tree/etc) and isn't itself another ban tile, widening
+// the search radius until a safe spot is found.
+function GetBanTileDropSpot(sign)
+	var footage := GetObjProperty(sign, "footage");
+
+	var xmin;
+	var xmax;
+	var ymax;
+	foreach box in footage
+		if(!xmin || box[1] < xmin)
+			xmin := box[1];
+		endif
+		if(!xmax || box[4] > xmax)
+			xmax := box[4];
+		endif
+		if(!ymax || box[5] > ymax)
+			ymax := box[5];
+		endif
+	endforeach
+
+	if(xmax && ymax)
+		var sespot := FindBanTileDropNear(xmax + 1, ymax + 1, sign.realm);
+		if(sespot)
+			return sespot;
+		endif
+	endif
+
+	// South-east corner had nothing walkable within the search radius --
+	// try the south-west corner with the same pattern before giving up.
+	if(xmin && ymax)
+		var swspot := FindBanTileDropNear(xmin - 1, ymax + 1, sign.realm);
+		if(swspot)
+			return swspot;
+		endif
+	endif
+
+	// Neither corner turned up a walkable, non-bantile spot -- fall back to
+	// the south-west corner's raw coordinates rather than the sign (which
+	// can sit inside the envelope or under another ban tile).
+	var fallbackx := sign.x;
+	var fallbacky := sign.y;
+	if(xmin && ymax)
+		fallbackx := xmin - 1;
+		fallbacky := ymax + 1;
+	endif
+	var fallback := GetStandingHeight(fallbackx, fallbacky, -128, sign.realm);
+	if(fallback.errortext)
+		return struct{ x := fallbackx, y := fallbacky, z := sign.z };
+	endif
+	return struct{ x := fallbackx, y := fallbacky, z := fallback.z };
+endfunction
+
+function FindBanTileDropNear(dropx, dropy, realm)
+	var radius := 0;
+	while(radius <= BANTILE_DROP_SEARCH_RADIUS)
+		var best;
+		var bestdist := -1;
+		foreach spot in GetStandingCoordinates(dropx, dropy, radius, -128, 127, realm)
+			if(IsBanTileSpot(spot.x, spot.y, spot.z, realm))
+				continue;
+			endif
+			var dist := Abs(spot.x - dropx) + Abs(spot.y - dropy);
+			if(bestdist == -1 || dist < bestdist)
+				best := spot;
+				bestdist := dist;
+			endif
+		endforeach
+		if(best)
+			return best;
+		endif
+		radius := radius + 1;
+	endwhile
+	return 0;
+endfunction
+
+function IsBanTileSpot(x, y, z, realm)
+	foreach thing in ListItemsAtLocation(x, y, z, realm)
+		if(thing.objtype in BANTILE_OBJTYPES)
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction

@@ -18,6 +18,7 @@ include "include/client";
 include "include/objtype";
 include "include/attributes";
 include "include/difficulty";
+include "include/itemutil";
 
 program smelt_that_ore ( character , ore )
 
@@ -43,12 +44,15 @@ function SmeltOre( character , ore , ingot , difficulty )
 	if( !Accessible( character, ore ) )
 		SendSysmessage( character, "You can't reach that." );
 		return;
+	elseif( !character.backpack or !IsInContainer( character.backpack, ore ) )
+		SendSysMessage( character, "The ore must be in your backpack to smelt." );
+		return;
 	endif
 	
 	sendDiff( character , difficulty );
 	var near := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
 	foreach forge in near
-		if( ((forge.objtype >= UOBJ_FORGE_START) and (forge.objtype <= UOBJ_FORGE_END)) or (forge.objtype == UOBJ_SMALL_FORGE) )
+		if( ((forge.objtype >= UOBJ_FORGE_START) and (forge.objtype <= UOBJ_FORGE_END)) or (forge.objtype == UOBJ_SMALL_FORGE) or (forge.objtype == UOBJ_ELVEN_FORGE) or ((forge.objtype >= UOBJ_MINISOULFORGE_START) and (forge.objtype <= UOBJ_MINISOULFORGE_END)) or ((forge.objtype >= UOBJ_LARGESOULFORGE_START) and (forge.objtype <= UOBJ_LARGESOULFORGE_END)) )
 
 			if( CheckSkill( character , SKILLID_MINING , difficulty , 0 ) )
 

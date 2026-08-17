@@ -5,29 +5,79 @@ include "include/objtype";
 include "include/client";
 include "include/classes";
 include "include/difficulty";
+include "include/omegacache_utils";
+include "include/resourcemanager";
 
 const POINTS_MULTIPLIER := 15;
 
+// Cache ResourceRequest for blank maps — set when player targets cache
+var mapRequest := 0;
+
+function GetNewMapMaterialCost(who)
+	var material := 10;
+	// Require half resources during Crafting PH
+	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
+		material := Ceil(material/2);
+	endif
+	return material;
+endfunction
+
+function EnsureMapResources(who, amount)
+	if(GetAvailableResource(who, mapRequest).total < amount)
+		SendSysMessage(who, "You don't have enough resources.");
+		return 0;
+	endif
+	return 1;
+endfunction
+
+function ItemIsInBackpackScope(who, item)
+	if(item.serial == who.backpack.serial)
+		return 1;
+	elseif(item.container != who.backpack)
+		foreach thing in EnumerateItemsInContainer(who.backpack)
+			if(item.serial == thing.serial)
+				return 1;
+			endif
+		endforeach
+	else
+		return 1;
+	endif
+	return 0;
+endfunction
+
 program go_go_gadget_map( who, blank )
 
-	if (blank.objtype<>0x6001)
-	foreach item in EnumerateItemsInContainer(who.backpack)
-	if (item.objtype ==0x6001)
-	blank:=item;
-	break;
-	endif
-	endforeach
+	// Handle Omega Cache targeting
+	if(blank.objtype == OMEGACACHE_OBJTYPE)
+		mapRequest := SelectMaterialFromCache(who);
+		if(!mapRequest or CInt(mapRequest.objtype) != 0x6001)
+			SendSysmessage(who, "You must select blank maps.");
+			return;
+		endif
+	else
+		if(blank.objtype == 0x6001 and !ItemIsInBackpackScope(who, blank))
+			SendSysMessage(who, "That blank map must be in your backpack.");
+			return;
+		endif
+
+		if (blank.objtype<>0x6001)
+		foreach item in EnumerateItemsInContainer(who.backpack)
+		if (item.objtype ==0x6001)
+		blank:=item;
+		break;
+		endif
+		endforeach
+		endif
+
+		if (blank.objtype<>0x6001) SendSysmessage( who , "You have no blank maps" ); return; endif
+		mapRequest := MakeBackpackRequest(who, blank);
 	endif
 
-	if (blank.objtype<>0x6001) SendSysmessage( who , "You have no blank maps" ); return; endif
-	
 	var nextmsg :=CInt(GetObjProperty(who, "nextMap")), secclock:=ReadGameClock();
 	if ( secclock < nextmsg)
 		SendSysMessage( who, "You have to wait " + (nextmsg-secclock) + " seconds to make another map.");
 		return;
 	endif
-
-	if(!ReserveItem(blank)) return; endif
 
 	var choice := SelectMenuItem2( who , "Cartography");
 
@@ -37,77 +87,97 @@ program go_go_gadget_map( who, blank )
 
 	var props;
 	var difficulty;
-	
+
 	case (choice.index)
 		1: 	difficulty := 20;
+			if(!EnsureMapResources(who, 1))
+				break;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER)) )
 				props := array( "var" , who.x - 265 , who.y - 260 , who.x + 265 , who.y + 260 , 200 , 200 );
 				makemap( who , props , blank );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeMap(who, blank, 1);
 			endif
 			break;
-		
+
 		2: 	difficulty := 50;
+			if(!EnsureMapResources(who, 1))
+				break;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				props := array( "regional" , who.x - 850 , who.y - 800 , who.x + 850 , who.y + 800 , 400 , 400 );
 				makemap( who , props , blank );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeMap(who, blank, 1);
 			endif
 			break;
-		
+
 		3:	difficulty := 80;
+			if(!EnsureMapResources(who, 1))
+				break;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 	   			props := array( "world" , 0 , 0 , 5119 , 4095 , 500 , 400 );
 				makemap( who , props , blank );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
-				SubtractAmount( blank, 1 );
+				ConsumeMap(who, blank, 1);
 			endif
 			break;
-		
+
 		4:	difficulty := 110;
+			if(!EnsureMapResources(who, GetNewMapMaterialCost(who)))
+				break;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				makeNewmap( who , blank, 1 );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
 				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
-					SubtractAmount( blank, 5 );
+					ConsumeMap(who, blank, 5);
 				else
-					SubtractAmount( blank, 2 );
+					ConsumeMap(who, blank, 2);
 				endif
 			endif
 			break;
-		
+
 		5:	difficulty := 110;
+			if(!EnsureMapResources(who, GetNewMapMaterialCost(who)))
+				break;
+			endif
 			sendDiff( who , difficulty );
 			if( CheckSkill( who, SKILLID_CARTOGRAPHY , difficulty , Cint(difficulty * POINTS_MULTIPLIER) ))
 				makeNewmap( who , blank, 2 );
 			else
 				SendSysmessage( who , "You are not familiar enough with the area to draw the map" );
 				if(!GetGlobalProperty("PHC") && !GetObjProperty(who, "#PPHC"))
-					SubtractAmount( blank, 5 );
+					ConsumeMap(who, blank, 5);
 				else
-					SubtractAmount( blank, 2 );
+					ConsumeMap(who, blank, 2);
 				endif
 			endif
 			break;
-			
+
 		default: SendSysmessage( who , "Oh Sh!t ... " );
 	endcase
 
 	SetObjProperty(who, "nextMap", ReadGameClock() + 3);
 endprogram
 
+// Unified consumption function — always uses ResourceRequest (cache-aware)
+function ConsumeMap(who, blank, amount)
+	ConsumeResource(who, mapRequest, amount);
+endfunction
+
 function makemap( who, mapdef , blank )
-	
+
 	// Toadstool 19/04/2012
 	// Alteration to allow world maps to stack
 	// Their props don't alter like other maps.
@@ -127,30 +197,24 @@ function makemap( who, mapdef , blank )
 	map.gumpwidth := mapdef[6];
 	map.gumpheight := mapdef[7];
 	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
-	SubtractAmount( blank, 1 );
+	ConsumeMap(who, blank, 1);
 endfunction
 
 function makeNewmap( who, blank, choice )
-	var material := 10;
-	//Require half resources during Crafting PH
-	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
-		material := Ceil(material/2);
-	endif
-	if(blank.amount < material)
+	var material := GetNewMapMaterialCost(who);
+	if(GetAvailableResource(who, mapRequest).total < material)
 		sendsysmessage(who, "You don't have enough materials to do that.");
 		return;
 	endif
-	var remove := SubtractAmount( blank, material );
-	if(!remove)
-		sendsysmessage(who, "Cancelled.");
-		return;
-	endif
+	var map;
 	if(choice == 1)
-		CreateItemInBackpack( who, 0x3D71 );
+		map := CreateItemInBackpack( who, 0x3D71 );
 	else
-		CreateItemInBackpack( who, 0x3D72 );
+		map := CreateItemInBackpack( who, 0x3D72 );
 	endif
-
-	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
+	if(map)
+		ConsumeResource(who, mapRequest, material);
+		SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
+	endif
 	return;
 endfunction

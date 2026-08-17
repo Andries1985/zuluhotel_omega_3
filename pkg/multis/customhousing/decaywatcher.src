@@ -1,0 +1,37 @@
+// decaywatcher.src -- single persistent background sweep for custom house
+// decay.
+//
+// customhousing's ControlScript (signcontrol.src) never runs a per-sign
+// decay-check loop -- the original had one but it was disabled with the
+// comment "does not work with ZH scripts," and no technical explanation
+// survives in this repo's history for why. Rather than guess past that and
+// risk repeating whatever the original problem was, this uses a single
+// global sweep instead of one-persistent-loop-per-sign: one thread total,
+// started once at server boot (see scripts/misc/runalways.src), walking the
+// #customhouse_all_signs registry (include/house.inc) on an interval
+// matching house's own per-sign decay check cadence (120 seconds -- see
+// pkg/multis/house/multiSign/control.src's wait_for_event(120)).
+
+use uo;
+use os;
+
+include "include/house";
+
+program p_customhouse_decaywatcher()
+	while (1)
+		sleep (120);
+		var allsigns := GetGlobalProperty ("#customhouse_all_signs");
+		if (allsigns)
+			foreach signserial in allsigns
+				var sign := SystemFindObjectBySerial (signserial);
+				if (!sign)
+					continue;
+				endif
+				var decay := GetObjProperty (sign, "decay");
+				if (decay and ReadGameClock() > CInt (decay))
+					DemolishAbandonedCustomHouse (sign);
+				endif
+			endforeach
+		endif
+	endwhile
+endprogram

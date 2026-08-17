@@ -1,0 +1,121 @@
+use uo;
+use os;
+use vitals;
+
+include "include/housing";
+include ":keys:key";
+include ":statichousing:include/settings";
+include ":house:multihouse_settings";
+include "include/omegacache_utils";
+
+var settings := STH_GetSettingsCfgElem("Settings");
+
+program StaticHouseDestruction(sgn)
+	sign := sgn;
+	SetObjProperty(sign, "lastownername", GetObjProperty(sign, "ownername"));
+	SetObjProperty(sign, "lastownerserial", GetObjProperty(sign, "ownerserial"));
+
+	footage := GetObjProperty(sign, "footage");
+	var itemlist := sign.GetItemsInHouse();
+	var chk;
+	chk := chk;
+	var stone;
+	var ownrserial := CInt(GetObjProperty(sign, "ownerserial"));
+	var who := SystemFindObjectBySerial(ownrserial);
+	if(!who)
+		who := SystemFindObjectBySerial( ownrserial, SYSFIND_SEARCH_OFFLINE_MOBILES );
+	endif
+	var lock_ids := {};
+
+	// Account-wide house cap bookkeeping (:house:multihouse_settings), shared
+	// across house/staticHousing/customhousing -- replaces the old
+	// per-package TotalValueOfHouses/HouseValuesCount value tracking.
+	var destroyed_acct := GetObjProperty(sign, "owneracct");
+	if(destroyed_acct)
+		UnregisterAccountHouseSign(sign, destroyed_acct);
+	endif
+
+	// 2026-08-10: this teardown path previously left friendlist/coowners/
+	// banlist intact, same gap as demolish() in sign/control.src. Fixed here
+	// while consolidating onto the shared core.
+	EraseObjProperty(sign, "owneracct");
+	EraseObjProperty(sign, "ownerserial");
+	EraseObjProperty(sign, "ownername");
+	EraseObjProperty(sign, "friendlist");
+	EraseObjProperty(sign, "coowners");
+	EraseObjProperty(sign, "banlist");
+
+    SetObjProperty(sign, "NewHouse", 1);
+	var builtdeed := SystemFindObjectBySerial(GetObjProperty(sign, "builtdeed"));
+	DestroyItem(builtdeed);
+	EraseObjProperty(sign, "builtdeed");
+	foreach thing in GetObjProperty(sign, "components")
+		var obj := SystemFindObjectBySerial(thing);
+		if(obj)
+			var id := GetObjProperty(obj, "LockID");
+			if(id)
+				lock_ids.append(id);
+			endif
+		endif
+	endforeach
+	KP_DestroyOwnedKeysForLockIDs( who, CP_BANK_AREA, lock_ids );
+
+	foreach thing in itemlist
+		if(thing.objtype == OMEGACACHE_OBJTYPE)
+			// 2026-08-10: same forced-clear as control.src's decay demolish --
+			// this teardown path is also terminal, and erasing the house link
+			// before destroying avoids the DestroyScript's non-empty block
+			// orphaning the container.
+			// 2026-08-13: cache containers here are force-cleared regardless
+			// of contents (same as customhousing's decay path), so nothing
+			// further can be recovered from the DataFile either way -- drop
+			// it too instead of leaving an orphaned entry behind.
+			DeleteOmegaCacheStore(CInt(GetObjProperty(thing, "houseserial")));
+			EraseObjProperty(thing, "houseserial");
+			DestroyItem(thing);
+		elseif(GetObjProperty(thing, "houseserial") == sign.serial)
+			if((GetObjProperty(thing, "secure")) && (!thing.movable))
+				EraseObjProperty(thing, "secure");
+				var oldscript := GetObjProperty(thing, "oldscript");
+				if(oldscript == error)
+					oldscript := "";
+				endif
+				thing.usescript := oldscript;
+				thing.movable := 1;
+				EraseObjProperty(thing, "houseserial");
+				EraseObjProperty(thing, "oldscript");
+			elseif((GetObjProperty(thing, "lockeddown")) && (!thing.movable))
+				thing.movable := 1;
+				EraseObjProperty(thing, "houseserial");
+				EraseObjProperty(thing, "lockeddown");
+			elseif((!thing.movable) && (!thing.isa(POLCLASS_DOOR)) && (!thing.IsStaticHouseSign()))
+				if(thing.objtype == 0x2a390) // GuildStone
+					thing.movable := 1;
+					MoveObjectToLocation(thing, sign.x, sign.y, sign.z, MOVEOBJECT_FORCELOCATION);
+					thing.movable := 0;
+				endif
+			endif
+		endif
+		sleepms(5);
+	endforeach
+	foreach thing in (GetHouseMobiles(sign))
+		if(thing.npctemplate == "playervendor")
+			RevokePrivilege(thing, "invul");
+			ApplyRawDamage(thing, GetVital(thing, "Life")+ 100);
+		endif
+	endforeach
+	foreach thing in GetObjProperty(sign, "bantiles")
+		var tile := SystemFindObjectBySerial(thing);
+		DestroyItem(tile);
+	endforeach
+	foreach thing in GetObjProperty(sign, "components")
+		var obj := SystemFindObjectBySerial(thing);
+		EraseObjProperty(thing, "LockID");
+		obj.locked := 0;
+	endforeach
+	if(stone)
+		stone.movable := 0;
+		ReleaseItem(stone);
+	endif
+	return 1;
+endprogram

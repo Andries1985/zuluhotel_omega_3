@@ -35,7 +35,21 @@ program itemdata(parms)
 		prop.clilocid := 1061113; // Owner:
 		prop.values := array {SystemFindObjectBySerial(Cint(owner),SYSFIND_SEARCH_OFFLINE_MOBILES).name};
 		allprops.append(prop);
-	endif	
+	endif
+	var fishtier := GetObjProperty(xObject, "FishTier");
+	if(fishtier)
+		prop.clilocid := 1070722; // Nothing - raw text
+		//Yellow for Rare, orange for Legendary - matches the hues used on the in-game catch
+		//messages in pkg/std/fishing/fishing.inc's ResolveFishCatch().
+		if (fishtier == "Rare Fish" or fishtier == "Rare Crustacean")
+			prop.values := array {"<basefont color=#FFFF00>"+fishtier+"</basefont>"};
+		elseif (fishtier == "Legendary Fish" or fishtier == "Legendary Crustacean")
+			prop.values := array {"<basefont color=#FFA500>"+fishtier+"</basefont>"};
+		else
+			prop.values := array {fishtier};
+		endif
+		allprops.append(prop);
+	endif
 	if( xObject.newbie )
 		prop.clilocid := 1038021; // Blessed
 		prop.values := array {};
@@ -371,7 +385,7 @@ program itemdata(parms)
 			allprops.append(prop);
 		endif
 		if(xObject.isa(POLCLASS_CONTAINER) && !xObject.isa(POLCLASS_CORPSE) && !xObject.locked)
-			if(xObject.objtype == 0x6100)
+			if(xObject.objtype == 0x7100)
 				var maxcharges := GetObjProperty(xObject, "maxcharges");
 				prop.clilocid := 1063516; //Max Charges: 
 				prop.values := array {maxcharges};

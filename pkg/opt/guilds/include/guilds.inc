@@ -1,7 +1,417 @@
 use util;
+use guilds;
+use polsys;
+use datafile;
+use basicio;
+include ":house:utility";
+// GetItemDescInfo() (used for house footprint sizing below) -- pulls the
+// merged itemdesc.cfg across all packages, so it works uniformly for
+// regular housing's ~150 individually named house types and custom
+// housing's foundationWxH types alike.
+//
+// Deliberately NOT including ":itemutils:itemtypes" for door detection --
+// it duplicates several function names (IsIngot/IsLog/IsOre/IsReagent/
+// IsSign) already defined in the older, still widely-used
+// scripts/include/itemutil.inc, which some other scripts pull in
+// transitively alongside this file; including both causes a
+// duplicate-function compile error. item.isa(POLCLASS_DOOR) below is a bare
+// uo.em check instead, needing no extra include.
+include ":itemutils:itemdesc";
 
 include ":gumps:include/gumps";
 include "guildconstants";
+include ":guilds:items/guildstone/companions";
+
+// guild.getprop() returns a truthy error struct (not a plain falsy value)
+// for a property that was never set, so a bare "if(!guild.getprop(x))"
+// check doesn't reliably detect "unset". Use this wherever an unset guild
+// property should read back as a clean 0.
+function GuildPropInt(guild, propname)
+	var value := guild.getprop(propname);
+	if(value == error)
+		return 0;
+	endif
+	if(value && value.errortext)
+		return 0;
+	endif
+	if(!value)
+		return 0;
+	endif
+	return CInt(value);
+endfunction
+
+// External, durable mirror of each guild's house/guildstone serials, keyed
+// by guild name. guild.getprop("GuildHouse")/.getprop(GUILD_STONE) remain
+// the live values everything else reads; this datafile is a backup record
+// kept in sync alongside them, not a second source of truth.
+const GUILD_REGISTRY_DATAFILE := ":guilds:guild_registry";
+
+function OpenGuildRegistryDataFile()
+	var df := OpenDataFile(GUILD_REGISTRY_DATAFILE);
+	if(!df)
+		CreateDataFile(GUILD_REGISTRY_DATAFILE, DF_KEYTYPE_STRING);
+		df := OpenDataFile(GUILD_REGISTRY_DATAFILE);
+	endif
+	return df;
+endfunction
+
+// Writes guild's current GuildHouse/GuildStone serials into its datafile
+// entry (keyed by its current name), creating the entry if needed.
+function SyncGuildRegistry(guild)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return;
+	endif
+
+	var elem := df.FindElement(name);
+	if(!elem)
+		elem := df.CreateElement(name);
+	endif
+	if(!elem)
+		UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+		return;
+	endif
+
+	elem.SetProp("GuildHouse", GuildPropInt(guild, "GuildHouse"));
+	elem.SetProp(GUILD_STONE, GuildPropInt(guild, GUILD_STONE));
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+endfunction
+
+// Call when a guild is renamed, before old_name is overwritten on the guild
+// itself, so the datafile entry moves (carrying every stored property,
+// including MemberRanks, across) instead of leaving an orphan behind and
+// silently losing anything not re-derived by SyncGuildRegistry().
+function MoveGuildRegistryEntry(old_name, guild)
+	if(old_name && old_name != guild.getprop(GUILD_NAME))
+		var df := OpenGuildRegistryDataFile();
+		if(df)
+			var old_elem := df.FindElement(old_name);
+			if(old_elem)
+				var new_name := guild.getprop(GUILD_NAME);
+				var new_elem := df.FindElement(new_name);
+				if(!new_elem)
+					new_elem := df.CreateElement(new_name);
+				endif
+				if(new_elem)
+					foreach prop_name in (old_elem.PropNames())
+						new_elem.SetProp(prop_name, old_elem.GetProp(prop_name));
+					endforeach
+				endif
+				df.DeleteElement(old_name);
+			endif
+			UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+		endif
+	endif
+
+	SyncGuildRegistry(guild);
+endfunction
+
+// Returns {member_serial -> rank string} for guild, read from the registry
+// datafile -- the sole source of truth for ranks (no guild CProp mirror).
+function GetGuildMemberRanks(guild)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return dictionary;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return dictionary;
+	endif
+
+	var ranks := dictionary;
+	var elem := df.FindElement(name);
+	if(elem)
+		var stored := elem.GetProp(GUILD_MEMBER_RANKS_PROP);
+		if(stored && !stored.errortext)
+			ranks := stored;
+		endif
+	endif
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+	return ranks;
+endfunction
+
+// The guild leader always reads back as GUILD_RANK_LEADER, regardless of
+// whatever (if anything) happens to be stored for their serial.
+function GetGuildMemberRank(guild, member)
+	if(GuildPropInt(guild, "GuildMaster") == member.serial)
+		return GUILD_RANK_LEADER;
+	endif
+
+	var ranks := GetGuildMemberRanks(guild);
+	var stored := ranks[CInt(member.serial)];
+	if(!stored || stored.errortext)
+		return GUILD_DEFAULT_RANK;
+	endif
+
+	return stored;
+endfunction
+
+function SetGuildMemberRanks(guild, ranks)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return;
+	endif
+
+	var elem := df.FindElement(name);
+	if(!elem)
+		elem := df.CreateElement(name);
+	endif
+	if(!elem)
+		UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+		return;
+	endif
+
+	elem.SetProp(GUILD_MEMBER_RANKS_PROP, ranks);
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+endfunction
+
+// Returns {rank string -> {"secure":0/1, "teleporter":0/1, "lockdown":0/1,
+// "house_manager":0/1}} for guild's own house, read from the registry
+// datafile -- the sole source of truth (no guild CProp mirror), same as
+// MemberRanks. Consumed directly (not via this function) by
+// :house:multiSign/method.src's GuildRankHasHousePermission(), which reads
+// the same datafile/property independently to avoid a :house: -> :guilds:
+// package dependency.
+function GetGuildHousePerms(guild)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return dictionary;
+	endif
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return dictionary;
+	endif
+	var perms := dictionary;
+	var elem := df.FindElement(name);
+	if(elem)
+		var stored := elem.GetProp(GUILD_HOUSE_PERMS_PROP);
+		if(stored && !stored.errortext)
+			perms := stored;
+		endif
+	endif
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+	return perms;
+endfunction
+
+function SetGuildHousePerms(guild, perms)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return;
+	endif
+
+	var elem := df.FindElement(name);
+	if(!elem)
+		elem := df.CreateElement(name);
+	endif
+	if(!elem)
+		UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+		return;
+	endif
+
+	elem.SetProp(GUILD_HOUSE_PERMS_PROP, perms);
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+endfunction
+
+// Call when a guild is disbanded, to drop its datafile entry entirely.
+function DeleteGuildRegistryEntry(guild)
+	var name := guild.getprop(GUILD_NAME);
+	if(!name)
+		return;
+	endif
+
+	var df := OpenGuildRegistryDataFile();
+	if(!df)
+		return;
+	endif
+
+	if(df.FindElement(name))
+		df.DeleteElement(name);
+	endif
+
+	UnloadDataFile(GUILD_REGISTRY_DATAFILE);
+endfunction
+
+function GuildRealmNameFromMapId(mapid)
+	if (mapid == 0)
+		return "britannia";
+	elseif (mapid == 1)
+		return "britannia_alt";
+	elseif (mapid == 2)
+		return "ilshenar";
+	elseif (mapid == 3)
+		return "malas";
+	elseif (mapid == 4)
+		return "tokuno";
+	elseif (mapid == 5)
+		return "termur";
+	endif
+
+	return 0;
+endfunction
+
+// Static houses (pkg/multis/staticHousing) share POLCLASS_HOUSE with
+// regular/custom housing, so they can only be told apart via their sign's
+// exported IsStaticHouseSign() method. Sign resolution itself is
+// GetHouseSignFromObject() from :house:utility (included above) -- it
+// already does the same house-itself/signserial/nearby-scan resolution a
+// guilds-local copy would, custom housing signs included, so there's no
+// need to duplicate it here.
+function IsStaticHouse(house)
+	var sign := GetHouseSignFromObject(house);
+	if(!sign)
+		return 0;
+	endif
+
+	return sign.IsStaticHouseSign();
+endfunction
+
+// Tests whether any door is within radius tiles of loc (an object with
+// x/y/z/realm members, e.g. a placed item or a TargetCoordinates() result).
+function IsNearDoor(loc, radius)
+	foreach item in ListItemsNearLocation(loc.x, loc.y, loc.z, radius, loc.realm)
+		if (item.isa(POLCLASS_DOOR))
+			return 1;
+		endif
+	endforeach
+
+	return 0;
+endfunction
+
+// Tile area of house's footprint, via its itemdesc.cfg MultiID. 0 if it
+// can't be determined.
+function GetHouseFootprintArea(house)
+	if (!house)
+		return 0;
+	endif
+
+	var info := GetItemDescInfo(CInt(house.objtype));
+	if (!info || info.errortext || !info.MultiID)
+		return 0;
+	endif
+
+	var dims := GetMultiDimensions(CInt(info.MultiID));
+	if (!dims)
+		return 0;
+	endif
+
+	var width := (CInt(dims.xmax) - CInt(dims.xmin)) + 1;
+	var height := (CInt(dims.ymax) - CInt(dims.ymin)) + 1;
+
+	return width * height;
+endfunction
+
+function IsHouseTowerSizeOrBigger(house)
+	return GetHouseFootprintArea(house) >= GUILDSTONE_SET_MIN_HOUSE_AREA;
+endfunction
+
+function IsGuildHouseOwner(who, house)
+	if (!house)
+		return 0;
+	endif
+
+	if (CInt(GetObjProperty(house, "ownerserial")) == who.serial)
+		return 1;
+	endif
+
+	if (GetObjProperty(house, "owneracct") == who.acctname)
+		return 1;
+	endif
+
+	return 0;
+endfunction
+
+function GuildSafeObjProperty(obj, propname, fallback := "")
+	var value := GetObjProperty(obj, propname);
+	if(value == error)
+		return fallback;
+	endif
+	if(value && value.errortext)
+		return fallback;
+	endif
+	if(!value)
+		return fallback;
+	endif
+	return value;
+endfunction
+
+function GetGuildHouseDisplayName(house)
+	if(!house)
+		return "Unknown house";
+	endif
+
+	var hname := GuildSafeObjProperty(house, "MultiName", "");
+	if(hname != "")
+		return hname;
+	endif
+
+	var htype := GuildSafeObjProperty(house, "MultiType", "");
+	if(htype != "")
+		return htype;
+	endif
+
+	return "House " + Hex(CInt(house.objtype));
+endfunction
+
+function GetOwnedGuildCandidateHouses(who)
+	var owned := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GuildRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListMultisInBox(0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found || !found.size())
+			continue;
+		endif
+
+		foreach house in found
+			if (!house || !house.isa(POLCLASS_HOUSE))
+				continue;
+			endif
+
+			// Cheap ownership check first -- IsStaticHouse() resolves the
+			// house's sign (up to an 18-tile item scan) and there's no
+			// reason to pay that cost for houses the player doesn't even own.
+			if (!IsGuildHouseOwner(who, house))
+				continue;
+			endif
+
+			if (IsStaticHouse(house))
+				continue;
+			endif
+
+			owned.append(house);
+		endforeach
+	endforeach
+
+	return owned;
+endfunction
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
@@ -14,25 +424,33 @@ include "guildconstants";
 // returns a house ref or 0
 /////////////////////////////////////////////////////////////////////////////////////
 function FindSelectedHouse(who, data);
+	var standing_house := GetCurrentHouseAtMobile(who);
+	var houses := GetOwnedGuildCandidateHouses(who);
 
 	// Player selected 'standing in house' option
 	if (50 in data.keys)
-		if (GetObjProperty(who.multi, "ownerserial") != who.serial)
+		if (!standing_house or !IsGuildHouseOwner(who, standing_house))
 			return 2;
+		elseif (IsStaticHouse(standing_house))
+			return 3;
 		else
-			return who.multi;
+			return standing_house;
 		endif
 	endif
 
 	var i := 51;
 
-	// Loop from 51 to 56, 
+	// Loop from 51 to 65.
 	repeat
 		if (i in data.keys)
-			return SystemFindObjectBySerial(GetObjProperty(who, "Houses")[i-50]);
+			var idx := i - 50;
+			if (idx >= 1 && idx <= houses.size())
+				return houses[idx];
+			endif
+			return 0;
 		endif
 		i := i + 1;
-	until (i >= 55);
+	until (i >= 66);
 
 	return 0;
 
@@ -51,14 +469,48 @@ endfunction
 //
 //	Removed requests/pending alliances/wars
 ///////////////////////////////////////////////////////////////////////////////////
+// DestroyGuildStone() - Destroys the guild's placed guildstone (and any
+// statue-set companion pieces) and clears the GUILD_STONE property, if the
+// guild has one. Used both on disband and whenever the guild loses/changes
+// its house, since the stone can only ever sit inside the guild's own house.
+function DestroyGuildStone(guild)
+
+	var guildstone_serial := GuildPropInt(guild, GUILD_STONE);
+	if(guildstone_serial)
+		var guildstone := SystemFindObjectBySerial(guildstone_serial);
+		if(guildstone)
+			DestroyGuildstoneCompanions(guildstone);
+			DestroyItem(guildstone);
+		endif
+	endif
+	guild.eraseprop(GUILD_STONE);
+
+endfunction
+
 function DisbandGuild(guild)
 
 	// remove colour from guild house
-	var guildhouse := guild.getprop("GuildHouse");
+	var guildhouse_serial := guild.getprop("GuildHouse");
+	var guildhouse := 0;
+	if(guildhouse_serial)
+		guildhouse := SystemFindObjectBySerial(CInt(guildhouse_serial));
+	endif
 	//SetGuildHouseColour(guildhouse, 0);
 
-	// remove guild from the house
-	EraseObjProperty(guildhouse, "GuildHouse");
+	// remove guild reference from the linked house if it still exists
+	if(guildhouse)
+		var linked_guild_id := GetObjProperty(guildhouse, "GuildHouse");
+		if(CInt(linked_guild_id) == CInt(guild.guildid))
+			EraseObjProperty(guildhouse, "GuildHouse");
+		endif
+	endif
+
+	// also clear the guild-side house reference before destruction
+	guild.eraseprop("GuildHouse");
+
+	DestroyGuildStone(guild);
+
+	DeleteGuildRegistryEntry(guild);
 
 	// remove all players from guild. Remove players titles
 	foreach person in (guild.members)

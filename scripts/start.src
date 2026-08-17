@@ -39,3 +39,15 @@ SetGlobalProperty( "#NoNpcLooting" , 1 );
 start_script("EquipTemplateValidation");
 
 start_script("CustomHpFix");
+
+start_script(":donationbox:scripts/sweeper");
+Print( "Donation box sweeper started." );
+
+//The sweeper's single-instance guard is a GlobalProperty, which persists across a real
+//server restart (not just a script reload) - so without clearing it here, the guard would
+//stay set forever after the first successful boot and silently block the sweeper (and its
+//boot-time buoy cleanup) from ever starting again. start.src only runs on a genuine
+//startup, so it's always safe to force this clear here.
+EraseGlobalProperty("#CrustaceanTrapSweeperRunning");
+start_script(":fishing:crustaceansweeper");
+Print( "Crustacean trap sweeper started." );

@@ -194,7 +194,7 @@ function AddRareDye( item )
 
 	SetObjProperty( item, "Undyeable", 1 );
 	if( !GetObjProperty( item, "EnchantColor" ) )
-		var color := RandomInt(26)+1158;
+		var color := RandomInt(26)+2733;
 		SetObjProperty( item, "EnchantColor", color );
 	endif
 

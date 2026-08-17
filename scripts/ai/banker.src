@@ -17,6 +17,8 @@ include "include/randname";
 include "include/npcboosts";
 include ":mdgumps:requestGump";
 
+const UOBJ_BANKERS_ORDER := 0x14000;
+
 
 	var bank;
 	const REACT_THRESHOLD := 8;
@@ -63,6 +65,12 @@ program banker();
 		ev := os::wait_for_event(1);
 		if(ev.type == SYSEVENT_SPEECH)
 			text := lower(ev.text);
+			// If multiple bankers heard the same speech, only the closest one
+			// (with serial as tiebreaker) actually responds. Keeps balance/
+			// gold-check/bank prompts from doubling up.
+			if(!IsNearestBanker(me, ev.source))
+				continue;
+			endif
 			//splitted := SplitWords(text);
 			// if(ev.source.criminal == 1)
 			// 	SetObjProperty(me, "OriginalSpeechColor", me.speech_color);
@@ -75,96 +83,416 @@ program banker();
 			if(Find(text, "gold note", 1) || Find(text, "gold draft", 1) || Find(text, "gold check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EED);
+				EraseObjProperty(ev.source, "banker_making_check");
 			elseif(Find(text, "silver note", 1) || Find( text, "silver draft", 1) || Find(text, "silver check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EF0);
+				EraseObjProperty(ev.source, "banker_making_check");
 			elseif(Find(text, "copper note", 1) || Find(text, "copper draft", 1) || Find(text, "copper check", 1) )
 				PrintTextAbove(me, "" + ev.source.name + " one moment please.");
 				Sleep(2);
+				SetObjProperty(ev.source, "banker_making_check", 1);
 				BuyBankersNote(ev.source, me, 0x0EEA);
+				EraseObjProperty(ev.source, "banker_making_check");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "gold", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_GOLD_COIN, "gold");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "silver", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_SILVER_COIN, "silver");
+			elseif(Find(text, "vault", 1) && Find(text, "balance", 1) && Find(text, "copper", 1))
+				SpeakCurrencyBalance(ev.source, CP_PLAYER_VAULT_AREA, "vault", UOBJ_COPPER_COIN, "copper");
+			elseif(Find( text, "vault", 1 ) && Find( text, "balance", 1 ))
+				ShowStorageBalance( ev.source, CP_PLAYER_VAULT_AREA, "vault" );
+			elseif(Find(text, "vault", 1) && Find(text, "deposit", 1))
+				DepositAllBackpackCoins(ev.source, me, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "vault", 1) && Find(text, "withdraw", 1))
+				WithdrawFromBank(ev.source, me, text, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "vault", 1))
+				OpenBank(ev.source, CP_PLAYER_VAULT_AREA, "vault");
+			elseif(Find(text, "balance", 1) && Find(text, "gold", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_GOLD_COIN, "gold");
+			elseif(Find(text, "balance", 1) && Find(text, "silver", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_SILVER_COIN, "silver");
+			elseif(Find(text, "balance", 1) && Find(text, "copper", 1))
+				SpeakCurrencyBalance(ev.source, bank_region, "bank box", UOBJ_COPPER_COIN, "copper");
 			// elseif(text["balance"])
 			elseif(Find( text, "balance", 1 ))
-				//if(ev.source.criminal == 1)
-					//say("I will not do business with criminals!");
-				//else
-					//var bankbox := FindBankBox( ev.source );
-					var bankbox := ev.source.BankBox();
-					var contents := EnumerateItemsInContainer(bankbox);
-					var camt := 0;
-					var samt := 0;
-					var gamt := 0;
-					foreach item in contents
-						case(item.objtype)
-							0x0EEA:	camt := (camt + item.amount);
-							0x0EF0:	samt := (samt + item.amount);
-							0x0EED:	gamt := (gamt + item.amount);
-							default:
-						endcase
-					endforeach
-					ShowBalance(ev.source, AddCommas(gamt), AddCommas(samt), AddCommas(camt));
-				//endif
+				ShowStorageBalance( ev.source, bank_region, "bank box" );
 			elseif(Find(text, "bank", 1) || Find(text, "safe", 1))
 				OpenBank(ev.source, bank_region);
+			elseif(Find(text, "deposit", 1))
+				DepositAllBackpackCoins(ev.source, me);
+			elseif(Find(text, "withdraw", 1))
+				WithdrawFromBank(ev.source, me, text);
 			elseif(Find(text, "convert copper", 1))
 				ConvertCopper(ev.source, me);
 			elseif(Find(text, "convert silver", 1))
 				ConvertSilver(ev.source, me);
+			elseif(Find(text, "help", 1))
+				ShowHelp(ev.source);
 			endif
 		elseif(SYSEVENT_ITEM_GIVEN)
 		TurnToward (ev.source);
-			if ( GetObjProperty ( ev.item, "Payee") )
+			if ( GetObjProperty ( ev.item, "PurchaserSerial") )
 				CashBankersOrder( me, ev );
 			endif
 		endif
 		if(ReadGameClock() >= next_wander)
+			// Bankers stay rooted at their post; no wandering, no walk-home.
 			//begpurse(me);
-			wander();
-			wanders := wanders + 1;
+			//wander();
+			//wanders := wanders + 1;
 			//if(CoordinateDistance(me.x, me.y, myanchor[1], myanchor[2]) > 5)
 			//	MoveObjectToLocation(me, myanchor[1], myanchor[2], myanchor[5], me.realm, MOVEOBJECT_FORCELOCATION);
 			//endif
-			if (wanders > wanderlimit)
-				WalkHome();
-				wanders := 0;
-			endif
+			//if (wanders > wanderlimit)
+			//	WalkHome();
+			//	wanders := 0;
+			//endif
 
 			next_wander := ReadGameClock() + RandomDice( 2, 25, 10 );
 		endif
 	endwhile
 endprogram
 
+// Returns 1 if this banker is the closest banker to `speaker` (with serial
+// as tiebreaker), 0 otherwise. Used to suppress duplicate responses when
+// several bankers are in earshot of the same line of speech.
+function IsNearestBanker(me, speaker)
+	if(!speaker)
+		return 1;
+	endif
+	var my_dist := CoordinateDistance(me.x, me.y, speaker.x, speaker.y);
+	var my_template := me.npctemplate;
+	foreach other in ListMobilesNearLocation(speaker.x, speaker.y, speaker.z, REACT_THRESHOLD, speaker.realm)
+		if(other.serial == me.serial)
+			continue;
+		endif
+		if(other.npctemplate != my_template)
+			continue;
+		endif
+		var other_dist := CoordinateDistance(other.x, other.y, speaker.x, speaker.y);
+		if(other_dist < my_dist)
+			return 0;
+		endif
+		if(other_dist == my_dist && other.serial < me.serial)
+			return 0;
+		endif
+	endforeach
+	return 1;
+endfunction
+
+function GetBankerStorageContainer( who, storage_area_name, create := CP_CREATE )
+	if( storage_area_name == CP_PLAYER_VAULT_AREA )
+		return CP_GetPlayerVaultContainerForMobile( who, create );
+	endif
+
+	return CP_GetStorageContainerForMobile( who, storage_area_name, create );
+endfunction
+
 // Using 'new' StorageAreas.inc
-function OpenBank(you, bank_region)
+function OpenBank(you, storage_area_name, storage_label := "bank box")
 	var item_word := "items";
   TurnToward(you);
-  var bankbox := CP_GetStorageContainerForMobile( you, bank_region, CP_CREATE );
+	var bankbox := GetBankerStorageContainer( you, storage_area_name, CP_CREATE );
   //var bankbox := FindBankBox( you );
   if(bankbox)
     var contents := EnumerateItemsInContainer( bankbox, ENUMERATE_ROOT_ONLY );
 		if( contents.Size() == 1 )
 			item_word := "item";
 		endif
-    PrintTextAbovePrivate(me, "Your bank box holds " + contents.Size() + " " + item_word + ".", you);
+		PrintTextAbovePrivate(me, "Your " + storage_label + " holds " + contents.Size() + " " + item_word + ".", you);
     SendOpenSpecialContainer(you, bankbox);
   else
-    say("You don't seem to have a bank box, "+ you.name);
+		say("You don't seem to have a " + storage_label + ", "+ you.name);
   endif
 endfunction
 
 //////////////////////////////////////////////////////////////////////////////////////////
+//	DepositAllBackpackCoins(who, me)
 //
-//	ShowBalance(who, goldamt, unused silveramt, unused copperamt)
+//	Sweeps every gold/silver/copper coin stack out of the player's backpack
+//	(recursively, including sub-pouches) and merges them into their CP bank
+//	storage container. Inspired by ZH2.5's "deposit" command, adapted to our
+//	three-tier currency.
+//////////////////////////////////////////////////////////////////////////////////////////
+function DepositAllBackpackCoins(who, me, storage_area_name := CP_DEFAULT_AREA, storage_label := "bank")
+	TurnToward(who);
+	var bank := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bank)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	var coin_list := array{};
+	var copper := 0;
+	var silver := 0;
+	var gold := 0;
+	foreach item in EnumerateItemsInContainer(who.backpack)
+		case(item.objtype)
+			0x0EEA: copper := copper + item.amount; coin_list.append(item);
+			0x0EF0: silver := silver + item.amount; coin_list.append(item);
+			0x0EED: gold   := gold   + item.amount; coin_list.append(item);
+			default:
+		endcase
+	endforeach
+
+	if(!copper && !silver && !gold)
+		PrintTextAbove(me, "You have no coins in your backpack to deposit.", 1, 39);
+		return 0;
+	endif
+
+	var placed := 0;
+	foreach coin_stack in coin_list
+		// add_to_existing_stack := 2 -> auto: merge into an existing stack if
+		// one exists in the bank, otherwise just drop it in.
+		if(MoveItemToContainer(coin_stack, bank, -1, -1, 2))
+			placed := placed + 1;
+		endif
+	endforeach
+
+	if(!placed)
+		PrintTextAbove(me, "I could not fit any of those coins in your " + storage_label + ".", 1, 33);
+		return 0;
+	endif
+
+	var parts := array{};
+	if(gold)
+		parts.append(AddCommas(gold) + " gold");
+	endif
+	if(silver)
+		parts.append(AddCommas(silver) + " silver");
+	endif
+	if(copper)
+		parts.append(AddCommas(copper) + " copper");
+	endif
+
+	var summary := "";
+	var i := 1;
+	while(i <= parts.size())
+		if(i == 1)
+			summary := parts[i];
+		elseif(i == parts.size())
+			summary := summary + " and " + parts[i];
+		else
+			summary := summary + ", " + parts[i];
+		endif
+		i := i + 1;
+	endwhile
+
+	PrintTextAbove(me, "Deposited " + summary + " into thy " + storage_label + ".", 1, 66);
+	return 1;
+endfunction
+
+function ShowStorageBalance(who, storage_area_name, storage_label)
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	var summary := GetBankCurrencySummary(bankbox);
+	ShowBalance(
+		who,
+		AddCommas(summary.gold_coins),
+		AddCommas(summary.gold_checks),
+		AddCommas(summary.gold_coins + summary.gold_checks),
+		AddCommas(summary.silver_coins),
+		AddCommas(summary.silver_checks),
+		AddCommas(summary.silver_coins + summary.silver_checks),
+		AddCommas(summary.copper_coins),
+		AddCommas(summary.copper_checks),
+		AddCommas(summary.copper_coins + summary.copper_checks),
+		storage_label
+	);
+	return 1;
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	SpeakCurrencyBalance(who, storage_area_name, storage_label, currency, currency_name)
+//
+//	Answers a "balance gold"/"balance silver"/"balance copper" request out loud,
+//	without opening the balance gump. Reports the combined coin + cheque total
+//	for the requested currency only.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function SpeakCurrencyBalance(who, storage_area_name, storage_label, currency, currency_name)
+	TurnToward(who);
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	var summary := GetBankCurrencySummary(bankbox);
+	var coins := 0;
+	var checks := 0;
+	if(currency == UOBJ_GOLD_COIN)
+		coins := summary.gold_coins;
+		checks := summary.gold_checks;
+	elseif(currency == UOBJ_SILVER_COIN)
+		coins := summary.silver_coins;
+		checks := summary.silver_checks;
+	elseif(currency == UOBJ_COPPER_COIN)
+		coins := summary.copper_coins;
+		checks := summary.copper_checks;
+	endif
+
+	var total := coins + checks;
+	PrintTextAbovePrivate(me, "Thou hast " + AddCommas(total) + " " + currency_name + " in thy " + storage_label + ", between coin and cheque.", who, 1, 66);
+	return 1;
+endfunction
+
+function GetBankersNoteMax(currency)
+	if(currency == 0x0EED)
+		return 10000000;
+	elseif(currency == 0x0EF0)
+		return 5000000;
+	endif
+
+	return 1000000;
+endfunction
+
+function GetBankCurrencySummary(byref bankbox)
+	var summary := array;
+	summary.+ gold_coins := 0;
+	summary.+ silver_coins := 0;
+	summary.+ copper_coins := 0;
+	summary.+ gold_checks := 0;
+	summary.+ silver_checks := 0;
+	summary.+ copper_checks := 0;
+
+	foreach item in EnumerateItemsInContainer(bankbox)
+		case(item.objtype)
+			UOBJ_COPPER_COIN:
+				summary.copper_coins := summary.copper_coins + item.amount;
+			UOBJ_SILVER_COIN:
+				summary.silver_coins := summary.silver_coins + item.amount;
+			UOBJ_GOLD_COIN:
+				summary.gold_coins := summary.gold_coins + item.amount;
+			UOBJ_BANKERS_ORDER:
+				var check_amt := CInt(GetObjProperty(item, "Amount"));
+				if(check_amt > 0)
+					var check_currency := CInt(GetObjProperty(item, "Currency"));
+					if(check_currency == UOBJ_COPPER_COIN)
+						summary.copper_checks := summary.copper_checks + check_amt;
+					elseif(check_currency == UOBJ_SILVER_COIN)
+						summary.silver_checks := summary.silver_checks + check_amt;
+					elseif(check_currency == UOBJ_GOLD_COIN)
+						summary.gold_checks := summary.gold_checks + check_amt;
+					endif
+				endif
+			default:
+		endcase
+	endforeach
+
+	return summary;
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	WithdrawFromBank(who, me, text)
+//
+//	Classic-style speech withdrawal with multi-currency support:
+//	"withdraw 1000", "withdraw 2500 gold", "withdraw 500 silver", etc.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function WithdrawFromBank(who, me, text, storage_area_name := CP_DEFAULT_AREA, storage_label := "bank box")
+	TurnToward(who);
+
+	if(GetObjProperty(who, "banker_making_check"))
+		PrintTextAbove(me, "Please finish creating your Banker's Order first.", 1, 39);
+		return 0;
+	endif
+
+	var words := SplitWords(text);
+	var amt := 0;
+	var coin_type := CInt(currency);
+	var coin_name := "coins";
+	var saw_withdraw := 0;
+	var max_amt := 0;
+
+	foreach word in words
+		if(word == "withdraw")
+			saw_withdraw := 1;
+			continue;
+		endif
+
+		if(word == "gold")
+			coin_type := 0x0EED;
+			coin_name := "gold";
+		elseif(word == "silver")
+			coin_type := 0x0EF0;
+			coin_name := "silver";
+		elseif(word == "copper")
+			coin_type := 0x0EEA;
+			coin_name := "copper";
+		endif
+
+		if(saw_withdraw && !amt)
+			var parsed := CInt(word);
+			if(parsed > 0)
+				amt := parsed;
+			endif
+		endif
+	endforeach
+
+	if(coin_type == 0x0EED)
+		coin_name := "gold";
+	elseif(coin_type == 0x0EF0)
+		coin_name := "silver";
+	elseif(coin_type == 0x0EEA)
+		coin_name := "copper";
+	endif
+
+	if(!amt)
+		PrintTextAbove(me, "Please tell me how much to withdraw, such as: withdraw 1000 gold.", 1, 39);
+		return 0;
+	endif
+
+	max_amt := GetBankersNoteMax(coin_type);
+	if(amt > max_amt)
+		PrintTextAbove(me, "You may not withdraw more than " + AddCommas(max_amt) + " " + coin_name + " at once.", 1, 39);
+		return 0;
+	endif
+
+	var bankbox := GetBankerStorageContainer( who, storage_area_name, CP_CREATE );
+	if(!bankbox)
+		PrintTextAbove(me, "You don't seem to have a " + storage_label + ", " + who.name, 1, 39);
+		return 0;
+	endif
+
+	if(CountCoins(bankbox, coin_type) < amt)
+		PrintTextAbove(me, "I'm sorry. You don't have enough " + coin_name + " in your " + storage_label + ".", 1, 39);
+		return 0;
+	endif
+
+	if(!SpendCoin(who, amt, bankbox, coin_type))
+		SendSysMessage(who, "There was a problem extracting the coins from your " + storage_label + ".", 1, 33);
+		return 0;
+	endif
+
+	if(!CreateCoins(who.backpack, coin_type, amt))
+		CreateCoins(bankbox, coin_type, amt);
+		PrintTextAbove(me, "I could not fit those coins in your backpack.", 1, 33);
+		return 0;
+	endif
+
+	PrintTextAbove(me, "Withdrew " + AddCommas(amt) + " " + coin_name + " from thy " + storage_label + ".", 1, 66);
+	return 1;
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	ShowBalance(who, ...)
 //
 //	Purpose:
-//	Displays a gump to the player showing the amount of gold in his or her
-//	bank box.
-//	Note: There is provision for silver and copper currency as well should
-//	a developer wish to implement those coins. To enable display of silver
-//	and copper coin balaances, remove the unused keyords from the function
-//	declaration and look for instructions in the function explaining which
-//	lines to uncomment to display silver and copper balances.
+//	Displays a gump to the player showing coin and cheque totals for each
+//	currency in the bank box.
 //
 //	Parameters:
 //	who::charref
@@ -174,52 +502,70 @@ endfunction
 //	Nothing
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function ShowBalance(who, goldamt, silveramt, copperamt)
+function ShowBalance(who, gold_coins, gold_checks, gold_total, silver_coins, silver_checks, silver_total, copper_coins, copper_checks, copper_total, storage_label := "bank box")
+	var parms := array;
+	parms[1] := who;
+	parms[2] := gold_coins;
+	parms[3] := gold_checks;
+	parms[4] := gold_total;
+	parms[5] := silver_coins;
+	parms[6] := silver_checks;
+	parms[7] := silver_total;
+	parms[8] := copper_coins;
+	parms[9] := copper_checks;
+	parms[10] := copper_total;
+	parms[11] := storage_label;
 
-	var bankBalance := GFCreateGump();
+	Start_Script("ai/bankerbalancegump", parms);
 
-	GFPage(bankBalance, 0);
+endfunction
 
-	//Background 1
-	GFResizePic(bankBalance, 154, 101, 9200, 357, 330);
-	//HTML 1
-	GFHTMLArea(bankBalance, 176, 121, 316, 200, "<BASEFONT size=7>This is a summary of the currency in thy bank box " + who.name + ": </BASEFONT>");
-	//Label 2
-	GFTextLine(bankBalance, 173, 200, 803, "Gold Coins:");
-	//Label 3 - Uncomment the following line to display silver
-	GFTextLine(bankBalance, 173, 250, 803, "Silver Coins:");
-	//Label 4 - Uncomment the following line to display copper
-	GFTextLine(bankBalance, 173, 300, 803, "Copper Coins:");
-	//Item 1
-	GFTilePic(bankBalance, 455, 200, 3823, 0);
-	//Item 2 - Uncomment the following line to display silver
-	GFTilePic(bankBalance, 455, 250, 3826, 0);
-	//Item 3 - Uncomment the following line to display copper
-	GFTilePic(bankBalance, 455, 300, 3823, 1502);
-	//HTML 2
-	GFHTMLArea(bankBalance, 342, 205, 115, 16, "<BASEFONT size=9><div align=right>" +  goldamt + "</div></BASEFONT>");
-	//Copy of HTML 2 - Uncomment the following line to display silver
-	GFHTMLArea(bankBalance, 342, 255, 115, 16, "<BASEFONT size=9><div align=right>" + silveramt + "</div></BASEFONT>");
-	//Copy of HTML 2 - Uncomment the following line to display copper
-	GFHTMLArea(bankBalance, 342, 305, 115, 16, "<BASEFONT size=9><div align=right>" + copperamt + "</div></BASEFONT>");
-	//Button 1
-	GFAddButton(bankBalance, 305, 350, 247, 248, GF_CLOSE_BTN, 0);
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	ShowHelp(who)
+//
+//	Purpose:
+//	Displays a gump listing every speech command this banker understands,
+//	along with a short explanation of what each one does.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function ShowHelp(who)
+	var entries := array{
+		array{"bank / safe", "Open thy bank box."},
+		array{"deposit", "Deposit all coins from thy backpack into thy bank box."},
+		array{"withdraw [amount] [gold/silver/copper]", "Withdraw coins from thy bank box."},
+		array{"balance", "View a summary of thy bank box's currency."},
+		array{"balance gold/silver/copper", "Hear thy bank box's total in one currency."},
+		array{"gold note / silver note / copper note", "Purchase a Banker's Order."},
+		array{"convert copper", "Convert 60,000 copper into silver."},
+		array{"convert silver", "Convert 60,000 silver into gold."},
+		array{"vault", "Open thy account vault. This storage is account-based, shared across every character on thy account."},
+		array{"vault deposit", "Deposit all coins from thy backpack into thy vault."},
+		array{"vault withdraw [amount] [gold/silver/copper]", "Withdraw coins from thy vault."},
+		array{"vault balance", "View a summary of thy vault's currency."},
+		array{"vault balance gold/silver/copper", "Hear thy vault's total in one currency."},
+		array{"help", "Show this list again."}
+	};
 
-	GFSendGump(who, bankBalance);
+	var text := "BANKER HELP MENU\n\n\n";
+	foreach entry in entries
+		text := text + entry[1] + "\n  " + entry[2] + "\n\n";
+	endforeach
 
+	SendStringAsTipWindow(who, text);
+	return 1;
 endfunction
 
 function BuyBankersNote(who, me, currency)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
-	var amt := 0;		// This is so the 'while' loop will get executed.
-	
+	var amt := 0;
+	var max_amt := GetBankersNoteMax(currency);
 
-	amt := RequestGump(who,"For what amount shall I make the Banker's Order? The coins must be in your bank box.", "The maximum is 1 million coins.");
+	amt := RequestGump(who,"For what amount shall I make the Banker's Order? The coins must be in your bank box.", "The maximum is " + AddCommas(max_amt) + " coins.");
 	amt := CInt(amt);
-	if(!amt || amt > 1000000 || amt == 0)
+	if(!amt || amt > max_amt || amt == 0)
 		PrintTextAbove(me, "Very well then. I see you've changed your mind.", 1, 39);
 		return 0;
 	endif
@@ -256,18 +602,6 @@ function BuyBankersNote(who, me, currency)
 		endif
 	endif
 
-	var payee := RequestGump(who,"Whom shall I list as the payee?", "Please make sure the name is spelled correctly.");
-	if(!payee)
-		PrintTextAbove(me, "Very well then. I see you've changed your mind.", 1, 39);
-		return 0;
-	endif
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
-		return 0;
-	endif
-
 	var agree := confirmationSizable(who, "There is a nominal fee of 10 coins additional charge for the Note. Do you accept?");
 	if(!agree)
 		PrintTextAbove(me, "Very well then. Perhaps later.", 1, 39);
@@ -287,14 +621,11 @@ function BuyBankersNote(who, me, currency)
 		return 0;
 	endif
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
 	SetObjProperty(created, "Currency", currency);				// The ObjType of the coins being used
 	SetObjProperty(created, "Amount", amt);						// The amount of coins
 	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency, 1) + ".");
-	
+	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser (used to offer cancel/refund)
+
 	if (currency == 0x0EEA)
 		created.color := 0x5DE;
 	elseif (currency == 0x0EF0)
@@ -311,8 +642,6 @@ function CashBankersOrder(me, event)
 	var amnt := 0;
 	var refund := 0;
 	var bankbox := 0;
-	var payee := GetObjProperty(event.item, "Payee");
-	var payeeserial := CInt(GetObjProperty(event.item, "PayeeSerial"));
 	if(event.source.serial == CInt(GetObjProperty(event.item, "PurchaserSerial")))
 		var accept := confirmationSizable(event.source, "Do you wish to cancel this Banker's Order and get a refund?");
 		if(!accept)
@@ -338,7 +667,8 @@ function CashBankersOrder(me, event)
 		PrintTextAbove(me, "The coins have been deposited in your bank box.", 1, 66);
 		DestroyItem(event.item);
 		return 1;
-	elseif(event.source.serial == payeeserial)
+	else
+		// Payee requirement removed: any bearer may redeem a Banker's Order.
 		var accept := confirmationSizable(event.source, "Do you wish to redeem this Banker's Order for the coins?");
 		if(!accept)
 			PrintTextAbove(me, "Very well then. The Banker's Order has been returned to you.", 1, 39);
@@ -348,7 +678,6 @@ function CashBankersOrder(me, event)
 		type := CInt(GetObjProperty(event.item, "Currency"));
 		amnt := CInt(GetObjProperty(event.item, "Amount"));
 		bankbox := CP_GetStorageContainerForMobile( event.source, bank_region, CP_CREATE );
-		//bankbox := FindBankBox( event.source );
 		refund := createcoins( bankbox, type, amnt );
 		if(refund < 0)
 			SendSysMessage(event.source, "This note is made out for 0 coins. Stop wasting my time!", 2, 33);
@@ -363,12 +692,6 @@ function CashBankersOrder(me, event)
 		PrintTextAbove(me, "The coins have been deposited in your bank box.", 1, 66);
 		DestroyItem(event.item);
 		return 1;
-	else
-			PrintTextAbove(me, "Only the person who bought the Banker's Order or", 1, 39);
-			PrintTextAbove(me, "the payee, " + payee + ", may redeem it.", 1, 39);
-			PrintTextAbove(me, "The Banker's Order has been returned to you.", 1, 39);
-			MoveItemToContainer(event.source.backpack, event.item);
-			return 0;
 	endif
 endfunction
 
@@ -404,7 +727,6 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EF0;
 
@@ -423,14 +745,6 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 	if(copperamt < (amt + 10))
 		PrintTextAbove(me, "I'm sorry. You don't have the funds available in your bank box.", 1, 39);
 		PrintTextAbove(me, "You need 60,000 copper coins to convert to silver.", 1, 39);
-		return 0;
-	endif
-
-	var payee := who.name;
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
 		return 0;
 	endif
 
@@ -455,13 +769,10 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 
 	amt := amt / 100;  // Convert copper to silver
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
-	SetObjProperty(created, "Currency", currency2);		// The ObjType of the coins being used
-	SetObjProperty(created, "Amount", amt);						// The amount of coins
-	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	SetObjProperty(created, "Currency", currency2);			// The ObjType of the coins being used
+	SetObjProperty(created, "Amount", amt);					// The amount of coins
+	SetObjProperty(created, "IssuingBank", bankcity);		// The city name in which the bank is located
+	SetObjProperty(created, "PurchaserSerial", who.serial);	// The serial number of the purchaser
 	created.color := 1154;
 
 endfunction
@@ -471,7 +782,6 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	//var box := FindBankBox( who );  
 	var box := CP_GetStorageContainerForMobile( who, bank_region, CP_CREATE );
 	var stuff := EnumerateItemsInContainer(box);
-	var payeeserial := 0;
 	var amt := 60000;
 	var currency2 := 0x0EED;
 
@@ -490,14 +800,6 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 	if(silveramt < (amt + 10))
 		PrintTextAbove(me, "I'm sorry. You don't have the funds available in your bank box.", 1, 39);
 		PrintTextAbove(me, "You need 60,000 silver coins to convert to gold.", 1, 39);
-		return 0;
-	endif
-
-	var payee := who.name;
-
-	payeeserial := ACCT_FindValidPlayer(payee);
-	if(!payeeserial)
-		PrintTextAbove(me, "That person doesn't seem to have an account with any bank.", 1, 33);
 		return 0;
 	endif
 
@@ -522,13 +824,10 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 
 	amt := amt / 100;  // Convert silver to gold
 
-	SetObjProperty(created, "Payee", payee);					// Payee's name
-	SetObjProperty(created, "PayeeSerial", payeeserial);		// Serial number of the player to whom the order is made
-	SetObjProperty(created, "Currency", currency2);		// The ObjType of the coins being used
-	SetObjProperty(created, "Amount", amt);						// The amount of coins
-	SetObjProperty(created, "IssuingBank", bankcity);			// The city name in which the bank is located
-	SetObjProperty(created, "PurchaserSerial", who.serial);		// The serial number of the purchaser
-	//SetName(created, created.desc + " made out to " + payee + " in the amount of " + AddCommas(amt) + " " + GetObjTypeDesc(currency2, 1) + ".");
+	SetObjProperty(created, "Currency", currency2);			// The ObjType of the coins being used
+	SetObjProperty(created, "Amount", amt);					// The amount of coins
+	SetObjProperty(created, "IssuingBank", bankcity);		// The city name in which the bank is located
+	SetObjProperty(created, "PurchaserSerial", who.serial);	// The serial number of the purchaser
 	created.color := 0x501;
 
 endfunction

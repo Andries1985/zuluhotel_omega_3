@@ -28,16 +28,27 @@ program remove_trap( character )
 var thepoints := get_default_points(SKILLID_REMOVETRAP);
      SendSysmessage( character , "Select Target." );
      var item := Target( character );
+   var trap_type;
 
      if( !item )
         SendSysmessage( character , "canceled." );
         return;
      endif
 
-     if( GetObjProperty( item, "Trap_Type" ) )
+	 trap_type := GetObjProperty( item, "trap_type" );
+
+	 if( !trap_type )
+	 	trap_type := GetObjProperty( item, "Trap_Type" );
+	 endif
+
+     if( trap_type )
         if( CheckSkill( character, SKILLID_REMOVETRAP, -1, thepoints ) )
+		   EraseObjProperty( item, "trap_type" );
+		   EraseObjProperty( item, "trap_strength" );
+		   EraseObjProperty( item, "trapped_by" );
            EraseObjProperty( item, "Trap_Type" );
            EraseObjProperty( item, "Trap_Strength" );
+		   EraseObjProperty( item, "Trapped_By" );
            item.usescript := "";
 		   SendSysmessage( character , "You sucessfully disarmed the trap." );
         else

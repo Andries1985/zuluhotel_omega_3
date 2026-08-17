@@ -37,7 +37,7 @@ program use_ore( character, ore )
         	return;
     	endif
     
-    	if ( ((use_on.objtype >= UOBJECT_KILN_START) and (use_on.objtype <= UOBJECT_KILN_END)) or (use_on.objtype == UOBJ_SMALL_FORGE) )
+    	if ( ((use_on.objtype >= UOBJECT_KILN_START) and (use_on.objtype <= UOBJECT_KILN_END)) or (use_on.objtype == UOBJ_SMALL_FORGE) or (use_on.objtype == UOBJ_ELVEN_FORGE) or ((use_on.objtype >= UOBJ_MINISOULFORGE_START) and (use_on.objtype <= UOBJ_MINISOULFORGE_END)) or ((use_on.objtype >= UOBJ_LARGESOULFORGE_START) and (use_on.objtype <= UOBJ_LARGESOULFORGE_END)) )
             	case (ore.objtype)
             	
             		UOBJECT_ORE: 		MakeIngots( character , ore );

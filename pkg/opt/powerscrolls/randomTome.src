@@ -12,5 +12,5 @@ program randomTome(who, scroll)
 	if(!des)
 		return;
 	endif
-	CreateItemInBackpack( who, 0x9A89 );
+	CreateItemInBackpack( who, 0x4001AA );
 endprogram

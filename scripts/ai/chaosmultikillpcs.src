@@ -123,6 +123,7 @@ if (kdead == 0 and Random (30) == 1 and GetObjProperty(item,"Type") != "Animal" 
 			thecritter.truecolor := 0x482;
 			SetObjProperty( thecritter , "script" , thecritter.script );
 			SetObjProperty( thecritter , "noloot" , 1 );
+			SetObjProperty( thecritter , "RiseLootTransfer" , 1 );
 			SetObjProperty( thecritter , "diseased" , 1 );
 			SetObjProperty( thecritter , "master" , me.serial );
 			SetObjProperty( thecritter , "Type" , "Undead" );
@@ -133,6 +134,7 @@ if (kdead == 0 and Random (30) == 1 and GetObjProperty(item,"Type") != "Animal" 
 			EquipItem( thecritter , newbackpack );
 			endif
 			foreach item in EnumerateItemsInContainer( servant)
+				SetObjProperty( item , "KeepOnNoLootDeath" , 1 );
 				MoveItemToContainer( item, thecritter.backpack );
 			endforeach
 			DestroyItem( servant );
@@ -310,6 +312,7 @@ if (!GetObjProperty(me,"merged"))
 		else
 			me.hidden :=1;
 		endif
+		return;
 	endif
 endif
 //
@@ -319,7 +322,7 @@ var targets2 := {};
 var notgts2 := 0;
 var ffs2 := 0;
 foreach critter in ListMobilesInLineOfSight( me, 10 )		
-	if (critter)
+	if (critter and critter != me and critter.name != me.name)
 		if (!critter.npctemplate or GetObjProperty(me,"killnpcs"))
 			notgts2 := notgts2 + 1;
 			targets2[notgts2] := critter;
@@ -335,7 +338,7 @@ if (notgts2 > 2 and Random (5) == 1 )
 	crazymode := 1;
 	while ( (loop2 < notgts2) and (GetHP(me) > (GetMaxHP(me) / 5)) and ok )
 		foreach critter in ListMobilesInLineOfSight( me, 2 )		
-			if (critter)
+			if (critter and critter != me and critter.name != me.name)
 				ok := 0;
 				ReadySword();
 			endif
@@ -359,7 +362,7 @@ var targets := {};
 var notgts := 0;
 var ffs := 0;
 foreach critter in ListMobilesInLineOfSight( me, 10 )		
-	if (critter)
+	if (critter and critter != me and critter.name != me.name)
 		if (!critter.npctemplate or GetObjProperty(me,"killnpcs"))
 			notgts := notgts + 1;
 			targets[notgts] := critter;
@@ -407,7 +410,7 @@ var targets3 := {};
 var notgts3 := 0;
 var ffs3 := 0;
 foreach critter in ListMobilesInLineOfSight( me, 10 )		
-	if (critter)
+	if (critter and critter != me and critter.name != me.name)
 		if (!critter.npctemplate or GetObjProperty(me,"killnpcs"))
 			notgts3 := notgts3 + 1;
 			targets3[notgts3] := critter;
@@ -423,7 +426,7 @@ if (notgts3 > 2 and Random (5) == 1 and !crazymode)
 	var ok3 := 1;
 	while ( (loop3 < notgts3) and (GetHP(me) > (GetMaxHP(me) / 5)) and ok3 )
 		foreach critter in ListMobilesInLineOfSight( me, 2 )		
-			if (critter)
+			if (critter and critter != me and critter.name != me.name)
 				ok3 := 0;	
 				ReadySword();
 			endif
@@ -479,12 +482,11 @@ var ow2;
 	ow1 := GetEquipmentByLayer( opponent,  LAYER_HAND1 );
 	ow2 := GetEquipmentByLayer( opponent,  LAYER_HAND2 );
 	ow1 := GetObjProperty(ow1,"IsGMItem");
-	ow2 := GetObjProperty(ow1,"IsGMItem");
+	ow2 := GetObjProperty(ow2,"IsGMItem");
 	var wah := 0;
 	if (ow1 or ow2)
-		if  (ow1 == "Balders Dead" or ow2 == "Balders Dead")
-			amethod := "melee";
-		else
+		amethod := "melee";
+		if (ow1 != "Balders Dead" && ow2 != "Balders Dead")
 			amethod := "melee";
 			ReadySword();
 			while (distance(me, opponent) < 5 and wah < 20)
@@ -514,10 +516,10 @@ var ow2;
 	endif
 	//MELEE ARCHERS
 	foreach critter in ListMobilesInLineOfSight( me, 10 )
-		ow1 := GetEquipmentByLayer( critter,  LAYER_HAND1 );
-		ow2 := GetEquipmentByLayer( critter,  LAYER_HAND2 );
-		ow1 := ow1.graphic;
-		ow2 := ow2.graphic;
+		var ow1_item := GetEquipmentByLayer( critter,  LAYER_HAND1 );
+		var ow2_item := GetEquipmentByLayer( critter,  LAYER_HAND2 );
+		ow1 := ow1_item.graphic;
+		ow2 := ow2_item.graphic;
 		if (ow1 == 0x13b2 or ow2 == 0x13b2 or ow1 == 0x0f4f or ow2 == 0x0f4f or ow1 == 0x13fd or ow2 == 0x13fd)
 if (distance(me, critter) < distance(me, opponent) and (!critter.npctemplate or GetObjProperty(me,"killnpcs")))
 				opponent := critter;
@@ -526,7 +528,7 @@ if (distance(me, critter) < distance(me, opponent) and (!critter.npctemplate or 
 				amethod := "melee";
 			endif
 		endif
-		if (GetObjProperty(ow1,"IsGMItem") == "Balders Dead" or GetObjProperty(ow2,"IsGMItem") == "Balders Dead")
+		if (GetObjProperty(ow1_item,"IsGMItem") == "Balders Dead" or GetObjProperty(ow2_item,"IsGMItem") == "Balders Dead")
 			opponent := critter;
 			SetOpponent(opponent);
 			me.warmode := 1;
@@ -673,7 +675,7 @@ function ReadyStaff (me)
 	endif
 	if (weapontwo)
 		moveitemtocontainer(weapontwo,me.backpack);
-		DestroyItem(weaponone);
+		DestroyItem(weapontwo);
 	endif	
 	weaponone := CreateItemInInventory(me.backpack,0x9a16,1);
 	weaponone.dmg_mod := 25;
@@ -744,8 +746,8 @@ function SplitLord(me)
 	//Old Britannia Map
 	//var twin1 := CreateNpcFromTemplate( tp, 5376, 1081, 0, 0, "britannia" );
 	//var twin2 := CreateNpcFromTemplate( tp, 5376, 1081, 0, 0, "britannia" );
-	var twin1 := CreateNpcFromTemplate( tp, 6338, 1581, 0, 0, "britannia_alt" );
-	var twin2 := CreateNpcFromTemplate( tp, 6338, 1581, 0, 0, "britannia_alt" );
+	var twin1 := CreateNpcFromTemplate( tp, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, 0, DEFAULT_LOCATION_NPC_RELOCATION_R );
+	var twin2 := CreateNpcFromTemplate( tp, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, 0, DEFAULT_LOCATION_NPC_RELOCATION_R );
 	twin1.hidden := 1;
 	twin2.hidden := 1;
 	sleep(1);
@@ -786,7 +788,7 @@ function ReadySword ()
 		endif
 		if (weapontwo)
 			moveitemtocontainer(weapontwo,me.backpack);
-			DestroyItem(weaponone);
+			DestroyItem(weapontwo);
 		endif
 		weaponone := CreateItemInInventory(me.backpack,0x9a19,1);
 	SetObjProperty( weaponone, "SkillPoisoned" , 6 );

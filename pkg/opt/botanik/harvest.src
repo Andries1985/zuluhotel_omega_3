@@ -168,7 +168,6 @@ program grab_fruit(user,item)
     sendsysmessage(user,"You start to harvest...");
 
     repeat
-		Print("Harvest script after Autoloop in repeat");
 		SFX_Rand:=Random(2)+1; 
 		playsoundeffect(user,Grab_SfX[SFX_Rand]);
 		performaction(user,ANIM_SALUTE);

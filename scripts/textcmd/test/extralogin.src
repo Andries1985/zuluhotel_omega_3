@@ -1,22 +1,61 @@
-// Synopsis: Grant a targeted player an extra simultaneous login slot
+// Synopsis: Backward-compatible alias that adds target to household and sets cap to 2
 use uo;
 
-program extralogin( who )
+include ":accounts:accounts";
 
-	SendSysMessage( who , "Who do you want to give an extra login?" );
+program textcmd_extralogin( who )
+
+	ACCT_DebugPrint( "extralogin invoked by " + who.name );
+	SendSysMessage( who, "Target a player to grant household cap 2." );
 	var targ := Target( who );
-	if( !targ )
-		return;
+	if( !targ || !targ.acctname )
+		ACCT_DebugPrint( "extralogin cancelled before target selection." );
+		SendSysMessage( who, "Cancelled." );
+		return 0;
 	endif
 
-	var acc := FindAccount(targ.acctname);
-	var setacc := acc.setprop("ExtraClient", 1);
-	if(!setacc)
-		SendSysMessage( who , "Error something went wrong..." );
-		return;
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
 	endif
-	
-	SendSysMessage( who , "You granted "+targ.name+" account an extra login per ip." );
-	SendSysMessage( targ , "You are granted an extra login to your ip" );
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		SendSysMessage( who, "Unable to resolve account Discord info." );
+		return 0;
+	endif
+
+	var discord_norm := info["DiscordIDNorm"];
+	if( !discord_norm )
+		SendSysMessage( who, "Target has no DiscordID set." );
+		return 0;
+	endif
+
+	var household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
+	if( !household_id )
+		household_id := "hh_" + discord_norm;
+	endif
+
+	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "extralogin", targ.acctname ))
+		return 0;
+	endif
+
+	var result := ACCT_AssignAccountToHousehold( account, household_id, who.name );
+	if( result.errortext )
+		ACCT_DebugPrint( "extralogin assign failed for " + targ.acctname + ": " + result.errortext );
+		SendSysMessage( who, "Unable to assign household." );
+		return 0;
+	endif
+
+	var household := ACCT_GetHouseholdById( result["HouseholdId"], 1 );
+	household.SetProp( "HouseholdCap", 2 );
+	household.SetProp( "UpdatedBy", who.name );
+	ACCT_DebugPrint( "extralogin cap set to 2 for household=" + result["HouseholdId"] + " account=" + targ.acctname );
+
+	SendSysMessage( who, "Household cap set to 2 for " + targ.name + " (" + result["HouseholdId"] + ").", 3, 53 );
+	SendSysMessage( targ, "Your household login cap has been set to 2 by staff.", 3, 53 );
+
+	return 1;
 
 endprogram

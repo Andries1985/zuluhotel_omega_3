@@ -22,7 +22,7 @@ program use_dyes( who, dyes )
 	elseif( !ReserveItem(dyetub) )
 		SendSysMessage( who, "This is already in use." );
 		return 0;
-	elseif( (dyetub.objtype != 0x0fab) && (dyetub.objtype != 0x8A21))
+	elseif( (dyetub.objtype != 0x0fab) && (dyetub.objtype != 0x4000AB))
 		SendSysMessage( who, "That is not a dye tub!" );
     	return 0;
 	endif

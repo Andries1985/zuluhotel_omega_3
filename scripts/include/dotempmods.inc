@@ -9,7 +9,6 @@ include "include/client";
 include "include/spelldata";
 include "include/classes";
 include "include/random";
-include "include/constants/locations";
 
 
 function AddToPersistedMods( byref allmods , byref mmod )
@@ -50,7 +49,7 @@ function AddToStatMods( byref allmods , byref mmod )
 	set_critical(1);
 	var i;
 	for( i := 1 ; i <= len(allmods) ; i := i + 1 )
-		if ( allmods[i][1] == mmod[1] )
+		if ( TempModConflicts( allmods[i][1] , mmod[1] ) )
 			return 0;
 		endif
 	endfor
@@ -59,6 +58,108 @@ function AddToStatMods( byref allmods , byref mmod )
 	set_critical(0);
 	
 	return i;
+
+endfunction
+
+
+function TempModTouchesStrength( modname )
+
+	return ( modname == "str" || modname == "cstr" );
+
+endfunction
+
+
+function TempModTouchesDexterity( modname )
+
+	return ( modname == "dex" || modname == "cdex" );
+
+endfunction
+
+
+function TempModTouchesIntelligence( modname )
+
+	return ( modname == "int" || modname == "cint" );
+
+endfunction
+
+
+function TempModIsSingleStat( modname )
+
+	return (
+		TempModTouchesStrength(modname) ||
+		TempModTouchesDexterity(modname) ||
+		TempModTouchesIntelligence(modname)
+	);
+
+endfunction
+
+
+function TempModIsBlessPoly( modname )
+
+	return (
+		modname == "all" || modname == "call" ||
+		modname == "ebless" || modname == "cebless" ||
+		modname == "poly" || modname == "cpoly"
+	);
+
+endfunction
+
+
+function TempModIsPoly( modname )
+
+	return ( modname == "poly" || modname == "cpoly" );
+
+endfunction
+
+
+function TempModTouchesArmor( modname )
+
+	return ( modname == "ar" || modname == "car" );
+
+endfunction
+
+
+function TempModTouchesParalyze( modname )
+
+	return ( modname == "p" );
+
+endfunction
+
+
+function TempModConflicts( existing_mod , incoming_mod )
+
+	if( existing_mod == incoming_mod )
+		return 1;
+	endif
+
+	// Same-attribute stat mods conflict with each other, but different stat mods can coexist.
+	if( (TempModTouchesStrength(existing_mod) && TempModTouchesStrength(incoming_mod)) ||
+		(TempModTouchesDexterity(existing_mod) && TempModTouchesDexterity(incoming_mod)) ||
+		(TempModTouchesIntelligence(existing_mod) && TempModTouchesIntelligence(incoming_mod)) )
+		return 1;
+	endif
+
+	// One of: bless/all/poly family at a time.
+	if( TempModIsBlessPoly(existing_mod) && TempModIsBlessPoly(incoming_mod) )
+		return 1;
+	endif
+
+	// One AR instance at a time for direct AR buffs.
+	if( TempModTouchesArmor(existing_mod) && TempModTouchesArmor(incoming_mod) )
+		return 1;
+	endif
+
+	// Poly contributes AR as well, so do not allow AR buffs with active poly.
+	if( (TempModIsPoly(existing_mod) && TempModTouchesArmor(incoming_mod)) ||
+		(TempModTouchesArmor(existing_mod) && TempModIsPoly(incoming_mod)) )
+		return 1;
+	endif
+
+	if( TempModTouchesParalyze(existing_mod) && TempModTouchesParalyze(incoming_mod) )
+		return 1;
+	endif
+
+	return 0;
 
 endfunction
 
@@ -149,7 +250,7 @@ function DoTempMod( who , stat , amt , duration , liche := 0)
 	var parms := {};
 	parms[1] := who;
 	parms[2] := stat;
-	parms[3] := CInt(amt*0.8);
+	parms[3] := CInt(amt);
 	parms[4] := duration;
 	if(liche)
 		parms[5] := liche;
@@ -164,8 +265,10 @@ endfunction
 function GetModAmount( who ) 
 
 	var magery := GetEffectiveSkill( who , SKILLID_MAGERY );
-	var amount := RandomInt(5) + Cint(magery/7);
-	amount := ModifyWithMagicEfficiency( who, amount );
+	var amount := 5 + Cint(magery/7);
+	if (GetObjProperty( who, CLASSEID_MAGE ))
+		amount := ModifyWithMagicEfficiency( who, amount );
+	endif
 	if( !amount )
 		amount := 1;
 	endif
@@ -178,12 +281,12 @@ endfunction
 function GetModDuration( who )
 
 	var magery := GetEffectiveSkill( who , SKILLID_MAGERY );
-	var duration := magery * 5;
-	duration := ModifyWithMagicEfficiency( who , duration );
+	var duration := (magery * 20) + 5;
+	//duration := ModifyWithMagicEfficiency( who , duration );
 	if( !duration )
 		duration := 1;
 	endif
-	duration := (duration * 2);
+	//duration := (duration * 2);
 	return Cint(duration);
 
 endfunction
@@ -281,7 +384,7 @@ function PoisonProtected( cast_on , plvl, thiefPoison := 0 )
 		return CURSED;
 		
 	elseif( protlvl >= plvl )
-		PrintTextAbovePrivate( cast_on , "Your poison immunity protect you from the poison" , cast_on );
+		PrintTextAbovePrivate( cast_on , "Your poison immunity protected you from the poison!" , cast_on );
 		return IMMUNED;
 	endif
 		
@@ -427,14 +530,14 @@ function UndoTheMod( who , prop , amt , liche := 0 )
 		"hair":
 					DestroyItem( GetEquipmentByLayer( who , LAYER_HAIR ));
 					if (oldvalue)
-						var newhair := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, oldvalue, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+						var newhair := CreateItemAtLocation(5288 , 1176 , 0, oldvalue, 1);
 						newhair.color := GetObjProperty(who,"haircolor");
 						EquipItem(who,newhair);
 					endif
 		"beard":
 					DestroyItem(GetEquipmentByLayer(who,LAYER_BEARD));
 					if (oldvalue)
-						var newhair := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, oldvalue, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
+						var newhair := CreateItemAtLocation(5288 , 1176 , 0, oldvalue, 1);
 						newhair.color := GetObjProperty(who,"haircolor");
 						EquipItem(who,newhair);
 					endif

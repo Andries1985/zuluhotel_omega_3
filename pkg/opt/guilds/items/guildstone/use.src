@@ -1,0 +1,19 @@
+use uo;
+use os;
+
+// Hands off to the same gump flow as the .guilds command (see
+// commands/player/guilds.src). The gump itself resolves the clicking
+// player's own guild's guildstone via the guild's "GuildStone" property, so
+// no state needs to be threaded through here -- by design, clicking any
+// guildstone (including another guild's) just opens your own guild's menu.
+program guildstone(who)
+
+	var script := Start_Script(":guilds:commands/player/guilds", who);
+	if (script.errortext)
+		SendSysMessage(who, "Unable to open the guild menu.", 1, 33);
+		return 0;
+	endif
+
+	return 1;
+
+endprogram

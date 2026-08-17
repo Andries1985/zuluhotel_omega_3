@@ -549,8 +549,10 @@ var teleporters := {
     //Winterwyn
     {1068,  629,  20,  5184,  1160,  0,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining - Need added back to map
     {1069,  629,  20,  5183,  1160,  0,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
-    {5183,  1161,  0,  1068,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
-    {5184,  1161,  0,  1069,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
+    // //BAD TELEPORTER - REMOVE
+    // {5183,  1161,  0,  1068,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
+    // //BAD TELEPORTER - REMOVE
+    // {5184,  1161,  0,  1069,  630,  20,     "britannia_alt",    "britannia_alt"},   //Winterwyn Mining
 
     //Sunken City
     { 1908, 3665, 60, 1979, 3651, 5, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Mainland - Fixed for New Map
@@ -955,6 +957,456 @@ var teleporters := {
     { 5331, 415, 0, 5541, 77, 0, "britannia_alt", "britannia_alt" }, //Society of Mages to Unnamed Dungeon
     { 5332, 415, 0, 5542, 77, 0, "britannia_alt", "britannia_alt" }, //Society of Mages to Unnamed Dungeon
 
+    //Recently added by Nagash (July 4th 2026)
+    { 1386, 2489, 13, 6876, 2542, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
+    { 1386, 2490, 13, 6876, 2543, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
+    { 1386, 2491, 13, 6876, 2544, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
+    { 1386, 2492, 13, 6876, 2545, 0, "britannia_alt", "britannia_alt" }, //Garden of Unity -> Trial of the Gilded Accord Lvl1
+    { 6877, 2542, 0, 1387, 2489, 10, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Garden of Unity
+    { 6877, 2543, 0, 1387, 2490, 10, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Garden of Unity
+    { 6877, 2544, 0, 1387, 2491, 10, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Garden of Unity
+    { 6877, 2545, 0, 1387, 2492, 10, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Garden of Unity
+    { 6792, 2663, 0, 6439, 2625, 0, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Trial of the Gilded Accord Lvl2
+    { 6793, 2663, 0, 6440, 2625, 0, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl1 -> Trial of the Gilded Accord Lvl2
+    { 6439, 2624, 0, 6792, 2662, 0, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl2 -> Trial of the Gilded Accord Lvl1
+    { 6440, 2624, 0, 6793, 2662, 0, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl2 -> Trial of the Gilded Accord Lvl1
+    { 6024, 2531, 0, 3284, 1896, -70, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
+    { 6025, 2531, 0, 3284, 1896, -70, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
+    { 3284, 1895, -70, 6024, 2531, 0, "britannia_alt", "britannia_alt" }, //Faymoor Island -> Solen Hive
+    { 5760, 2469, 0, 5816, 2462, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5761, 2469, 0, 5817, 2462, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5815, 2467, 0, 5761, 2464, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5816, 2467, 0, 5762, 2464, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5803, 2444, 0, 5852, 2405, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5804, 2445, 1, 5853, 2405, 1, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5851, 2410, 0, 5805, 2439, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5851, 2410, 0, 5802, 2441, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 3677, 1678, -55, 5760, 2527, 0, "britannia_alt", "britannia_alt" }, //Faymoor Island -> Solen Hive
+    { 3678, 1678, -55, 5761, 2527, 0, "britannia_alt", "britannia_alt" }, //Faymoor Island -> Solen Hive
+    { 5762, 2533, 0, 3677, 1679, -55, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
+    { 5763, 2532, 0, 3677, 1679, -55, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
+    { 6015, 2407, 0, 5982, 2401, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 6016, 2408, 0, 5983, 2402, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5979, 2406, 0, 6019, 2403, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5980, 2407, 0, 6020, 2404, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5918, 2525, 0, 5887, 2444, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5919, 2525, 0, 5888, 2444, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5888, 2439, 0, 5918, 2530, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5889, 2439, 0, 5919, 2530, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 6021, 2309, 0, 6896, 3313, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Underworld
+    { 6022, 2309, 0, 6897, 3313, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Underworld
+    { 6896, 3318, 0, 6022, 2304, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Solen Hive
+    { 6897, 3318, 0, 6023, 2304, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Solen Hive
+    { 6004, 2388, 0, 5974, 2382, 1, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 6005, 2389, 0, 5975, 2383, 2, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5979, 2379, 2, 5999, 2390, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5979, 2380, 2, 5999, 2391, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5956, 2363, 0, 5914, 2415, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5957, 2363, 0, 5915, 2415, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5912, 2420, 1, 5959, 2359, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5913, 2421, 2, 5960, 2360, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5860, 2310, 7, 5763, 2408, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5861, 2310, 7, 5764, 2408, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5766, 2411, 0, 5858, 2306, 2, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5766, 2412, 0, 5857, 2308, 4, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5832, 2404, 0, 5838, 2375, 1, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5833, 2404, 0, 5839, 2375, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5836, 2372, 0, 5834, 2409, 2, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5837, 2370, 0, 5835, 2407, 1, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5878, 2382, 0, 5756, 2304, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5879, 2381, 1, 5756, 2303, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5759, 2307, 3, 5876, 2377, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 5760, 2307, 4, 5877, 2377, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
+    { 3823, 1623, 20, 7061, 2108, 25, "britannia_alt", "britannia_alt" }, //Faymoor Island to Aetherfall Mine
+    { 3823, 1624, 20, 7061, 2108, 25, "britannia_alt", "britannia_alt" }, //Faymoor Island to Aetherfall Mine
+    { 3823, 1625, 20, 7061, 2109, 25, "britannia_alt", "britannia_alt" }, //Faymoor Island to Aetherfall Mine
+    { 3823, 1626, 20, 7061, 2109, 25, "britannia_alt", "britannia_alt" }, //Faymoor Island to Aetherfall Mine
+    { 7062, 2108, 25, 3824,1624, 20, "britannia_alt", "britannia_alt" }, //Aetherfall Mine to Faymoor Island
+    { 7062, 2109, 25, 3824,1625, 20, "britannia_alt", "britannia_alt" }, //Aetherfall Mine to Faymoor Island
+    { 7035, 2122, -20, 6415, 2376, 0, "britannia_alt", "britannia_alt" }, //Aetherfall Mine -> Aetherfall Dungeon
+    { 7035, 2123, -20, 6415, 2377, 0, "britannia_alt", "britannia_alt" }, //Aetherfall Mine -> Aetherfall Dungeon
+    { 6416, 2376, 0, 7036, 2122, -18, "britannia_alt", "britannia_alt" }, //Aetherfall Dungeon -> Aetherfall Mine
+    { 6416, 2377, 0, 7036, 2123, -18, "britannia_alt", "britannia_alt" }, //Aetherfall Dungeon -> Aetherfall Mine
+    { 1003, 2713, 12, 6675, 2824, 32, "britannia_alt", "britannia_alt" }, //The Abyssal Necropolis -> The Abyssal Necropolis Lvl1
+    { 1005, 2575, -19, 6554, 2962, 26, "britannia_alt", "britannia_alt" }, //The Abyssal Necropolis -> The Abyssal Necropolis Lvl1
+    { 6676, 2823, 37, 1004, 2713, 17, "britannia_alt", "britannia_alt" }, //The Abyssal Necropolis Lvl1 -> The Abyssal Necropolis
+    { 6676, 2824, 37, 1004, 2713, 17, "britannia_alt", "britannia_alt" }, //The Abyssal Necropolis Lvl1 -> The Abyssal Necropolis
+    { 6553, 2962, 37, 1004, 2575, -19, "britannia_alt", "britannia_alt" }, //The Abyssal Necropolis Lvl1 -> The Abyssal Necropolis
+    { 7111, 3408, 0, 5803, 244, 4, "britannia_alt", "britannia_alt" }, //Underworld -> Skitterhollow
+    { 7112, 3408, 0, 5804, 244, 4, "britannia_alt", "britannia_alt" }, //Underworld -> Skitterhollow
+    { 7113, 3408, 0, 5805, 244, 4, "britannia_alt", "britannia_alt" }, //Underworld -> Skitterhollow
+    { 5803, 245, 4, 7111, 3409, 0, "britannia_alt", "britannia_alt" }, //Skitterhollow -> Underworld
+    { 5804, 245, 4, 7112, 3409, 0, "britannia_alt", "britannia_alt" }, //Skitterhollow -> Underworld
+    { 5805, 245, 4, 7113, 3409, 0, "britannia_alt", "britannia_alt" }, //Skitterhollow -> Underworld
+    { 5226, 650, 25, 5204, 628, 22, "britannia_alt", "britannia_alt" }, //Rikktor's Lair -> Rikktor's Lair
+    { 5982, 2234, 0, 5839, 358, 2, "britannia_alt", "britannia_alt" }, //Cave -> Nexus Outskirts
+    { 5983, 2234, 0, 5840, 358, 2, "britannia_alt", "britannia_alt" }, //Cave -> Nexus Outskirts
+    { 5984, 2234, 0, 5841, 358, 2, "britannia_alt", "britannia_alt" }, //Cave -> Nexus Outskirts
+    { 5839, 357, 2, 5982, 2233, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cave
+    { 5840, 357, 2, 5983, 2233, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cave
+    { 5841, 357, 2, 5984, 2233, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cave
+    { 5950, 2219, 0, 5407, 2017, 0, "britannia_alt", "britannia_alt" }, //Cave -> Nexus
+    { 5950, 2220, 0, 5407, 2018, 0, "britannia_alt", "britannia_alt" }, //Cave -> Nexus
+    { 5950, 2221, 0, 5407, 2019, 0, "britannia_alt", "britannia_alt" }, //Cave -> Nexus
+    { 5408, 2017, 0, 5951, 2219, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
+    { 5408, 2018, 0, 5951, 2220, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
+    { 5408, 2019, 0, 5951, 2221, 0, "britannia_alt", "britannia_alt" }, //Nexus -> Cave
+    // //BAD TELEPORTER - REMOVE
+    // { 2210, 1097, 1, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 2211, 1097, 3, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 2212, 1097, 4, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Nexus Outskirts
+    // //BAD TELEPORTER - REMOVE
+    // { 5793, 457, 1, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    // //BAD TELEPORTER - REMOVE
+    // { 5794, 457, 1, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    // //BAD TELEPORTER - REMOVE
+    // { 5795, 457, 0, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Nexus Outskirts -> Cult of the Serpent Isle
+    { 6205, 435, 0, 5495, 1009, 20, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl 1 -> Ogre Cave Lvl2
+    { 6206, 435, 0, 5496, 1009, 30, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl 1 -> Ogre Cave Lvl2
+    { 5495, 1010, 20, 6205, 436, 0, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl2 -> Ogre Cave Lvl1
+    { 5496, 1010, 20, 6206, 436, 0, "britannia_alt", "britannia_alt" }, //Ogre Cave Lvl2 -> Ogre Cave Lvl1
+    { 5317, 3406, 0, 5319, 1718, 20, "britannia_alt", "britannia_alt" }, //Tartarus -> Plane of Shadow
+    { 5318, 1717, 20, 5317, 3405, 0, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Tartarus
+    { 5215, 1756, 19, 5162, 1749, 16, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5161, 1749, 16, 5216, 1756, 19, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5174, 1792, 17, 5189, 1809, 16, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5189, 1808, 16, 5174, 1791, 17, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5147, 1845, 15, 5218, 1833, 20, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5219, 1832, 20, 5146, 1845, 15, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5259, 1831, 25, 5290, 1844, 15, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5289, 1844, 15, 5258, 1831, 25, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5231, 1787, 25, 5239, 1763, 19, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5240, 1763, 19, 5230, 1787, 25, "britannia_alt", "britannia_alt" }, //Plane of Shadow -> Plane of Shadow
+    { 5539, 2111, 0, 1068, 630, 21, "britannia_alt", "britannia_alt" }, //Winterwyn Mine -> Winterwyn
+    { 5540, 2111, 0, 1069, 630, 21, "britannia_alt", "britannia_alt" }, //Winterwyn Mine -> Winterwyn
+    // //BAD TELEPORTER - REMOVE
+    // { 1068, 629, 21, 5539, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 1069, 629, 21, 5540, 2110, 0, "britannia_alt", "britannia_alt" }, //Winterwyn -> Winterwyn Mine
+    { 5592, 2739, -15, 6983, 3586, 0, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
+    { 5593, 2739, -15, 6984, 3586, -1, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
+    { 5594, 2739, -15, 6985, 3586, -2, "britannia_alt", "britannia_alt" }, //Gloom-Vault -> Underworld
+    { 6983, 3585, 0, 5592, 2738, -15, "britannia_alt", "britannia_alt" }, //Underworld -> Gloom-Vault
+    { 6984, 3585, 0, 5593, 2738, -15, "britannia_alt", "britannia_alt" }, //Underworld -> Gloom-Vault
+    { 6985, 3585, -1, 5594, 2738, -15, "britannia_alt", "britannia_alt" }, //Underworld -> Gloom-Vault
+    { 4315, 1842, 0, 6055, 1861, 0, "britannia_alt", "britannia_alt" }, //Sanctuary -> Grove of the Ancients Lvl1
+    { 6055, 1863, 0, 4315, 1840, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl1 -> Sanctuary
+    { 5994, 1811, 0, 6057, 1756, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl1 -> Grove of the Ancients Lvl2
+    { 5995, 1811, 0, 6058, 1756, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl1 -> Grove of the Ancients Lvl2
+    { 6057, 1757, 0, 5994, 1812, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl2 -> Grove of the Ancients Lvl1
+    { 6058, 1757, 0, 5995, 1812, 0, "britannia_alt", "britannia_alt" }, //Grove of the Ancients Lvl2 -> Grove of the Ancients Lvl1
+    { 5882, 850, -15, 5836, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5883, 850, -15, 5837, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5884, 850, -15, 5838, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 -> Poison Dungeon Lvl2
+    { 5836, 1746, 17, 5882, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 5837, 1746, 17, 5883, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 5838, 1746, 17, 5884, 851, -10, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl2 -> Poison Dungeon Lvl1
+    { 1358, 644, 0, 7074, 2330, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 1358, 645, 0, 7074, 2331, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 1358, 646, 0, 7074, 2332, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Deep-Forge Bastion Lvl1
+    { 7075, 2330, 0, 1359, 644, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7075, 2331, 0, 1359, 645, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7075, 2332, 0, 1359, 646, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Sosaria
+    { 7011, 2206, 0, 6815, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 7012, 2206, 0, 6816, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 7013, 2206, 0, 6817, 2258, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl1 -> Deep-Forge Bastion Lvl2
+    { 6815, 2259, 0, 7011, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6816, 2259, 0, 7012, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6817, 2259, 0, 7013, 2207, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl1
+    { 6707, 2304, 0, 6580, 2299, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6707, 2305, 0, 6580, 2300, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6707, 2306, 0, 6580, 2301, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl2 -> Deep-Forge Bastion Lvl3
+    { 6581, 2299, 0, 6708, 2304, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 6581, 2300, 0, 6708, 2305, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 6581, 2301, 0, 6708, 2306, 0, "britannia_alt", "britannia_alt" }, //Deep-Forge Bastion Lvl3 -> Deep-Forge Bastion Lvl2
+    { 178, 398, 22, 6735, 3966, 7, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 178, 397, 22, 6735, 3967, 7, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 6736, 3966, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6737, 3966, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6737, 3967, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6736, 3967, 10, 178, 397, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 7058, 3953, 6, 6938, 1103, 8, "britannia_alt", "britannia_alt" }, //Underworld -> Wayfarer’s Abyss
+    { 7059, 3953, 7, 6939, 1103, 8, "britannia_alt", "britannia_alt" }, //Underworld -> Wayfarer’s Abyss
+    { 6938, 1102, 11, 7058, 3952, 6, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Underworld
+    { 6939, 1102, 11, 7059, 3952, 6, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Underworld
+    { 6127, 3168, 0, 7073, 3842, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 6127, 3169, 0, 7073, 3843, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 6127, 3169, 0, 7073, 3844, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Underworld
+    { 7072, 3842, 0, 6126, 3168, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    { 7072, 3843, 0, 6126, 3169, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    { 7072, 3844, 0, 6126, 3170, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Tartarus
+    // //BAD TELEPORTER - REMOVE
+    // { 2210, 1097, 1, 6311, 3003, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 2211, 1097, 3, 6312, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 2212, 1097, 4, 6313, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent Isle -> Mine
+    { 6311, 3004, 2, 2210, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6312, 3004, 3, 2211, 1098, 0, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6313, 3004, 3, 2212, 1098, 1, "britannia_alt", "britannia_alt" }, //Mine -> Cult of the Serpent Isle
+    { 6312, 2985, 3, 6277, 2998, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6313, 2985, 3, 6278, 2998, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6277, 2999, 0, 6312, 2986, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6278, 2999, 0, 6313, 2986, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6354, 2947, 3, 6217, 3924, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6354, 2948, 3, 6217, 3925, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6216, 3924, 0, 6353, 2947, 3, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6216, 3925, 0, 6353, 2948, 3, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6341, 2947, 3, 6206, 2789, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6341, 2948, 3, 6206, 2790, 0, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6207, 2789, 0, 6342, 2947, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6207, 2790, 0, 6342, 2948, 3, "britannia_alt", "britannia_alt" }, //Mine -> Mine
+    { 6778, 1071, 0, 6323, 2972, 3, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Mine
+    { 6778, 1072, 0, 6323, 2973, 3, "britannia_alt", "britannia_alt" }, //Wayfarer’s Abyss -> Mine
+    { 6322, 2972, 3, 6777, 1071, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
+    { 6322, 2973, 3, 6777, 1072, 0, "britannia_alt", "britannia_alt" }, //Mine -> Wayfarer’s Abyss
+    // //BAD TELEPORTER - REMOVE
+    // { 5793, 457, 1, 5490, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    // //BAD TELEPORTER - REMOVE
+    // { 5794, 457, 1, 5491, 64, 0, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    // //BAD TELEPORTER - REMOVE
+    // { 5795, 457, 0, 5492, 64, 1, "britannia_alt", "britannia_alt" }, //Nexus Outpost -> Underdark
+    { 5489, 63, 0, 5793, 456, 3, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5490, 63, -1, 5794, 456, 2, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5491, 63, 0, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 5492, 63, 1, 5795, 456, 1, "britannia_alt", "britannia_alt" }, //Underdark -> Nexus Outpost
+    { 6532, 3772, 35, 5596, 141, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Underdark
+    { 6532, 3773, 35, 5596, 142, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Underdark
+    { 5597, 141, 0, 6533, 3772, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5597, 142, 0, 6533, 3773, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5597, 143, 0, 6533, 3773, 35, "britannia_alt", "britannia_alt" }, //Underdark -> Underworld
+    { 5664, 428, 1, 6636, 1589, 0, "britannia_alt", "britannia_alt" }, //Ley-Forge Sanctum -> Runebound Sanctum Lvl1
+    { 6645, 1589, 0, 5642, 453, 47, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Ley-Forge Sanctum
+    { 5448, 3564, 0, 5642, 451, 47, "britannia_alt", "britannia_alt" }, //Tartarus -> Ley-Forge Sanctum
+    { 5642, 452, 50, 5449, 3565, 0, "britannia_alt", "britannia_alt" }, //Ley-Forge Sanctum -> Tartarus
+    { 6653, 1436, 5, 6556, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
+    { 6650, 1436, 5, 6552, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
+    { 6555, 1538, 0, 6650, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6553, 1538, 0, 6653, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6488, 1617, 0, 6496, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
+    { 6491, 1617, 0, 6499, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
+    { 6496, 1503, 5, 6489, 1613, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl2
+    { 6499, 1503, 5, 6490, 1613, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl2
+    { 6480, 1599, 0, 6469, 1599, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl2
+    { 6470, 1599, 0, 6482, 1599, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl2
+    { 6630, 1475, 0, 6631, 1488, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl1
+    { 6631, 1487, 0, 6630, 1473, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl1
+    { 6483, 1563, 0, 6470, 1563, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl3
+    { 6471, 1563, 0, 6485, 1563, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl3
+    { 6545, 1522, 5, 6510, 1471, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Boss
+    { 6548, 1522, 5, 6513, 1471, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Boss
+    { 6510, 1470, 5, 6545, 1525, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Boss -> Runebound Sanctum Lvl3
+    { 6513, 1470, 5, 6548, 1525, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Boss -> Runebound Sanctum Lvl3
+    { 6641, 1592, 0, 5355, 3210, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Tartarus
+    { 6642, 1592, 0, 5356, 3210, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Tartarus
+    { 5355, 3209, 0, 6641, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
+    { 5356, 3209, 0, 6642, 1591, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Runebound Sanctum Lvl1
+
+    //Recently added by Nagash (July 8th 2026)
+    { 744, 3531, -18, 5977, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 745, 3531, -18, 5978, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 746, 3531, -18, 5979, 53, 41, "britannia_alt", "britannia_alt" }, //Mount Amroth -> Blood Dungeon Lvl1
+    { 5976, 52, 46, 744, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5977, 52, 46, 744, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5978, 52, 46, 745, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 5979, 52, 46, 746, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
+    { 6043, 237, 8, 6036, 268, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Blood Dungeon Boss
+    { 6036, 267, 8, 6043, 236, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Boss -> Blood Dungeon Lvl1
+    { 951, 2885, 35, 951, 2885, 35, "britannia_alt", "britannia_alt" }, //Black City of the Damned -> Tartarus
+    { 6651, 102, 1, 6721, 122, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6721, 121, 1, 6651, 101, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6634, 115, 1, 6723, 105, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6723, 106, 1, 6634, 114, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6658, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6659, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6747, 109, 1, 6658, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6747, 109, 1, 6659, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6787, 105, 1, 6808, 100, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6808, 101, 1, 6787, 106, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6782, 56, 1, 6855, 57, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6854, 57, 1, 6784, 56, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
+    { 6803, 42, 11, 6830, 123, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon Boss
+    { 6831, 123, 1, 6806, 40, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Boss -> Water Dungeon
+    { 5477, 3182, 0, 5757, 2050, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5477, 3183, 0, 5757, 2051, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5477, 3184, 0, 5757, 2052, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5756, 2050, 0, 5476, 3182, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5756, 2051, 0, 5476, 3183, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5756, 2052, 0, 5476, 3184, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5377, 3354, 0, 5796, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5378, 3354, 0, 5797, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5379, 3354, 0, 5798, 1969, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5796, 1970, 0, 5377, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5797, 1970, 0, 5378, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5798, 1970, 0, 5379, 3355, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5498, 3431, 0, 5759, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5499, 3431, 0, 5760, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5500, 3431, 0, 5761, 1979, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5759, 1978, 0, 5498, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5760, 1978, 0, 5499, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5761, 1978, 0, 5500, 3430, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5147, 3379, 0, 5802, 2115, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5147, 3380, 0, 5802, 2116, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5803, 2115, 0, 5148, 3379, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5803, 2116, 0, 5148, 3380, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5299, 3644, 0, 5765, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5300, 3644, 0, 5766, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5301, 3644, 0, 5767, 2192, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5765, 2191, 0, 5299, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5766, 2191, 0, 5300, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5767, 2191, 0, 5301, 3643, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5714, 3194, 0, 5813, 2161, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5715, 3194, 0, 5814, 2161, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5813, 2162, 0, 5714, 3195, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5814, 2162, 0, 5715, 3195, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5564, 3308, 0, 5835, 1997, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5564, 3309, 0, 5835, 1998, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5836, 1997, 0, 5565, 3308, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5836, 1998, 0, 5565, 3309, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5943, 3219, 0, 5991, 2043, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5943, 3220, 0, 5991, 2044, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5943, 3221, 0, 5991, 2045, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5992, 2043, 0, 5944, 3219, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5992, 2044, 0, 5944, 3220, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5992, 2045, 0, 5944, 3221, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5776, 3387, 0, 6079, 2123, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5776, 3388, 0, 6079, 2124, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6080, 2123, 0, 5777, 3387, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6080, 2124, 0, 5777, 3388, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5600, 4024, 0, 5994, 2152, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5600, 4025, 0, 5994, 2153, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5600, 4026, 0, 5994, 2154, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5993, 2152, 0, 5599, 4024, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5993, 2153, 0, 5599, 4025, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5993, 2154, 0, 5599, 4026, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5408, 3958, 0, 6034, 2234, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5408, 3959, 0, 6034, 2235, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6035, 2234, 0, 5409, 3958, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6035, 2235, 0, 5409, 3959, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 7139, 3748, 0, 6060, 2207, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 7140, 3748, 0, 6061, 2207, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6060, 2208, 0, 7139, 3749, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6061, 2208, 0, 7140, 3749, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6948, 3888, 0, 5999, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6949, 3888, 0, 6000, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 6950, 3888, 0, 6001, 1930, 0, "britannia_alt", "britannia_alt" }, //Underworld -> Mine
+    { 5999, 1929, 0, 6948, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6000, 1929, 0, 6949, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 6001, 1929, 0, 6950, 3887, 0, "britannia_alt", "britannia_alt" }, //Mine -> Underworld
+    { 5161, 3900, 0, 6088, 2038, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5161, 3901, 0, 6088, 2039, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6089, 2038, 0, 5162, 3900, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6089, 2039, 0, 5162, 3901, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5261, 4008, 0, 6087, 1983, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 5262, 4008, 0, 6088, 1983, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6087, 1982, 0, 5261, 4007, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6088, 1982, 0, 5262, 4007, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 5282, 3693, 0, 6105, 2030, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6105, 2031, 0, 5282, 3694, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6109, 3725, 0, 6056, 1917, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6110, 3725, 0, 6057, 1917, 0, "britannia_alt", "britannia_alt" }, //Tartarus -> Mine
+    { 6056, 1916, 0, 6109, 3724, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 6057, 1916, 0, 6110, 3724, 0, "britannia_alt", "britannia_alt" }, //Mine -> Tartarus
+    { 4268, 415, 5, 5901, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4269, 415, 5, 5902, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5901, 2234, 0, 4268, 416, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5902, 2234, 0, 4269, 416, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4305, 396, 5, 5833, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4306, 396, 5, 5834, 2233, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5833, 2234, 0, 4305, 397, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5834, 2234, 0, 4306, 397, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4298, 354, 5, 5956, 2189, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4298, 355, 5, 5956, 2190, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5957, 2189, 0, 4299, 354, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5957, 2190, 0, 4299, 355, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4330, 370, 5, 5934, 2083, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4330, 371, 5, 5934, 2084, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5935, 2083, 0, 4331, 370, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5935, 2084, 0, 4331, 371, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4331, 417, 5, 5964, 2168, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4332, 417, 5, 5965, 2168, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5964, 2169, 0, 4331, 418, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5965, 2169, 0, 4332, 418, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4475, 381, 5, 5885, 2129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4475, 382, 5, 5885, 2130, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5886, 2129, 0, 4476, 381, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5886, 2130, 0, 4476, 382, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4506, 373, 5, 6247, 2793, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4507, 373, 5, 6248, 2793, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6247, 2794, 0, 4506, 374, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6248, 2794, 0, 4507, 374, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4500, 502, 5, 6261, 2823, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4501, 502, 5, 6262, 2823, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6261, 2824, 0, 4500, 503, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6262, 2824, 0, 4501, 503, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4390, 388, 5, 5143, 904, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4391, 388, 5, 5144, 904, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5143, 905, 0, 4390, 389, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5144, 905, 0, 4391, 389, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4574, 360, 5, 6300, 2809, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4575, 360, 5, 6301, 2809, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6300, 2810, 0, 4574, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6301, 2810, 0, 4575, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4612, 475, 5, 5902, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4612, 476, 5, 5902, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    // //BAD TELEPORTER - REMOVE
+    // { 5901, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    // //BAD TELEPORTER - REMOVE
+    // { 5901, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4636, 491, 5, 5877, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4637, 491, 5, 5878, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5877, 2203, 0, 4636, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5878, 2203, 0, 4637, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4663, 442, 5, 5888, 2181, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4663, 443, 5, 5888, 2182, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5889, 2181, 0, 4664, 442, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5889, 2182, 0, 4664, 443, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4680, 427, 5, 5905, 2188, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4681, 427, 5, 5906, 2188, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 5905, 2189, 0, 4680, 428, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5906, 2189, 0, 4681, 428, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4876, 416, 5, 6245, 2953, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4877, 416, 5, 6246, 2953, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6245, 2954, 0, 4876, 417, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6246, 2954, 0, 4877, 417, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4921, 371, 30, 6262, 2926, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4922, 371, 30, 6263, 2926, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6262, 2927, 0, 4921, 372, 30, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6263, 2927, 0, 4922, 372, 30, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4938, 356, 5, 6304, 2929, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4938, 357, 5, 6304, 2930, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 6305, 2929, 0, 4939, 356, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 6305, 2930, 0, 4939, 357, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 4748, 388, 5, 6947, 3129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 4749, 388, 5, 6948, 3129, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Underworld
+    { 6947, 3130, 0, 4748, 389, 5, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 6948, 3130, 0, 4749, 389, 5, "britannia_alt", "britannia_alt" }, //Underworld -> Sosaria
+    { 3408, 1628, 0, 7023, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 3409, 1628, 0, 7024, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 3410, 1628, 0, 7025, 2824, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Faymoor Labyrinth
+    { 7023, 2825, 0, 3408, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+    { 7024, 2825, 0, 3409, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+    { 7025, 2825, 0, 3410, 1629, 0, "britannia_alt", "britannia_alt" }, //Faymoor Labyrinth -> Sosaria
+
+    //Nagash Added August 2026
+    { 719, 1424, 22, 6391, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 720, 1424, 22, 6392, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 721, 1424, 22, 6393, 356, 20, "britannia_alt", "britannia_alt" }, //Lost City -> Ancient Sewers
+    { 6391, 357, 22, 719, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6392, 357, 22, 720, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6393, 357, 22, 721, 1425, 27, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Lost City
+    { 6418, 185, 0, 6798, 460, 0, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Vault of the First Dynasty Lvl1
+    { 6419, 185, 0, 6799, 460, 0, "britannia_alt", "britannia_alt" }, //Ancient Sewers -> Vault of the First Dynasty Lvl1
+    { 6798, 459, 0, 6418, 184, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Ancient Sewers
+    { 6799, 459, 0, 6419, 184, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Ancient Sewers
+    { 6878, 515, 0, 6622, 679, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Vault of the First Dynasty Lvl2
+    { 6878, 516, 0, 6622, 680, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl1 -> Vault of the First Dynasty Lvl2
+    { 6621, 679, 0, 6877, 515, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl2 -> Vault of the First Dynasty Lvl1
+    { 6621, 680, 0, 6877, 516, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl2 -> Vault of the First Dynasty Lvl1
+    { 5902, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+    { 5902, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
 
     ////////////////////////////////
     ////////////////////////////////
@@ -1799,6 +2251,40 @@ function CreateTeleporters()
     
   	//syslog( nbrOfTeleporters +  " teleporters created." );
     return nbrOfTeleporters;
+endfunction
+
+function DeleteTeleporters()
+
+    var fromX;
+    var fromY;
+    var fromZ;
+    var fromR;
+
+    var nbrDeleted := 0;
+
+    foreach tele in teleporters
+
+       fromX := cint(tele[1]);
+       fromY := cint(tele[2]);
+       fromZ := cint(tele[3]);
+       fromR := tele[7];
+
+       // check -255.
+       if ( fromZ == -255 )
+           fromZ := GetWorldHeight( fromX, fromY, fromR );
+       endif
+
+       foreach item in ListItemsNearLocation( fromX, fromY, fromZ, 25, fromR )
+           if( item.name == "systemteleporter" && item.x == fromX && item.y == fromY )
+               if( DestroyItem( item ) )
+                   nbrDeleted := nbrDeleted + 1;
+               endif
+           endif
+       endforeach
+
+    endforeach
+
+    return nbrDeleted;
 endfunction
 
 function GoTeleporters(who, startat := 0)

@@ -4,6 +4,8 @@ use cliloc;
 include ":containers:storageAreas";
 include ":keys:key";
 include ":mdgumps:gumpPrompt";
+include "include/omegacache_utils";
+include ":house:multihouse_settings";
 
 program change_owner(who, deed)
 
@@ -11,11 +13,19 @@ program change_owner(who, deed)
 		SendSysMessageCL(who, 1042010, color := 33); // You must have the object in your backpack to use it.
 		return 0;
 	endif
+	if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+		SendSysMessageCL(who, 1042010, {}, 3, 33); // You cannot use that.
+		SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", color := 33);
+		return 0;
+	endif
 	// Begin sign CProps
 	var sign := SystemFindObjectBySerial(GetObjProperty(deed, "signserial"));
 	var old_owner_serial := GetObjProperty(sign, "ownerserial");
 	var old_owner := SystemFindObjectBySerial(old_owner_serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
 	SetObjProperty(sign, "lastownername", old_owner.name);
+	if(old_owner and old_owner.acctname)
+		UnregisterAccountHouseSign(sign, old_owner.acctname);
+	endif
 	var new_owner_bank := CP_GetStorageContainerForMobile( who, CP_BANK_AREA, CP_CREATE );
 	var new_lock_id := AllocateLockID();
 	SetObjProperty(sign, "LockID", new_lock_id);
@@ -24,13 +34,21 @@ program change_owner(who, deed)
 	var pack_key := CreateItemInContainer(who.backpack, "goldkey");
 	ReKey(sign, pack_key, new_lock_id);
 	SetName(pack_key, "House Key");
+	var home := SystemFindObjectBySerial(GetObjProperty(sign, "houseserial"));
 	var MaxLockdowns := GetObjProperty(sign, "MaxLockdowns");
 	var MaxSecures := GetObjProperty(sign, "MaxSecures");
+	var MaxOmegaCache := GetObjProperty(sign, "maxnumomegacache");
+	if(MaxOmegaCache == error)
+		MaxOmegaCache := GetMaxOmegaCacheForHouse(CInt(GetObjType(home)));
+	endif
 	SetObjProperty(sign, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(sign, "RemainingSecures", MaxSecures);
-	SetObjProperty(sign,"decay",ReadGameClock()+ 2592000); // Refreshed for 30 days.
+	SetObjProperty(sign, "numomegacache", MaxOmegaCache);
+	SetObjProperty(sign, "maxnumomegacache", MaxOmegaCache);
+	SetObjProperty(sign,"decay",ReadGameClock() + get_abandon_time()); // Refreshed by configured abandon timeout.
 	SetObjProperty(sign, "owneracct", who.acctname);
 	SetObjProperty(sign, "ownerserial", who.serial);
+	RegisterAccountHouseSign(sign, who.acctname);
 	SetObjProperty(sign, "signname", "a house");
 	EraseObjProperty(sign, "coowners");
 	EraseObjProperty(sign, "friendlist");
@@ -39,9 +57,10 @@ program change_owner(who, deed)
 	// End sign CProps
 
 	// Begin multi CProps
-	var home := SystemFindObjectBySerial(GetObjProperty(sign, "houseserial"));
 	SetObjProperty(home, "RemainingLockdowns", MaxLockdowns);
 	SetObjProperty(home, "RemainingSecures", MaxSecures);
+	SetObjProperty(home, "numomegacache", MaxOmegaCache);
+	SetObjProperty(home, "maxnumomegacache", MaxOmegaCache);
 	SetObjProperty(home, "owneracct", who.acctname);
 	SetObjProperty(home, "ownerserial", who.serial);
 	EraseObjProperty(home, "Public");
@@ -55,15 +74,9 @@ function ReKey(byref sign, byref new_key, byref lock_id)
 
 	var addonitem;
 	var house := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "houseserial")));
-	Print(GetObjProperty(sign, "houseserial"));
-	if(!house)
-		Print("no house found.   " + house.errortext);
-	endif
-	Print("components = " + house.components);
 	new_key.SetLockId(lock_id);
 	foreach item in(house.components)
 		if(item.IsA(POLCLASS_DOOR))
-		Print("It's a dorr.");
 			item.locked := 1;
 			SetObjProperty(item,"LockID",lock_id);
 		endif

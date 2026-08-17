@@ -16,7 +16,10 @@ include "include/utility";
 include "include/eventid";
 include "include/attributes";
 include "include/random";
-include "../pkg/opt/karmafame/karmafame";
+include "include/canstack";
+include ":karmafame:karmafame";
+
+const STACK_CAP := 60000;
 
 
 program stealing(who)
@@ -29,16 +32,15 @@ program stealing(who)
 
 	if (!itemtaken) 
 		sendsysmessage(who, "canceled"); 
+		return;
 	endif
 
 	if(!getobjproperty(itemtaken,"cansteal"))
-	sendsysmessage(who, "You might need some thief gloves to steal that.");
-	//Print("Stealing Package: Item cannot be stolen - no cansteal property.");
+	sendsysmessage(who, "this item can not be stolen.");
 	return;
 	endif;
 
-	//Print("Stealing Package: Moving on to Near victim.");
-	nearvictim(who);
+	nearvictim(who, itemtaken);
 
 	var difficulty:= getobjproperty(itemtaken,"stealdiff");
 	var thepoints:= difficulty*20;
@@ -46,20 +48,15 @@ program stealing(who)
 	if (CheckSkill(who, SKILLID_STEALING, difficulty, thepoints))
 	// they succeed
 	
-	/* 	if(itemtaken.objtype != 0xeed )
-			setobjproperty(itemtaken,"cansteal",0);
-			setobjproperty(itemtaken,"stolen",1);
-		else
-			eraseobjproperty(itemtaken,"cansteal");
-			eraseobjproperty(itemtaken,"dodgy");
-			eraseobjproperty(itemtaken,"stealdiff");
-		endif */
+	if(itemtaken.objtype != 0xeed )
+		setobjproperty(itemtaken,"cansteal",0);
+		setobjproperty(itemtaken,"stolen",1);
+	else
 		eraseobjproperty(itemtaken,"cansteal");
-		eraseobjproperty(itemtaken,"stolen");
-		eraseobjproperty(itemtaken,"dodgy");
 		eraseobjproperty(itemtaken,"stealdiff");
+	endif
 		itemtaken.movable:= 1;
-		MoveItemToContainer(itemtaken, who.backpack);
+		StealIntoContainer(itemtaken, who.backpack);
 		SendSysmessage(who, "You have successfully stolen the item.");
 
 		var karma:=GetKarma(who);
@@ -71,12 +68,12 @@ program stealing(who)
 
 		AwardKarma(who, lossKarma);
 
-		var fame:=Getfame(who);
+		var fame:=GetFame(who);
 		var lossfame:=0;
 		if (fame>-625)
 			lossfame:=0-(Random(200)+1);
 		endif
-		Awardfame(who, lossfame);
+		AwardFame(who, lossfame);
 
 		return;
 	else
@@ -95,12 +92,12 @@ program stealing(who)
 
 		AwardKarma(who, lossKarma2);
 
-		var fame2:=Getfame(who);
+		var fame2:=GetFame(who);
 		var lossfame2:=0;
 		if (fame2>-625)
 			lossfame2:=0-(Random(200)+1);
 		endif
-		Awardfame(who, lossfame2);
+		AwardFame(who, lossfame2);
 
 		return;
 	endif
@@ -108,11 +105,48 @@ program stealing(who)
 endprogram
 
 
+// Stolen items were always dropped in with a plain MoveItemToContainer,
+// which never merges with a matching stack already in the backpack --
+// same root cause .move had (see scripts/textcmd/player/move.src).
+function StealIntoContainer(item, cont)
+
+	if (!item.stackable)
+		MoveItemToContainer(item, cont);
+		return;
+	endif
+
+	var carrier := FindOpenStack(item, cont);
+	if (!carrier)
+		MoveItemToContainer(item, cont);
+		return;
+	endif
+
+	var space := STACK_CAP - carrier.amount;
+	if (item.amount <= space)
+		AddAmount(carrier, item.amount);
+		SubtractAmount(item, item.amount);
+	else
+		AddAmount(carrier, space);
+		SubtractAmount(item, space);
+		MoveItemToContainer(item, cont);
+	endif
+
+endfunction
+
+function FindOpenStack(item, cont)
+	foreach dest in EnumerateItemsInContainer(cont, ENUMERATE_ROOT_ONLY)
+		if (dest.stackable && dest.amount < STACK_CAP && CanStack(item, dest))
+			return dest;
+		endif
+	endforeach
+	return 0;
+endfunction
+
 function freehands(who)
 
 	if(GetEquipmentByLayer(who, LAYER_HAND1) || GetEquipmentByLayer(who, LAYER_HAND2))
 		sendsysmessage(who, "You need empty hands to perform this action!");
-		return;
+		exit;
 	endif
 
 endfunction
@@ -167,7 +201,20 @@ var postarget:=ListMobilesNearLocation(who.x, who.y, who.z, 10, who.realm);
 
 endfunction
 
-function nearvictim(who)
+function nearvictim(who, itemtaken)
+
+var victimserial := getobjproperty(itemtaken, "victimserial");
+if (victimserial)
+	var victim := SystemFindObjectBySerial(victimserial);
+	if (!victim)
+		victim := SystemFindObjectBySerial(victimserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if (victim && victim.realm == who.realm && Distance(who, victim) <= 2)
+		return 1;
+	endif
+	sendsysmessage(who, "Your victim is too far away");
+	exit;
+endif
 
 var close:= 0;
 var posvictim:=ListMobilesNearLocation(who.x, who.y, who.z, 2, who.realm);

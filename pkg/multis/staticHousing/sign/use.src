@@ -1,0 +1,1484 @@
+// footage { nwx, nwy, lowerz, sex, sey, upperz }
+use uo;
+use os;
+use cliloc;
+use cfgfile;
+
+include ":keys:key";
+include ":containers:storageAreas";
+include ":currency:currency";
+include ":gumps:yesno";
+include "include/housing";
+include ":mdgumps:confirmationSizable";
+include "../include/settings";
+include "../include/gumpMessage";
+include "../include/old-gumps";
+include ":house:multihouse_settings";
+include "include/omegacache_utils";
+include ":houseExtras:settings";
+
+const KEYSTART := 0x100e;
+const KEYEND := 0x1013;
+const KEYRING := 0x1011;
+
+var settings := STH_GetSettingsCfgElem("Settings");
+var signname;
+
+function SHDebug(msg)
+	if(STH_IsDebugEnabled())
+		Print("[STATIC-HOUSING-DEBUG][sign-use] " + msg);
+	endif
+endfunction
+
+function GetPlaqueLines(sign)
+	var sgnname := GetObjProperty(sign, "signname");
+	if(!sgnname || sgnname.errortext)
+		sgnname := "A house";
+	endif
+	return sgnname;
+endfunction
+
+function GetHouseDecayDisplay(sign)
+	var decaytime := GetObjProperty(sign, "decay");
+	if(!decaytime || decaytime.errortext)
+		return "Unknown";
+	endif
+	var remaining := CInt(decaytime) - ReadGameClock();
+	if(remaining <= 0)
+		return "0mo 0d 0h 0m";
+	endif
+
+	var months := 0;
+	while(remaining >= 2592000)
+		months := months + 1;
+		remaining := remaining - 2592000;
+	endwhile
+
+	var days := 0;
+	while(remaining >= 86400)
+		days := days + 1;
+		remaining := remaining - 86400;
+	endwhile
+
+	var hours := 0;
+	while(remaining >= 3600)
+		hours := hours + 1;
+		remaining := remaining - 3600;
+	endwhile
+
+	var mins := 0;
+	while(remaining >= 60)
+		mins := mins + 1;
+		remaining := remaining - 60;
+	endwhile
+
+	return CStr(months) + "mo " + CStr(days) + "d " + CStr(hours) + "h " + CStr(mins) + "m";
+endfunction
+
+// "numomegacache" on the sign tracks *remaining* slots (see
+// pkg/opt/omegacache), so the used count shown to players is max-remaining.
+function GetOmegaCacheCountDisplay(sign)
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	var remaining := CInt(GetObjProperty(sign, "numomegacache"));
+	var used := maxslots - remaining;
+	if(used < 0)
+		used := 0;
+	endif
+	return CStr(used) + " / " + CStr(maxslots);
+endfunction
+
+// "numhteles" on the sign tracks the number of house teleporter pairs
+// already placed (pkg/items/houseExtras/hteleporter); the cap is the
+// package-wide houseExtras setting, not tracked per-sign.
+function GetTeleporterCountDisplay(sign)
+	var used := CInt(GetObjProperty(sign, "numhteles"));
+	var htsettings := HE_GetSettingsCfgElem("settings");
+	if(htsettings.LimitHouseTeleporters)
+		return CStr(used) + " / " + CStr(CInt(htsettings.MaxHouseTeleporters));
+	endif
+	return CStr(used);
+endfunction
+
+function ShowHouseSignGump(who, sign, owner_name, decay_display, lockdowns, secures, can_manage)
+	GFInitGump();
+	GFNoDispose();
+	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
+	// its 412-wide span (100..512, centre 306); GFTextMid centers each line
+	// within the plaque's own width instead of a hand-tuned x offset.
+	GFResizePic(100, 45, 40288, 412, 300);
+	GFGumpPic(204, 0, 1764);
+	GFTextMid(215, 17, 205, 50, GetPlaqueLines(sign));
+	GFResizePic(115, 55, 5100, 382, 25);
+	GFTextLine(125, 57, 0, "Info");
+	GFButtonPage(178, 59, 5209, 5003, 1);
+	GFTextLine(215, 57, 0, "House Lists");
+	GFButtonPage(293, 59, 5209, 5003, 2);
+	GFTextLine(330, 57, 0, "Options");
+	GFButtonPage(390, 59, 5209, 5003, 3);
+	GFButtonID(430, 308, 247, 248, 1, 0);
+
+	GFPage(1);
+	GFTextLine(135, 95, 2020, "Owned by:");
+	GFTextLine(220, 95, 2590, owner_name);
+	GFTextLine(135, 118, 2020, "House Type:");
+	GFTextLine(220, 118, 2590, "Static House");
+	GFTextLine(135, 141, 2020, "House Decays At:");
+	GFTextLine(250, 141, 2590, decay_display);
+	GFTextLine(135, 164, 2020, "Remaining lockdowns:");
+	GFTextLine(370, 164, 2590, CStr(lockdowns));
+	GFTextLine(135, 187, 2020, "Remaining secures:");
+	GFTextLine(370, 187, 2590, CStr(secures));
+	GFTextLine(135, 210, 2020, "Number of Omega Cache containers:");
+	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
+	GFTextLine(135, 233, 2020, "Number of Teleporters:");
+	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
+
+	GFPage(2);
+	GFTextLine(155, 95, 2302, "Manage house friends");
+	GFButtonID(125, 95, 2714, 2715, 1, 8);
+	GFTextLine(155, 118, 2302, "List of banned people");
+	GFButtonID(125, 118, 2714, 2715, 1, 11);
+	GFTextLine(155, 141, 2302, "Ban someone from the house");
+	GFButtonID(125, 141, 2714, 2715, 1, 9);
+	GFTextLine(155, 164, 2302, "Remove a ban");
+	GFButtonID(125, 164, 2714, 2715, 1, 12);
+	GFTextLine(155, 187, 2302, "Eject someone from the house");
+	GFButtonID(125, 187, 2714, 2715, 1, 10);
+
+	GFPage(3);
+	GFTextLine(155, 95, 2302, "House management");
+	GFButtonID(125, 95, 2714, 2715, 1, 15);
+	GFTextLine(155, 118, 2302, "Change house locks");
+	GFButtonID(125, 118, 2714, 2715, 1, 16);
+	GFTextLine(155, 141, 2302, "Relinquish house back for sale");
+	GFButtonID(125, 141, 2714, 2715, 1, 20);
+	GFTextLine(155, 164, 2302, "Change the house name");
+	GFButtonID(125, 164, 2714, 2715, 1, 1);
+
+	if(!can_manage)
+		GFTextLine(125, 190, 33, "You can view info, but cannot manage this house.");
+	endif
+
+	return GFSendGump(who);
+endfunction
+
+function ShowPagedNameSelectionGump(who, title, action_label, names, action_x := 165, action_y := 335)
+	GFInitGump();
+	GFNoDispose();
+	GFResizePic(100, 100, 40288, 400, 300);
+	GFResizePic(147, 359, 5100, 310, 25);
+	GFTextLine(185, 118, 995, title);
+	GFButtonID(270, 360, 247, 248, 1, 1);
+	GFTextLine(action_x, action_y, 995, action_label);
+
+	if(names.size() > 10)
+		GFButtonPage(425, 363, 5224, 5224, 2);
+	endif
+
+	GFPage(1);
+	var i := 1;
+	for(i := 1; i <= 10; i := i + 1)
+		if(names[i])
+			var y := 120 + (i * 20);
+			GFTextLine(180, y, 0, names[i]);
+			GFButtonID(150, y, 210, 211, 1, i + 2);
+		endif
+	endfor
+
+	GFPage(2);
+	for(i := 11; i <= 20; i := i + 1)
+		if(names[i])
+			var y2 := 120 + ((i - 10) * 20);
+			GFTextLine(180, y2, 0, names[i]);
+			GFButtonID(150, y2, 210, 211, 1, i + 2);
+		endif
+	endfor
+	GFButtonPage(160, 363, 5223, 5223, 1);
+
+	return GFSendGump(who);
+endfunction
+
+function ShowPagedNameListGump(who, title, names)
+	GFInitGump();
+	GFNoDispose();
+	GFResizePic(100, 100, 40288, 400, 300);
+	GFResizePic(147, 359, 5100, 310, 25);
+	GFTextLine(185, 118, 995, title);
+	GFButtonID(270, 360, 247, 248, 1, 1);
+
+	if(names.size() > 10)
+		GFButtonPage(425, 363, 5224, 5224, 2);
+	endif
+
+	GFPage(1);
+	var i := 1;
+	for(i := 1; i <= 10; i := i + 1)
+		if(names[i])
+			var y := 120 + (i * 20);
+			GFTextLine(180, y, 0, names[i]);
+		endif
+	endfor
+
+	GFPage(2);
+	for(i := 11; i <= 20; i := i + 1)
+		if(names[i])
+			var y2 := 120 + ((i - 10) * 20);
+			GFTextLine(180, y2, 0, names[i]);
+		endif
+	endfor
+	GFButtonPage(160, 363, 5223, 5223, 1);
+
+	return GFSendGump(who);
+endfunction
+
+program static_sign_use(who, sgn)
+
+var exteriordoor := 0;
+var totalhousevalue := 0;
+totalhousevalue := totalhousevalue;
+var hv := 1;
+var totalvalueofhouses := 0;
+var maxhousevalue := CInt(settings.MaxHouseValue);
+sign := sgn;
+  if(!sign)
+    sign := who[2];
+    who := who[1];
+  endif
+	SHDebug("Sign use by " + who.name + " sign=" + sign.serial + " newhouse=" + CInt(GetObjProperty(sign, "NewHouse")));
+
+// Added to support pre-deeded houses
+    // This is when the house is 'new', the sign showing 'For Sale'.
+    if(GetObjProperty(sign, "NewHouse"))
+		var price := sign.GetHousePrice();
+		var bankbox := CP_GetStorageContainerForMobile( who, CP_BANK_AREA, CP_CREATE );
+		var signserial := CInt(sign.serial);
+
+		var extdoors :={};
+		if (!YesNo(who, "Do you want to buy this house?"))
+			SendSysMessage(who, "Canceled.");
+			return 0;
+		endif
+
+		// Account-wide house cap, shared across house/staticHousing/customhousing
+		// (:house:multihouse_settings) -- replaces the old per-package
+		// TotalValueOfHouses/HouseValuesCount value-weighted check.
+		if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+			SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", 3, 40);
+			return 0;
+		endif
+
+		set_critical( 1 );
+		var created := CreateBuiltDeed(who, sign, bankbox);
+		set_critical( 0 );
+
+		if (!created)
+			SendSysMessage( who, "ERROR: Unable to create built deed!", color := 33 );
+			SendSysMessage(who, "Your bank box might be too full. Try removing some items from it.", 1, 33);
+			SendSysMessage(who, "Then come back and try buying this house again.", 1, 33);
+			Print(created.errortext);
+		  return 0;
+		endif
+
+		var packkey := CreateItemInBackpack( who, UOBJ_GOLD_KEY );
+
+		if (!packkey)
+			SendSysMessage( who, "Your backpack is too full! Cannot create the key.", 1, 33);
+			SendSysMessage(who, "Aborting. You must make room before buying this house.", 1, 33);
+			DestroyItem(created);
+			return 0;
+		endif
+
+		var bankkey := CreateItemInContainer( bankbox, UOBJ_GOLD_KEY );
+
+		if (!bankkey)
+			SendSysMessage( who, "Your bankbox is too full! Cannot create the extra key!", 1, 33);
+			SendSysMessage(who, "Aborting. You must make room before buying this house.", 1, 33);
+			DestroyItem(created);
+			DestroyItem( packkey );
+			return 0;
+		endif
+
+		// Determine how much gold the buyer has in his bank box.
+		// If enough to buy the house then SpendCoin
+		// If not does he have enough gold in the bank plus the gold in his pack?
+		// If so spend all the gold in his bank and the difference in his pack.
+		// Else tell him he's sore out of luck.
+		if (!who.spendgold (price))
+			SendSysMessage(who, "You don't have enough money in your backpack to buy it.", 1, 33);
+			SendSysMessage(who, "Checking your bank box...", color := 56);
+			Sleep(2);
+			if(!SpendCoin(who, price, bankbox, UOBJ_GOLD_COIN))
+				SendSysMessage(who, "You don't have enough in the bank to buy it either. Sorry.", 1, 33);
+				DestroyItem(created);
+				DestroyItem(packkey);
+				DestroyItem(bankkey);
+				return 0;
+			endif
+		endif
+
+		var LockID := CInt(GetObjProperty( sign, "LockID" ));
+		SetObjProperty( packkey, "LockID", LockID );
+		SetObjProperty( bankkey, "LockID", LockID );
+		extdoors := GetObjProperty(sign, "exteriordoors");
+		var bantiles := {};
+		foreach item in extdoors
+				exteriordoor := SystemFindObjectBySerial(CInt(item));
+				if(exteriordoor.IsA(POLCLASS_DOOR))
+					exteriordoor.locked := 1;
+					var tile :=CreateItemAtLocation(exteriordoor.x, exteriordoor.y, exteriordoor.z, 0x260FC, 1, exteriordoor.realm);
+					SetObjProperty(tile,"signserial", signserial);
+					tile.invisible := 1;
+					tile.movable := 0;
+					bantiles.append(tile.serial);
+					SetObjProperty(exteriordoor, "LockID", LockID);
+				endif
+		endforeach
+		SetObjProperty(sign, "bantiles", bantiles);
+		SendSysMessage(who, "Congratulations! You are the new owner of this house.", 1, 66);
+		Sleep(3);
+		EraseObjProperty(sign, "NewHouse");
+		///////////////////////////////////////////////////////
+		// Need to make sure relevant sign CProps are assigned to the sign and builtdeed  created == builtdeed
+		///////////////////////////////////////////////////////
+		SetObjProperty(sign, "lastownerserial", 0);
+		SetObjProperty(sign, "lastownername", "Eric N. Swanson"); // No previous owner so "Hail to the eScript and POL creator!"
+		SetObjProperty(sign, "ownerserial", who.serial);
+		SetObjProperty(sign, "builtdeed", created.serial);
+		SetObjProperty(sign, "signserial", sign.serial);
+		SetObjProperty(sign, "owneracct", who.acctname);
+		RegisterAccountHouseSign(sign, who.acctname);
+		SetObjProperty(sign, "RemainingLockdowns", GetObjProperty(sign, "MaxLockdowns"));
+		SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "MaxSecures"));
+		SetObjProperty( created, "footage", GetObjProperty(sign, "footage"));
+		SetObjProperty( created, "MaxLockdowns", GetObjProperty(sign, "MaxLockdowns"));
+		SetObjProperty( created, "MaxSecures", GetObjProperty(sign, "MaxSecures"));
+		SetObjProperty( created, "Price", GetObjProperty(sign, "Price"));
+		SetObjProperty( created, "exteriordoors", GetObjProperty(sign, "exteriordoors"));
+		EnsureBaseResaleTemplate(sign);
+
+		EraseObjProperty(sign, "friendlist");
+		EraseObjProperty(sign, "coowners");
+		EraseObjProperty(sign, "banlist");
+
+		SendSysMessage( who, "You have taken ownership of the house.", 1, 66);
+		gumpmessage(who, "A key has been placed in your backpack. The deed is in your bank box along with a spare key.");
+		Sign.name := "A house sign";
+		SetObjProperty( sign, "ownername", who.name );
+		sign.RefreshHouse();
+		return 1;
+    endif
+
+
+	sign.RefreshHouse();
+	EnsureBaseResaleTemplate(sign);
+	NormalizeLegacySecuresForSign(sign);
+	Detach();
+
+	// End new house purchase stuff.
+	sign := sgn;
+	if(!sign)
+		sign := who[2];
+		who := who[1];
+	endif
+
+	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
+	// Always resolve the owner's live name, regardless of who is clicking the
+	// sign -- previously this only refreshed when the owner themselves clicked,
+	// so a name change didn't show to anyone else until the owner used the sign.
+	var owner_name := "Unknown";
+	var owner_obj := SystemFindObjectBySerial(ownerserial);
+	if(!owner_obj)
+		owner_obj := SystemFindObjectBySerial(ownerserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if(owner_obj)
+		owner_name := owner_obj.name;
+		SetObjProperty(sign, "ownername", owner_obj.name);
+	else
+		// Owner object no longer resolvable (e.g. deleted character) -- fall back to last known name.
+		owner_name := GetObjProperty(sign, "ownername");
+		if(!owner_name || owner_name.errortext)
+			owner_name := "Unknown";
+		endif
+	endif
+
+	sign.RefreshHouse();
+	if(who.serial == ownerserial)
+		SendSysMessageCL(who, 1043293, color := 66);
+	endif
+
+	var acct := GetObjProperty(sign, "owneracct");
+	var is_friend := sign.IsAFriend(who);
+	var is_coowner := sign.IsACoOwner(who);
+	var can_manage := 0;
+	if((who.acctname == acct) || is_coowner || (who.cmdlevel > 2))
+		can_manage := 1;
+	endif
+
+	var result := ShowHouseSignGump(
+		who,
+		sign,
+		owner_name,
+		GetHouseDecayDisplay(sign),
+		CInt(sign.GetLockdowns()),
+		CInt(sign.GetSecures()),
+		can_manage
+	);
+	SHDebug("Sign gump result=" + result[0] + " who=" + who.name + " sign=" + sign.serial + " can_manage=" + can_manage + " friend=" + is_friend + " coowner=" + is_coowner);
+
+	if(is_friend)
+		case(result[0])
+			2: ListCoowner(sign, who);
+			5: ListFriend(sign, who);
+			11: ListBan(sign, who);
+		endcase
+	endif
+
+	if(can_manage)
+		case(result[0])
+			1:
+				SHDebug("Action rename house by " + who.name + " sign=" + sign.serial);
+				SendSysMessage(who, "Enter a name for this house. (blank to cancel)", color := 88);
+				var newname := RequestInput(who, sign, "");
+				if(!newname)
+					SendSysMessageCL(who, 1042023, color := 33);
+				elseif((len(newname) > 20))
+					SendSysMessage(who, "House sign names may not be longer than 20 characters.", color := 33);
+				else
+					SetName(sign, newname);
+					SetObjProperty(sign, "signname", newname);
+				endif
+			2: SHDebug("Action list coowners by " + who.name + " sign=" + sign.serial); ListCoowner(sign, who);
+			3: SHDebug("Action add coowner by " + who.name + " sign=" + sign.serial); AddCoowner(sign, who);
+			4: SHDebug("Action remove coowner by " + who.name + " sign=" + sign.serial); DeleteCoowner(sign, who);
+			5: SHDebug("Action list friends by " + who.name + " sign=" + sign.serial); ListFriend(sign, who);
+			6: SHDebug("Action add friend by " + who.name + " sign=" + sign.serial); AddFriend(sign, who);
+			7: SHDebug("Action remove friend by " + who.name + " sign=" + sign.serial); DeleteFriend(sign, who);
+			8: SHDebug("Action open manage friends by " + who.name + " sign=" + sign.serial); OpenManageHouseFriendsGump(sign, who);
+			9: SHDebug("Action add enemy by " + who.name + " sign=" + sign.serial); AddEnemy(sign, who);
+			10: SHDebug("Action eject by " + who.name + " sign=" + sign.serial); Eject(who);
+			11: SHDebug("Action list bans by " + who.name + " sign=" + sign.serial); ListBan(sign, who);
+			12: SHDebug("Action remove ban by " + who.name + " sign=" + sign.serial); DeleteBan(sign, who);
+			15: SHDebug("Action open house management by " + who.name + " sign=" + sign.serial); OpenHouseManagementGump(sign, who);
+			16: SHDebug("Action change locks by " + who.name + " sign=" + sign.serial); ChangeLocks(sign, who);
+			20:
+				if((who.serial == ownerserial) || (who.cmdlevel > 2))
+					SHDebug("Action relinquish by " + who.name + " sign=" + sign.serial);
+					RelinquishHouse(sign, who);
+				endif
+			default:
+				SHDebug("Unhandled manage action result=" + result[0] + " who=" + who.name + " sign=" + sign.serial);
+		endcase
+	else
+		SHDebug("Non-manager viewed sign gump. who=" + who.name + " sign=" + sign.serial + " result=" + result[0]);
+	endif
+endprogram
+
+function DeleteFriend(hsign, who)
+	var z := 0;
+	var fillname;
+	var retval1 := 0;
+	var names := {};
+	var friendlist := hsign.GetFriendList();
+	var newlist := {};
+	foreach thing in friendlist
+		fillname := SystemFindObjectBySerial(thing);
+		if(!fillname)
+			fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	hsign.SetFriendList(newlist);
+	retval1 := ShowPagedNameSelectionGump(who, "Remove a friend", "Remove", names, 165, 335);
+	var friendcheck, returncheck;
+	if(retval1[0] > 2 && retval1[0] <= 22)
+		returncheck := retval1[0] - 2;
+		friendcheck := newlist[returncheck];
+		var unfriended := SystemFindObjectBySerial(friendcheck);
+		if(!unfriended)
+			unfriended := SystemFindObjectBySerial(friendcheck, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(unfriended)
+			hsign.ClearAllFriendPermissions(unfriended);
+			var result := hsign.RemoveFriend(unfriended);
+			if(result > 0)
+				SendSysMessageCL(who, 501298, color := 66);
+			elseif(!result)
+				SendSysMessage(who, "The friend list is empty.", color := 33);
+			elseif(result == -1)
+				SendSysMessage(who, "There is no person in that slot.", color := 33);
+			endif
+		endif
+	endif
+endfunction
+
+function ListFriend(hsign, who)
+	var z := 0;
+	var fillname;
+	var names := {};
+	var friendlist := hsign.GetFriendList();
+	var newlist := {};
+	foreach thing in friendlist
+		fillname := SystemFindObjectBySerial(thing);
+		if(!fillname)
+			fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	hsign.SetFriendList(newlist);
+	return ShowPagedNameListGump(who, "Friends of the house", names);
+endfunction
+
+function DeleteBan(hsign, who)
+	var z := 0;
+	var fillname;
+	var retval1 := 0;
+	var names := {};
+	var banlist := hsign.GetBanList();
+	var newlist := {};
+	foreach thing in banlist
+		fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	hsign.SetBanList(newlist);
+	retval1 := ShowPagedNameSelectionGump(who, "Lift a Ban", "Remove", names, 170, 340);
+	var bancheck, returncheck;
+	if(retval1[0] > 2 && retval1[0] <= 22)
+		returncheck := retval1[0] - 2;
+		bancheck := newlist[returncheck];
+		var unbanned := SystemFindObjectBySerial(bancheck);
+		if(!unbanned)
+			unbanned := SystemFindObjectBySerial(bancheck, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(unbanned)
+			var result := hsign.RemoveBan(unbanned);
+			if(result > 0)
+				SendSysMessage(who, "The banned person has been removed from the banned list.", color := 66);
+			elseif(!result)
+				SendSysMessage(who, "The ban list is empty.", color := 33);
+			elseif(result == -1)
+				SendSysMessage(who, "There is no person in that slot.", color := 33);
+			endif
+		endif
+	endif
+endfunction
+
+function ListBan(hsign, who)
+	var z := 0;
+	var fillname;
+	var names := {};
+	var banlist := hsign.GetBanList();
+	if(!banlist)
+		banlist := {};
+	endif
+	var newlist := {};
+	foreach thing in banlist
+		fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	hsign.SetBanList(newlist);
+	return ShowPagedNameListGump(who, "Enemies of the house", names);
+endfunction
+
+function DeleteCoowner(hsign, who)
+	var z := 0;
+	var fillname;
+	var retvalue := 0;
+	var names := {};
+	var coownlist := hsign.GetCoOwnerList();
+	var newlist := {};
+	foreach thing in coownlist
+		fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	hsign.SetCoOwnerList(newlist);
+	retvalue := ShowPagedNameSelectionGump(who, "Remove a Co-owner", "Remove", names, 165, 335);
+	if(!retvalue[0])
+		SendSysMessageCL(who, 1042023, color := 33);
+		return 0;
+	endif
+	var cocheck, returncheck;
+	if(retvalue[0] > 2 && retvalue[0] <= 22)
+		returncheck := retvalue[0] - 2;
+		cocheck := newlist[returncheck];
+		var uncoowner := SystemFindObjectBySerial(cocheck);
+		if(!uncoowner)
+			uncoowner := SystemFindObjectBySerial(cocheck, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(uncoowner)
+			hsign.ClearAllFriendPermissions(uncoowner);
+			var result := hsign.RemoveCoOwner(uncoowner);
+			if(result > 0)
+				SendSysMessage(who, "The person has been removed from the co-owner list.", color := 66);
+			elseif(!result)
+				SendSysMessage(who, "The co-owner list is empty.", color := 33);
+			elseif(result == -1)
+				SendSysMessage(who, "There is no person in that slot.", color := 33);
+			endif
+		endif
+	endif
+	SendSysMessageCL(who, 501299, color := 66);
+endfunction
+
+function ListCoowner(sign, who)
+	var z := 0;
+	var fillname;
+	var names := {};
+	var coownlist := sign.GetCoOwnerList();
+	var newlist := {};
+	foreach thing in coownlist
+		fillname := SystemFindObjectBySerial(thing, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if(fillname)
+			newlist.append(thing);
+			names[z+1] := fillname.name;
+			z := z + 1;
+		endif
+	endforeach
+	sign.SetCoOwnerList(newlist);
+	return ShowPagedNameListGump(who, "Co-owners of the house", names);
+endfunction
+
+function OpenManageHouseFriendsGump(sign, who)
+	if(!sign.IsFullHouseManager(who))
+		SendSysMessage(who, "Only owners or co-owners can manage house friend permissions.", color := 33);
+		return;
+	endif
+	GFInitGump();
+	GFNoDispose();
+	GFResizePic(100, 100, 40288, 400, 280);
+	GFTextLine(155, 120, 995, "Manage House Friends");
+	GFButtonID(130, 150, 2714, 2715, 1, 210);
+	GFTextLine(165, 150, 0, "Add person to house lists");
+	GFButtonID(130, 172, 2714, 2715, 1, 211);
+	GFTextLine(165, 172, 0, "Remove person from house lists");
+	GFButtonID(130, 194, 2714, 2715, 1, 212);
+	GFTextLine(165, 194, 0, "Toggle co-owner");
+	GFButtonID(130, 216, 2714, 2715, 1, 213);
+	GFTextLine(165, 216, 0, "Toggle lockdown permission");
+	GFButtonID(130, 238, 2714, 2715, 1, 214);
+	GFTextLine(165, 238, 0, "Toggle secure permission");
+	GFButtonID(130, 260, 2714, 2715, 1, 215);
+	GFTextLine(165, 260, 0, "Toggle eject permission");
+	GFButtonID(130, 282, 2714, 2715, 1, 216);
+	GFTextLine(165, 282, 0, "Toggle ban permission");
+	GFButtonID(130, 304, 2714, 2715, 1, 217);
+	GFTextLine(165, 304, 0, "Toggle teleporter permission");
+	GFButtonID(130, 326, 2714, 2715, 1, 218);
+	GFTextLine(165, 326, 0, "Show permission overview");
+	GFButtonID(130, 348, 2714, 2715, 1, 219);
+	GFTextLine(165, 348, 0, "Show banned people");
+	var res := GFSendGump(who);
+	if(res)
+		HandleManageFriendsAction(sign, who, res[0]);
+	endif
+endfunction
+
+function HandleManageFriendsAction(sign, who, action)
+	if(!sign.IsFullHouseManager(who))
+		SendSysMessage(who, "You do not have permission to manage house friends.", color := 33);
+		return;
+	endif
+	case(action)
+		210: AddFriend(sign, who);
+		211: DeleteFriend(sign, who);
+		212: ToggleCoOwnerStatus(sign, who);
+		213: ToggleHousePermission(sign, who, "lockdown", "lockdown");
+		214: ToggleHousePermission(sign, who, "secure", "secure");
+		215: ToggleHousePermission(sign, who, "eject", "eject");
+		216: ToggleHousePermission(sign, who, "ban", "ban");
+		217: ToggleHousePermission(sign, who, "teleporter", "teleporter");
+		218: ShowHousePermissionOverview(sign, who);
+		219: ListBan(sign, who);
+		default: return;
+	endcase
+	OpenManageHouseFriendsGump(sign, who);
+endfunction
+
+function ToggleCoOwnerStatus(sign, who)
+	SendSysMessage(who, "Target the person whose co-owner status you want to toggle.", color := 88);
+	var targetchr := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!targetchr)
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+	if(!targetchr.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
+		return;
+	endif
+	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
+		return;
+	endif
+	if(sign.IsACoOwner(targetchr))
+		sign.ClearAllFriendPermissions(targetchr);
+		if(sign.RemoveCoOwner(targetchr) == 1)
+			SendSysMessage(who, targetchr.name + " is no longer a co-owner.", color := 66);
+		else
+			SendSysMessage(who, "Could not remove that co-owner.", color := 33);
+		endif
+	else
+		if(!sign.IsAFriend(targetchr))
+			var addres := sign.AddFriend(targetchr);
+			if(addres == -1)
+				SendSysMessage(who, "Friend list is full.", color := 33);
+				return;
+			endif
+		endif
+		var cores := sign.AddCoOwner(targetchr);
+		if(cores == 1)
+			sign.SetFriendPermission(targetchr, "lockdown", 1);
+			sign.SetFriendPermission(targetchr, "secure", 1);
+			sign.SetFriendPermission(targetchr, "eject", 1);
+			sign.SetFriendPermission(targetchr, "ban", 1);
+			sign.SetFriendPermission(targetchr, "teleporter", 1);
+			SendSysMessage(who, targetchr.name + " is now a co-owner.", color := 66);
+		elseif(cores == -1)
+			SendSysMessage(who, "Co-owner list is full.", color := 33);
+		else
+			SendSysMessage(who, "That person is already a co-owner.", color := 33);
+		endif
+	endif
+endfunction
+
+function ToggleHousePermission(sign, who, perm_key, label)
+	SendSysMessage(who, "Target the person whose " + label + " permission you want to toggle.", color := 88);
+	var targetchr := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!targetchr)
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+	if(!targetchr.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "That cannot be modified.", color := 33);
+		return;
+	endif
+	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+		SendSysMessage(who, "Owner always has full permissions.", color := 33);
+		return;
+	endif
+	if(sign.IsACoOwner(targetchr))
+		SendSysMessage(who, "Co-owners always have full permissions.", color := 33);
+		return;
+	endif
+	if(!sign.IsAFriend(targetchr))
+		SendSysMessage(who, "That person is not on your friend list.", color := 33);
+		return;
+	endif
+	var profile := sign.GetFriendPermissionProfile(targetchr);
+	var enabled := 0;
+	case(perm_key)
+		"lockdown": enabled := profile[2];
+		"secure": enabled := profile[3];
+		"eject": enabled := profile[4];
+		"ban": enabled := profile[5];
+		"teleporter": enabled := profile[6];
+	endcase
+	if(enabled)
+		sign.SetFriendPermission(targetchr, perm_key, 0);
+		SendSysMessage(who, "Disabled " + label + " permission for " + targetchr.name + ".", color := 66);
+	else
+		sign.SetFriendPermission(targetchr, perm_key, 1);
+		SendSysMessage(who, "Enabled " + label + " permission for " + targetchr.name + ".", color := 66);
+	endif
+endfunction
+
+function ShowHousePermissionOverview(sign, who)
+	SendSysMessage(who, "House permissions overview:", color := 66);
+	var owner := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "ownerserial")));
+	if(owner)
+		SendSysMessage(who, owner.name + " [owner] full access", color := 66);
+	endif
+	foreach serial in (sign.GetCoOwnerList())
+		var co := SystemFindObjectBySerial(serial);
+		if(!co)
+			co := SystemFindObjectBySerial(serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(co)
+			SendSysMessage(who, co.name + " [co-owner] full access", color := 66);
+		endif
+	endforeach
+	foreach serial in (sign.GetFriendList())
+		if(serial in (sign.GetCoOwnerList()))
+			continue;
+		endif
+		var fr := SystemFindObjectBySerial(serial);
+		if(!fr)
+			fr := SystemFindObjectBySerial(serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+		endif
+		if(fr)
+			var p := sign.GetFriendPermissionProfile(fr);
+			SendSysMessage(who, fr.name + " [friend] L:" + CStr(p[2]) + " S:" + CStr(p[3]) + " E:" + CStr(p[4]) + " B:" + CStr(p[5]) + " T:" + CStr(p[6]), color := 88);
+		endif
+	endforeach
+endfunction
+
+function OpenHouseManagementGump(sign, who)
+	GFInitGump();
+	GFNoDispose();
+	GFResizePic(100, 100, 40288, 400, 260);
+	GFTextLine(155, 120, 995, "House Management");
+	GFButtonID(130, 150, 2714, 2715, 1, 220);
+	GFTextLine(165, 150, 0, "Lock item down");
+	GFButtonID(130, 172, 2714, 2715, 1, 221);
+	GFTextLine(165, 172, 0, "Release item");
+	GFButtonID(130, 194, 2714, 2715, 1, 222);
+	GFTextLine(165, 194, 0, "Secure container");
+	GFButtonID(130, 216, 2714, 2715, 1, 223);
+	GFTextLine(165, 216, 0, "Delete secure container");
+	GFButtonID(130, 238, 2714, 2715, 1, 224);
+	GFTextLine(165, 238, 0, "Eject target");
+	GFButtonID(130, 260, 2714, 2715, 1, 225);
+	GFTextLine(165, 260, 0, "Ban target");
+	GFButtonID(130, 282, 2714, 2715, 1, 227);
+	GFTextLine(165, 282, 0, "Change house locks");
+	GFButtonID(130, 304, 2714, 2715, 1, 228);
+	GFTextLine(165, 304, 0, "Remove Omega Cache Container");
+	var res := GFSendGump(who);
+	if(res)
+		HandleHouseManagementAction(sign, who, res[0]);
+	endif
+endfunction
+
+function HandleLockUnlockOption(sign, who, option)
+	var parms := array{};
+	parms[1] := sign;
+	parms[2] := who;
+	parms[4] := option;
+	run_script_to_completion(":statichousing:lockunlock", parms);
+endfunction
+
+function HandleHouseManagementAction(sign, who, action)
+	case(action)
+		220:
+			if(!sign.HasHousePermission(who, "lockdown"))
+				SendSysMessage(who, "You do not have lockdown permission.", color := 33);
+				return;
+			endif
+			HandleLockUnlockOption(sign, who, HOUSE_LOCKDOWN_ITEM);
+		221:
+			if(!sign.HasHousePermission(who, "lockdown"))
+				SendSysMessage(who, "You do not have lockdown permission.", color := 33);
+				return;
+			endif
+			HandleLockUnlockOption(sign, who, HOUSE_RELEASE_ITEM);
+		222:
+			if(!sign.HasHousePermission(who, "secure"))
+				SendSysMessage(who, "You do not have secure permission.", color := 33);
+				return;
+			endif
+			HandleLockUnlockOption(sign, who, HOUSE_SECURE_CONTAINER);
+		223:
+			if(!sign.HasHousePermission(who, "secure"))
+				SendSysMessage(who, "You do not have secure permission.", color := 33);
+				return;
+			endif
+			HandleLockUnlockOption(sign, who, HOUSE_RELEASE_CONTAINER);
+		224:
+			if(!sign.HasHousePermission(who, "eject"))
+				SendSysMessage(who, "You do not have eject permission.", color := 33);
+				return;
+			endif
+			Eject(who);
+		225:
+			if(!sign.HasHousePermission(who, "ban"))
+				SendSysMessage(who, "You do not have ban permission.", color := 33);
+				return;
+			endif
+			addenemy(sign, who);
+		227:
+			if(!sign.IsFullHouseManager(who))
+				SendSysMessage(who, "Only owners and co-owners can change locks.", color := 33);
+				return;
+			endif
+			ChangeLocks(sign, who);
+		228:
+			StaticHouseFunctionRemoveOmegaCache(sign, who);
+		default: return;
+	endcase
+	OpenHouseManagementGump(sign, who);
+endfunction
+
+// 2026-08-10: Omega Cache removal for staticHousing, mirroring house's
+// HouseFunctionRemoveOmegaCache (multiSign/use.src).
+function StaticHouseFunctionRemoveOmegaCache(sign, who)
+	if(!sign.IsFullHouseManager(who))
+		SendSysMessage(who, "Only owners and co-owners can remove Omega Cache containers.", color := 33);
+		return;
+	endif
+
+	SendSysMessage(who, "Choose the Omega Cache container you wish to remove.", color := 88);
+	var cache := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!cache)
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	if(CInt(cache.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	if(!sign.IsObjectInsideHouse(cache))
+		SendSysMessageCL(who, 1005525, color := 33);
+		return;
+	endif
+
+	if(!IsOmegaCacheEmpty(CInt(GetObjProperty(cache, "houseserial"))))
+		SendSysMessage(who, "This house Omega Cache still contains stored items. Withdraw them first.", color := 33);
+		return;
+	endif
+
+	if(!confirmationSizable(who, "Remove this Omega Cache container?"))
+		SendSysMessageCL(who, 1042023, color := 33);
+		return;
+	endif
+
+	// Avoid destroycache.src's non-empty block re-triggering on a manual,
+	// already-confirmed-empty removal.
+	EraseObjProperty(cache, "houseserial");
+	if(!DestroyItem(cache))
+		SendSysMessage(who, "Could not remove that Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var remaining := CInt(GetObjProperty(sign, "numomegacache")) + 1;
+	var maxslots := CInt(GetObjProperty(sign, "maxnumomegacache"));
+	if(remaining > maxslots)
+		remaining := maxslots;
+	endif
+	SetObjProperty(sign, "numomegacache", remaining);
+
+	SendSysMessage(who, "Omega Cache container removed. One cache slot was refunded.", color := 66);
+endfunction
+
+function EnsureBaseResaleTemplate(sign)
+	if(!GetObjProperty(sign, "BaseFootage"))
+		SetObjProperty(sign, "BaseFootage", GetObjProperty(sign, "footage"));
+	endif
+	if(!GetObjProperty(sign, "BaseMaxLockdowns"))
+		SetObjProperty(sign, "BaseMaxLockdowns", GetObjProperty(sign, "MaxLockdowns"));
+	endif
+	if(!GetObjProperty(sign, "BaseMaxSecures"))
+		SetObjProperty(sign, "BaseMaxSecures", GetObjProperty(sign, "MaxSecures"));
+	endif
+	if(!GetObjProperty(sign, "BasePrice"))
+		SetObjProperty(sign, "BasePrice", GetObjProperty(sign, "Price"));
+	endif
+endfunction
+
+function NormalizeLegacySecuresForSign(sign)
+	var migrated := 0;
+	var itemlist := sign.GetItemsInHouse();
+	foreach thing in itemlist
+		if(!thing)
+			continue;
+		endif
+
+		if(!GetObjProperty(thing, "secure") && GetObjProperty(thing, "secured"))
+			var secureserial := CInt(GetObjProperty(thing, "secured"));
+			if(!secureserial)
+				secureserial := sign.serial;
+			endif
+			SetObjProperty(thing, "secure", 1);
+			SetObjProperty(thing, "houseserial", secureserial);
+			if(!GetObjProperty(thing, "SecuredLevel"))
+				SetObjProperty(thing, "SecuredLevel", "A");
+			endif
+			if(thing.isA(POLCLASS_CONTAINER) && thing.usescript != ":statichousing:securecontainer/staticSecureCont")
+				SetObjProperty(thing, "oldscript", thing.script);
+				thing.usescript := ":statichousing:securecontainer/staticSecureCont";
+			endif
+			EraseObjProperty(thing, "secured");
+			migrated := migrated + 1;
+		endif
+	endforeach
+
+	if(migrated)
+		SHDebug("Migrated " + migrated + " legacy secured item(s) on sign " + sign.serial);
+	endif
+endfunction
+
+function RemoveInteriorDecorations(sign)
+	var removed := 0;
+	var itemlist := sign.GetItemsInHouse();
+	foreach thing in itemlist
+		if(!thing)
+			continue;
+		elseif(thing.serial == sign.serial)
+			continue;
+		elseif(thing.IsDoor())
+			continue;
+		elseif(thing.IsStaticHouseSign())
+			continue;
+		elseif(thing.objtype == 0x0b98 || thing.objtype == 0x0b99)
+			continue;
+		endif
+
+		DestroyItem(thing);
+		removed := removed + 1;
+		sleepms(1);
+	endforeach
+
+	return removed;
+endfunction
+
+// Finds the canonical house serial Omega Cache items were placed under for
+// this sign, by locating an actual placed cache container (if any) within
+// its footage and reading its own "houseserial" back. staticHousing signs
+// don't track a house-multi serial themselves (see FindOmegaCacheHouseSign
+// in omegacache.inc for why), so this is the only reliable way to find the
+// right DataFile without guessing at a "current standing location" multi
+// that might not match the serial the cache was actually placed under.
+function FindStaticOmegaCacheSerial(sign)
+	foreach box in GetObjProperty(sign, "footage")
+		foreach thing in ListObjectsInBox(box[1], box[2], box[3], box[4], box[5], box[6], sign.realm)
+			if(thing.objtype == OMEGACACHE_OBJTYPE)
+				return CInt(GetObjProperty(thing, "houseserial"));
+			endif
+		endforeach
+	endforeach
+	return 0;
+endfunction
+
+function RelinquishHouse(sign, who)
+	SHDebug("Relinquish requested by " + who.name + " sign=" + sign.serial);
+	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
+	if(who.serial != ownerserial && who.cmdlevel < 3)
+		SendSysMessage(who, "Only the owner can relinquish this house.", color := 33);
+		return 0;
+	endif
+
+	var omegacache_serial := FindStaticOmegaCacheSerial(sign);
+	if(omegacache_serial and !IsOmegaCacheEmpty(omegacache_serial))
+		SendSysMessage(who, "You cannot relinquish this house while Omega Cache contents are stored.", color := 33);
+		return 0;
+	endif
+
+	if(!YesNo(who, "Relinquish this house back for sale? All interior decorations will be deleted."))
+		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+		return 0;
+	endif
+
+	EnsureBaseResaleTemplate(sign);
+
+	SetObjProperty(sign, "lastownername", GetObjProperty(sign, "ownername"));
+	SetObjProperty(sign, "lastownerserial", GetObjProperty(sign, "ownerserial"));
+
+	var removed := RemoveInteriorDecorations(sign);
+
+	// Already confirmed empty above, and the cache container itself was
+	// just destroyed by RemoveInteriorDecorations -- drop the DataFile too
+	// instead of leaving it orphaned for a house the sign no longer tracks.
+	if(omegacache_serial)
+		DeleteOmegaCacheStore(omegacache_serial);
+	endif
+
+	var builtdeed := SystemFindObjectBySerial(CInt(GetObjProperty(sign, "builtdeed")));
+	if(builtdeed)
+		DestroyItem(builtdeed);
+	endif
+	EraseObjProperty(sign, "builtdeed");
+
+	var relinquished_acct := GetObjProperty(sign, "owneracct");
+	if(relinquished_acct)
+		UnregisterAccountHouseSign(sign, relinquished_acct);
+	endif
+	EraseObjProperty(sign, "owneracct");
+	EraseObjProperty(sign, "ownerserial");
+	EraseObjProperty(sign, "ownername");
+	EraseObjProperty(sign, "friendlist");
+	EraseObjProperty(sign, "coowners");
+	EraseObjProperty(sign, "banlist");
+	SetObjProperty(sign, "NewHouse", 1);
+
+	SetObjProperty(sign, "footage", GetObjProperty(sign, "BaseFootage"));
+	SetObjProperty(sign, "MaxLockdowns", CInt(GetObjProperty(sign, "BaseMaxLockdowns")));
+	SetObjProperty(sign, "MaxSecures", CInt(GetObjProperty(sign, "BaseMaxSecures")));
+	SetObjProperty(sign, "Price", CInt(GetObjProperty(sign, "BasePrice")));
+	SetObjProperty(sign, "RemainingLockdowns", CInt(GetObjProperty(sign, "MaxLockdowns")));
+	SetObjProperty(sign, "RemainingSecures", CInt(GetObjProperty(sign, "MaxSecures")));
+
+	var lockid := AllocateLockId();
+	SetObjProperty(sign, "LockID", lockid);
+	foreach thing in GetObjProperty(sign, "exteriordoors")
+		var door := SystemFindObjectBySerial(CInt(thing));
+		if(door)
+			door.locked := 1;
+			SetObjProperty(door, "LockID", lockid);
+		endif
+	endforeach
+
+	foreach thing in GetObjProperty(sign, "components")
+		var comp := SystemFindObjectBySerial(CInt(thing));
+		if(comp)
+			SetObjProperty(comp, "LockID", lockid);
+		endif
+	endforeach
+
+	sign.name := "For Sale " + CStr(GetObjProperty(sign, "Price")) + " Gold." + " Lockdowns: " + CStr(GetObjProperty(sign, "MaxLockdowns")) + " Secures: " + CStr(GetObjProperty(sign, "MaxSecures"));
+	sign.RefreshHouse();
+
+	SendSysMessage(who, "House relinquished and reset for sale.", color := 66);
+	SendSysMessage(who, CStr(removed) + " interior decoration item(s) were deleted.", color := 66);
+	SHDebug("Relinquish complete for sign " + sign.serial + ". Removed decorations=" + removed);
+	return 1;
+endfunction
+
+function ChangeSign(who, result)
+  var signgraph := result[0];
+  if(sign.graphic == 3024 || sign.graphic == 3026 || sign.graphic == 3026 || sign.graphic == 3026)
+    SetObjProperty(sign, "oldsignprop", sign.graphic);
+    sign.graphic := signgraph;
+  else
+    sign.graphic := signgraph;
+  endif
+endfunction
+
+function Eject(who)
+	var targ := Target(who, TGTOPT_NOCHECK_LOS);
+	if(!targ)
+		SendSysMessage(who, "Canceled.", 3, 40);
+	elseif(!targ.isa(POLCLASS_MOBILE))
+		SendSysMessage(who, "You may only eject mobiles.", 3, 40);
+	elseif(targ.cmdlevel)
+		SendSysMessage(who, "You cannot eject staff!", 3, 40);
+	elseif(targ.npctemplate == "playervendor")
+		SendSysMessage(who, "You cannot eject player vendors.", 3, 40);
+	elseif(!IsInHouse(who))
+		SendSysMessage(who, "You can only eject people in your house.", 3, 40);
+	else
+		MoveObjectToLocation(targ, sign.x, sign.y, GetWorldHeight(sign.x, sign.y, targ.realm), MOVEOBJECT_FORCELOCATION, targ.realm);
+		SendSysMessage(who, targ.name + " was ejected!", 1, 66);
+		SendSysMessage(targ, who.name + " has ejected you from the house!", 3, 40);
+	endif
+endfunction
+
+function checklists(who, list1, list2)
+  var newarray := array;
+  var lista := GetObjProperty(sign, list1);
+  if(!lista)
+    lista := array;
+    SetObjProperty(sign, list1, lista);
+  else
+    if(who.serial in lista)
+      foreach thing in lista
+        if(thing != who.serial)
+          newarray.append(thing);
+        endif
+      endforeach
+      SetObjProperty(sign, list1, newarray);
+    endif
+  endif
+  newarray := array;
+  lista := GetObjProperty(sign, list2);
+  if(!lista)
+    lista := array;
+    SetObjProperty(sign, list2, lista);
+  else
+    if(who.serial in lista)
+      foreach thing in lista
+        if(thing != who.serial)
+          newarray.append(thing);
+        endif
+      endforeach
+      SetObjProperty(sign, list2, newarray);
+    endif
+  endif
+endfunction
+
+
+function SetPlaqueName( sign )
+	var sgnname := GetObjProperty(sign,"signname");
+	if(!sgnname)
+		sgnname := "A house";
+	endif
+	var split := SplitWords( sgnname );
+	var j;
+	for( j := 1; j <= 5; j := j + 1 )
+		if( !split[j] )
+			split[j] := "";
+		endif
+	endfor
+	if( len(sgnname) <= 12 )
+		data[1] := sgnname;
+	elseif( (len(split[1]) + len(split[2]) + len(split[3]) + 2) <= 12 )
+		data[1] := split[1] + " " + split[2] + " " + split[3];
+		data[2] := split[4] + " " + split[5];
+	elseif( len(split[1]) + len(split[2]) + 1 <= 12 )
+		data[1] := split[1] + " " + split[2];
+		data[2] := split[3] + " " + split[4] + " " + split[5];
+	elseif( len(split[1]) <= 12 )
+		data[1] := split[1];
+		data[2] := split[2] + " " + split[3] + " " + split[4] + " " + split[5];
+	endif
+endfunction
+
+
+function ChangeLocks(sign, byref who)
+	SendSysMessage(who, "Target the new master key.", 1, 66);
+	// var addonitem;
+	var newkey := Target(who);
+	if(!newkey)
+		SendSysMessage(who, "Cancelled.", 1, 33);
+		return 0;
+	endif
+	if(newkey.IsKey() && !newkey.IsKeyring())
+		if(newkey.GetLockId())
+			SendSysMessage(who, "That is not a blank key.", color := 33);
+			return 0;
+		endif
+		var LockID := AllocateLockId();
+		SetObjProperty(newkey, "LockID", LockID);
+		SetObjProperty(sign, "LockID", LockID);
+		foreach thing in GetObjProperty(sign, "exteriordoors")
+			var item := SystemFindObjectBySerial(thing);
+			item.locked := 1;
+			SetObjProperty(item, "LockID", LockID);
+		endforeach
+// Cannot remember why this next code was here but
+// I am leaving it here for now.
+/*		addonitem := CInt(GetObjProperty(sign, "component2"));
+		if(addonitem)
+			addonitem.locked := 1;
+			SetObjProperty(addonitem, "LockID", LockID);
+		endif */
+		SendSysMessage(who, "Locks have been changed.", 1, 66);
+	else
+		SendSysMessage(who, "That is not a key!", 3, 40);
+	endif
+endfunction
+
+function CreateBuiltDeed( who, sign, bankbox)
+    var builtdeed := CreateItemInContainer( bankbox, 0x28888 );
+    if (!builtdeed)
+      PrintTextAbovePrivate( who, "Your bank box is too full!", who );
+      return 0; // not built
+    endif
+    SetName(builtdeed, "a static house at " + sign.x + ", " + sign.y + ", " + sign.z + ", " + sign.realm + "." );
+    SetObjProperty(sign,"builtdeed", builtdeed.serial);
+    SetObjProperty(builtdeed, "Price", GetObjProperty(sign, "Price"));
+    return builtdeed;
+endfunction
+
+function ChangeInteriorLocks( who, house )
+	footage := GetObjProperty(house, "footage");
+	var extdoors := GetObjProperty(house, "exteriordoors");
+	SendSysMessage( who, "Target the new master key.", 1, 88 );
+	var newkey := Target( who, "" );
+	if (!newkey)
+		SendSysMessage(who, "Canceled.", 1, 33);
+		return;
+	endif
+	if( !newkey.IsKey() && newkey.IsKeyring() )
+		SendSysMessage( who, "That is not a key!", 1, 33 );
+		return;
+	endif
+	if(newkey.GetLockId())
+		SendSysMessage(who, "That is not a blank key.", color := 33);
+		return 0;
+	endif
+	var doors := 0;
+	var LockID := AllocateLockId();
+	SetObjProperty( newkey, "LockID", LockID );
+	foreach box in footage
+		doors := ListObjectsInBoxOfClass( POLCLASS_DOOR, box[1], box[2], box[3], box[4], box[5], box[6], house.realm );
+		foreach door in doors
+			if(Distance(house, door) >= 3 && !(door in extdoors))
+				door.locked := 1;
+				SetObjProperty(door, "LockID", LockID);
+			endif
+		endforeach
+	endforeach
+	SendSysMessage( who, "The interior door locks have been changed.", 1, 66 );
+endfunction
+
+function AddFriend( sign, who )
+	var removecoown := 0;
+	SendSysMessageCL( who, 501317, color := 88); // Target the person you wish to name a friend of your household.
+	var targetchr := Target( who);
+	if(!targetchr)
+		SendSysMessageCL( who, 1042023, color := 33); // Cancelled.
+		return 0;
+	endif
+	if (targetchr.IsA(POLCLASS_NPC))
+		SendSysMessageCL(who, 501372, color := 33); // This person cannot be a friend of the house.
+		return 0;
+	endif
+	if(sign.IsACoOwner(targetchr))
+		if (!YesNo(who, targetchr.name + " is a co-owner. Are you sure?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return 0;
+		endif
+		removecoown := 1;
+	endif
+	var test := sign.AddFriend(targetchr);
+	if (!test)
+		SendSysMessageCL(who, 501376, color := 33); // This person is already on your friends list!
+		return 0;
+	elseif(test == -1)
+		SendSysMessageCL(who, 501375, color := 33); // Your friends list is full!
+		return 0;
+	endif
+	if(removecoown)
+		sign.RemoveCoOwner(targetchr);
+	endif
+  SendSysMessage( who, targetchr.name + " is now a friend of this house.", 1, 66 );
+endfunction
+
+function addenemy( sign, who )
+	var removefrnd := 0;
+	var removecoown := 0;
+	SendSysMessageCL(who, 501325, color := 88); // Target the individual to ban from this house.
+	var targetchr := Target(who);
+	if(!targetchr)
+		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+		return 0;
+	elseif(targetchr == who)
+		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+		return 0;
+	elseif(!targetchr.acct)
+		SendSysMessageCL(who, 1062040, color := 33); // You cannot ban that.
+		return 0;
+	elseif(targetchr.cmdlevel >= 2)
+		SendSysMessage(who, "You cannot ban staff!", 3, 33);
+		return 0;
+	elseif(sign.IsAFriend(targetchr))
+		if (!YesNo(who, targetchr.name + " is a friend. Are you sure?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return 0;
+		else
+			removefrnd := 1;
+		endif
+	elseif(sign.IsACoOwner(targetchr))
+		if (!YesNo(who, targetchr.name + " is a co-owner. Are you sure?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return 0;
+		else
+			removecoown := 1;
+		endif
+	endif
+	var test := sign.AddBan(targetchr);
+	if(test == -1)
+		SendSysMessageCL(who, 1149994, color := 33); // Your ban list is full!
+		SendSysMessage(who, "You need to remove a ban before you can ban " + targetchr.name + ".", color := 33);
+		return 0;
+	elseif(!test)
+		SendSysMessageCL(who, 501356, color := 33);	// This person is already banned!
+		return 0;
+	endif
+	if(removefrnd)
+		sign.RemoveFriend(targetchr);
+	elseif(removecoown)
+		sign.RemoveCoOwner(targetchr);
+	endif
+	SendSysMessageCL(who, 1042839, CAscZ(targetchr.name), color := 66); // ~1_PLAYER_NAME~ has been banned from this house.
+	SendSysMessageCL(targetchr, 501340, color := 33); // You have been banned from this house.
+	MoveObjectToLocation(targetchr, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
+
+endfunction
+
+function addcoowner( sign, who )
+
+	var removeban := 0;
+	SendSysMessageCL(who, 501328, color := 88); // Target the person you wish to name a co-owner of your household.
+	var targetchr := Target(who);
+	if(!targetchr)
+		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+		return 0;
+	elseif(targetchr == who)
+		SendSysMessage(who, "You cannot be the owner and a co-owner of a house.", color := 33);
+		return 0;
+	elseif(!targetchr.acct)
+		SendSysMessageCL(who, 501362, color := 33); // That can't be a co-owner of the house.
+		return 0;
+	elseif(sign.IsAFriend(targetchr))
+		sign.RemoveFriend(targetchr);
+	elseif(sign.IsBanned(targetchr))
+		if (!YesNo(who, targetchr.name + " is on your ban list. Are you sure?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return 0;
+		else
+			removeban := 1;
+		endif
+	endif
+	var test := sign.AddCoOwner(targetchr);
+	if(test == -1)
+		SendSysMessageCL(who, 501368, color := 33); // Your co-owner list is full!
+		SendSysMessage(who, "You need to remove a co-owner before you can add " + targetchr.name + " as a co-owner.", color := 33);
+		return 0;
+	elseif(!test)
+		SendSysMessageCL(who, 501369, color := 33);	// This person is already on your co-owner list!
+		return 0;
+	endif
+	if(removeban)
+		sign.RemoveBan(targetchr);
+	endif
+	SendSysMessage(who, targetchr.name + " is now a co-owner of this house.", color := 66);
+	SendSysMessageCL(targetchr, 501343, color := 88); // You have been made a co-owner of this house.
+
+endfunction
+
+function removefriend(who, hsign, information )
+  var friendinfo := hsign.GetFriendList();
+  var ind := returnindex(friendinfo, information);
+  var friend := SystemFindObjectBySerial(information);
+  if (ind == 0)
+    SendSysMessage(who, "That slot doesnt contain a friend.", 1, 33);
+    return;
+  endif
+  hsign.RemoveFriend(friend);
+  SendSysMessage(who, friend.name + " is no longer a friend of this house.", 1, 66);
+endfunction
+
+function removecoowner(who, hsign, information )
+  var coownerinfo := GetObjProperty(hsign,"coowners");
+  var ind := returnindex(coownerinfo, information);
+  var coowner := SystemFindObjectBySerial(information);
+  if (ind == 0)
+    SendSysMessage(who, "That slot doesnt contain a co-owner.", 1, 33);
+    return;
+  endif
+  hsign.RemoveCoOwner(coowner);
+  SendSysMessage(who, coowner.name + " is no longer a co-owner of this house.", 1, 66);
+endfunction
+
+function removeenemy(who, hsign, information )
+  var enemyinfo := GetObjProperty(hsign,"banlist");
+  var ind := returnindex(enemyinfo, information);
+  var enemy := SystemFindObjectBySerial(information);
+  if (ind == 0)
+    SendSysMessage(who, "That slot doesnt contain an enemy.", 1, 33);
+    return;
+  endif
+  hsign.RemoveBan(enemy);
+  SendSysMessage(who, enemy.name + " is no longer an enemy of this house.", 1, 66);
+endfunction
+
+function returnindex(friendinfo, information)
+      var i;
+      for (i := 1; i <= len(friendinfo); i := i + 1)
+            if (friendinfo[i] == information)
+                  return i;
+            endif
+      endfor
+      return 0;
+endfunction
+

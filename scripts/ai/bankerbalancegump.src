@@ -1,0 +1,59 @@
+use uo;
+
+include ":mdgumps:gumps";
+
+const BALANCEGUMP_HUE_ROWCOL := 1015;
+const BALANCEGUMP_HUE_TOTAL := 1358;
+
+program bankerbalancegump(params)
+	var who := params[1];
+	var gold_coins := params[2];
+	var gold_checks := params[3];
+	var gold_total := params[4];
+	var silver_coins := params[5];
+	var silver_checks := params[6];
+	var silver_total := params[7];
+	var copper_coins := params[8];
+	var copper_checks := params[9];
+	var copper_total := params[10];
+	var storage_label := params[11];
+	if(!storage_label)
+		storage_label := "bank box";
+	endif
+
+	var bankBalance := GFCreateGump();
+
+	GFPage(bankBalance, 0);
+
+	// Background
+	GFResizePic(bankBalance, 154, 101, 3600, 580, 296);
+	GFHTMLArea(bankBalance, 176, 121, 400, 60, "<BASEFONT size=7 color=#FFFFFF>This is a summary of the currency in thy " + storage_label + " " + who.name + ": </BASEFONT>");
+
+	GFTextLine(bankBalance, 260, 180, BALANCEGUMP_HUE_ROWCOL, "Coins");
+	GFTextLine(bankBalance, 400, 180, BALANCEGUMP_HUE_ROWCOL, "Cheques");
+	GFTextLine(bankBalance, 540, 180, BALANCEGUMP_HUE_ROWCOL, "Total");
+
+	GFTextLine(bankBalance, 173, 200, BALANCEGUMP_HUE_ROWCOL, "Gold:");
+	GFTextLine(bankBalance, 173, 250, BALANCEGUMP_HUE_ROWCOL, "Silver:");
+	GFTextLine(bankBalance, 173, 300, BALANCEGUMP_HUE_ROWCOL, "Copper:");
+
+	GFTilePic(bankBalance, 660, 200, 3823, 0);
+	GFTilePic(bankBalance, 660, 250, 3826, 0);
+	GFTilePic(bankBalance, 660, 300, 3823, 1502);
+
+	GFTextLine(bankBalance, 260, 205, BALANCEGUMP_HUE_TOTAL, gold_coins);
+	GFTextLine(bankBalance, 400, 205, BALANCEGUMP_HUE_TOTAL, gold_checks);
+	GFTextLine(bankBalance, 540, 205, BALANCEGUMP_HUE_TOTAL, gold_total);
+
+	GFTextLine(bankBalance, 260, 255, BALANCEGUMP_HUE_TOTAL, silver_coins);
+	GFTextLine(bankBalance, 400, 255, BALANCEGUMP_HUE_TOTAL, silver_checks);
+	GFTextLine(bankBalance, 540, 255, BALANCEGUMP_HUE_TOTAL, silver_total);
+
+	GFTextLine(bankBalance, 260, 305, BALANCEGUMP_HUE_TOTAL, copper_coins);
+	GFTextLine(bankBalance, 400, 305, BALANCEGUMP_HUE_TOTAL, copper_checks);
+	GFTextLine(bankBalance, 540, 305, BALANCEGUMP_HUE_TOTAL, copper_total);
+
+	GFAddButton(bankBalance, 444, 350, 247, 248, GF_CLOSE_BTN, 0);
+
+	DisplayDialogGump(who, bankBalance.layout, bankBalance.data, bankBalance.base.x, bankBalance.base.y);
+endprogram

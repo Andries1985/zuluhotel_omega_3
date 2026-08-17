@@ -1,4 +1,268 @@
 -- POL100.3.0 --
+08-10-2026 Nando:
+    Added: polsys::CheckItemIntegrity(), which checks that every item agrees with whatever
+           is holding it - the container, corpse layer, storage area, cursor or world zone
+           an item says it is in must be the one that actually lists it, and the other way
+           round. Disagreements are written to the log; the check changes nothing. Returns
+           a struct with "checks" and "violations" counts. The .integ text command now runs
+           the same check and reports both numbers.
+    Added: corpse.equipped_items, the items a corpse is shown wearing, in layer order. This
+           is the same set the client is sent, so a script and a player looking at the corpse
+           see the same thing.
+    Changed: An EquipScript now sees item.layer as 0 for the item it is asked about, until
+             the item is actually worn. uo::EquipItem and the world load used to set the
+             layer before running the script, while the client's own equip and re-equip
+             paths never did, so all four behave the same way now. A script that needs the
+             layer an item would be worn on should read item.tile_layer.
+    Changed: An item that is not being worn no longer reports a layer, and no longer saves
+             one. It could pick one up and keep it two ways: an item that could not be worn
+             while the world was being read went into the backpack still reporting the
+             layer it had failed to reach, and uo::CreateItemCopyAtLocation on an equipped
+             item gave the copy the original's layer.
+    Changed: A corpse now shows what its owner was wearing when it died and has kept on it
+             since. Taking one of those items off the corpse ends that, so putting it back
+             leaves it as ordinary loot instead of dressing the corpse again. Moving an item
+             around inside the corpse's own window is unchanged - it stays on its layer.
+    Fixed: The character race changer could shut the shard down when a client sent a hair
+           or beard id that the core accepts but the shard's tiledata does not have.
+    Fixed: A worn item whose EquipScript refused it while the world was being read shut
+           the server down during startup, so the shard could not start at all. The item
+           now goes into the wearer's backpack, which is what already happened to any
+           other item that could not be worn.
+    Fixed: uo::EquipItem shut the shard down when the item's own EquipScript made the
+           item unequippable while it ran. It returns an error now.
+    Fixed: uo::MoveItemToContainer could destroy an item that was still listed in the
+           container it came from, which could crash the server some time afterwards.
+           The move is refused instead.
+    Fixed: A house component moved out of the house, into a container or onto a
+           character, stayed on the house's component list, so destroying the house
+           destroyed the item wherever it had ended up by then.
+    Fixed: An item could be registered as a traveller of the boat it is a component of
+           (uo::MoveItem with MOVEITEM_IGNOREMOVABLE, boat.RegisterItemWithBoat). The
+           boat then moved it twice on every step, and listed it twice after a restart.
+    Fixed: Dropping an item while a different one was on the cursor sent no reply at all,
+           so the client kept the dropped item stuck to the cursor.
+    Fixed: uo::DestroyItem on an item held on a cursor left the character still holding
+           it, and unable to pick anything else up.
+    Fixed: An equipped item refused by uo::MoveItemToSecureTradeWin went into the owner's
+           backpack instead of back onto the layer it was worn on.
+    Fixed: A corpse showed none of the equipment it was wearing after a server restart.
+           The items were still in it - double-clicking the corpse showed them - they
+           just were not drawn on it.
+    Fixed: A corpse held on to every item it had ever shown as equipment, so those items
+           could not be freed until the corpse itself decayed, even long after they had
+           been looted and destroyed.
+    Fixed: Container slots (UseContainerSlots) were never usable. The slot an item was
+           given was not saved, so every arrangement collapsed onto slot 0 on the next
+           restart while the client was still being told about it; the search for a free
+           slot only looked at the first item in the container, so it handed out slots
+           that were already taken; and a container with every slot full still answered
+           that it had room, which made every "no free slots" message unreachable. Items
+           now keep their slot across a restart (a SlotIndex line, written only for items
+           that have one, so worlds from shards not using slots are unchanged), a free
+           slot is one no item occupies, and a full container is refused.
+    Fixed: Splitting part of a stack out of a container gave the slot to the part being
+           picked up rather than to the part left behind.
+    Fixed: An item moved off a boat stayed listed as travelling with it, so players near
+           the boat were still told about the item wherever it had gone - including places
+           they could not otherwise see. The listing was corrected the next time the boat
+           moved, which is why the effect was brief and only visible to clients using the
+           newer boat packet.
+    Fixed: Destroying a piece of equipment a character was wearing left their status window
+           showing the old weight. Items destroyed out of a container were already refreshed;
+           worn ones were not, and where a refresh was sent it went out before the item had
+           gone, so it repeated the weight it was meant to correct.
+    Fixed: CreateItemAtLocation and CreateItemCopyAtLocation returned an item that was not
+           at the requested location if the item's create script had moved it in the
+           meantime. An item moved elsewhere in the world stayed where the script put it,
+           and one put into a container was pulled back out to whatever coordinates the
+           container had given it, usually near the corner of the map. The requested
+           location now wins in every case.
+08-08-2026 Kevin:
+    Fixed: Custom houses customizable components are no longer limited by a single packet, increasing the number of components allowed.
+08-07-2026 Turley:
+    Fixed: AuxConnection: transmit() didnt guarantee that the order was kept.
+    Fixed: Datastore loading once the version overflows
+08-06-2026 Turley:
+    Fixed: every mobile read as criminal for the first hundredth of a second after the shard went active, a cleared criminal timer was compared against a polclock that starts at zero
+08-05-2026 Turley:
+    Fixed: map pins from a client were bounded against the map's world area instead of its gump size, refusing valid pins on a map smaller than its gump and accepting pins outside a map larger than it
+    Fixed: using a map whose gump or whose world area is empty on either axis divided by zero while converting its pins, such a map is not sent to the client anymore
+    Fixed: Spellbook.addspell()/hasspell()/removespell() accepted a spellid of another school or past the 64 spells a book holds, wrapping it onto a spell of its own school
+    Fixed: uo::GetSpellDifficulty/StartSpellEffect/ConsumeReagents/SpeakPowerWords and vitals::ConsumeMana read out-of-bounds for a spellid one past the highest defined spell
+    Fixed: uo::ConsumeReagents consumed the reagents it had already found when a later one was missing
+08-03-2026 Turley:
+    Fixed: several ways to crash the shard in CustomHouses
+    Fixed: the wrong revision was send after erase and clear
+  Changed: syshook CloseCustomHouse now also gets called when the client commits, if no misc/customhousecommit.src exists
+08-02-2026 Turley:
+    Fixed: PacketHook with SubCommandOffset where the packet was too short, its now handled by the parent hook or default handler.
+    Fixed: several out-of-bounds reads in packet scriptobjects
+    Fixed: an outgoing PacketHook setting an encoded length larger than the packet buffer shut the server down, its sent with the buffer size now and logged.
+08-01-2026 Turley:
+    Fixed: XMLNode.AppendXMLNode/AppendXMLText/SetXMLAttribute/RemoveXMLAttribute crashed when an invalid node was used. They return now the error "Node is not an element"
+    Fixed: XMLFile.RemoveXMLNode and XMLNode.RemoveXMLNode never removed anything when a node
+           object was passed, they always returned the error "Failed to find node".
+    Fixed: BinaryFile could not be used anymore after a read had failed, eg after reading past the end of the file.
+           Seek() and Size() work again in that case, making it possible to restore the state.
+07-31-2026 Turley:
+    Fixed: uo::MoveItemToSecureTradeWin could crash if the item was not accepted for the trade eg due to CanTrade hook
+    Fixed: uo::PrintTextAbovePrivate ignored journal_print for texts containing UTF-8 characters
+07-30-2026 Turley:
+    Added: itemdesc property Attackable 1/0 (default 0) makes an item a valid combat target. Needs client version 7.x.
+           It can be engaged like a mobile (attack packet or doubleclick while in warmode), takes
+           damage against its HP/MaxHP a swing always hits.
+           A ControlScript (when enabled) receives SYSEVENT_DAMAGED, SYSEVENT_ENGAGED, SYSEVENT_DISENGAGED and SYSEVENT_OPPONENT_MOVED like an npc does.
+           uo::ListHostiles, Character.attack_once
+           and vitals::ApplyDamage/ApplyRawDamage accept now attackable items as well.
+           Without a ControlScript the item is destroyed once its hp reach 0, otherwise its up to the script.
+           Only items lying toplevel in the world are attackable: picking an item up, moving
+           it into a container, equipping it or moving it to another realm disengages every
+           opponent attacking it.
+           Attackable items do not stack.
+07-28-2026 Nando:
+  Changed: Hostnames are now resolved with getaddrinfo instead of gethostbyname. On a host
+           with several addresses, the one picked for SERVERS.CFG's --ip-- and --lan-- can
+           differ from before: the addresses now come in the order the system prefers for
+           reaching the outside world instead of in adapter order, so a machine with
+           virtual adapters (Hyper-V, WSL, VPN) usually gets its real network address
+           where it got a virtual one before. A SERVERS.CFG entry whose IP is a hostname
+           that does not resolve is now also reported at startup on Windows, not just on
+           Linux. What clients receive is unchanged, that address has always been resolved
+           again for each server list.
+07-28-2026 Ins:
+    Fixed: the AOS tooltip inserted the ServSpecOpt title separators for title parts that
+           are not set, skipped TitleRaceSeparator unless a title_suffix was set, and
+           skipped TitleGuildSeparator unless a title_suffix or title_race was set. It now
+           builds the title with the same code as the paperdoll. Output with the default
+           separators is unchanged.
+07-27-2026 Nando:
+    Fixed: Logging in was slow, and got slower the more players were logging in at the
+           same time. A UO listener waited on each client still on the login server one
+           after another, and accepted only one new connection per pass, so every client
+           waited for all the others to be checked first. A listener now waits on all of
+           them at once and accepts every connection already queued. Measured on
+           loopback with 75 clients on the login server: a login packet went from 247ms
+           to 0.8ms, and admitting 75 connections went from 28.7 to 0.8 seconds. This is
+           most visible right after a restart, when many players reconnect at once.
+  Removed: pol.cfg LoginServerSelectTimeout. It bounded a wait the login server paid
+           once per waiting client, which no longer happens. Leaving the setting in
+           pol.cfg is harmless, it is simply ignored.
+    Added: pol.cfg StalledPeerTimeout (seconds, default 60) sets how long a peer may
+           accept no data at all before the core closes the connection. It applies to
+           both places that wait one out: aux service / os::OpenConnection() transmits
+           and web pages being written by a script. Any progress restarts the countdown,
+           so a slow peer is never dropped, only one that has stopped receiving; the
+           minimum is 1 second, and the value is re-read on configuration reload.
+07-26-2026 Nando:
+    Fixed: A peer that stopped reading could stall an aux connection for the OS TCP
+           timeout (minutes). Aux service and os::OpenConnection() sockets were blocking,
+           so a transmit to such a peer sat inside send() and held back every other
+           transmit queued on that connection. These sockets are now non-blocking and a
+           transmit gives up after 60 seconds without progress, closing the connection
+           and signaling the script as usual. The 60 seconds only count while the peer
+           accepts nothing at all, so slow consumers are unaffected.
+    Fixed: An HTTP client that stopped reading could freeze the entire shard. Webserver
+           connections were blocking, so a page script writing more than fits in the
+           socket buffer sat inside send() while holding the world lock, stopping every
+           script on the shard until the client resumed reading or the OS TCP timeout
+           expired. Webserver connections are now non-blocking: a page script whose write
+           does not fit sleeps and resumes it instead of blocking, and a client that
+           accepts nothing for 60 seconds is disconnected.
+07-25-2026 Turley:
+    Fixed: it was not possible to add/remove houseparts with negative offset due to changes from 07-24.
+07-25-2026 Ins:
+    Added: ServSpecOpt TitlePrefixSeparator, TitleSuffixSeparator, TitleRaceSeparator and TitleGuildSeparator configure the separators the core inserts around the parts of a mobile's displayed title (paperdoll and AOS tooltip): title_prefix|name|title_suffix, plus before (race) and [guild]. Each defaults to a single space, preserving the previous behavior; set empty to let the title strings supply their own separators.
+07-24-2026 Turley:
+    Added: customhouse methods addhousepart and erasehousepart accept now also a single argument array of struct{graphic,xoffset,yoffset,z} to add/erase multiple parts at once
+07-22-2026 Nando:
+    Fixed: uoconvert's 'map' command failed to convert several UOP maps. Its UOP size
+           estimator dropped a block from the final chunk, aborting on maps whose block
+           count isn't a multiple of 4096 (Ilshenar/map2, Tokuno/map4); and it didn't
+           tolerate the extra trailing padding block some clients add, which broke map0/
+           map1 dimension auto-detection. Both are fixed; all standard maps (0-5) now
+           convert from both .mul and UOP.
+07-22-2026 Ins:
+    Fixed: ShortCircuit jump optimization left an uninitialized value on the stack when a
+           nested chain such as ( a && b ) || ( c && d ) was assigned via a variable
+           declaration-with-initializer ( var x := ... ). The optimizer skipped past an
+           opposite-type logical jump that pops on fall-through, corrupting the following
+           stack-addressed assignment. Recompilation is needed.
+07-21-2026 Turley:
+    Fixed: ShortCircuit optimizations created wrong instructions in certain situations.
+           Since the bug is in codegen recompilation is needed.
+07-18-2026 Nando:
+  Changed: uoconvert's map conversion is substantially faster. The 'map' and 'maptile'
+           commands now build their output files in memory (writing each once instead of
+           re-reading and rewriting blocks per change), compute the smoothed terrain for
+           the whole realm a single time instead of re-deriving it per tile, filter each
+           block's statics once instead of rescanning them for every tile, and process
+           the map's solid blocks in parallel across CPU cores. A new optional threads=
+           argument sets the worker count (threads=0, the default, uses all available
+           cores; threads=1 forces the old single-threaded behavior). The generated realm
+           files are byte-for-byte identical to previous versions; on a typical multi-core
+           machine a full 7168x4096 realm conversion drops from tens of seconds to a few.
+07-13-2026 Nando:
+    Fixed: uoconvert's maptile.dat block index used a truncating (floor) shift instead
+           of a rounded-up (ceil) block count, so realms whose width or height isn't a
+           multiple of 64 (Tokuno, 1448x1448, among the standard maps) had their
+           easternmost/southernmost partial tile-block aliased onto the start of the
+           next block row, silently overwriting it. This corrupted landtile/z lookups
+           (Realm::groundheight, GetMapInfo, findmarker/counttiles) along a ~40-tile
+           strip; movement/walkability were unaffected. maptile.dat's layout changes
+           for affected realms, so RealmDescriptor::VERSION is bumped 1->2, requiring
+           all realms to be reconverted.
+    Fixed: Data race on the socket handle between an aux connection's reader thread
+           and deferred transmit() tasks (os::OpenConnection / aux services): a
+           transmit racing the connection close could act on an already-closed
+           socket handle.
+  Changed: With WebServerLocalOnly=1 (the default), the webserver now binds to
+           127.0.0.1 instead of all interfaces, so the port is no longer reachable
+           (or even visible) from other machines. Set WebServerLocalOnly=0 to allow
+           remote connections, as before.
+07-05-2026 Nando:
+    Fixed: On macOS, sockets could lose data that arrived just before the peer closed
+           the connection (poll() reports POLLHUP eagerly there; the buffered data is
+           now drained before the connection is treated as closed). Affected e.g.
+           os::OpenConnection() clients talking to servers that close after responding.
+  Changed: os::OpenConnection() now resolves hostnames (e.g. "shard.example.com"), not
+           only numeric IP addresses. Unresolvable names fail immediately (previously
+           they silently connected to 255.255.255.255) and unreachable hosts give up
+           after the new connect_timeout_ms parameter (default 10000 ms; 0 restores the
+           old behavior of blocking a worker thread for the OS default of a minute or
+           more).
+    Fixed: Connections read line-by-line (aux services, webserver, remote debugger)
+           could be kept open forever by a peer streaming data without line breaks:
+           receive timeouts now only reset when usable data arrives, and line buffers
+           without a configured maximum are capped at 16 MB.
+  Changed: With DebugLocalOnly=1 (the default), the DebugPort listener now binds to
+           127.0.0.1 instead of all interfaces, so the port is no longer reachable
+           (or even visible) from other machines. Set DebugLocalOnly=0 to allow
+           remote debugger connections, as before.
+  Changed: The "local only" peer checks (DebugLocalOnly, WebServerLocalOnly) now
+           accept connections from any 127.0.0.0/8 loopback address instead of
+           only exactly 127.0.0.1.
+07-04-2026 Nando:
+    Fixed: Webserver performance: Nagle's algorithm is now disabled for HTTP connections,
+           responses are sent in single network operations with Content-Length and
+           Connection headers, and file transfers use a larger buffer.
+    Fixed: Webserver: data race when config/www.cfg was reloaded while requests were
+           being served, transient accept() errors no longer terminate the webserver
+           thread, error pages no longer reflect unescaped request data (XSS), and
+           sending to a stalled peer no longer busy-loops the CPU.
+  Changed: Webserver only accepts GET requests (405 otherwise) and limits requests to
+           64 header lines read within 10 seconds.
+  Changed: Webserver: the built-in MIME type list (used when config/www.cfg does not
+           exist) now also covers css, json, svg, txt, webp, woff2 and wasm.
+05-31-2026 Turley:
+    Fixed: When sending classes/functionobjects to the same script but different instance the wrong globals where used
+05-25-2026 Turley:
+    Fixed: Memoryleak when storing classes or functionobjects as global variable
+  Changed: When sending classes/functionobjects to another script its no longer valid to access global variables when the sending script is destroyed before the call.
+           The calling script will stop with an error.
+           Original feature description check 08-08-2024
+05-23-2026 Kevin:
+    Added: New module function party::ListParties()
 05-10-2026 Turley:
     Fixed: Healthbar updates of other mobs if the hp is greater then 0xffff
 05-10-2026 AsYlum:

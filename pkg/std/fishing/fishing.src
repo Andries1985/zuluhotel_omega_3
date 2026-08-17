@@ -5,6 +5,7 @@
 use uo;
 use cfgfile;
 use os;
+use basicio;
 
 include "include/random";
 include "include/client";
@@ -19,30 +20,36 @@ include "include/itemutil";
 include "include/attributes";
 include "include/classes";
 
-Const UOBJECT_TREASURE_CHEST := 0x0E40;
 Const UACTION_FISHING := 0x9;
 Const SFX_SKILL_FISHING	:= 0x0240;
-Const UOBJ_SOS_BOTLE_TILE := 0xA365;
-Const UOBJ_SOS_BOTLE := 0xA360;
-Const FISHING_RANGE := 6;
+
+//Dead code - SOS bottles are never spawned (spawn function is disabled in fishing.inc
+//and Item 0x9600/0x9601/0x9602 are commented out in itemdesc.cfg), so nothing can ever
+//be targeted with objtype 0x9601 and none of this is reachable.
+//Const UOBJECT_TREASURE_CHEST := 0x0E40;
+//Const UOBJ_SOS_BOTLE_TILE := 0x9602;
+//Const UOBJ_SOS_BOTLE := 0x9600;
+
+//Dead code - declared but never referenced (the range check below uses a literal 15).
+//Const FISHING_RANGE := 6;
 
 program use_fishpole( character , pole )
 
 	if(!ReserveItem(pole)) return; endif
 
-	var equipped := whatequipped(character, pole);
 	var use_on := Targetcoordinates(character);
 	var water := check_for_water(use_on);
 
 	if (!use_on) SendSysMessage(character, "Canceled"); return; endif
 
-	if (use_on.item.objtype == 41827)
-		if (FetchBottle(character)==1) 
-			return;
-		else
-			return;
-		endif	
-	endif
+	//Dead code - 0x9601 (SOS message-in-a-bottle) can never be targeted; see note above FetchBottle.
+	//if (use_on.item.objtype == 0x9601)
+	//	if (FetchBottle(character)==1)
+	//		return;
+	//	else
+	//		return;
+	//	endif
+	//endif
 
 	if ( coordist(character.x,character.y,use_on.x, use_on.y) > 15 )
 		SendSysmessage(character,"That is too far away");
@@ -64,20 +71,29 @@ program use_fishpole( character , pole )
 		return 0;
 	endif
 
-	// Disabled random graphics from GM fishing rod as they would remain occasionally.
-	//var anis := {"Sacrifice1", "Sacrifice2", "Sacrifice3", "Sacrifice4", "Sacrifice5", "Sacrifice6", "Sacrifice7", "0x2101", "0x2103", "Sacrifice10", "Sacrifice11", "Sacrifice12", "Sacrifice13", "0x2123", "Sacrifice15"};
-	//var sacri, splashy;
+	//Region membership (safe area / dungeon) is resolved once - the character can't move
+	//without breaking the autoloop (the movement check further down, and AutoLoop_more()
+	//itself, both abort it the instant position changes), so it can't change mid-session.
+	//deep_water is deliberately NOT cached here: a character anchored on a boat can have the
+	//water under them go from deep to shallow and back between casts (other boats/dock
+	//planks drifting into IsDeepWater()'s check radius) without the character ever moving,
+	//so that's rechecked fresh every cast down in the loop instead.
+	var in_safe_area := IsInSafeArea(character);
+	var in_dungeon := IsFishingInDungeon(character);
+
 	Autoloop_init (character);
 
  	while (Autoloop_more() && NOT character.dead)
 
 	var newsplash;
 	var tool_bon	:= GetObjProperty( pole , "FishingBonus" );
+	//Recomputed every cast (not just once before the loop) so equipping/unequipping a
+	//blade mid-session takes effect on the very next catch instead of requiring a restart.
+	var equipped	:= whatequipped(character, pole);
 
 	Performaction(character, UACTION_FISHING);
 	PlaySoundEffect(character, SFX_SKILL_FISHING);
 
-	// Remove the code below and enable the commented out if/else statement if you want the random graphics.
 	newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z, 0x352d, 1, use_on.realm);
 	newsplash.movable := 0;
 	sleepms(800);
@@ -88,35 +104,6 @@ program use_fishpole( character , pole )
 	newsplash.graphic := 0x3530;
 	sleepms(800);
 	DestroyItem(newsplash);
-/* 	if(!tool_bon)
-		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
-		newsplash.movable := 0;
-		sleepms(500);
-		newsplash.graphic := 0x352e;
-		sleepms(500);
-		newsplash.graphic := 0x352f;
-		sleepms(500);
-		newsplash.graphic := 0x3530;
-		sleepms(500);
-		DestroyItem(newsplash);
-	else
-		sacri := Random(14)+1;
-		sacri := anis[sacri];
-		newsplash := CreateItemAtLocation(use_on.x, use_on.y, use_on.z,  0x352d, 1, use_on.realm);
-		splashy := CreateItemAtLocation(use_on.x, use_on.y, use_on.z+3, sacri, 1, use_on.realm);
-		splashy.movable := 0;
-		newsplash.movable := 0;
-		sleepms(500);
-		newsplash.graphic := 0x352e;
-		sleepms(500);
-		newsplash.graphic := 0x352f;
-		sleepms(500);
-		newsplash.graphic := 0x3530;
-		sleepms(500);
-		DestroyItem(splashy);
-		DestroyItem(newsplash);
-	endif
- */
 	var x := character.x;
 	var y := character.y;
 	var loop := 2;
@@ -132,42 +119,41 @@ program use_fishpole( character , pole )
 		return 0;
 	endif
 
-	var water, difficulty := cint(GetHarvestDifficulty( "fish", use_on.x, use_on.y, use_on.objtype, use_on.realm ));
-	if (!difficulty)
-		water := GetMapInfo(use_on.x, use_on.y, use_on.realm).landtile;	
-		difficulty := cint(GetHarvestDifficulty( "fish", use_on.x, use_on.y, water, use_on.realm ));
-	endif
+	//No GetHarvestDifficulty gate here on purpose - it's a fluctuating per-poll value, not a
+	//stable "is there fish here" flag, and gating on it caused false aborts. HarvestResource()'s
+	//actual return value below is the real check, same as mining.src's ore/wood harvesting.
 
-	if (!difficulty)
-		SendSysmessage(character, "You can't seem to get any fish here.");
-		Autoloop_finish ();
-		return;
-	endif
-	var thepoints := get_default_points(SKILLID_FISHING);
+	//Fresh every cast - see the comment above Autoloop_init() for why this can't be cached
+	//the way the region checks above it are.
+	var deep_water := IsDeepWater(use_on.x, use_on.y, use_on.realm);
+	var fishing_location := GetFishingLocation(deep_water, in_dungeon);
+	var thepoints := Cint(get_default_points(SKILLID_FISHING) * GetFishingPointsMultiplier(deep_water, in_safe_area, in_dungeon));
+
 	if (CheckSkill(character, SKILLID_FISHING, -1, thepoints))
 		if (Random(70)<5)
 			do_something(character);
 			else
 			var fish_amount := HarvestResource( "fish", use_on.x, use_on.y, 1, 1, use_on.realm );
+
+			//This has to be checked before the Random()+1 below - HarvestResource can
+			//legitimately return 0 when the local pool is drained, and Random(0)+1 would
+			//mask that by always coming back as 1.
+			if (!fish_amount)
+				SendSysMessage(character, "You've fished these waters dry. Try somewhere else, or wait for them to replenish.");
+				Autoloop_finish ();
+				return;
+			endif
+
 			var level := GetClasseLevel(character);
 			fish_amount := Cint(Random(fish_amount) + 1);
-		
-			if( GetObjProperty( character , CLASSEID_RANGER ) || GetObjProperty( character , CLASSEID_MYSTIC_ARCHER ) )	
+
+			if( GetObjProperty( character , CLASSEID_RANGER ) || GetObjProperty( character , CLASSEID_MYSTIC_ARCHER ) )
 				fish_amount := Cint( fish_amount + level);
 
 			endif
 
-			if (fish_amount==0)
-				SendSysMessage(character, "There's not enough fish here.");
-				Autoloop_finish ();
-				return;
-			endif
-		
 			SendSysmessage(character, "You catch a fish!");
-			if( tool_bon )
-				fish_amount	:= fish_amount * tool_bon;
-			endif
-			createfish( character,RandomFish(character),fish_amount, equipped );
+			ResolveFishCatch(character, fish_amount, equipped, deep_water, fishing_location, tool_bon, 500, 5000, thepoints);
 		endif
 	else
 		SendSysMessage(character, "They don't seem to be biting.");
@@ -186,7 +172,7 @@ function do_something(character)
 	var it;
 	case (tnum)
 		1:	
-			CreateItemInBackpack( character,0xa366,1);
+			CreateItemInBackpack( character,0x9603,1);
 			SendSysmessage(character, "You just found a special fishing net.");
 		
 		2:	
@@ -249,100 +235,103 @@ endcase
 endfunction
 
 
-function FetchBottle(who)
-	var good:=0;
-	var tfm := Targetcoordinates( who );
-	var msgx;
-	var msgy;
-	var done := 0 ;
-	foreach item in EnumerateItemsInContainer( who.backpack )
-	 if (item.objtype == 0xa363 and done == 0)
-		msgx := GetObjProperty(item,"tileX");
-		msgy := GetObjProperty(item,"tileY"); 
-		if ( (tfm.x > (msgx-6) and tfm.x < (msgx+6)) and (tfm.y > (msgy-6) and tfm.y < (msgy+6)) )
-			good:=1;
-			done := 1;
-			DestroyItem(item); 
-		endif
-	 endif
-	endforeach
-
-	if (done == 0)
-		SendSysMessage(who,"You're not in the right location!");
-		return 0;
-	endif
-
-	if (good)
-	if(CheckSkill(who, SKILLID_FISHING, 135, 1000))
-		SendSysMessage(who,"You catch a sunken treasure!");
-		CreateChest( who.x, who.y, who.z, who.realm);
-	else
-		good:=0;
-	endif
-	endif
-
-	return good;
-endfunction
-
-
-function FindSpot(who)
-	var spot := {0,0,0};
-	var testval := 0;
-	var i;
-
-	for(i:=1;i<9;i:=i+1)
-		case(i)
-			1:testval := GetStandingHeight( (who.x-1),(who.y-1),who.z, who.realm);
-				spot[1] := who.x-1;
-				spot[2]:= who.y-1;
-			2:testval := GetStandingHeight((who.x-1),(who.y),who.z, who.realm);
-				spot[1] := who.x-1;
-				spot[2] := who.y;
-			3:testval := GetStandingHeight((who.x-1),(who.y+1),who.z, who.realm);
-				spot[1] := who.x-1;
-				spot[2] := who.y+1;
-			4:testval := GetStandingHeight((who.x),(who.y-1),who.z, who.realm);
-				spot[1] := who.x;
-				spot[2] := who.y-1;
-			5:testval := GetStandingHeight((who.x),(who.y+1),who.z, who.realm);
-				spot[1] := who.x;
-				spot[2] := who.y+1;
-			6:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
-				spot[1] := who.x+1;
-				spot[2] := who.y-1;
-			7:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
-				spot[1] := who.x+1;
-				spot[2] := who.y;
-			8:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
-				spot[1] := who.x+1;
-				spot[2] := who.y+1;
-		endcase
-		if(!testval.errortext)
-			spot[3] := testval.z;
-			return spot;
-		endif
-	endfor
-	return 0;
-endfunction
+//Dead code - only caller was the disabled SOS-bottle check above; SOS bottles can never
+//exist so this can never run. CreateChest/CleanSos below are dead for the same reason.
+//function FetchBottle(who)
+//	var good:=0;
+//	var tfm := Targetcoordinates( who );
+//	var msgx;
+//	var msgy;
+//	var done := 0 ;
+//	foreach item in EnumerateItemsInContainer( who.backpack )
+//	 if (item.objtype == 0x9601 and done == 0)
+//		msgx := GetObjProperty(item,"tileX");
+//		msgy := GetObjProperty(item,"tileY");
+//		if ( (tfm.x > (msgx-6) and tfm.x < (msgx+6)) and (tfm.y > (msgy-6) and tfm.y < (msgy+6)) )
+//			good:=1;
+//			done := 1;
+//			DestroyItem(item);
+//		endif
+//	 endif
+//	endforeach
+//
+//	if (done == 0)
+//		SendSysMessage(who,"You're not in the right location!");
+//		return 0;
+//	endif
+//
+//	if (good)
+//	if(CheckSkill(who, SKILLID_FISHING, 135, 1000))
+//		SendSysMessage(who,"You catch a sunken treasure!");
+//		CreateChest( who.x, who.y, who.z, who.realm);
+//	else
+//		good:=0;
+//	endif
+//	endif
+//
+//	return good;
+//endfunction
 
 
-function CreateChest( x , y , z, realm )
-   var chest := CreateItemAtLocation(x,y,z,UOBJECT_TREASURE_CHEST,1, realm);
+//Dead code - never called anywhere in this file or the rest of the repo.
+//function FindSpot(who)
+//	var spot := {0,0,0};
+//	var testval := 0;
+//	var i;
+//
+//	for(i:=1;i<9;i:=i+1)
+//		case(i)
+//			1:testval := GetStandingHeight( (who.x-1),(who.y-1),who.z, who.realm);
+//				spot[1] := who.x-1;
+//				spot[2]:= who.y-1;
+//			2:testval := GetStandingHeight((who.x-1),(who.y),who.z, who.realm);
+//				spot[1] := who.x-1;
+//				spot[2] := who.y;
+//			3:testval := GetStandingHeight((who.x-1),(who.y+1),who.z, who.realm);
+//				spot[1] := who.x-1;
+//				spot[2] := who.y+1;
+//			4:testval := GetStandingHeight((who.x),(who.y-1),who.z, who.realm);
+//				spot[1] := who.x;
+//				spot[2] := who.y-1;
+//			5:testval := GetStandingHeight((who.x),(who.y+1),who.z, who.realm);
+//				spot[1] := who.x;
+//				spot[2] := who.y+1;
+//			6:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+//				spot[1] := who.x+1;
+//				spot[2] := who.y-1;
+//			7:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+//				spot[1] := who.x+1;
+//				spot[2] := who.y;
+//			8:testval := GetStandingHeight((who.x+1),(who.y-1),who.z, who.realm);
+//				spot[1] := who.x+1;
+//				spot[2] := who.y+1;
+//		endcase
+//		if(!testval.errortext)
+//			spot[3] := testval.z;
+//			return spot;
+//		endif
+//	endfor
+//	return 0;
+//endfunction
 
- 	MakeLoot( chest , Random(7), 70 , 4);
 
-endfunction
+//function CreateChest( x , y , z, realm )
+//   var chest := CreateItemAtLocation(x,y,z,UOBJECT_TREASURE_CHEST,1, realm);
+//
+// 	MakeLoot( chest , Random(7), 70 , 4);
+//
+//endfunction
 
-function CleanSos(tile);
-
-	var msg := GetObjProperty(tile, "msgserial");
-	msg :=SystemFindObjectBySerial(msg);
-	if(msg)
-		destroyitem(msg);
-	endif
-	destroyitem(tile);
-
-endfunction
+//function CleanSos(tile);
+//
+//	var msg := GetObjProperty(tile, "msgserial");
+//	msg :=SystemFindObjectBySerial(msg);
+//	if(msg)
+//		destroyitem(msg);
+//	endif
+//	destroyitem(tile);
+//
+//endfunction
 
 
 function maplevel()

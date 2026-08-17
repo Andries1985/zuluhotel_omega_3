@@ -29,4 +29,18 @@ program resetph( who )
     EraseObjProperty(mobile, "#PPHC");
     EraseObjProperty(mobile, "#PPHS");
 
+    // activateph() (setph.src) is sleeping out the hour in its own script
+    // instance and stores its PID here -- kill it directly instead of
+    // waiting for it to wake up on its own.
+    var pph_pid := GetObjProperty(mobile, "#PPHPid");
+    if(pph_pid)
+        var process := GetProcess(CInt(pph_pid));
+        if(process)
+            process.kill();
+        endif
+    endif
+    EraseObjProperty(mobile, "#PPHPid");
+
+    EraseObjProperty(mobile, "#SettingPH");
+
 endprogram

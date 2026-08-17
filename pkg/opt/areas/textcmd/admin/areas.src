@@ -16,12 +16,18 @@ use cfgfile;
 include ":staff:staff";
 include ":gumps:gumps";
 include ":areas:include/areapolicy";
+include ":areas:include/areafunctions";
 include "include/areas";
 include "include/constants/cfgfiles";
 include "include/constants/propids";
 
 var areas_cfg	:= ReadConfigfile(CFGFILE_AREAS);
 const AREAS_DEBUG := 0;
+const PROPID_INSAFEAREA := "InSafeArea";
+const PROPID_NOPKAREA := "NOPKAREA";
+const BTN_PAGE_PREV := 9001;
+const BTN_PAGE_NEXT := 9002;
+const BTN_COMMIT := 9010;
 
 set_script_option(SCRIPTOPT_NO_RUNAWAY,1);
 
@@ -112,6 +118,7 @@ Program areas(who, text)
 
 		// HTML gump
 		GFHTMLArea(gump, 405, 35, 390, 140, GetHelpString(), 1, 1);
+		GFAddButton(gump, 185, 150, 2128, 2129, GF_CLOSE_BTN, BTN_COMMIT);
 
 		// Names for all the options
 		GFTextLine(gump, 96, 185, 900, "Area");
@@ -175,57 +182,47 @@ Program areas(who, text)
 
 		GFTextLine(gump, 340, 508, 1000, "Page "+page+" of "+totalpages);
 		if (page > 1)
-			GFAddButton(gump, 35, 506, 4014, 4015, 1, 9001);
+			GFAddButton(gump, 35, 506, 4014, 4015, 1, BTN_PAGE_PREV);
 		endif
 		if (page < totalpages)
-			GFAddButton(gump, 765, 506, 4005, 4006, 1, 9002);
+			GFAddButton(gump, 765, 506, 4005, 4006, 1, BTN_PAGE_NEXT);
 		endif
 
 		var result := GFSendGump(who, gump);
 		DebugPrint("CLOSE realm="+realm+" page="+CStr(page)+" button="+CStr(result[0])+" keycount="+CStr(result.keys.size())+" keys="+DebugSummarizeData(result.keys));
 		DebugLogPageMasksFromArrays(realm, areas, page, perpage, "BEFORE_SAVE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
-		var should_save := HasCurrentPageCheckboxInput(result.keys, page, perpage);
-		DebugPrint("SAVE_DECISION realm="+realm+" page="+CStr(page)+" should_save="+CStr(should_save));
-		if (should_save)
-			var save_result := SetPageValues(who, result.keys, realm, areas, page, perpage);
-			if (save_result == error)
-				SendSysMessage(who, save_result.errortext);
-				return 0;
-			endif
-
-			policy_arrays := LoadPolicyArrays(realm, areas);
-			if (policy_arrays == error)
-				SendSysMessage(who, policy_arrays.errortext);
-				return 0;
-			endif
-
-			guarded := policy_arrays.guarded;
-			norecallto := policy_arrays.norecallto;
-			norecallfrom := policy_arrays.norecallfrom;
-			disabledmarking := policy_arrays.disabledmarking;
-			disablemagic := policy_arrays.disablemagic;
-			forbiddenarea := policy_arrays.forbiddenarea;
-			nolooting := policy_arrays.nolooting;
-			safearea := policy_arrays.safearea;
-			nopk := policy_arrays.nopk;
-			rparea := policy_arrays.rparea;
-			DebugLogPageMasksFromArrays(realm, areas, page, perpage, "AFTER_SAVE_RELOAD", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
-			did_save := 1;
+		var has_page_input := HasCurrentPageCheckboxInput(result.keys, page, perpage);
+		if (has_page_input)
+			ApplyPageCheckboxesToArrays(result.keys, page, perpage, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+			DebugLogPageMasksFromArrays(realm, areas, page, perpage, "AFTER_STAGE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
 		endif
 
-		if (result[0] == 9001 && page > 1)
+		if (result[0] == BTN_PAGE_PREV && page > 1)
 			page := page - 1;
 			continue;
-		elseif (result[0] == 9002 && page < totalpages)
+		elseif (result[0] == BTN_PAGE_NEXT && page < totalpages)
 			page := page + 1;
 			continue;
+		elseif (result[0] == BTN_COMMIT)
+			var commit_result := SavePolicyArraysForRealm(who, realm, areas, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+			if (commit_result == error)
+				SendSysMessage(who, commit_result.errortext);
+				return 0;
+			endif
+			did_save := 1;
+			break;
 		endif
 
 		break;
 	endwhile
 
 	if (did_save)
-		SendSysMessage(who, "Data saved.");
+		var refreshed := RefreshOnlineAreaStateForRealm(realm);
+		if (refreshed == error)
+			SendSysMessage(who, "Data saved, but online state refresh failed: "+refreshed.errortext);
+		else
+			SendSysMessage(who, "Data saved. Refreshed "+CStr(refreshed)+" online character(s) in realm '"+realm+"'.");
+		endif
 	else
 		SendSysMessage(who, "No changes saved.");
 	endif
@@ -321,6 +318,67 @@ function SetPageValues(who, data, realm, areas, page, perpage)
 
 endfunction
 
+function ApplyPageCheckboxesToArrays(data, page, perpage, byref guarded, byref norecallto, byref norecallfrom, byref disabledmarking, byref disablemagic, byref forbiddenarea, byref nolooting, byref safearea, byref nopk, byref rparea)
+	var min_index := (page-1)*perpage;
+	var max_index := min_index+perpage-1;
+	var area_index;
+	if (min_index < 1)
+		min_index := 1;
+	endif
+
+	for (area_index := min_index; area_index <= max_index; area_index := area_index + 1)
+		if (area_index > guarded.size())
+			break;
+		endif
+
+		guarded[area_index] := 0;
+		norecallto[area_index] := 0;
+		norecallfrom[area_index] := 0;
+		disabledmarking[area_index] := 0;
+		disablemagic[area_index] := 0;
+		forbiddenarea[area_index] := 0;
+		nolooting[area_index] := 0;
+		safearea[area_index] := 0;
+		nopk[area_index] := 0;
+		rparea[area_index] := 0;
+
+		foreach val in data
+			var mine := (val-(area_index*10));
+			case(mine)
+			1: guarded[area_index] := 1;
+			2: norecallto[area_index] := 1;
+			3: norecallfrom[area_index] := 1;
+			4: disabledmarking[area_index] := 1;
+			5: disablemagic[area_index] := 1;
+			6: forbiddenarea[area_index] := 1;
+			7: nolooting[area_index] := 1;
+			8: safearea[area_index] := 1;
+			9: nopk[area_index] := 1;
+			10: rparea[area_index] := 1;
+			endcase
+		endforeach
+	endfor
+
+	return 1;
+endfunction
+
+function SavePolicyArraysForRealm(who, realm, areas, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea)
+	foreach area in areas
+		var area_key := BuildAreaKey(area);
+		if (area_key == error)
+			return area_key;
+		endif
+
+		var mask := BuildPolicyMaskForArea(_area_iter, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
+		var set_result := SetPolicyMask(realm, area_key, mask, who.name);
+		if (set_result == error)
+			return set_result;
+		endif
+	endforeach
+
+	return 1;
+endfunction
+
 function LoadPolicyArrays(realm, areas)
 	var policies := LoadRealmPolicies(realm);
 	if (policies == error)
@@ -363,6 +421,47 @@ function LoadPolicyArrays(realm, areas)
 	endforeach
 
 	return arrays;
+endfunction
+
+function RefreshOnlineAreaStateForRealm(realm)
+	realm := Lower(CStr(realm));
+	var refreshed := 0;
+
+	foreach online_char in EnumerateOnlineCharacters()
+		if (!online_char)
+			continue;
+		endif
+
+		if (Lower(CStr(online_char.realm)) != realm)
+			continue;
+		endif
+
+		var had_safe := GetObjProperty(online_char, PROPID_INSAFEAREA);
+		var should_be_safe := IsInSafeArea(online_char);
+		if (should_be_safe)
+			if (!had_safe)
+				SetSafeAreaProperties(online_char);
+				refreshed := refreshed + 1;
+			endif
+		elseif (had_safe)
+			RemoveSafeAreaProperties(online_char);
+			refreshed := refreshed + 1;
+		endif
+
+		var had_nopk := GetObjProperty(online_char, PROPID_NOPKAREA);
+		var should_be_nopk := IsInNOPKArea(online_char);
+		if (should_be_nopk)
+			if (!had_nopk)
+				SetNOPK(online_char);
+				refreshed := refreshed + 1;
+			endif
+		elseif (had_nopk)
+			RemoveNOPK(online_char);
+			refreshed := refreshed + 1;
+		endif
+	endforeach
+
+	return refreshed;
 endfunction
 
 function BuildPolicyMaskForArea(index, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea)

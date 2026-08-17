@@ -251,8 +251,12 @@ program chrdeath(corpse,ghost)
 		mount:=item;
 	endforeach
 
-	if(mount) 
-		Dismount(ghost,mount); 
+	if(mount)
+		Dismount(ghost,mount);
+	endif
+
+	if( GetObjProperty( ghost, "DonatorMounted" ) )
+		EraseObjProperty( ghost, "DonatorMounted" );
 	endif
 
 	SetPlayerWarMode(ghost, 0);

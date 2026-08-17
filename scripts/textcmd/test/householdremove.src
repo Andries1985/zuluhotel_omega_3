@@ -1,0 +1,34 @@
+// Synopsis: Remove a targeted account DiscordID from its household group
+use uo;
+
+include ":accounts:accounts";
+
+program textcmd_householdremove( who )
+
+	ACCT_DebugPrint( "householdremove invoked by " + who.name );
+	SendSysMessage( who, "Target a player to remove from household." );
+	var targ := Target( who );
+	if( !targ || !targ.acctname )
+		ACCT_DebugPrint( "householdremove cancelled before target selection." );
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	var account := FindAccount( targ.acctname );
+	if( account.errortext )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	var result := ACCT_RemoveAccountFromHousehold( account, who.name );
+	if( result.errortext )
+		ACCT_DebugPrint( "householdremove failed for " + targ.acctname + ": " + result.errortext );
+		SendSysMessage( who, result.errortext );
+		return 0;
+	endif
+
+	ACCT_DebugPrint( "householdremove success account=" + targ.acctname + " household=" + result["HouseholdId"] );
+	SendSysMessage( who, "Removed " + targ.name + " from household " + result["HouseholdId"] + ".", 3, 53 );
+	SendSysMessage( who, "Household members: " + CStr( result["MemberCount"] ) + "." );
+	return 1;
+endprogram

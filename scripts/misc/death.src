@@ -91,7 +91,7 @@ program npcdeath(corpse)
 		if (resnum < 4 and GetObjProperty(corpse,"master") != 0) 
 			heart := CreateItemAtLocation(corpse.x,corpse.y,corpse.z,0x1CED,1,corpse.realm);
 			heart.newbie := 1;	
-			heart.color := 1172;
+			heart.color := 2750;
 			heart.usescript := "";
 			heart.name := "The Heart of "+GetObjProperty(corpse,"Name");
 			SetObjProperty(heart,"Str",GetObjProperty(corpse,"Str"));
@@ -165,7 +165,20 @@ program npcdeath(corpse)
 		SetObjProperty(corpse, "noloot", 1);
 	endif
 
-	if( !GetObjProperty( corpse, "noloot"))
+	if( GetObjProperty( corpse, "noloot") )
+		foreach item in EnumerateItemsInContainer( corpse )
+			if( item.container == corpse )
+				if( GetObjProperty( corpse, "RiseLootTransfer" ) and GetObjProperty( item, "KeepOnNoLootDeath" ) )
+					EraseObjProperty( item, "KeepOnNoLootDeath" );
+					continue;
+				endif
+				DestroyItem(item);
+			endif
+		endforeach
+		if( GetObjProperty( corpse, "RiseLootTransfer" ) )
+			EraseObjProperty( corpse, "RiseLootTransfer" );
+		endif
+	else
 		MakeLoot(corpse);
 		RegisterNPC(corpse);
 	endif

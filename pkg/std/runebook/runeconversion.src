@@ -113,7 +113,7 @@ function ProcessShilohenConversion( runebook )
 		x := Cint( GetObjProperty( rune, "x" ) );
 		y := Cint( GetObjProperty( rune, "y" ) );
 		z := Cint( GetObjProperty( rune, "z" ) );
-		z := GetObjProperty( rune, "realm" );
+		realm := GetObjProperty( rune, "realm" );
 		
 		if( x or y or z or realm )			
 			rune_data.name := name;

@@ -16,6 +16,7 @@ include "include/utility";
 include ":karmafame:karmafame";
 include "include/attributes";
 include "include/difficulty";
+include "include/resourcemanager";
 
 const STARTHAIR		:= 0x2006;
 const ENDHAIR		:= 0x2079;
@@ -369,6 +370,11 @@ function CarveLogs( character, logs )
 	var material;
 	var points;
 	var skill;
+	var logsRequest := MakeBackpackRequest(character, logs);
+	var specialRequest;
+	if( makespecial and special )
+		specialRequest := MakeBackpackRequest(character, special);
+	endif
 
 	if( element )
 		material := element.Material;
@@ -403,7 +409,7 @@ function CarveLogs( character, logs )
 				shafts.color := logs.color;
 				shafts.hp := shafts.maxhp;
 				SetObjProperty( shafts , "BaseName" , itemname );
-				SubtractAmount( logs , material );
+				ConsumeResource( character, logsRequest, material );
 				SetName( shafts , itemname );
 				SendSysMessage( character , "You place the items in your pack." );
 			endif
@@ -423,7 +429,7 @@ function CarveLogs( character, logs )
 				destroy	:= 1;
 			endif
 
-			SubtractAmount( logs , destroy );
+			ConsumeResource( character, logsRequest, destroy );
 			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs." );
 		endif
 		return;
@@ -517,9 +523,9 @@ function CarveLogs( character, logs )
 				theitem.color := logs.color;
 				if (special and theitem.color == 0 )
 					if (theitem.objtype == 0x6050)
-						theitem.color := 1172;
+						theitem.color := 2750;
 					elseif (theitem.objtype == 0xb201)
-						theitem.color := 1170;
+						theitem.color := 2243;
 					elseif (theitem.objtype == 0x1403)
 						theitem.color := 1282;
 					endif
@@ -528,9 +534,9 @@ function CarveLogs( character, logs )
 				SetObjProperty( theitem , "BaseName" , itemname );
 				SetName( theitem , itemname );
 			endif
-			SubtractAmount( logs , material );
+			ConsumeResource( character, logsRequest, material );
 			if (special)
-				SubtractAmount( special , material );
+				ConsumeResource( character, specialRequest, material );
 			endif
 
 		else
@@ -548,10 +554,10 @@ function CarveLogs( character, logs )
 				destroy	:= 1;
 			endif
 			
-			SubtractAmount( logs , destroy );
+			ConsumeResource( character, logsRequest, destroy );
 			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs" );
 			if (special)
-				SubtractAmount( special , destroy );
+				ConsumeResource( character, specialRequest, destroy );
 				SendSysmessage( character , "and " + destroy + " reagents." );
 			endif
 		endif
@@ -664,8 +670,10 @@ function MakeArrows ( character, use_on )
 			SendSysmessage( character, "You must use sulphurous ash or spiders silk." );
 			return;
 		endif
-		var val1 := GetAmount(use_on);
-		var val2 := GetAmount(use_reg);
+		var useOnRequest := MakeBackpackRequest(character, use_on);
+		var useRegRequest := MakeBackpackRequest(character, use_reg);
+		var val1 := GetAvailableResource(character, useOnRequest).total;
+		var val2 := GetAvailableResource(character, useRegRequest).total;
 		var num;
 		if (val1 > val2)
 			num := val2;
@@ -675,38 +683,38 @@ function MakeArrows ( character, use_on )
 		if ( use_reg.objtype == 0xf8c )
 		sendDiff( character, 114 );
 			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 114 )
-				SubtractAmount( use_on, num );
-				SubtractAmount( use_reg, num );
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
 				CreateItemInBackpack( character, 0x6051, num );
 				SendSysMessage( character, "You create some fire arrows and put them in your pack." );
 			else
 				SendSysMessage( character, "You fail, and destroy some materials." );
-				SubtractAmount( use_on, 1 );
-				SubtractAmount( use_reg, 1 );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
 			endif
 		elseif ( use_reg.objtype == 0xf8d )
 		sendDiff( character, 119 );
 			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 119 )
-				SubtractAmount( use_on, num );
-				SubtractAmount( use_reg, num );
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
 				CreateItemInBackpack( character, 0xb200, num );
 				SendSysMessage( character, "You create some ice arrows and put them in your pack." );
 			else
 				SendSysMessage( character, "You fail, and destroy some materials." );
-				SubtractAmount( use_on, 1 );
-				SubtractAmount( use_reg, 1 );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
 			endif
 		elseif ( use_reg.objtype == 0xf7a )
 		sendDiff( character, 124 );
 			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 124 )
-				SubtractAmount( use_on, num );
-				SubtractAmount( use_reg, num );
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
 				CreateItemInBackpack( character, 0x824e, num );
 				SendSysMessage( character, "You create some thunderbolts and put them in your pack." );
 			else
 				SendSysMessage( character, "You fail, and destroy some materials." );
-				SubtractAmount( use_on, 1 );
-				SubtractAmount( use_reg, 1 );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
 			endif
 		endif
 		return;
