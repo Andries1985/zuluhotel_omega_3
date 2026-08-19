@@ -11,6 +11,7 @@ use uo;
 use os;
 
 include ":accounts:accounts";
+include ":alryc:include/speedwalk";
 
 program Logon( who )
 
@@ -30,7 +31,7 @@ program Logon( who )
 	var speed_walk := GetObjProperty( who, "SpeedWalk" );
 	if( who.cmdlevel >= 2 )
 		if( !speed_walk.errortext )
-			who.SpeedWalk( speed_walk );
+			SendSpeedWalk( who, speed_walk );
 		endif
 	endif
         
