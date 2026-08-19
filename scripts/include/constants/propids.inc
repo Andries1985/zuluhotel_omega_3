@@ -286,6 +286,7 @@ const PROPID_MOBILE_AREAS_ALLOWED_FORBIDDEN	:= "AllowedForbiddenAreas";
 const PROPID_MOBILE_AREAS_ALLOWED_LOOTING	:= "AllowedLootingAreas";
 const PROPID_MOBILE_AREAS_ALLOWED_RECALLING	:= "AllowedRecallingAreas";
 const PROPID_MOBILE_AREAS_BANNED			:= "BannedAreas";
+const PROPID_MOBILE_AREASPAWNER			:= "AreaSpawner";
 const PROPID_MOBILE_ARMOR_BONUS_AWARDED		:= "ArBonus";
 const PROPID_MOBILE_ATTACHED_RUNNING_PID	:= "#AttachedRunningPid";
 const PROPID_MOBILE_ATTACKED_SELF			:= "#AttackedSelf";

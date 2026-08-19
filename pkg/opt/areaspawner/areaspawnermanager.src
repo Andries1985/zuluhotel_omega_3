@@ -1,0 +1,33 @@
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+
+const AREASPAWNER_TICK_INTERVAL	:= 20;	// seconds between manager cycles
+
+program AreaSpawnerManager()
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+	set_priority(5);
+
+	while(1)
+		var realms := AreaSpawnerRealms();
+		foreach realm in realms
+			var names := GetAreaSpawnerNames(realm);
+			foreach name in names
+				set_critical(1);
+				var record := LoadAreaSpawner(realm, name);
+				if( record )
+					SaveAreaSpawner( realm, name, TickAreaSpawner(realm, name, record), 0 );
+				endif
+				set_critical(0);
+				SleepMs(5);
+			endforeach
+		endforeach
+
+		Sleep(AREASPAWNER_TICK_INTERVAL);
+	endwhile
+
+endprogram

@@ -1,0 +1,61 @@
+// Synopsis: Set a named property member on every item within a radius of the caller
+use uo;
+use os;
+
+include ":staff:include/staff";
+
+program setpropradius(who, text)
+
+	text := SplitWords(text);
+
+	if (text.size() < 3)
+		SendSysMessage(who, "Usage: .setpropradius <propname> <value> <radius>");
+		return 0;
+	endif
+
+	// First word is always the prop name
+	var pname := text[1];
+
+	// Last word is always the radius
+	var radius := CInt(text[text.size()]);
+	text.erase(text.size());
+	text.erase(1);
+
+	// Whatever remains is the value. If there's more than one word left,
+	// it's more than likely a string (member.name, member.suffix, etc).
+	var pval;
+	if (text.size() > 1)
+		pval := "";
+		foreach word in text
+			pval := pval + word + " ";
+		endforeach
+	else
+		pval := text[1];
+	endif
+
+	var changed := 0;
+	var skipped := 0;
+
+	foreach thing in ListItemsNearLocation(who.x, who.y, LIST_IGNORE_Z, radius, who.realm)
+		var curval := thing.get_member(pname);
+		if (curval.errortext)
+			skipped := skipped + 1;
+			continue;
+		endif
+
+		var newval := pval;
+		case (TypeOf(curval))
+			"Integer":	newval := CInt(pval);
+			"String":	newval := CStr(pval);
+			default:	newval := CInt(pval);
+		endcase
+
+		thing.set_member(pname, newval);
+		changed := changed + 1;
+	endforeach
+
+	SendSysMessage(who, "Set '"+pname+"' to '"+pval+"' on "+CStr(changed)+" item(s) within radius "+CStr(radius)+" ("+CStr(skipped)+" skipped).", 3, 73);
+
+	LogCommand(who, GetProcess(GetPid()).name, "Radius of "+CStr(radius), pname+"/"+pval+" ("+CStr(changed)+" changed)");
+
+endprogram

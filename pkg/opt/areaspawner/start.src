@@ -1,0 +1,11 @@
+use uo;
+use os;
+
+program launch_areaspawner_manager()
+	var pid := start_script(":areaspawner:areaspawnermanager").pid;
+	if( pid )
+		SysLog( "Area Spawner manager started. PID = " + pid );
+	else
+		SysLog( "COULDN'T START AREA SPAWNER MANAGER!!!" );
+	endif
+endprogram

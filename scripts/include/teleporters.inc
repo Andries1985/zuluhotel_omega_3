@@ -1215,17 +1215,10 @@ var teleporters := {
     { 6043, 237, 8, 6036, 268, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Blood Dungeon Boss
     { 6036, 267, 8, 6043, 236, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Boss -> Blood Dungeon Lvl1
     { 951, 2885, 35, 951, 2885, 35, "britannia_alt", "britannia_alt" }, //Black City of the Damned -> Tartarus
-    { 6651, 102, 1, 6721, 122, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6721, 121, 1, 6651, 101, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6634, 115, 1, 6723, 105, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6723, 106, 1, 6634, 114, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6658, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6659, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6747, 109, 1, 6658, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6747, 109, 1, 6659, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6787, 105, 1, 6808, 100, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6808, 101, 1, 6787, 106, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
-    { 6782, 56, 1, 6855, 57, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6854, 57, 1, 6784, 56, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6803, 42, 11, 6830, 123, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon Boss
     { 6831, 123, 1, 6806, 40, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Boss -> Water Dungeon
@@ -1351,10 +1344,6 @@ var teleporters := {
     { 6301, 2810, 0, 4575, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 4612, 475, 5, 5902, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4612, 476, 5, 5902, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
-    // //BAD TELEPORTER - REMOVE
-    // { 5901, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
-    // //BAD TELEPORTER - REMOVE
-    // { 5901, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 4636, 491, 5, 5877, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4637, 491, 5, 5878, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 5877, 2203, 0, 4636, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
@@ -1407,6 +1396,108 @@ var teleporters := {
     { 6621, 680, 0, 6877, 516, 0, "britannia_alt", "britannia_alt" }, //Vault of the First Dynasty Lvl2 -> Vault of the First Dynasty Lvl1
     { 5902, 2076, 0, 4613, 475, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 5902, 2077, 0, 4613, 476, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
+
+    //Nagash Added Aug 19 2026
+    { 3637, 3132, 30, 5643, 2922, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3638, 3132, 30, 5644, 2922, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5643, 2923, 0, 3637, 3133, 31, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5644, 2923, 0, 3638, 3133, 30, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3586, 3003, 0, 5694, 2858, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3587, 3003, 0, 5694, 2858, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3588, 3003, 0, 5695, 2858, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5694, 2859, 0, 3587, 3004, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5695, 2859, 0, 3588, 3004, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3619, 3080, 0, 5485, 2897, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3620, 3080, 0, 5485, 2897, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3621, 3080, 0, 5486, 2897, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5485, 2898, 0, 3620, 3081, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5486, 2898, 0, 3621, 3081, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3636, 3197, 0, 5590, 2910, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5590, 2910, 0, 3637, 3197, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5590, 2911, 0, 3637, 3197, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3877, 3048, 30, 5656, 2865, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3877, 3047, 30, 5656, 2865, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3877, 3046, 30, 5656, 2866, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5657, 2865, 0, 3878, 3047, 30, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5657, 2866, 0, 3878, 3046, 30, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3704, 3218, 0, 5564, 2833, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3705, 3218, 0, 5564, 2833, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3706, 3218, 0, 5565, 2833, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5564, 2834, 0, 3705, 3219, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5565, 2834, 0, 3706, 3219, 1, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3856, 3259, 0, 5463, 1870, 0, "britannia_alt", "britannia_alt" }, //Hathor to Cave
+    { 3856, 3260, 0, 5463, 1871, 0, "britannia_alt", "britannia_alt" }, //Hathor to Cave
+    { 3856, 3261, 0, 5463, 1872, 0, "britannia_alt", "britannia_alt" }, //Hathor to Cave
+    { 5464, 1870, 0, 3857, 3259, 0, "britannia_alt", "britannia_alt" }, //Cave to Hathor
+    { 5464, 1871, 0, 3857, 3260, 0, "britannia_alt", "britannia_alt" }, //Cave to Hathor
+    { 5464, 1872, 0, 3857, 3261, 0, "britannia_alt", "britannia_alt" }, //Cave to Hathor
+    { 3498, 3450, 0, 6321, 997, 0, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl1 to Sosaria
+    { 3498, 3451, 0, 6321, 998, 0, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl1 to Sosaria
+    { 6322, 997, 0, 3499, 3450, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Ancient Ruin Lvl1
+    { 6322, 998, 0, 3499, 3451, 2, "britannia_alt", "britannia_alt" }, //Sosaria to Ancient Ruin Lvl1
+    { 6260, 997, 0, 6321, 990, 10, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl1 to Ancient Ruin Lvl2
+    { 6260, 998, 0, 6321, 991, 10, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl1 to Ancient Ruin Lvl2
+    { 6322, 990, 10, 6261, 997, 0, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl2 to Ancient Ruin Lvl1
+    { 6322, 991, 10, 6261, 998, 0, "britannia_alt", "britannia_alt" }, //Ancient Ruin Lvl2 to Ancient Ruin Lvl1
+    { 3604, 3536, 0, 5693, 2804, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3604, 3537, 0, 5693, 2804, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3604, 3538, 0, 5693, 2805, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5694, 2804, 0, 3605, 3537, 2, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5694, 2805, 0, 3605, 3538, 7, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3392, 3379, 0, 5704, 2906, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3392, 3380, 0, 5704, 2906, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3392, 3381, 0, 5704, 2907, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5705, 2906, 0, 3393, 3380, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5705, 2907, 0, 3393, 3381, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3502, 3416, 0, 5806, 2818, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3503, 3416, 0, 5806, 2818, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3504, 3416, 0, 5807, 2818, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5806, 2819, 0, 3503, 3417, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5807, 2819, 0, 3504, 3417, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3518, 3479, 0, 5790, 2673, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3519, 3479, 0, 5790, 2673, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3520, 3479, 0, 5790, 2673, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 5790, 2674, 0, 3519, 3480, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 5791, 2674, 0, 3520, 3480, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 3568, 3521, 0, 6119, 2714, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3569, 3521, 0, 6120, 2714, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 6119, 2715, 0, 3568, 3522, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 6120, 2715, 0, 3569, 3522, 1, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 2249, 2262, 0, 6077, 2536, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 2250, 2262, 0, 6078, 2536, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 6077, 2537, 0, 2249, 2263, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 6078, 2537, 0, 2250, 2263, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
+    { 249, 2590, 0, 5563, 1797, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 249, 2591, 0, 5563, 1798, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 249, 2592, 0, 5563, 1799, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 5564, 1797, 0, 250, 2590, 0, "britannia_alt", "britannia_alt" }, //Cave to Rebellion Island
+    { 5564, 1798, 0, 250, 2591, 0, "britannia_alt", "britannia_alt" }, //Cave to Rebellion Island
+    { 5564, 1799, 0, 250, 2592, 0, "britannia_alt", "britannia_alt" }, //Cave to Rebellion Island
+    { 401, 2597, 0, 5552, 1741, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 402, 2597, 0, 5552, 1741, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 403, 2597, 0, 5553, 1741, 0, "britannia_alt", "britannia_alt" }, //Rebellion Island to Cave
+    { 5552, 1742, 0, 401, 2598, 0, "britannia_alt", "britannia_alt" }, //Cave to Rebellion Island
+    { 5553, 1742, 0, 402, 2598, 0, "britannia_alt", "britannia_alt" }, //Cave to Rebellion Island
+    { 6782, 56, 1, 6856, 57, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 6 to Water Dungeon Lvl 5
+    { 6767, 129, 4, 6731, 48, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 5 to Water Dungeon Lvl 4
+    { 6731, 47, 1, 6767, 128, 4, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 4 to Water Dungeon Lvl 5
+    { 6651, 102, 1, 6739, 71, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 1 to Water Dungeon Lvl 2
+    { 6739, 70, 1, 6651, 101, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 2 to Water Dungeon Lvl 1
+    { 6765, 102, 1, 6633, 111, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 2 to Water Dungeon Lvl 3
+    { 6633, 110, 1, 6765, 101, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 3 to Water Dungeon Lvl 2
+    { 6721, 121, 1, 6658, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 3 to Water Dungeon Lvl 4
+    { 6658, 35, 1, 6721, 122, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon Lvl 4 to Water Dungeon Lvl 3
+    { 4254, 374, 2, 6945, 1108, 9, "britannia_alt", "britannia_alt" }, //Wizard Tower of Renah to Wayfarer’s Abyss
+    { 4254, 375, 2, 6945, 1109, 9, "britannia_alt", "britannia_alt" }, //Wizard Tower of Renah to Wayfarer’s Abyss
+    { 6947, 1107, 19, 4255, 374, 2, "britannia_alt", "britannia_alt" }, //Wayfarer's Abyss to Wizard Tower of Renah
+    { 6947, 1108, 19, 4255, 374, 2, "britannia_alt", "britannia_alt" }, //Wayfarer's Abyss to Wizard Tower of Renah
+    { 6947, 1109, 19, 4255, 375, 2, "britannia_alt", "britannia_alt" }, //Wayfarer's Abyss to Wizard Tower of Renah
+    { 6947, 1110, 19, 4255, 375, 2, "britannia_alt", "britannia_alt" }, //Wayfarer's Abyss to Wizard Tower of Renah
+    { 4257, 374, 62, 6066, 733, -95, "britannia_alt", "britannia_alt" }, //Wizard Tower of Renah to Renah's Sanctum
+    { 6066, 730, -87, 4257, 372, 62, "britannia_alt", "britannia_alt" }, //Renah's Sanctum to Wizard Tower of Renah
+    { 2210, 1097, 1, 6311, 3003, 2, "britannia_alt", "britannia_alt" }, //Cult of the Serpent's Isle to Mine
+    { 2211, 1097, 3, 6312, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent's Isle to Mine
+    { 2212, 1097, 4, 6313, 3003, 3, "britannia_alt", "britannia_alt" }, //Cult of the Serpent's Isle to Mine
 
     ////////////////////////////////
     ////////////////////////////////

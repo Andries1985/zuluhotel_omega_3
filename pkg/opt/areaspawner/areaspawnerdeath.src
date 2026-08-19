@@ -1,0 +1,19 @@
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+
+program AreaSpawnerDeath(params)
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+	var area_info		:= params[1];
+	var mobile_serial	:= params[2];
+
+	set_critical(1);
+	RemoveAreaSpawnerSerial(area_info, mobile_serial);
+	set_critical(0);
+
+endprogram
