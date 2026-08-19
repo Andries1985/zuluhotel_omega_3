@@ -1,0 +1,17 @@
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+
+program AreaSpawnerFullRespawn(params)
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+	var realm	:= params[1];
+	var name	:= params[2];
+
+	FullRespawnAreaSpawner(realm, name);
+
+endprogram

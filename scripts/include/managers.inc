@@ -255,6 +255,8 @@ endfunction
 
 function WarnManagerOfNpcDeath( corpse )
 
+	WarnAreaSpawnerOfNpcDeath( corpse );
+
 	var pointserial := GetObjProperty( corpse, PROPID_MOBILE_SPAWNPOINT_SERIAL );
 	if( !pointserial )
 		return 0;
@@ -274,5 +276,22 @@ function WarnManagerOfNpcDeath( corpse )
 
 	return Start_Script( ":spawnpoint:spawndeath", {point,mobile_serial} );
 	//return SendSpawnPointEvent( EVID_SPAWNPOINT_DEATH, pointserial, mobile_serial );
+
+endfunction
+
+
+function WarnAreaSpawnerOfNpcDeath( corpse )
+
+	var area_info := GetObjProperty( corpse, PROPID_MOBILE_AREASPAWNER );
+	if( !area_info )
+		return 0;
+	endif
+
+	var mobile_serial := GetObjProperty( corpse, PROPID_MOBILE_SELF_SERIAL );
+	if( !mobile_serial )
+		return 0;
+	endif
+
+	return Start_Script( ":areaspawner:areaspawnerdeath", {area_info, mobile_serial} );
 
 endfunction
