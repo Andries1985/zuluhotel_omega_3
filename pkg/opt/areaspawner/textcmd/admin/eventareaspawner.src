@@ -1,0 +1,32 @@
+// Synopsis: Manage event spawners (mirrors areaspawner, kept in a separate datafile so events can be toggled without scrolling the regular spawner lists)
+
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+include ":areaspawner:areaspawnergump";
+
+program textcmd_eventareaspawner(who)
+
+	while(1)
+		var kind := ShowSpawnerTypePicker(who, "Event Area Spawner - Choose Type");
+		if( !kind )
+			return;
+		endif
+
+		// ShowSpawnerTypePicker only ever returns one of these 5 kinds (or ""
+		// for cancel, handled above) - every kind is fully built now, so
+		// there's no longer a "not implemented yet" case to fall through to
+		var prefix := AreaSpawnerKindPrefix(kind, 1);
+		while(1)
+			var realm := ShowRealmPicker(who, "Event Area Spawner - Choose Realm");
+			if( !realm )
+				break;
+			endif
+			ShowSpawnerList(who, realm, prefix, "Event "+AreaSpawnerTypeLabel(kind)+" Spawners", kind);
+		endwhile
+	endwhile
+
+endprogram

@@ -1,0 +1,75 @@
+use os;
+use uo;
+use cfgfile;
+
+include ":areaspawner:areaspawner";
+include "include/constants/gumpids";
+
+// Standalone reference gump - same shape as areaspawnergroupbrowser.src, just
+// reading the curated chest cfg instead of the npc group cfg. Launched via
+// Start_Script (not called inline) so it can stay open alongside the Entries/
+// New Entry gumps.
+program AreaSpawnerChestBrowser( who )
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+	var cfg := ReadConfigFile(AREASPAWNER_CHESTS_CFG);
+	if( !cfg )
+		SendSysMessage(who, "Could not load areachests.cfg.");
+		return;
+	endif
+
+	var ids := GetConfigIntKeys(cfg);
+	if( !ids || !ids.size() )
+		SendSysMessage(who, "No chests configured in areachests.cfg.");
+		return;
+	endif
+
+	// ascending sort - chest count is small, a plain insertion sort is plenty
+	var n := ids.size();
+	var a;
+	var b;
+	for( a := 2; a <= n; a := a + 1 )
+		var key := ids[a];
+		b := a - 1;
+		while( b >= 1 && ids[b] > key )
+			ids[b+1] := ids[b];
+			b := b - 1;
+		endwhile
+		ids[b+1] := key;
+	endfor
+
+	var html := "<BASEFONT SIZE=17>";
+	foreach cid in ids
+		var elem := cfg[cid];
+		var label := GetConfigString(elem, "label");
+		if( !label )
+			label := "?";
+		endif
+
+		var items := GetConfigStringArray(elem, "item");
+		var preview := "(empty)";
+		if( items && items.size() )
+			preview := "";
+			var k;
+			for( k := 1; k <= items.size(); k := k + 1 )
+				if( k > 1 )
+					preview := preview+", ";
+				endif
+				preview := preview+items[k];
+			endfor
+		endif
+
+		html := html+"<br>    "+CStr(cid)+" ("+label+") - "+preview;
+	endforeach
+
+	// same chrome as areaspawnergroupbrowser.src / commands.src
+	var layout := array{ "page 0",
+		"resizepic 20 20 "+CStr(GUMPID_BKGND_PAPER_EX)+" 700 635",
+		"text 300 35 67 0",
+		"htmlgump 35 55 660 575 1 1 1" };
+	var data := array{ "Area Spawner Chests", html };
+
+	SendDialogGump( who, layout, data );
+
+endprogram

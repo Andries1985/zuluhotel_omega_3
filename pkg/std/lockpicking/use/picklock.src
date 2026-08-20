@@ -10,6 +10,7 @@ use cfgfile;
 //include "include/starteqp";
 include "include/skillpoints";
 //include "include/difficulty";
+include "include/chestunlock";	// NotifyChestUnlocked - nudges areaspawner's refill early on a legit pick; spawnpoint is notified separately, at actual destroy time (see chestunlock.inc)
 
 program picklock( who, lockpick )
 
@@ -116,6 +117,7 @@ function PickTreasureChest(who, lockpick, chest)
 		SubtractAmount( lockpick, 1 );
 		SendSysMessage( who, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43 );
 		Start_Script( "::misc/deleter", {chest, 30} );
+		NotifyChestUnlocked( chest );
 		return;
 	else
 		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.

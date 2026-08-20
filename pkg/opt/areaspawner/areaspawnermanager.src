@@ -5,29 +5,22 @@ use datafile;
 
 include ":areaspawner:areaspawner";
 
-const AREASPAWNER_TICK_INTERVAL	:= 20;	// seconds between manager cycles
-
+// No more constant polling - individual spawners are kept full by on-demand
+// kicks (Enable toggled on, entry added/edited, a death) fired from
+// areaspawnergump.inc / RemoveAreaSpawnerSerial. This script only exists to
+// (a) prime every already-enabled spawner once at shard boot, since nothing
+// else would kick a fully-idle-but-enabled spawner after a restart, and
+// (b) run the rare coarse safety-net sweep, mirroring spawnpoint's allspawner.
 program AreaSpawnerManager()
 
 	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
 	set_priority(5);
 
-	while(1)
-		var realms := AreaSpawnerRealms();
-		foreach realm in realms
-			var names := GetAreaSpawnerNames(realm);
-			foreach name in names
-				set_critical(1);
-				var record := LoadAreaSpawner(realm, name);
-				if( record )
-					SaveAreaSpawner( realm, name, TickAreaSpawner(realm, name, record), 0 );
-				endif
-				set_critical(0);
-				SleepMs(5);
-			endforeach
-		endforeach
+	AreaSpawnerKickAllEnabled(0);
 
-		Sleep(AREASPAWNER_TICK_INTERVAL);
+	while(1)
+		Sleep(AREASPAWNER_SAFETYNET_INTERVAL);
+		AreaSpawnerKickAllEnabled(0);
 	endwhile
 
 endprogram

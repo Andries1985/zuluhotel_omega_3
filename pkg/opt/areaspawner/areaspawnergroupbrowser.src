@@ -1,0 +1,87 @@
+use os;
+use uo;
+use cfgfile;
+
+include ":areaspawner:areaspawner";
+include "include/constants/gumpids";
+
+// Standalone reference gump - its own script/thread (launched via Start_Script,
+// not called inline) so it can stay open on screen at the same time as the
+// Entries/New Entry gumps, same idea as .commands' scrollable HTML list.
+program AreaSpawnerGroupBrowser( who )
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+	var cfg := ReadConfigFile(AREASPAWNER_CFG);
+	if( !cfg )
+		SendSysMessage(who, "Could not load areagroups.cfg.");
+		return;
+	endif
+
+	var ids := GetConfigIntKeys(cfg);
+	if( !ids || !ids.size() )
+		SendSysMessage(who, "No groups configured in areagroups.cfg.");
+		return;
+	endif
+
+	// ascending sort - group count is modest (under a couple hundred), a
+	// plain insertion sort is plenty fast here
+	var n := ids.size();
+	var a;
+	var b;
+	for( a := 2; a <= n; a := a + 1 )
+		var key := ids[a];
+		b := a - 1;
+		while( b >= 1 && ids[b] > key )
+			ids[b+1] := ids[b];
+			b := b - 1;
+		endwhile
+		ids[b+1] := key;
+	endfor
+
+	// same style as scripts/textcmd/player/commands.src: no explicit color
+	// (default gump text color), bracketed bold section headers, one BASEFONT
+	// SIZE bigger than commands' SIZE=16 since this list is denser
+	var html := "<BASEFONT SIZE=17>";
+	var lastblock := -1;
+	foreach gid in ids
+		var block := CInt(gid/100);
+		if( block != lastblock )
+			html := html+"<br><br><b>[ Groups "+CStr(block*100)+"-"+CStr(block*100+99)+" ]</b>";
+			lastblock := block;
+		endif
+
+		var elem := cfg[gid];
+		var label := GetConfigString(elem, "label");
+		if( !label )
+			label := "?";
+		endif
+
+		var spawns := GetConfigStringArray(elem, "spawn");
+		var preview := "(empty)";
+		if( spawns && spawns.size() )
+			preview := "";
+			var k;
+			for( k := 1; k <= spawns.size(); k := k + 1 )
+				if( k > 1 )
+					preview := preview+", ";
+				endif
+				preview := preview+spawns[k];
+			endfor
+		endif
+
+		html := html+"<br>    "+CStr(gid)+" ("+label+") - "+preview;
+	endforeach
+
+	// same chrome as commands.src (GUMPID_BKGND_PAPER_EX background, 700x635,
+	// title at hue 67) - no NO_DISPOSE/close button, closes the same way
+	// commands.src's does
+	var layout := array{ "page 0",
+		"resizepic 20 20 "+CStr(GUMPID_BKGND_PAPER_EX)+" 700 635",
+		"text 300 35 67 0",
+		"htmlgump 35 55 660 575 1 1 1" };
+	var data := array{ "Area Spawner Groups", html };
+
+	SendDialogGump( who, layout, data );
+
+endprogram
