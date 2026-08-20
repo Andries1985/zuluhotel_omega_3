@@ -39,7 +39,7 @@ const AREASPAWNER_ENTRY_FAIL_THRESHOLD		:= 10;
 const AREASPAWNER_HOME_X			:= 6338;
 const AREASPAWNER_HOME_Y			:= 1581;
 
-const AREASPAWNER_DEBUG			:= 1;	// 1 = print debug to console, 0 = silent
+const AREASPAWNER_DEBUG			:= 0;	// 1 = print debug to console, 0 = silent
 
 // Coarse safety-net sweep interval (seconds) - not a poll loop, just a rare
 // catch-all in case a kick chain died or drifted, mirroring spawnpoint's
