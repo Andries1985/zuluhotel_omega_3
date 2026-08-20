@@ -1,6 +1,7 @@
 // Synopsis: Unlock a targeted locked item
 use uo;
 include ":staff:include/staff";
+include "include/constants/propids";	// PROPID_MOBILE_SPAWNPOINT_SERIAL/PROPID_MOBILE_AREASPAWNER
 program textcmd_unlock( who )
 
     SendSysMessage( who, "What do you wish to unlock?" );
@@ -9,6 +10,19 @@ program textcmd_unlock( who )
     if (what)
         what.locked := 0;
 	LogCommand(who, GetProcess(GetPid()).name, what.desc+"/"+what.serial);
+
+	// A spawner-placed chest (spawnpoint or areaspawner) needs to actually
+	// get cleaned up after being opened this way, the same way
+	// pkg/std/lockpicking/use/picklock.src's PickTreasureChest already
+	// schedules for a legitimately picked one - this command previously
+	// just unlocked it and stopped, so a GM override left it sitting there
+	// forever with nothing to ever notice the slot opened up. Once
+	// destroyed, pkg/items/containers/container/canDestroy.src's own
+	// DestroyScript hook notifies whichever system spawned it. No-op for
+	// anything else (a player's own locked container, etc.)
+	if( GetObjProperty(what, PROPID_MOBILE_SPAWNPOINT_SERIAL) || GetObjProperty(what, PROPID_MOBILE_AREASPAWNER) )
+		Start_Script( "::misc/deleter", {what, 30} );
+	endif
     endif
 
 endprogram

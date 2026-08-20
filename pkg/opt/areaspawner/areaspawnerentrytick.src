@@ -1,0 +1,145 @@
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+
+// Fired on demand (a death, an Enable toggle, an edited entry, the boot/safety-net
+// sweep) rather than polled. Tries exactly one spawn for one entry, then - if
+// still short of target - re-kicks itself paced by the entry's own frequency.
+// Stops rescheduling the moment the entry is full, disabled, or gone, so a
+// spawner sitting at target does nothing at all until something changes.
+program AreaSpawnerEntryTick( params )
+
+	set_script_option( SCRIPTOPT_NO_RUNAWAY, 1 );
+
+	var realm	:= params[1];
+	var name	:= params[2];
+	var prefix	:= params[3];
+	var entry_id	:= params[4];
+	var delay	:= params[5];
+
+	if( delay > 0 )
+		Sleep(delay);
+	endif
+
+	AreaSpawnerDebug("entrytick woke up for '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" ["+prefix+"]");
+
+	set_critical(1);
+
+	var record := LoadAreaSpawner(realm, name, prefix);
+	if( !record )
+		AreaSpawnerDebug("entrytick '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - ABORTED, spawner not found ["+prefix+"]");
+		set_critical(0);
+		return;
+	endif
+
+	var idx := FindAreaSpawnerEntryIndex(record, entry_id);
+	if( !idx )
+		AreaSpawnerDebug("entrytick '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - ABORTED, entry no longer exists");
+		set_critical(0);
+		return;
+	endif
+
+	// Any path below that stops the chain (rather than rescheduling it) must
+	// clear refilling - otherwise a future death sees a stale "already
+	// running" flag and silently skips starting a fresh chain forever.
+	if( !record.enabled )
+		AreaSpawnerDebug("entrytick '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - ABORTED, spawner not Enabled");
+		record.entries[idx].refilling := 0;
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	var box := ResolveAreaSpawnerBox(realm, record);
+	box := ClampBoxToRealm(realm, box);
+	if( box.minx > box.maxx || box.miny > box.maxy )
+		AreaSpawnerDebug("'"+name+"' ("+realm+") box is invalid after realm-bounds clamp - not kicking entry #"+CStr(entry_id));
+		record.entries[idx].refilling := 0;
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	// a never-configured (0,0,0,0) box, or one someone typed in as a single
+	// point, can never place anything for a roamed-box kind (area/chest) -
+	// retrying it every frequency forever would just spam placement failures,
+	// so shut the whole spawner off instead of leaving it stuck "ON" and
+	// silently doing nothing useful. Single-XY kinds (individual/item/
+	// customnpc) store their one location in these same fields, so a
+	// degenerate box there is normal, not a misconfiguration - only check
+	// for the kinds that actually mean to roam a box.
+	var kind := AreaSpawnerKindFromPrefix(prefix);
+	if( AreaSpawnerKindUsesBox(kind) && box.minx == box.maxx && box.miny == box.maxy )
+		AreaSpawnerDebug("'"+name+"' ("+realm+") box is zero-sized - disabling spawner instead of retrying forever");
+		record.entries[idx].refilling := 0;
+		record.enabled := 0;
+		record.disabled_reason := "zero-sized box - set a real min/max range or use Pick Area";
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	// single-XY kinds still need SOME location picked - (0,0) is the unset
+	// default (a real spot at exactly x=0,y=0 is not a realistic placement),
+	// same signal the box kinds get from a zero-sized box.
+	if( !AreaSpawnerKindUsesBox(kind) && box.minx == 0 && box.miny == 0 )
+		AreaSpawnerDebug("'"+name+"' ("+realm+") location is unset (0,0) - disabling spawner instead of retrying forever");
+		record.entries[idx].refilling := 0;
+		record.enabled := 0;
+		record.disabled_reason := "no location set - use Pick Location";
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	record.entries[idx] := TickAreaSpawnerEntry(realm, name, record.entries[idx], box, prefix, record.allow_water);
+
+	// same reasoning as the zero-sized-box check above - a bad/missing
+	// template (or a group with nothing valid to spawn) will fail exactly
+	// the same way every single retry, so stop retrying and surface it
+	// instead of quietly re-kicking every frequency forever.
+	if( record.entries[idx].config_error )
+		AreaSpawnerDebug("'"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - disabling spawner: "+record.entries[idx].config_error);
+		record.entries[idx].refilling := 0;
+		record.enabled := 0;
+		record.disabled_reason := record.entries[idx].config_error;
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	// unlike config_error, a paused entry doesn't take the whole spawner down
+	// with it - a mixed land/water box can legitimately roll bad for one
+	// template's MoveMode for a while without meaning anything else is
+	// broken, so just this entry stops rescheduling itself. Any later kick
+	// (a death elsewhere, the safety-net sweep, editing this entry) clears
+	// refilling and gives it a fresh shot - see AREASPAWNER_ENTRY_FAIL_THRESHOLD.
+	if( record.entries[idx].paused_reason )
+		AreaSpawnerDebug("entrytick '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - pausing, not rescheduling: "+record.entries[idx].paused_reason);
+		record.entries[idx].refilling := 0;
+		SaveAreaSpawner(realm, name, record, 0, prefix);
+		set_critical(0);
+		return;
+	endif
+
+	var stillshort := record.entries[idx].serials.size() < record.entries[idx].target;
+	var nextdelay := record.entries[idx].frequency;
+
+	if( !stillshort )
+		record.entries[idx].refilling := 0;
+	endif
+
+	SaveAreaSpawner(realm, name, record, 0, prefix);
+
+	set_critical(0);
+
+	if( stillshort )
+		AreaSpawnerKickEntry(realm, name, prefix, entry_id, nextdelay);
+	else
+		AreaSpawnerDebug("entrytick '"+name+"' ("+realm+") entry #"+CStr(entry_id)+" - at target, not rescheduling");
+	endif
+
+endprogram

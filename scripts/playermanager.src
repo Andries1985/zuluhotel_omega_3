@@ -7,6 +7,7 @@ include "include/time";
 include "include/classes";
 include "include/client";
 include ":karmafame:karmafame";
+include ":areaspawner:areaspawner";
 include "include/dotempmods";
 //include "util/bank";
 include "include/constants/locations";
@@ -45,7 +46,36 @@ program logon( who )
 	if( who.cmdlevel )
 		var gmpages := getglobalproperty("gmpages");
 		var counpages := getglobalproperty("counpages");
-		SendStringAsTipWindow( who, "Welcome to Zulu Hotel Omega.          There are " + CInt(gmpages.size()/2) + " page(s).                                                                                                                                                   " + description );
+		var disabledspawners := ListAreaSpawnerAutoDisabled();
+
+		var stafftext := "Welcome to Zulu Hotel Omega.\n\nThere are " + CInt(gmpages.size()/2) + " page(s).";
+		if( disabledspawners && disabledspawners.size() )
+			var realmcounts := dictionary;
+			var disabledcount := 0;
+			var pausedcount := 0;
+			foreach item in disabledspawners
+				if( !realmcounts.exists(item.realm) )
+					realmcounts[item.realm] := 0;
+				endif
+				realmcounts[item.realm] := realmcounts[item.realm] + 1;
+				if( item.status == "disabled" )
+					disabledcount := disabledcount + 1;
+				else
+					pausedcount := pausedcount + 1;
+				endif
+			endforeach
+
+			stafftext := stafftext + "\n\nAREA SPAWNER\n" + CStr(disabledspawners.size()) + " area spawner(s) need attention (" + CStr(disabledcount) + " disabled, " + CStr(pausedcount) + " paused) - run .aserrorall for details.";
+			var realmkeys := realmcounts.keys();
+			foreach rk in realmkeys
+				stafftext := stafftext + "\n  " + rk + ": " + CStr(realmcounts[rk]);
+			endforeach
+		endif
+		if( description )
+			stafftext := stafftext + "\n\n" + description;
+		endif
+
+		SendStringAsTipWindow( who, stafftext );
 		Start_Script("misc/news", who);
 	else
 		// Don't want that window open on first log on for converted chars

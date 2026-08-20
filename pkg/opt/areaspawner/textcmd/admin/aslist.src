@@ -1,0 +1,20 @@
+// Synopsis: List every area spawner of every kind in one facet - region, status, population, and each entry's timer/contents
+
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+include ":areaspawner:areaspawnergump";
+
+program textcmd_aslist(who)
+
+	var realm := ShowRealmPicker(who, "Area Spawner Census - Choose Realm");
+	if( !realm )
+		return;
+	endif
+
+	ShowAreaSpawnerFacetCensus(who, realm);
+
+endprogram

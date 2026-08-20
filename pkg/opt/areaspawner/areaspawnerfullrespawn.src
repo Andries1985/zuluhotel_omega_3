@@ -11,7 +11,11 @@ program AreaSpawnerFullRespawn(params)
 
 	var realm	:= params[1];
 	var name	:= params[2];
+	var prefix	:= "areaspawner";
+	if( params.size() >= 3 )
+		prefix := params[3];
+	endif
 
-	FullRespawnAreaSpawner(realm, name);
+	FullRespawnAreaSpawner(realm, name, prefix);
 
 endprogram

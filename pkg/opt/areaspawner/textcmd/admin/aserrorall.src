@@ -1,0 +1,13 @@
+// Synopsis: List area spawners of any kind (regular or event) that are auto-disabled or have a paused entry
+
+use os;
+use uo;
+use cfgfile;
+use datafile;
+
+include ":areaspawner:areaspawner";
+include ":areaspawner:areaspawnergump";
+
+program textcmd_aserrorall(who)
+	ShowAreaSpawnerErrorList(who, "All Area Spawner Errors", "", -1);
+endprogram
