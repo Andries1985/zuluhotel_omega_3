@@ -11,19 +11,18 @@ Patch 3.0.8 is primarily a staff-tooling patch: a brand-new Area Spawner system 
 
 ## World Fixes
 
-- Fixed `.speedwalk` (and the automatic speed-walk restore on login) silently doing nothing.
+- Fixed `.speedwalk` (and the automatic speed-walk restore on login) silently doing nothing (for staff only).
 - Added roughly 50 new teleporter connections in Sosaria, opening up several previously unreachable or awkwardly-linked cave and dungeon areas, and cleaned up the Water Dungeon's level-to-level connections so they're no longer ambiguous.
 - Fixed a large number of non-functional doors on the Sosaria decorate facet.
 
 ### Player Impact
 
-- `.speedwalk` works again, on-demand and automatically restored on login.
 - More of Sosaria's dungeons and caves are reachable by teleporter than before.
 - Doors on the Sosaria decorate facet that were previously purely decorative should now open and close correctly.
 
 ## New Content
 
-- Six new higher-tier Wyrm encounters (Levels 9-11, Weapon and Armor variants) with meaningfully better rewards — including a chance at GM-quality gear and pentagrams — than the existing lower-level Wyrms.
+- Six new higher-tier Wyrm encounters (Levels 9-11, Weapon and Armor variants) with meaningfully better rewards — including a chance at GM-quality gear and pentagrams — than the existing lower-level Wyrms. (for testing purposes)
 - New rideable mounts added to the world: armored swamp dragon, Mondain's horse, ridgeback, savage ridgeback, skeletal horse, swamp dragon, and unicorn.
 - A new barber NPC template.
 
