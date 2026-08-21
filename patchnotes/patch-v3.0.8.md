@@ -7,7 +7,7 @@
 
 ## What Changed
 
-Patch 3.0.8 is primarily a staff-tooling patch: a brand-new Area Spawner system for managing region-based spawns, alongside a batch of world fixes — new teleporter connections in Sosaria, door repairs on the Sosaria decorate facet, a fix for `.speedwalk` not working, six new higher-tier Wyrm reward encounters, and several new mounts.
+Patch 3.0.8 is primarily a staff-tooling patch: a brand-new Area Spawner system for managing region-based spawns, alongside a batch of world fixes — new teleporter connections in Sosaria, door repairs on the Sosaria decorate facet, a fix for `.speedwalk` not working, six new higher-tier Wyrm reward encounters, several new mounts, and a full overhaul of the galleon ships (Orc, Gargoyle, Tokuno, Britannia) that makes them fully functional and purchasable for the first time.
 
 ## World Fixes
 
@@ -32,6 +32,21 @@ Patch 3.0.8 is primarily a staff-tooling patch: a brand-new Area Spawner system 
 - A new, tougher tier of Wyrm to farm for better rewards.
 - Several new mount types now exist in the world.
 
+## Galleon Ships Overhaul
+
+- Orc, Gargoyle, Tokuno, and Britannia galleons are now fully functional: steering wheel, anchor, speed control, dry-docking, and boarding/disembarking via rope all work correctly, matching the classic boats.
+- All four galleon deeds, plus the Row Boat deed, are now purchasable (and sellable) from Shipwright NPCs.
+- Cargo holds now work correctly on every ship type: Britannia's storage crates, previously invisible due to a graphic bug, are now visible; Orc, Gargoyle, and Tokuno galleons each have a working cargo hold; Row Boats correctly have none.
+- Boat speed now has 5 real, distinct settings instead of a barely-noticeable range — from about 2x slower than walking at the low end, up to full mounted-running speed at the top.
+- Ropes now reliably place you on solid dry ground when getting off a galleon, instead of occasionally failing or dropping you somewhere odd.
+- Sea monsters no longer randomly spawn and attack boats.
+
+### Player Impact
+
+- Every galleon type can now be bought, sailed, and used for cargo storage — previously several were non-functional or missing entirely from vendors.
+- Boat speed control now feels meaningfully different between settings.
+- Getting on and off a galleon via rope is more reliable.
+
 ## Behind the Scenes
 
 - Added a new Area Spawner system (staff/admin tool) for creating region-based spawns of NPCs, custom-built characters, chests, and items, with its own management commands and error reporting.
@@ -47,6 +62,7 @@ Patch 3.0.8 is primarily a staff-tooling patch: a brand-new Area Spawner system 
 - Fixed a large batch of non-functional doors on the Sosaria decorate facet.
 - Added 6 new higher-tier Wyrm reward encounters (Levels 9-11).
 - Added 7 new rideable mounts and a barber NPC.
+- Overhauled galleon ships (Orc, Gargoyle, Tokuno, Britannia): now fully functional, with working cargo holds, 5-tier speed control, more reliable ropes, and no more random sea-monster attacks — all now purchasable from Shipwrights.
 - New internal Area Spawner tooling for staff-managed region spawns (no direct player-facing change).
 
 Thanks for playing Zuluhotel Omega 3.
