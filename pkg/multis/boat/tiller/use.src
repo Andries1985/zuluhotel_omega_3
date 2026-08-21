@@ -16,7 +16,9 @@ program UseScript( mobile, tillerman )
 
         var script := Start_Script( ":boat:navigator/navigator", {mobile, tillerman} );
         if( script.errortext )
-	        SendSysMessage( mobile, "Error starting script <:boat:navigator/navigator> -->"+script.errortext );
+        	SendSysMessage( mobile, "Error starting script <:boat:navigator/navigator> -->"+script.errortext );
+        else
+	        SetObjProperty( mobile, "NavigatorPID", script.pid );
         endif
 
 	return 1;

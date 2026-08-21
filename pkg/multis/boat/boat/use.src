@@ -7,6 +7,7 @@ include ":multicommands:multicommands";
 include ":timeutils:time";
 include ":mdgumps:gumps";
 include ":keys:key";
+include ":boat:include/boatHelpers";
 
 program UseBoatDeed( mobile, boat )
 
@@ -32,7 +33,6 @@ program UseBoatDeed( mobile, boat )
 	endif
 
 	var boat_flag := ForShipFacing( mobile );
-	//Print("Boat flag selected: "+boat_flag);
 	var targ := Multi_GetTarget( mobile, ship_name, boat_flag, 10 );
 	if( !targ )
 		return 0;
@@ -42,10 +42,9 @@ program UseBoatDeed( mobile, boat )
 	if( !multi )
 		return 0;
 	endif
-	
+
 	var LockID := AllocateLockId();
 	foreach item in(multi.multi.components)
-		//Print(item.objtype);
 		if(item.objtype == 0x1f014)
 			item.locked := 1;
 			SetObjProperty( item,	"LockID", LockID );
@@ -53,7 +52,7 @@ program UseBoatDeed( mobile, boat )
 		endif
 	endforeach
 
-	var tillerman := multi.tillerman;
+	var tillerman := GetBoatController( multi.multi );
 	tillerman.SetShipType( boat.objtype );
 
 	var dest := DestroyItem( boat );
@@ -80,14 +79,29 @@ program UseBoatDeed( mobile, boat )
 	endif
 
 	// Create boat key
-	//var LockID := AllocateLockId();
 	var key := CreateItemInBackpack(mobile, UOBJ_RUSTY_IRON_KEY);
 	key.SetLockId(LockID);
 	key.SetName("A boat key");
-	SetObjProperty(multi.portplank, "LockID", lockID);
-	//SetObjProperty(multi.rope, "LockID", lockID);
-	SetObjProperty(multi.starboardplank, "LockID", lockID);
-	SetObjProperty(multi.hold, "LockID", lockID);
+
+	// Galleons/Britannia have no Gangplank components at all - only the
+	// classic 0x0-0x17 family does.
+	var plank_a := multi.portplank;
+	if( IsValidBoatItem( plank_a ) )
+		SetObjProperty(plank_a, "LockID", LockID);
+	endif
+
+	var plank_b := multi.starboardplank;
+	if( IsValidBoatItem( plank_b ) )
+		SetObjProperty(plank_b, "LockID", LockID);
+	endif
+
+	// Lock every resolved hold (classic Hold, Britannia's Storage crates, or
+	// the escript-created galleon hold) to the same key as the rest of the ship.
+	foreach hold in ( GetBoatHolds( multi.multi ) )
+		hold.locked := 1;
+		SetObjProperty( hold, "LockID", LockID );
+	endforeach
+
 	return 1;
 
 endprogram

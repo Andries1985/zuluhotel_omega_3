@@ -2,8 +2,8 @@ use uo;
 use os;
 use math;
 
-include "include/facings";
 include ":keys:key";
+include "include/itemutil";
 
 program Userope( mobile, rope )
 
@@ -18,86 +18,222 @@ program Userope( mobile, rope )
 
 	var ldist, rdist := 0;
 	var shiptype := GetObjProperty( rope, "ShipType" );
-	//Print(shiptype);
 
 	if (shiptype == "0x16058") //Orc Ship
 		ldist := 7;
 		rdist := 5;
-		//Print("Orc Ship detected. " + ldist + ", " + rdist);
-	elseif (shiptype == "0x16059") //Gargoyle Ship	
+	elseif (shiptype == "0x16059") //Gargoyle Ship
 		ldist := 8;
 		rdist := 6;
-		//Print("Gargoyle Ship detected. " + ldist + ", " + rdist);
 	elseif (shiptype == "0x1605A") //Tokuno Ship
 		ldist := 5;
 		rdist := 4;
-		//Print("Tokuno Ship detected. " + ldist + ", " + rdist);
+	elseif (shiptype == "0x1605B") //Row Boat
+		ldist := 3;
+		rdist := 3;
 	elseif (shiptype == "0x1605C") //Britannia Ship
 		ldist := 9;
 		rdist := 6;
-		//Print("Britannia Ship detected. " + ldist + ", " + rdist);
 	else
 		ldist := 2;
 		rdist := 2;
-		//Print("Regular Ship detected. " + ldist + ", " + rdist);
 	endif
 
 	if( mobile.multi != rope.multi )
-		if( Distance( mobile, rope ) <= rdist )
+		var dist := Distance( mobile, rope );
+		if( dist <= rdist )
 			MoveObjectToLocation( mobile, rope.x, rope.y, rope.z+1, rope.realm, MOVEOBJECT_FORCELOCATION );
 		endif
 	else
-		var i := 0;
-		var z := 0;
-		
-
-		var coords := GetCoordsInFrontOf( mobile, ldist ),
-			origx := mobile.x,
-			origy := mobile.y,
-			origz := mobile.z;
-
-		for( i:=1; i<=coords.Size(); i+=1 )
-			//Print("Checking coord "+i+": "+coords[i].x+", "+coords[i].y);
-			z := GetStandingHeight( coords[i].x, coords[i].y, mobile.z, mobile.realm ).z;
-			if( !CheckLosBetween( mobile.x, mobile.y, mobile.z+5, coords[i].x, coords[i].y, z, mobile.realm ) )
-				//Print("No LOS to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
-				continue;
-			endif
-			MoveObjectToLocation( mobile, coords[i].x, coords[i].y, z, mobile.realm, MOVEOBJECT_FORCELOCATION );
-			//Print("Moved to coord "+i+": "+coords[i].x+", "+coords[i].y+", "+z);
-			if (mobile.multi == rope.multi )
-				MoveObjectToLocation( mobile, origx, origy, origz, mobile.realm, MOVEOBJECT_FORCELOCATION );
-				//Print("On boat at coord "+i+", returning to orig loc.");
-				continue;
-			else
-				//Print("Breaking:  Off boat at coord "+i+".");
-				break;
-			endif
-		endfor
+		var spot := FindDisembarkSpot( rope, ldist );
+		if( spot )
+			MoveObjectToLocation( mobile, spot.x, spot.y, spot.z, rope.realm, MOVEOBJECT_FORCELOCATION );
+		else
+			SendSysMessage( mobile, "There's nowhere clear to get off here." );
+		endif
 	endif
 	return 1;
 endprogram
 
-function GetCoordsInFrontOf( byref mobile, byref dist )
+// Which side of the ship's beam this rope sits on, and which axis is the
+// beam (the axis to restrict/bias the search on) vs the length (the axis
+// docks can be anywhere along, left unrestricted).
+//
+// This used to be inferred from the rope's raw offset from boat.x/boat.y
+// (rope.x - boat.x, rope.y - boat.y). That's wrong: boat.x/boat.y is an
+// arbitrary anchor tile of the multi's footprint (not its center), so the
+// same north-side rope got a different, sometimes wrong-signed offset
+// depending on how far along the ship's length it sat - confirmed in
+// testing: three ropes all on the same north edge of the same ship produced
+// three different biases, and at least one of them stopped restricting the
+// Y axis at all, letting the search spill onto the ship's own south side.
+//
+// Fix: use the ship's own known facing (boat.facing - a real engine
+// property, reliable regardless of anchor placement) to fix which axis is
+// the beam, and use the ship's bounding-box CENTER (from GetShipBounds, not
+// the anchor tile) to decide which side of that axis the rope is on.
+function GetOutwardBias( rope, bounds )
 
-	var x := mobile.x+ConvertDirectionToLocX( mobile.facing ),
-		y := mobile.y+ConvertDirectionToLocY( mobile.facing ),
-		xmod := 0,
-		ymod := 0;
+	if( !bounds )
+		return Struct{ "dx":=0, "dy":=0 };
+	endif
 
-	case( mobile.facing )
-		0: xmod := 0;  ymod := -dist; break;
-		1: xmod := +dist; ymod := -dist; break;
-		2: xmod := +dist; ymod := 0;  break;
-		3: xmod := +dist; ymod := +dist; break;
-		4: xmod := 0;  ymod := +dist; break;
-		5: xmod := -dist; ymod := +dist; break;
-		6: xmod := -dist; ymod := 0;  break;
-		7: xmod := -dist; ymod := -dist; break;
-		default:
-			return error{"errortext":="Invalid facing."};
-			break;
-	endcase
+	var cx := (bounds.minx + bounds.maxx) / 2;
+	var cy := (bounds.miny + bounds.maxy) / 2;
 
-	return GetCoordsInLine( x, y, x+xmod, y+ymod );
+	var facing := rope.multi.facing;
+	var out_dx := 0, out_dy := 0;
+
+	if( facing == 0 || facing == 4 ) // Hull faces North/South: length runs along Y, beam runs along X.
+		if( rope.x < cx )
+			out_dx := -1;
+		elseif( rope.x > cx )
+			out_dx := 1;
+		endif
+	else // Hull faces East/West: length runs along X, beam runs along Y.
+		if( rope.y < cy )
+			out_dy := -1;
+		elseif( rope.y > cy )
+			out_dy := 1;
+		endif
+	endif
+
+	return Struct{ "dx":=out_dx, "dy":=out_dy };
+endfunction
+
+// The engine's own "is this tile part of a multi" reporting (via
+// GetStandingHeight/GetStandingCoordinates) has proven unreliable for plain
+// deck tiles - confirmed in testing: tiles at the same y as the rope itself,
+// right next to another rope on this same ship, came back with no multi
+// match at all. This computes a bounding box from every component the ship
+// actually has (ropes, wheel, hull, storage, etc.) as a second, more
+// trustworthy way to reject anything still on deck.
+function GetShipBounds( boat )
+
+	var minx, maxx, miny, maxy;
+	var first := 1;
+
+	foreach item in ( boat.components )
+		if( first )
+			minx := item.x;
+			maxx := item.x;
+			miny := item.y;
+			maxy := item.y;
+			first := 0;
+		else
+			if( item.x < minx )
+				minx := item.x;
+			endif
+			if( item.x > maxx )
+				maxx := item.x;
+			endif
+			if( item.y < miny )
+				miny := item.y;
+			endif
+			if( item.y > maxy )
+				maxy := item.y;
+			endif
+		endif
+		SleepMS(1);
+	endforeach
+
+	if( first )
+		return 0;
+	endif
+
+	return Struct{ "minx":=minx, "maxx":=maxx, "miny":=miny, "maxy":=maxy };
+endfunction
+
+// Finds the closest standable spot on the outward side of this rope that
+// isn't part of any multi (this ship or otherwise). Returns a {x,y,z} struct,
+// or 0 if nothing valid is in range - the caller must not move the mobile in
+// that case.
+function FindDisembarkSpot( rope, dist )
+
+	var minz := rope.z - 25;
+	var maxz := rope.z + 10;
+	var raw := GetStandingCoordinates( rope.x, rope.y, dist, minz, maxz, rope.realm );
+	if( raw.errortext )
+		return 0;
+	endif
+
+	var bounds := GetShipBounds( rope.multi );
+
+	var bias := GetOutwardBias( rope, bounds );
+	var out_dx := bias.dx;
+	var out_dy := bias.dy;
+
+	var dx, dy, d;
+	var best := 0;
+	var best_dist := 0;
+
+	foreach c in ( raw )
+		dx := c.x - rope.x;
+		dy := c.y - rope.y;
+
+		// Never allow crossing to the wrong side of a biased axis.
+		if( out_dx > 0 && dx < 0 )
+			continue;
+		endif
+		if( out_dx < 0 && dx > 0 )
+			continue;
+		endif
+		if( out_dy > 0 && dy < 0 )
+			continue;
+		endif
+		if( out_dy < 0 && dy > 0 )
+			continue;
+		endif
+
+		// Minimum 2 tiles out on the beam axis (the one GetOutwardBias
+		// restricted). The bias is always single-axis now - it comes
+		// straight from the hull's facing, never a magnitude comparison -
+		// so there's no diagonal case to special-case here anymore.
+		var far_enough;
+		if( out_dx != 0 )
+			far_enough := ( Abs(dx) >= 2 );
+		elseif( out_dy != 0 )
+			far_enough := ( Abs(dy) >= 2 );
+		else
+			far_enough := ( Abs(dx) >= 2 || Abs(dy) >= 2 );
+		endif
+		if( !far_enough )
+			continue;
+		endif
+
+		// Reject anything belonging to ANY multi - this ship's own deck,
+		// or a house, another docked boat, etc. GetStandingCoordinates
+		// only reports whether a tile is standable, not whose "space" it
+		// belongs to, so a candidate can't be trusted just because it's
+		// off this ship.
+		var is_blocked := 0;
+		if( c.multi )
+			is_blocked := 1;
+		endif
+		if( !is_blocked && bounds )
+			if( c.x >= bounds.minx && c.x <= bounds.maxx && c.y >= bounds.miny && c.y <= bounds.maxy )
+				is_blocked := 1;
+			endif
+		endif
+		if( is_blocked )
+			continue;
+		endif
+
+		d := Abs(dx);
+		if( Abs(dy) > d )
+			d := Abs(dy);
+		endif
+		if( !best || d < best_dist )
+			best := c;
+			best_dist := d;
+		endif
+
+		SleepMS(1);
+	endforeach
+
+	if( !best )
+		return 0;
+	endif
+
+	return Struct{ "x":=best.x, "y":=best.y, "z":=best.z };
 endfunction

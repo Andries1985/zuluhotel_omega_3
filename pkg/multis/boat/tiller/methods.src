@@ -28,7 +28,11 @@ exported function CanCommand( tiller, mobile )
 endfunction
 
 exported function IsOwner( tiller, mobile )
-	if( mobile.serial == GetOwner( tiller ).serial )
+	var owner := GetOwner( tiller );
+	if( !owner )
+		return 0;
+	endif
+	if( mobile.serial == owner.serial )
 		return 1;
 	else
 		return 0;
@@ -102,17 +106,41 @@ exported function SetCrewMates( tiller, list )
 	return SetObjProperty( tiller, "CrewMates", list );
 endfunction
 
-exported function GetSpeed( tiller )
-	var speed := GetObjProperty( tiller, "Speed" );
-	if( !speed )
-		SetSpeed( tiller, 350 );
-	endif
-
-	return CInt( speed );
+// 5 fixed speed tiers, in ms delay between move ticks - matched to this
+// shard's own real movement delays (config/servspecopt.cfg's
+// SpeedHack_* thresholds) rather than arbitrary numbers, so "on-foot
+// running" speed on a boat actually means the same tiles/sec a running
+// player gets: 760=2x slower than walking, 380=walking, 180=running (also
+// mounted-walk pace, the two are tied in this shard's config), 130=an
+// interpolated step between running and mount-run, 80=mounted running.
+function GetSpeedTable()
+	return array{ 760, 380, 180, 130, 80 };
 endfunction
 
-exported function SetSpeed( tiller, value )
-	return SetObjProperty( tiller, "Speed", value );
+exported function GetSpeedLevel( tiller )
+	var level := CInt( GetObjProperty( tiller, "SpeedLevel" ) );
+	if( !level )
+		level := 3; // On-foot running pace by default.
+		SetSpeedLevel( tiller, level );
+	endif
+
+	return level;
+endfunction
+
+exported function SetSpeedLevel( tiller, level )
+	level := CInt( level );
+	if( level < 1 )
+		level := 1;
+	elseif( level > 5 )
+		level := 5;
+	endif
+
+	return SetObjProperty( tiller, "SpeedLevel", level );
+endfunction
+
+exported function GetSpeed( tiller )
+	var table := GetSpeedTable();
+	return table[ GetSpeedLevel( tiller ) ];
 endfunction
 
 exported function SetAnchorStatus( tiller, value )
@@ -133,7 +161,6 @@ endfunction
 
 exported function GetListenerProcess( tiller )
 	var pid := CInt( GetObjProperty( tiller, "#PID" ));
-
 	return GetProcess( pid );
 endfunction
 

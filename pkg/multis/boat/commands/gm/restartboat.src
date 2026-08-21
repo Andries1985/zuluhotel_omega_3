@@ -1,6 +1,8 @@
 use uo;
 use os;
 
+include ":boat:include/boatHelpers";
+
 program RestartBoat( who )
 
 	SendSysMessage( who, "Target the tillerman." );
@@ -18,7 +20,7 @@ program RestartBoat( who )
 
 	var result := Start_Script( ":boat:multi/listener", multi );
 	if( result.errortext )
-		PrintTextAbove( multi.tillerman, "Error initializing control script"+result.errortext );
+		PrintTextAbove( GetBoatController( multi ), "Error initializing control script"+result.errortext );
 		return 0;
 	endif
 
