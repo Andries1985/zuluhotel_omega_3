@@ -6,9 +6,11 @@ use util;
 
 include ":boat:cmdParser";
 include ":boat:autoPilot";
+include ":boat:include/boatHelpers";
 include "include/eventid";
 include "include/sounds";
 include ":mdgumps:gumps";
+include ":mdgumps:autoClose";
 include ":multiCommands:multicommands";
 include ":keys:key";
 
@@ -42,7 +44,7 @@ program BoatController( boat )
 			ev := Wait_For_Event(120);
 		else
 			ev := Wait_For_Event(0);
-			var delay := ( boat.tillerman ).GetSpeed();
+			var delay := ( GetBoatController( boat ) ).GetSpeed();
 			SleepMS( delay );
 		endif
 
@@ -69,30 +71,38 @@ function Initialize( boat )
 
 	g_cmd_cfg := ReadConfigFile( ":boat:commands" );
 	if( !g_cmd_cfg )
-		PrintTextAbove( boat.tillerman, "Unable to open config :boat:commands ->"+g_cmd_cfg.errortext );
+		SysLog( "Error --> :boat/multi/listener.src - Unable to open config :boat:commands ->"+g_cmd_cfg.errortext );
 		return 0;
 	endif
 
 	g_cmd_list := GetConfigStringArray( g_cmd_cfg["Heirarchy"], "CMD" );
 	if( !g_cmd_list )
-		PrintTextAbove( boat.tillerman, "Unable to load command list heirarchy. "+g_cmd_list.errortext );
+		SysLog( "Error --> :boat/multi/listener.src - Unable to load command list heirarchy. "+g_cmd_list.errortext );
 		return 0;
 	endif
 
 	g_wrap_cfg := ReadConfigFile( ":boat:worldWrap" );
 	if( !g_wrap_cfg )
-		PrintTextAbove( boat.tillerman, "Unable to open config :boat:worldWrap ->"+g_wrap_cfg.errortext );
+		SysLog( "Error --> :boat/multi/listener.src - Unable to open config :boat:worldWrap ->"+g_wrap_cfg.errortext );
 		return 0;
 	endif
 
-	SetObjProperty( boat.tillerman, "#PID", GetPid() );
+	// Classic boats get a Tillerman, Row Boat gets a Tiller, galleons/Britannia
+	// only get a Wheel - none of them are guaranteed, so resolve generically.
+	var controller := GetBoatController( boat );
+	if( !IsValidBoatItem( controller ) )
+		SysLog( "Error --> :boat/multi/listener.src - No control item (Tillerman/Tiller/Wheel) found on boat ser# " + CStr(boat.serial) );
+		return 0;
+	endif
 
-	if( !( boat.tillerman ).GetOwner() )
-		SetObjProperty( boat.tillerman, "NameSpec", "awaiting owner" );
-		while( !( boat.tillerman ).GetOwner() )
+	SetObjProperty( controller, "#PID", GetPid() );
+
+	if( !controller.GetOwner() )
+		SetObjProperty( controller, "NameSpec", "awaiting owner" );
+		while( !controller.GetOwner() )
 			Sleep(2);
 		endwhile
-		EraseObjProperty( boat.tillerman, "NameSpec" );
+		EraseObjProperty( controller, "NameSpec" );
 	endif
 
 	RegisterForSpeechEvents( boat, 12 );
@@ -109,9 +119,10 @@ function ProcessEvent( boat, byref ev, byref cur_cmd, byref cur_map )
 
 	if( Lower( ev.text ) == "drydock" )
 		DryDock( ev.source, boat );
+		return 1; // The boat (and this "boat" reference) no longer exists past this point.
 	endif
 
-    var tillerman := boat.tillerman;
+    var tillerman := GetBoatController( boat );
 	if( !tillerman.IsOnBoat( ev.source ))
 		return 0;
 	elseif( ev.source == tillerman )
@@ -159,7 +170,7 @@ function FollowMap( boat, byref cur_cmd, byref cur_map )
 		cur_map.PinId += 1;
 		cur_cmd := 0;
 		// Update the map info with the new pin ID for the "continue" command.
-		SetObjProperty( boat.tillerman, "MapInfo", cur_map );
+		SetObjProperty( GetBoatController( boat ), "MapInfo", cur_map );
 		return 1;
 	elseif( cur_map.PinId > cur_map.Coords.Size() )
 		cur_map := 0;
@@ -195,7 +206,7 @@ endfunction
 
 function DoCommand( boat, byref cur_cmd, new_cmd )
 
-        var tillerman := boat.tillerman;
+        var tillerman := GetBoatController( boat );
 	if( new_cmd.Anchor == 2 )
 		if( !tillerman.IsAnchored() )
 			tillerman.SetAnchorStatus(1);
@@ -214,22 +225,10 @@ function DoCommand( boat, byref cur_cmd, new_cmd )
 		endif
 
 		cur_cmd := 0;
-	elseif( new_cmd.Speed == 2 )
-                var speed := tillerman.GetSpeed();
-                var new_speed := CInt( speed - 50 );
-                if( new_speed < 250 )
-                        new_speed := 250;
-                endif
-
-                tillerman.SetSpeed( new_speed );
-	elseif( new_cmd.Speed == 1 )
-                var speed := tillerman.GetSpeed();
-                var new_speed := CInt( speed + 50 );
-                if( new_speed > 450 )
-                        new_speed := 450;
-                endif
-
-                tillerman.SetSpeed( new_speed );
+	elseif( new_cmd.Speed == 2 ) // Speed Up - move to the next faster of the 5 fixed speed tiers.
+                tillerman.SetSpeedLevel( tillerman.GetSpeedLevel() + 1 );
+	elseif( new_cmd.Speed == 1 ) // Speed Down - move to the next slower of the 5 fixed speed tiers.
+                tillerman.SetSpeedLevel( tillerman.GetSpeedLevel() - 1 );
 	elseif( !tillerman.IsAnchored() )
 		if( new_cmd.Turn )
 			ClosePlanks( boat );
@@ -286,11 +285,12 @@ function CheckWorldWrap( boat )
 	endif
 
 	var result := MoveObjectToLocation( boat, new_x, new_y, boat.z, boat.realm );
+	var tillerman := GetBoatController( boat );
 	if( result.errortext )
-		PrintTextAbove( boat.tillerman, "Unable to move to "+new_x+" "+new_y+" "+boat.z+" "+boat.realm );
-		PrintTextAbove( boat.tillerman, "Reason ->"+result.errortext );
+		PrintTextAbove( tillerman, "Unable to move to "+new_x+" "+new_y+" "+boat.z+" "+boat.realm );
+		PrintTextAbove( tillerman, "Reason ->"+result.errortext );
 	else
-		PrintTextAbove( boat.tillerman, "Yar.. around tha' world we go!", 3, 55 );
+		PrintTextAbove( tillerman, "Yar.. around tha' world we go!", 3, 55 );
 	endif
 
 	return result;
@@ -298,14 +298,16 @@ endfunction
 
 function ClosePlanks( boat )
 
+	// Galleons/Britannia have no Gangplank components at all - only the
+	// classic 0x0-0x17 family does.
 	var plank_a := boat.starboardplank;
 	var plank_b := boat.portplank;
 
-	if( plank_a.Extended() )
+	if( IsValidBoatItem( plank_a ) && plank_a.Extended() )
 		plank_a.Retract();
 	endif
 
-	if( plank_b.Extended() )
+	if( IsValidBoatItem( plank_b ) && plank_b.Extended() )
 		plank_b.Retract();
 	endif
 
@@ -314,7 +316,7 @@ endfunction
 
 function DryDock( byref mobile, boat )
 
-	var tillerman := boat.tillerman;
+	var tillerman := GetBoatController( boat );
 	if( !tillerman.IsOwner( mobile ) )
 		return 0;
 	elseif( tillerman.IsOnBoat( mobile ) )
@@ -322,12 +324,27 @@ function DryDock( byref mobile, boat )
 	elseif( !ConfirmDryDock( mobile ))
 		return 0;
 	endif
+
+	// The navigator gump is a separate process (started from tiller/use.src)
+	// that has no idea the boat is about to be destroyed - close it now
+	// rather than leave a stale gump referencing a dead boat.
+	var nav_pid := CInt( GetObjProperty( mobile, "NavigatorPID" ) );
+	if( nav_pid )
+		GFCloseGump( mobile, nav_pid );
+		EraseObjProperty( mobile, "NavigatorPID" );
+	endif
+
+	var holds := GetBoatHolds( boat );
+
 	// Destroy the boat's key(s), wherever the owner is keeping them (backpack, bank, keyring).
 	var lock_ids := {};
-	var hold_lockid := GetObjProperty(boat.hold, "LockID");
-	if(hold_lockid)
-		lock_ids.append(hold_lockid);
-	endif
+	foreach hold in ( holds )
+		var hold_lockid := GetObjProperty(hold, "LockID");
+		if(hold_lockid)
+			lock_ids.append(hold_lockid);
+		endif
+		SleepMS(2);
+	endforeach
 	var destroyed_keys := KP_DestroyOwnedKeysForLockIDs(mobile, CP_DEFAULT_AREA, lock_ids);
 	if(!destroyed_keys)
 		SysLog("Error --> :boat/multi/listener.src - Could not find key for boat ser# " + Cstr(boat.serial));
@@ -337,10 +354,16 @@ function DryDock( byref mobile, boat )
 		MoveObjectToLocation( item, mobile.x, mobile.y, mobile.z, mobile.realm, MOVEOBJECT_FORCELOCATION+MOVEITEM_IGNOREMOVABLE );
 	endforeach
 
-	foreach item in ( EnumerateItemsInContainer( boat.hold, ENUMERATE_ROOT_ONLY ) )
-		SleepMS( 5 );
-		MoveObjectToLocation( item, mobile.x, mobile.y, mobile.z, mobile.realm, MOVEOBJECT_FORCELOCATION+MOVEITEM_IGNOREMOVABLE );
+	foreach hold in ( holds )
+		foreach item in ( EnumerateItemsInContainer( hold, ENUMERATE_ROOT_ONLY ) )
+			SleepMS( 5 );
+			MoveObjectToLocation( item, mobile.x, mobile.y, mobile.z, mobile.realm, MOVEOBJECT_FORCELOCATION+MOVEITEM_IGNOREMOVABLE );
+		endforeach
 	endforeach
+
+	// The galleon hold (if any) is an escript-created traveller, not a native
+	// multi component - DestroyMulti won't clean it up on its own.
+	DestroyCustomBoatHold( boat );
 
 	var ship_type := tillerman.GetShipType();
 	var dest := Multi_DestroyMulti( boat );
@@ -403,6 +426,10 @@ function DoEncounter( boat )
 		endif
 	endforeach
 
+	// Random sea-monster spawning near the boat is disabled for now. Remove
+	// this early return to bring it back.
+	return 0;
+
 	if( RandomInt( 4 ) >= 1 )
 		return 0;
 	endif
@@ -426,7 +453,7 @@ function DoEncounter( boat )
 		y -= 5;
 	endif
 
-	var creature := ( boat.tillerman ).GetSeafaringCreatures();
+	var creature := ( GetBoatController( boat ) ).GetSeafaringCreatures();
 	if( creature.errortext )
 		SysLog( "Error getting sea creature <"+creature+"> -->"+creature.errortext );
 		return 0;
@@ -450,9 +477,14 @@ endfunction
 
 function GetMobileBoat( boat )
 
+	var controller := GetBoatController( boat );
+	if( !IsValidBoatItem( controller ) )
+		return 0;
+	endif
+
 	foreach mobile in ( ListMobilesNearLocation( boat.x, boat.y, boat.z, 12, boat.realm ) )
 		SleepMS( 5 );
-		if( !boat.tillerman.IsOnBoat( mobile ))
+		if( !controller.IsOnBoat( mobile ))
 			continue;
 		elseif( mobile.dead )
 			continue;

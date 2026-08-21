@@ -1,6 +1,6 @@
 # Developer Changelog - v3.0.8
 
-Range: Patch-3.0.7..Patch-3.0.8 (commit `f80feec`..`78018b2`)
+Range: Patch-3.0.7..Patch-3.0.8 (commit `f80feec`..`78018b2`), plus uncommitted work-tree changes to `pkg/multis/boat/*` and `config/mrcspawn.cfg` (Theme 9) made after `78018b2`.
 Branch: Patch-3.0.8
 Date: 2026-08-20
 
@@ -8,9 +8,9 @@ Date: 2026-08-20
 
 ## Scope Summary
 
-- Total files changed: 35
-- Status breakdown: 20 added, 15 modified, 0 deleted (net; see Theme 1 note on `areaspawnerdeleterunner.src`)
-- Net textual delta: 9574 insertions, 5222 deletions
+- Total files changed: 35 committed (see Theme 1 note on `areaspawnerdeleterunner.src`), plus 9 more from the uncommitted Theme 9 boat work (1 new, 8 modified)
+- Status breakdown: 20 added, 15 modified, 0 deleted (net; committed range only)
+- Net textual delta: 9574 insertions, 5222 deletions (committed range only)
 - Largest shifts:
   - `pkg/opt/areaspawner/include/areaspawnergump.inc` (+1912, new file) - every Area Spawner gump: type/realm pickers, spawner list, entry editors (including the 4-category Custom NPC editor), group/chest reference browsers, error list, and the new facet census
   - `pkg/opt/areaspawner/include/areaspawner.inc` (+1219 net across the range, now ~1720 lines) - the whole Area Spawner engine: datafile schema, placement logic for all 5 spawner kinds, tick/kick chain, error tracking
@@ -70,6 +70,18 @@ Legend: `Status | File`
 - M | scripts/textcmd/seer/speedwalk.src
 
 Not shown above: `pkg/opt/areaspawner/areaspawnerdeleterunner.src` was added in `4fa5002` as a first-pass one-shot delete/reschedule script, then replaced and removed in `78018b2` once `areaspawnerentrytick.src` took over that job with the full tick/placement/reschedule chain — it never shipped in a released state, so it doesn't appear in the file inventory (added and removed within this same range nets to no diff).
+
+**Theme 9 files (uncommitted, made after `78018b2` - see Range note above):**
+
+- A | pkg/multis/boat/include/boatHelpers.inc
+- M | config/mrcspawn.cfg
+- M | pkg/multis/boat/boat/use.src
+- M | pkg/multis/boat/commands/gm/restartboat.src
+- M | pkg/multis/boat/config/itemdesc.cfg
+- M | pkg/multis/boat/multi/listener.src
+- M | pkg/multis/boat/rope/use.src
+- M | pkg/multis/boat/tiller/methods.src
+- M | pkg/multis/boat/tiller/use.src
 
 ---
 
@@ -180,10 +192,47 @@ Files involved: `pkg/items/donationbox/include/donationbox.inc`, `pkg/opt/areasp
 
 Expected impact: no more `[areaspawner]`/donation-box console spam in normal operation; flipping either flag back to `1` re-enables full diagnostic logging for that subsystem if needed again.
 
+### 9. Boat Package Overhaul — Galleon Support, Speed, Ropes, Cargo Holds
+
+Files involved: `pkg/multis/boat/include/boatHelpers.inc` (new), `pkg/multis/boat/boat/use.src`, `pkg/multis/boat/multi/listener.src`, `pkg/multis/boat/rope/use.src`, `pkg/multis/boat/tiller/use.src`, `pkg/multis/boat/tiller/methods.src`, `pkg/multis/boat/commands/gm/restartboat.src`, `pkg/multis/boat/config/itemdesc.cfg`, `config/mrcspawn.cfg`
+
+The Orc/Gargoyle/Tokuno/Britannia galleon deeds existed in `config/itemdesc.cfg` and `config/boats.cfg` (stock polserver engine data) but were never fully wired up against this package's control/cargo logic, which had only ever assumed the classic small/medium/long/dragon boat layout (`Tillerman` + `Hold` + gangplanks). `config/boats.cfg` only gives Row Boat a `Tiller` and every galleon/Britannia hull a `Wheel` — none of the newer families get a `Tillerman` or `Hold` at all, and none of those newer extobj roles (`Tiller`, `Wheel`, `Storage`, ...) are exposed as real dot-properties the way `.tillerman`/`.hold`/`.portplank`/`.starboardplank` are (confirmed in testing: `boat.wheel` returns a live-looking placeholder object with objtype 0 regardless of whether a Wheel component actually exists, even for a verifiably clickable one).
+
+**New `boatHelpers.inc`** centralizes generic resolution so the rest of the package can treat every ship family the same way:
+- `IsValidBoatItem()` — treats objtype 0 as invalid in addition to falsy/errortext, needed because a missing extobj role doesn't reliably come back as a clean null.
+- `GetBoatController()` — resolves the Tillerman (classic), Tiller (Row Boat), or Wheel (galleons/Britannia) generically by scanning `boat.components` when the dot-property fails, caching the resolved serial on the boat (`ControllerSerial`) since this is called every tick from the main loop.
+- `GetBoatHolds()` — resolves the native Hold (classic), every native Storage crate (Britannia, several per ship), or creates+registers (`RegisterItemWithBoat`) a single escript-created container for Orc/Gargoyle/Tokuno, tracked via a `CustomHoldSerial` property so it survives restarts. Row Boat explicitly returns no hold (by design — it's the one ship family meant to have no cargo hold).
+- `GetPreferredHoldOffset()` / `FindHoldSpot()` — place the custom hold near the controller rather than at `boat.x/boat.y` (the multi's anchor tile, not necessarily open deck — confirmed in testing this landed the hold half-inside the mast/half-underground). Orc/Gargoyle/Tokuno each got a specific hand-picked `(dx,dy)` offset from the wheel, found by spawning a visible placement-blocker item in-game and reading its coordinates back from a world save, after the generic nearby-wheel search proved unreliable for those hull shapes; other/future ship types fall back to that generic search.
+- `GetBoatLockId()` — reads a boat's LockID off one of its ropes (always present, always locked at placement) rather than storing it anywhere centrally, so a custom hold that needs to be recreated later (see below) can still be locked to the same key as the rest of the boat, on boats that predate this patch too.
+- `DestroyCustomBoatHold()` — now also destroys the owner's key (backpack or bank) for the hold's LockID before destroying the item, rather than relying on the caller to have already done it.
+
+**Cargo hold visibility bug**: `config/itemdesc.cfg`'s `Container 0x1F01A` (Storage) entry has a default `Graphic` of `1` — an essentially invisible placeholder. Native engine-created Storage components (Britannia's crates) were rendering with that default the whole time; `GetBoatHolds()` now explicitly overrides `.graphic` (`0x5C2D`) on every native Storage component it resolves, matching what the escript-created custom hold already does. The custom hold's graphic went through two iterations: `0x5C2A` (Britannia's own native crate graphic) rendered floating well above the deck for a standalone item, because that art relies on the multi's own plane/component height data (which only applies to real `boats.cfg` components) rather than the item's logical Z — the same reason a boat component's own `.z` reads back as the multi's waterline Z regardless of how high it visually sits on deck (confirmed directly: the Wheel's `.z` matched `boat.z` exactly). `0x5C2D` was chosen in-game instead and confirmed to self-elevate correctly from `boat.z` on its own.
+
+**`itemdesc.cfg`**: the Wheel (`0x1F015`)'s `Script`/`MethodScript`/`CanInsertScript` were commented out — re-enabled, since the Wheel was completely non-functional without them. Rope (`0x1F014`)'s `DoubleClickRange` raised from `5` to `9`, since it was silently capping click range below what the per-ship-type boarding distances in `rope/use.src` (2 to 9 tiles depending on hull) already expected.
+
+**Disembark search rewrite** (`rope/use.src`): the search for a valid off-ship spot to place a disembarking player was rewritten from scratch through several iterations during in-game testing (visualized at one point by spawning marker items at every candidate tile and color-coding pass/fail, before being converted back to a silent single-move production version). Final design: one `GetStandingCoordinates()` call per attempt (previously guessed candidate heights one at a time via `GetStandingHeight`, which proved unreliable near a boat, resolving to the sea floor under the deck in one case); an outward-direction bias (`GetOutwardBias`) computed from the ship's real `.facing` property plus its bounding-box center (`GetShipBounds`, built from `boat.components`) rather than the rope's raw offset from the multi's anchor tile, which gave inconsistent, sometimes wrong-signed results for ropes at different points along the same hull (three ropes on the same north edge of the same ship produced three different biases under the old method); and a rejection of any candidate belonging to *any* multi — this ship's own deck, or a different multi entirely (a house, another docked boat) — not just this ship, since `GetStandingCoordinates` only reports whether a tile is standable, not whose space it belongs to.
+
+**Fixed 5-tier speed system** (`tiller/methods.src`, `multi/listener.src`): replaced the old freeform ms-delay `SetSpeed()`/`GetSpeed()` (250-450ms range, a barely-perceptible 1.8x spread, plus a lazy-init bug where the very first read after boat creation returned a stale pre-fetch value instead of the just-initialized default) with 5 fixed tiers stored as a `SpeedLevel` index (1-5, default 3) mapped through `GetSpeedTable()`: 760/380/180/130/80ms per tile-move, i.e. 1/2.6/5.6/7.7/12.5 tiles-per-second. Calibrated against this shard's own real movement delays (`config/servspecopt.cfg`'s `SpeedHack_MountRunDelay`/`MountWalkDelay`/`FootRunDelay`/`FootWalkDelay`) rather than arbitrary numbers: level 1 is 2x slower than walking on foot, level 2 matches walking, level 3 matches running on foot (also mounted-walk pace, tied in this shard's config), level 5 matches mounted running (level 4 is an interpolated step with no real-movement equivalent). Speed Up/Down now move one tier at a time instead of adding/subtracting a raw ms amount.
+
+**Other `multi/listener.src` fixes**:
+- `ProcessEvent(<uninitialized object>)` console error: `DryDock()` destroys the boat multi, but `ProcessEvent` was continuing to execute afterward using the now-destroyed `boat` reference — fixed with an early `return 1;` immediately after the `DryDock()` call.
+- Dry-docking now closes the Wheel/navigator gump (a separate process with no way to know the boat is about to be destroyed) via a new `NavigatorPID` property set on the mobile when `tiller/use.src` starts the navigator script, and `GFCloseGump()`'d from `DryDock`.
+- `ClosePlanks` guards both planks with `IsValidBoatItem()` before calling `.Extended()` — galleons/Britannia have no Gangplank components at all.
+- Random sea-monster spawning near boats (`DoEncounter`) disabled via an early `return 0`, spawn code left in place below it (unreachable) rather than deleted, for an easy one-line revert.
+
+**Debug logging removed for production**: ~65 `Print("[BoatDebug] ...")` console statements added across this patch's iterative in-game debugging (every file listed above) were stripped once each underlying fix was confirmed working; the `use basicio;` imports that existed only to support them were removed alongside.
+
+**Code review finding, not acted on**: `tiller/methods.src` has a complete, unused crew/ownership permission system (`CanCommand`/`IsCrewMate`/`AddCrewMate`/`RemoveCrewMate`/`GetCrewMates`/`SetCrewMates`) that `ProcessEvent` never calls — it only checks `IsOnBoat`, so currently any mobile standing on a boat (not just the owner) can issue movement/anchor/speed/drydock commands. Left as-is pending a decision on whether to wire it in or remove the dead code.
+
+**`config/mrcspawn.cfg`**: the Shipwright's `ProductGroup ShipItems` now stocks all 5 galleon/Row Boat deeds (`rowboatdeed`, `orcboatdeed`, `gargoyleboatdeed`, `tokunoboatdeed`, `britannianboatdeed`) alongside the existing classic boat models — they already had `Name`/`VendorSellsFor`/`VendorBuysFor` set in `itemdesc.cfg`, just weren't in any merchant's stock list.
+
+Expected impact: Orc, Gargoyle, Tokuno, and Britannia galleons (plus Row Boat) are now fully functional — steering, anchor, speed, dry-docking, boarding/disembarking via rope, and cargo storage all work per ship family, matching the classic boats' feature set — and are purchasable from Shipwright NPCs.
+
 ---
 
 ## Validation Notes
 
 - Diff range for this update: `git diff f80feec..HEAD` (full range) and per-commit `git show <hash>` for individual theme detail.
 - Working tree state at time of writing: the `AREASPAWNER_DEBUG` flag flip (Theme 8) is uncommitted: it's confirmed by direct in-game observation across the `.aslist`/console-log debugging session that everything it covers is working (stuck-refilling recovery, chest occupancy, all 5 spawner kinds placing/ticking/rescheduling correctly).
+- Theme 9 (boat package) is also entirely uncommitted, developed and verified through an extended live in-game debugging session across all 5 ship families (Row Boat, Orc, Gargoyle, Tokuno, Britannia) - each fix in the summary above was confirmed against real console log output and/or in-game observation before moving to the next, including several multi-iteration items (the disembark search, custom hold placement/graphic, speed range) that were deliberately re-tested after each change.
 - Per repo convention, compile validation was not run as part of this documentation pass — the user compiles EScript changes themselves.
