@@ -1,0 +1,19 @@
+// Synopsis: Toggle guaranteed-exceptional crafting results for testing item names/descriptions
+use uo;
+use os;
+
+include ":staff:include/staff";
+
+program forceexceptional(who)
+
+	if( GetObjProperty( who, "ForceExceptional" ) )
+		EraseObjProperty( who, "ForceExceptional" );
+		SendSysMessage( who, "Forced exceptional crafting is now OFF." );
+		LogCommand( who, GetProcess(GetPid()).name, "OFF" );
+	else
+		SetObjProperty( who, "ForceExceptional", 1 );
+		SendSysMessage( who, "Forced exceptional crafting is now ON. Every craft you attempt will be exceptional (still respects items that can never be exceptional)." );
+		LogCommand( who, GetProcess(GetPid()).name, "ON" );
+	endif
+
+endprogram

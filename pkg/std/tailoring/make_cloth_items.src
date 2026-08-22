@@ -58,6 +58,37 @@ program use_sewing_kit( character, sewing_kit )
 		return;
 	endif
 
+	// Handle Omega Cache targeting -- hides and cloth are both stackable
+	// materials that can be pulled directly from an accessible Omega Cache.
+	if( use_on.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return;
+		endif
+		var ot := CInt(cacheRequest.objtype);
+
+		if( IsHide(ot) )
+			item := MakeAndProcessMenu( character, cacheRequest, ID_HIDES );
+		elseif( ot == UOBJ_MUTLI_CLOTH )
+			item := MakeAndProcessMenu( character, cacheRequest, ID_CLOTH );
+		else
+			SendSysMessage( character, "You don't know how to use that." );
+			return;
+		endif
+
+		if( !item )
+			return;
+		endif
+
+		item := item.objtype;
+		if( !item )
+			return;
+		endif
+
+		TryToMakeItem( character, cacheRequest, item );
+		return;
+	endif
+
 	if( !Accessible( character, use_on ) )
 		SendSysMessage( character, "You can't reach that." );
 		return;
@@ -282,13 +313,13 @@ function TryToMakeItem( character, resourceRequest, item )
 				var randomchance := Random(150);
 				//Print("Random chance rolled: " + randomchance + " vs excep chance: " + excep_ch );
 
-				if( ( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TAILORING, excep_diff, 0 ) )
+				if( GetObjProperty(character, "ForceExceptional") or (( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TAILORING, excep_diff, 0 )) )
 
 					//Made something Exceptional
 					if( give_deed )
 						//Print("Creating exceptionaldeed item: " + give_deed );
 						var product_desc := GetItemDescriptor(CInt(give_deed));
-						ApplyMaterialProperties(product_desc, resourceRequest, 1, character, SKILLID_TAILORING);
+						ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 1, character, SKILLID_TAILORING, deedname);
 						theitem := CreateItemInBackpack( character , product_desc );
 						itemname := GetObjProperty( theitem , "DeedName" );
 						SetName( theitem, itemname );

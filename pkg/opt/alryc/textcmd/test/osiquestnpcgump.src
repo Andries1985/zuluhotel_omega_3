@@ -1,0 +1,121 @@
+// Synopsis: View-only mockup of the classic OSI NPC quest-list gump layout (gump 0x320, 3 pages)
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program osiquestnpcgump(staff)
+	var gump := GFCreateGump(75, 25);
+
+	// [text] section from the capture is three empty strings (indices 0-2),
+	// referenced by the "text ... 0" and "kr_text ... 1/2" lines below.
+	(gump.data).Append("");
+	(gump.data).Append("");
+	(gump.data).Append("");
+
+	var lines := array{
+		"page 1",
+		"noclose",
+		"gumppictiled 50 20 400 460 5124",
+		"gumppictiled 50 29 30 450 10460",
+		"gumppictiled 34 140 17 339 9263",
+		"gumppic 48 135 10411",
+		"gumppic -16 285 10402",
+		"gumppic 0 10 10421",
+		"gumppic 25 0 10420",
+		"gumppictiled 83 15 350 15 10250",
+		"gumppic 34 479 10306",
+		"gumppic 442 479 10304",
+		"gumppictiled 51 479 392 17 10101",
+		"gumppictiled 415 29 44 450 2605",
+		"gumppictiled 415 29 30 450 10460",
+		"text 100 50 1153 0",
+		"gumppic 370 50 1417",
+		"gumppic 379 60 5545",
+		"gumppic 425 0 10441",
+		"gumppic 90 33 9005",
+		"xmfhtmlgumpcolor 130 45 270 16 1049010 0 0 16777215",
+		"gumppictiled 130 65 175 1 9101",
+		"button 95 455 12000 12002 1 0 1",
+		"button 313 455 12018 12020 1 0 2",
+		"xmfhtmltok 130 68 220 48 0 0 10000 1114513 @@#1072325",
+		"xmfhtmlgumpcolor 98 140 312 16 1072202 0 0 10000",
+		"xmfhtmlgumpcolor 98 156 312 240 1042784 0 1 90000",
+		"button 275 430 12009 12011 0 2 0",
+
+		"page 2",
+		"noclose",
+		"gumppictiled 50 20 400 460 5124",
+		"gumppictiled 50 29 30 450 10460",
+		"gumppictiled 34 140 17 339 9263",
+		"gumppic 48 135 10411",
+		"gumppic -16 285 10402",
+		"gumppic 0 10 10421",
+		"gumppic 25 0 10420",
+		"gumppictiled 83 15 350 15 10250",
+		"gumppic 34 479 10306",
+		"gumppic 442 479 10304",
+		"gumppictiled 51 479 392 17 10101",
+		"gumppictiled 415 29 44 450 2605",
+		"gumppictiled 415 29 30 450 10460",
+		"text 100 50 1153 0",
+		"gumppic 370 50 1417",
+		"gumppic 379 60 5545",
+		"gumppic 425 0 10441",
+		"gumppic 90 33 9005",
+		"xmfhtmlgumpcolor 130 45 270 16 1049010 0 0 16777215",
+		"gumppictiled 130 65 175 1 9101",
+		"button 95 455 12000 12002 1 0 1",
+		"button 313 455 12018 12020 1 0 2",
+		"xmfhtmltok 130 68 220 48 0 0 10000 1114513 @@#1072325",
+		"button 275 430 12009 12011 0 2 0",
+		"button 130 430 12015 12017 0 1 0",
+		"xmfhtmlgumpcolor 98 140 312 16 1049073 0 0 10000",
+		"xmfhtmlgumpcolor 98 156 312 16 1072208 0 0 10000",
+		"xmfhtmlgumpcolor 98 172 312 16 1072206 0 0 90000",
+		"xmfhtmlgumpcolor 173 172 312 20 1073875 0 0 16777215",
+		"kr_xmfhtmlgump 0 0 0 0 1078089 0 0",
+		"kr_text 0 0 0 0 1 0 0",
+		"kr_xmfhtmlgump 0 0 0 0 1078089 0 0",
+		"kr_text 0 0 0 0 2 0 0",
+		"button 275 430 12009 12011 0 3 0",
+
+		"page 3",
+		"noclose",
+		"gumppictiled 50 20 400 460 5124",
+		"gumppictiled 50 29 30 450 10460",
+		"gumppictiled 34 140 17 339 9263",
+		"gumppic 48 135 10411",
+		"gumppic -16 285 10402",
+		"gumppic 0 10 10421",
+		"gumppic 25 0 10420",
+		"gumppictiled 83 15 350 15 10250",
+		"gumppic 34 479 10306",
+		"gumppic 442 479 10304",
+		"gumppictiled 51 479 392 17 10101",
+		"gumppictiled 415 29 44 450 2605",
+		"gumppictiled 415 29 30 450 10460",
+		"text 100 50 1153 0",
+		"gumppic 370 50 1417",
+		"gumppic 379 60 5545",
+		"gumppic 425 0 10441",
+		"gumppic 90 33 9005",
+		"xmfhtmlgumpcolor 130 45 270 16 1049010 0 0 16777215",
+		"gumppictiled 130 65 175 1 9101",
+		"button 95 455 12000 12002 1 0 1",
+		"button 313 455 12018 12020 1 0 2",
+		"xmfhtmltok 130 68 220 48 0 0 10000 1114513 @@#1072325",
+		"button 130 430 12015 12017 0 2 0",
+		"xmfhtmlgumpcolor 98 140 312 16 1072201 0 0 10000",
+		"gumppic 105 163 1209",
+		"xmfhtmlgumpcolor 133 162 280 16 1061156 0 0 90000"
+	};
+
+	foreach line in lines
+		(gump.layout).Append(line);
+	endforeach
+
+	SendSysmessage(staff, "Sending the OSI-style NPC quest-list gump layout as a view-only mockup (3 pages -- flip with the arrow buttons).");
+	GFSendGump(staff, gump);
+
+endprogram

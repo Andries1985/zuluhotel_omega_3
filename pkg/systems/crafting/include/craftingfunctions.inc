@@ -56,7 +56,7 @@ function ApplyMaterialProperties(byref product_desc, material, is_exceptional, c
 	//endif
 
 	Print(product_desc.desc);
-	product_desc.Quality := material_desc.Quality;
+	product_desc.quality := material_desc.Quality;
 
 	if( material.objtype == UOBJ_GOLD_INGOT )
 		product_desc.Color := GOLD_COLOR;
@@ -67,17 +67,17 @@ function ApplyMaterialProperties(byref product_desc, material, is_exceptional, c
 	//Specific Exceptional properties
 	if(is_exceptional)
 
-		product_desc.Cprops.insert( "IsExceptional", 1 );
+		product_desc.CProps.insert( "IsExceptional", 1 );
 		product_desc.Desc := "Exceptional " + product_desc.Desc;
 		Print(product_desc.desc);
 
 		if(GetObjProperty(character, "ToggleBuildMark"))
 			if( YesNo( character , "Add Builder Mark?" ))
-				product_desc.Cprops.insert( "CraftedBy", character.name );
+				product_desc.CProps.insert( "CraftedBy", character.name );
 				//product_desc.Desc := product_desc.Desc + " (Crafted by " + character.name + ")";
 			endif
 		else
-			product_desc.Cprops.insert( "CraftedBy", character.name );
+			product_desc.CProps.insert( "CraftedBy", character.name );
 			//product_desc.Desc := product_desc.Desc + " (Crafted by " + character.name + ")";
 		endif
 
@@ -92,15 +92,15 @@ function ApplyMaterialProperties(byref product_desc, material, is_exceptional, c
 
 	endif
 
-	product_desc.Cprops.insert("CraftedWith", material.objtype);
-	product_desc.Cprops.insert("BaseName", product_desc.Desc);
+	product_desc.CProps.insert("CraftedWith", material.objtype);
+	product_desc.CProps.insert("BaseName", product_desc.Desc);
 
 	if(product_desc.hitscript)// only weapons have hitscripts, right??
 		if (material_desc.ElemDamage)
-			product_desc.Cprops.insert("ElementalDamage",material_desc.ElemDamage);
+			product_desc.CProps.insert("ElementalDamage",material_desc.ElemDamage);
 		endif
 		if (material_desc.SlayType)
-			product_desc.Cprops.insert("SlayType",material_desc.SlayType);
+			product_desc.CProps.insert("SlayType",material_desc.SlayType);
 			product_desc.Hitscript := ":combat:slayerscript";
 		endif
 	elseif(product_desc.ar)
@@ -109,7 +109,7 @@ function ApplyMaterialProperties(byref product_desc, material, is_exceptional, c
 			var prop_name := split_prop[1];
 			var prop_mod  := Cint(split_prop[2]);
 			
-			var presently := Cint(product_desc.Cprops[prop_name]);
+			var presently := Cint(product_desc.CProps[prop_name]);
 			if( !presently )
 				presently := 0;
 			endif
@@ -122,7 +122,7 @@ function ApplyMaterialProperties(byref product_desc, material, is_exceptional, c
 			if( resulting > 0 and prop_name == "DefaultDex" )
 				resulting := 0;
 			endif
-			product_desc.Cprops[prop_name] := resulting;
+			product_desc.CProps[prop_name] := resulting;
 		endforeach
 	endif
 
@@ -199,7 +199,7 @@ function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptiona
 		//product_desc.Desc := material_desc.Name +" "+product_desc.Desc;
 	// endif
 
-	product_desc.Quality := material_desc.Quality;
+	product_desc.quality := material_desc.Quality;
 
 	if( material.objtype == UOBJ_GOLD_INGOT )
 		product_desc.Color := GOLD_COLOR;
@@ -210,18 +210,18 @@ function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptiona
 	//Specific Exceptional properties
 	if(is_exceptional)
 
-		product_desc.Cprops.insert( "IsExceptional", 1 );
+		product_desc.CProps.insert( "IsExceptional", 1 );
 		product_desc.Desc := "Exceptional " + product_desc.Desc;
 		product_desc.deedname := "Exceptional " + product_desc.deedname;
 		Print("Deed Name after exceptional: " + product_desc.deedname);
 
 		if(GetObjProperty(character, "ToggleBuildMark"))
 			if( YesNo( character , "Add Builder Mark?" ))
-				product_desc.Cprops.insert( "CraftedBy", character.name );
+				product_desc.CProps.insert( "CraftedBy", character.name );
 				//product_desc.Desc := product_desc.Desc + " (Crafted by " + character.name + ")";
 			endif
 		else
-			product_desc.Cprops.insert( "CraftedBy", character.name );
+			product_desc.CProps.insert( "CraftedBy", character.name );
 			//product_desc.Desc := product_desc.Desc + " (Crafted by " + character.name + ")";
 		endif
 
@@ -236,16 +236,16 @@ function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptiona
 
 	endif
 
-	product_desc.Cprops.insert("CraftedWith", material.objtype);
-	product_desc.Cprops.insert("BaseName", product_desc.Desc);
-	product_desc.Cprops.insert("DeedName", product_desc.deedname);
+	product_desc.CProps.insert("CraftedWith", material.objtype);
+	product_desc.CProps.insert("BaseName", product_desc.Desc);
+	product_desc.CProps.insert("DeedName", product_desc.deedname);
 
 	// if(product_desc.hitscript)// only weapons have hitscripts, right??
 	// 	if (material_desc.ElemDamage)
-	// 		product_desc.Cprops.insert("ElementalDamage",material_desc.ElemDamage);
+	// 		product_desc.CProps.insert("ElementalDamage",material_desc.ElemDamage);
 	// 	endif
 	// 	if (material_desc.SlayType)
-	// 		product_desc.Cprops.insert("SlayType",material_desc.SlayType);
+	// 		product_desc.CProps.insert("SlayType",material_desc.SlayType);
 	// 		product_desc.Hitscript := ":combat:slayerscript";
 	// 	endif
 	// elseif(product_desc.ar)
@@ -254,7 +254,7 @@ function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptiona
 	// 		var prop_name := split_prop[1];
 	// 		var prop_mod  := Cint(split_prop[2]);
 			
-	// 		var presently := Cint(product_desc.Cprops[prop_name]);
+	// 		var presently := Cint(product_desc.CProps[prop_name]);
 	// 		if( !presently )
 	// 			presently := 0;
 	// 		endif
@@ -267,7 +267,7 @@ function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptiona
 	// 		if( resulting > 0 and prop_name == "DefaultDex" )
 	// 			resulting := 0;
 	// 		endif
-	// 		product_desc.Cprops[prop_name] := resulting;
+	// 		product_desc.CProps[prop_name] := resulting;
 	// 	endforeach
 	// endif
 

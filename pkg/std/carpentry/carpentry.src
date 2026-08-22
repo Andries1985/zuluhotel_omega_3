@@ -72,6 +72,49 @@ program MakeCarpentryItems( character, tool )
 		return;
 	endif
 
+	// Handle Omega Cache targeting -- logs, ingots, and cloth are all stackable
+	// materials that can be pulled directly from an accessible Omega Cache.
+	if( use_on.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return;
+		endif
+		var ot := CInt(cacheRequest.objtype);
+
+		if( IsLogObjtype(ot) )
+			ressource_diff := carpenter_cfg[ot].Difficulty;
+			ressource_name := carpenter_cfg[ot].Name;
+			ressource_qual := carpenter_cfg[ot].Quality;
+			use_on := cacheRequest;
+			item := MakeAndProcessMenu( character , use_on , ID_LOGS );
+
+		elseif( IsIngotObjtype(ot) )
+			var cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
+			use_with := cacheRequest;
+			use_with_name := cfg[ot].Name;
+			use_with_diff := cfg[ot].Difficulty;
+			use_with_qual := cfg[ot].Quality;
+			use_on := cacheRequest;
+			item := MakeAndProcessMenu( character , use_on , ID_INGOTS );
+
+		elseif( IsClothObjtype(ot) )
+			use_with := cacheRequest;
+			use_on := cacheRequest;
+			item := MakeAndProcessMenu( character , use_on , ID_CLOTH );
+
+		else
+			SendSysMessage( character , "You don't know how to use that." );
+			return;
+		endif
+
+		if( !item )
+			return;
+		endif
+
+		TryToCreateItem( character , use_on , item );
+		return;
+	endif
+
 	if( !Accessible( character , use_on ) )
 		SendSysMessage( character , "You can't reach that." );
 		return;
@@ -435,8 +478,8 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 		var theitem;
 		var item_cfg := ReadConfigFile( ":*:itemdesc" );
 
-		if( element.Exceptional and (randomchance < excep_ch) )
-			if( CheckSkill( character , cint(skillid) , cint(skill) , 0 ) )
+		if( element.Exceptional and (GetObjProperty(character, "ForceExceptional") or (randomchance < excep_ch)) )
+			if( GetObjProperty(character, "ForceExceptional") or CheckSkill( character , cint(skillid) , cint(skill) , 0 ) )
 				//Made something Exceptional
 				//New Code
 				if( give_deed )
@@ -737,28 +780,43 @@ function MakeAndProcessMenu( character , byref use_on , id )
 			return;
 		endif
 
-		if( !Accessible( character , second_res ) )
-			SendSysMessage( character , "You can't reach that." );
-			return;
-		endif
-
-		if( !ReserveItem( second_res ) )
-			return;
-		endif
-
-		if( (second_res.objtype == UOBJ_LOGS) or (second_res.objtype == UOBJ_LOGS_GODDESS) or ((second_res.objtype >= UOBJ_LOGS_START) and (second_res.objtype <= UOBJ_LOGS_END)) )
-			use_on := second_res;
-			ressource_diff := carpenter_cfg[second_res.objtype].Difficulty;
-			ressource_name := carpenter_cfg[second_res.objtype].Name;
-			ressource_qual := carpenter_cfg[second_res.objtype].Quality;
-
-			if( !IsInContainer( character.backpack , use_on ) )
-				SendSysmessage( character, "That item has to be in your backpack." );
+		if( second_res.objtype == OMEGACACHE_OBJTYPE )
+			var logCacheRequest := SelectMaterialFromCache( character );
+			if( !logCacheRequest )
 				return;
 			endif
+			if( !IsLogObjtype(logCacheRequest.objtype) )
+				SendSysMessage( character , "You must choose some logs." );
+				return;
+			endif
+			use_on := logCacheRequest;
+			ressource_diff := carpenter_cfg[logCacheRequest.objtype].Difficulty;
+			ressource_name := carpenter_cfg[logCacheRequest.objtype].Name;
+			ressource_qual := carpenter_cfg[logCacheRequest.objtype].Quality;
 		else
-			SendSysMessage( character , "You must choose some logs." );
-			return;
+			if( !Accessible( character , second_res ) )
+				SendSysMessage( character , "You can't reach that." );
+				return;
+			endif
+
+			if( !ReserveItem( second_res ) )
+				return;
+			endif
+
+			if( (second_res.objtype == UOBJ_LOGS) or (second_res.objtype == UOBJ_LOGS_GODDESS) or ((second_res.objtype >= UOBJ_LOGS_START) and (second_res.objtype <= UOBJ_LOGS_END)) )
+				use_on := second_res;
+				ressource_diff := carpenter_cfg[second_res.objtype].Difficulty;
+				ressource_name := carpenter_cfg[second_res.objtype].Name;
+				ressource_qual := carpenter_cfg[second_res.objtype].Quality;
+
+				if( !IsInContainer( character.backpack , use_on ) )
+					SendSysmessage( character, "That item has to be in your backpack." );
+					return;
+				endif
+			else
+				SendSysMessage( character , "You must choose some logs." );
+				return;
+			endif
 		endif
 
 	endif
@@ -902,6 +960,12 @@ endfunction
 
 function GetRessourceName( ressource )
 
+	// Omega Cache selections are ResourceRequest structs, not real items -- they have
+	// no .desc/.amount to read, so fall back to the cfg-resolved display name instead.
+	if( TypeOf(ressource) == "Struct" )
+		return GetItemDisplayName( CInt(ressource.objtype) );
+	endif
+
 	var t_name := ressource.desc;
 
 	if( ressource.amount > 1 )
@@ -960,4 +1024,34 @@ function IsBone( what )
 		default:	return 0;
 	endcase
 
+endfunction
+
+// Objtype-based checks for Omega Cache selections (no physical item reference needed).
+function IsLogObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_LOGS_START and objtype <= UOBJ_LOGS_END ) or
+	   ( objtype == UOBJ_LOGS_GODDESS ) or ( objtype == UOBJ_LOGS ))
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsIngotObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_INGOTS_START  and objtype <= UOBJ_INGOTS_END  ) or
+	   ( objtype >= UOBJ_INGOTS2_START and objtype <= UOBJ_INGOTS2_END ) or
+	   ( objtype == UOBJ_GOLD_INGOT ) or
+	   ( objtype == UOBJ_SILVER_INGOT ) or
+	   ( objtype == UOBJ_COIN_COPPER_INGOT ))
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsClothObjtype( objtype )
+	objtype := CInt(objtype);
+	if( objtype >= UOBJ_CLOTH_START and objtype <= UOBJ_CLOTH_END )
+		return 1;
+	endif
+	return 0;
 endfunction

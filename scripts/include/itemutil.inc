@@ -532,7 +532,9 @@ function IsIngot( item )
 
 	if(( item.objtype >= UOBJ_INGOTS_START  and item.objtype <= UOBJ_INGOTS_END  ) or
 	   ( item.objtype >= UOBJ_INGOTS2_START and item.objtype <= UOBJ_INGOTS2_END ) or
-	   ( item.objtype  == UOBJ_GOLD_INGOT ))
+	   ( item.objtype  == UOBJ_GOLD_INGOT ) or
+	   ( item.objtype  == UOBJ_SILVER_INGOT ) or
+	   ( item.objtype  == UOBJ_COIN_COPPER_INGOT ))
 		return 1;
 	else
 		return 0;

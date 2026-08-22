@@ -1,0 +1,48 @@
+// Synopsis: View-only mockup of the classic OSI quest-offer gump layout (gump 0x325)
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program osiquestgump(staff)
+	var gump := GFCreateGump(75, 25);
+
+	// [text] section from the capture is one empty string at index 0,
+	// referenced by the "text 100 50 1153 0" line below.
+	(gump.data).Append("");
+
+	var lines := array{
+		"page 1",
+		"noclose",
+		"gumppictiled 50 20 400 460 5124",
+		"gumppictiled 50 29 30 450 10460",
+		"gumppictiled 34 140 17 339 9263",
+		"gumppic 48 135 10411",
+		"gumppic -16 285 10402",
+		"gumppic 0 10 10421",
+		"gumppic 25 0 10420",
+		"gumppictiled 83 15 350 15 10250",
+		"gumppic 34 479 10306",
+		"gumppic 442 479 10304",
+		"gumppictiled 51 479 392 17 10101",
+		"gumppictiled 415 29 44 450 2605",
+		"gumppictiled 415 29 30 450 10460",
+		"text 100 50 1153 0",
+		"gumppic 370 50 1417",
+		"gumppic 379 60 5545",
+		"gumppic 425 0 10441",
+		"gumppic 90 33 9005",
+		"xmfhtmlgumpcolor 130 45 270 16 1046026 0 0 16777215",
+		"gumppictiled 130 65 175 1 9101",
+		"button 313 455 12012 12014 1 0 3",
+		"mastergump 800"
+	};
+
+	foreach line in lines
+		(gump.layout).Append(line);
+	endforeach
+
+	SendSysmessage(staff, "Sending the OSI-style quest-offer gump layout as a view-only mockup.");
+	GFSendGump(staff, gump);
+
+endprogram

@@ -1,0 +1,570 @@
+// Bowcraft package -- extracted from scripts/items/bladed.src 2026-08-22.
+// The Bowcraft Tool (0x1022) drives a single unified crafting menu (Shafts,
+// Bow, Crossbow, Heavy Crossbow, Fire/Ice Bow, Thunder Crossbow, Kindling,
+// Arrow, Bolt) that auto-detects raw materials in the backpack instead of
+// requiring the player to target logs/shafts first. Targeting an existing
+// bow/crossbow repairs it; targeting an existing arrow/bolt stack offers the
+// elemental (fire/ice/thunder) upgrade. Both of those used to live on every
+// bladed weapon in the game via bladed.src -- they're exclusive to this tool now.
+
+use uo;
+use os;
+use util;
+use cfgfile;
+use attributes;
+
+include "util/repair";
+include "include/client";
+include ":gumps:yesno";
+include "include/random";
+include "include/objtype";
+include "include/classes";
+include "include/itemutil";
+include "include/autoloop";
+include "include/utility";
+include ":karmafame:karmafame";
+include "include/attributes";
+include "include/difficulty";
+include "include/resourcemanager";
+include "include/skillpoints";
+
+const DIVIDER			:= 4;
+const APPEAR_AT			:= -10;
+const POINTS_MULTIPLIER	:= 8;
+const FAME_BONUS		:= 10;
+
+// UOBJ_ARROW and UOBJ_BOLT are already defined in include/objtype.inc.
+
+program use_bowcrafttool( character )
+
+	SendSysmessage( character, "What would you like to use that on? (press escape for the crafting menu)" );
+	var use_on := Target( character );
+
+	if( use_on )
+		if( use_on.item.isa(POLCLASS_WEAPON) )
+			var bowcraft_cfg := ReadConfigFile( "bowcraft" );
+			if( bowcraft_cfg[use_on.item.graphic] )
+				repair_item( character, use_on.item, SKILLID_BOWCRAFT );
+				return;
+			endif
+		elseif( IsArrow(use_on.item) )
+			UpgradeArrows( character, use_on.item.objtype );
+			return;
+		endif
+	endif
+
+	ShowBowcraftMenu( character );
+
+endprogram
+
+
+function FindLogsInBackpack( character )
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if( IsLog(item) )
+			return item;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+
+function FindTypeInBackpack( character, objtype )
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if( item.objtype == objtype )
+			return item;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+
+// Builds a resourceRequest for a stackable material, preferring a physical backpack
+// item (so color carries through) but falling back to a cache-only request when
+// nothing physical is found -- the Bowcraft Tool has no manual material-targeting
+// step, so this is how cache-only Shafts/Feathers still show up as craftable.
+function GetMaterialRequest( character, objtype )
+	var item := FindTypeInBackpack( character, objtype );
+	if( item )
+		return MakeBackpackRequest( character, item );
+	endif
+
+	var dataFileHandle := 0;
+	if( !GetObjProperty(character, "omegacache_no_autodraw") )
+		var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+		if( access )
+			dataFileHandle := access.df;
+		endif
+	endif
+
+	return struct{
+		objtype              := CInt(objtype),
+		key                  := 0,
+		color                := 0,
+		quality              := 0,
+		preferredSourceOrder := array{ BACKPACK, OMEGA_CACHE },
+		dataFileHandle       := dataFileHandle,
+		houseSerial          := 0,
+		leaseKey             := 0
+	};
+endfunction
+
+
+function ShowBowcraftMenu( character )
+
+	var logs		:= FindLogsInBackpack( character );
+	var bowcraft		:= GetEffectiveSkill( character, SKILLID_BOWCRAFT );
+	var bowcraft_cfg	:= ReadConfigFile( "bowcraft" );
+	var logs_cfg		:= ReadConfigFile( ":carpentry:carpentry" );
+	var logs_element;
+	var logs_diff		:= 0;
+
+	if( logs )
+		logs_element := FindConfigElem( logs_cfg, logs.objtype );
+		if( !logs_element )
+			logs := 0;
+		else
+			logs_diff := logs_element.Difficulty;
+		endif
+	endif
+
+	var the_keys	:= GetConfigStringKeys( bowcraft_cfg );
+	var menu	:= CreateMenu( "What would you like to make?" );
+	var can_make	:= 0;
+
+	if( logs )
+		foreach key in the_keys
+			if( CanMake( bowcraft, key, logs, logs_diff, bowcraft_cfg, character ) )
+				AddMenuItem( menu, Cint(key), bowcraft_cfg[key].Name );
+				can_make := 1;
+			endif
+		endforeach
+	endif
+
+	var shaftsRequest	:= GetMaterialRequest( character, UOBJ_SHAFTS );
+	var feathersRequest	:= GetMaterialRequest( character, UOBJ_FEATHER );
+	if( GetAvailableResource(character, shaftsRequest).total > 0 and GetAvailableResource(character, feathersRequest).total > 0 )
+		AddMenuItem( menu, UOBJ_ARROW, "Arrow" );
+		AddMenuItem( menu, UOBJ_BOLT, "Bolt" );
+		can_make := 1;
+	endif
+
+	if( !can_make )
+		SendSysmessage( character, "You don't have the materials to make anything right now." );
+		return;
+	endif
+
+	var what := SelectMenuItem2( character, menu );
+	if( !what )
+		return;
+	endif
+
+	if( what.objtype == UOBJ_ARROW or what.objtype == UOBJ_BOLT )
+		MakeArrowsOrBolts( character, what.objtype, shaftsRequest, feathersRequest );
+	else
+		CraftFromLogs( character, what.objtype, logs, logs_element, logs_diff, bowcraft, bowcraft_cfg );
+	endif
+
+endfunction
+
+
+function CraftFromLogs( character, what, logs, element, logs_diff, bowcraft, bowcraft_cfg )
+
+	if( !Accessible( character, logs ) )
+		SendSysMessage( character, "You can't reach your logs anymore." );
+		return;
+	endif
+
+	if( !ReserveItem( logs ) )
+		return;
+	endif
+
+	var logs_name	:= element.Name;
+	var logs_qual	:= element.Quality;
+
+	var special;
+	var makespecial	:= 0;
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if ( (what == 0x6050 and item.objtype == 0xf8c) or (what == 0xb201 and item.objtype == 0xf8d) or (what == 0x1403 and item.objtype == 0xf7a))
+			makespecial := 1;
+			special := item;
+			special.movable := 0;
+		endif
+	endforeach
+
+	element := FindConfigElem( bowcraft_cfg, what );
+
+	var itemname;
+	var material;
+	var points;
+	var skill;
+	var logsRequest := MakeBackpackRequest(character, logs);
+	var specialRequest;
+	if( makespecial and special )
+		specialRequest := MakeBackpackRequest(character, special);
+	endif
+
+	if( element )
+		material := element.Material;
+	else
+		return;
+	endif
+	//Require half resources during Crafting PH
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		material := CInt(Ceil(material/2));
+	endif
+
+	if( what == UOBJ_SHAFTS or what == UOBJ_KINDLING )
+		itemname := element.Name;
+		skill	 := element.Skill;
+		skill	 := skill + Cint( logs_diff / DIVIDER );
+		if( skill < 1 )
+			skill := 1;
+		elseif( skill > 140 )
+			skill := 140;
+		endif
+		sendDiff( character, skill );
+
+		points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
+
+		PlaySoundEffect( character , SFX_57 );
+		Sleep( 2 );
+
+		if( CheckSkill( character , SKILLID_BOWCRAFT , skill , points ) )
+			var shafts := CreateItemInBackpack( character , what , logs.amount );
+			if( shafts )
+				itemname := logs_name + " " + itemname;
+				shafts.color := logs.color;
+				shafts.hp := shafts.maxhp;
+				SetObjProperty( shafts , "BaseName" , itemname );
+				ConsumeResource( character, logsRequest, material );
+				SetName( shafts , itemname );
+				SendSysMessage( character , "You place the items in your pack." );
+			endif
+			DestroyItem( logs );
+		else
+			var destroy	:= 75 - Cint( bowcraft / 2 );
+			if( IsCrafter( character ) )
+				destroy := Cint( destroy / ClasseBonus( character , CLASSEID_CRAFTER ) );
+			endif
+
+			if( destroy > 50 )
+				destroy	:= 50;
+			endif
+
+			destroy	:= Cint( material * destroy / 100 );
+			if( destroy < 1 )
+				destroy	:= 1;
+			endif
+
+			ConsumeResource( character, logsRequest, destroy );
+			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs." );
+		endif
+		return;
+	endif
+
+
+	AutoLoop_init( character );
+	while( AutoLoop_more() && logs.amount >= material && NOT character.dead)
+
+		if ((!makespecial) or (special and special.amount > 9 ))
+		itemname := element.Name;
+		skill	 := element.Skill;
+		skill	 := skill + Cint( logs_diff / DIVIDER );
+		if( skill < 1 )
+			skill := 1;
+		elseif( skill > 140 )
+			skill := 140;
+		endif
+
+		sendDiff( character, skill );
+
+		points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
+
+		PlaySoundEffect( character , SFX_57 );
+		Sleep(2);
+		PlaySoundEffect(character, SFX_57);
+		Sleep(2);
+		if( !GetObjProperty( character, CLASSEID_CRAFTER ))
+			PlaySoundEffect(character, SFX_57);
+			Sleep(2);
+		endif
+
+		if( CheckSkill( character , SKILLID_BOWCRAFT , skill , points ) )
+
+			var theitem := CreateItemInBackpack( character , what );
+			if( theitem )
+
+				var excep_ch	:= 10;
+
+				theitem.quality := logs_qual;
+				itemname := logs_name + " " + itemname;
+
+				var crafter := GetObjProperty( character , CLASSEID_CRAFTER );
+				if( crafter )
+					excep_ch	:= Cint( excep_ch * CLASSE_BONUS );
+				else
+					skill		:= skill + 40;
+				endif
+
+				if( skill < 90 )
+					skill := 90;
+				endif
+
+				if ( GetObjProperty(character, "ForceExceptional") or ((randomint(100) < excep_ch) and CheckSkill( character , SKILLID_BOWCRAFT , skill , 0 )) )
+
+					//Made something Exceptional
+					var armslore := GetEffectiveSkill( character , SKILLID_ARMSLORE );
+					var multiplier := 5 + Cint( armslore / 10 );
+
+					if( crafter )
+						multiplier := Cint( multiplier * ClasseBonus( character ,CLASSEID_CRAFTER ) );
+					endif
+
+					multiplier	:= 50 + multiplier;
+					var newquality := Cint(theitem.quality * multiplier);
+					newquality := Cdbl(newquality);
+					newquality := newquality / 100;
+					theitem.quality := newquality;
+					itemname := "Exceptional " + itemname;
+					if(GetObjProperty(character, "ToggleBuildMark"))
+						if( YesNo( character, "Add Builder Mark?" ) )
+							SetObjProperty( theitem , "CraftedBy" , character.name );
+						endif
+					else
+						SetObjProperty( theitem , "CraftedBy" , character.name );
+					endif
+					SendSysmessage( character , "You make an exceptional item and put it in your pack" );
+					SetObjProperty( theitem , "IsExceptional" , 1 );
+					if( skill >= 130 )
+						SendSysmessage( character , "This masterpiece will make you famous around the world." );
+						AwardFame( character , FAME_BONUS );
+					elseif( GetObjProperty( character , CLASSEID_CRAFTER ) and skill >= 110 )
+						SendSysmessage( character , "This masterpiece will make you famous around the world." );
+						AwardFame( character , FAME_BONUS );
+					endif
+				else
+
+					//Made a normal item
+					SendSysmessage( character , "You create the item and place it in your pack." );
+				endif
+				theitem.color := logs.color;
+				if (special and theitem.color == 0 )
+					if (theitem.objtype == 0x6050)
+						theitem.color := 2750;
+					elseif (theitem.objtype == 0xb201)
+						theitem.color := 2243;
+					elseif (theitem.objtype == 0x1403)
+						theitem.color := 1282;
+					endif
+				endif
+				theitem.hp := theitem.maxhp;
+				SetObjProperty( theitem , "BaseName" , itemname );
+				SetName( theitem , itemname );
+			endif
+			ConsumeResource( character, logsRequest, material );
+			if (special)
+				ConsumeResource( character, specialRequest, material );
+			endif
+
+		else
+			var destroy	:= 75 - Cint( bowcraft / 2 );
+			if( IsCrafter( character ) )
+				destroy := Cint( destroy / ClasseBonus( character , CLASSEID_CRAFTER ) );
+			endif
+
+			if( destroy > 50 )
+				destroy	:= 50;
+			endif
+
+			destroy	:= Cint( material * destroy / 100 );
+			if( destroy < 1 )
+				destroy	:= 1;
+			endif
+
+			ConsumeResource( character, logsRequest, destroy );
+			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs" );
+			if (special)
+				ConsumeResource( character, specialRequest, destroy );
+				SendSysmessage( character , "and " + destroy + " reagents." );
+			endif
+		endif
+	else
+		AutoLoop_finish();
+	endif
+	endwhile
+	AutoLoop_finish();
+	if (makespecial and special)
+		special.movable := 1;
+	endif
+endfunction
+
+
+function CanMake( bowcraft , key , logs , logs_diff , cfg, character)
+
+	var diff := cfg[key].Skill + Cint( logs_diff / DIVIDER );
+	var hide := cfg[key].Hides;
+	var htype:= cfg[key].HideType;
+	var num;
+	if( diff < 1 )
+		diff := 1;
+	elseif( diff > 130 )
+		diff := 130;
+	endif
+	var material := cfg[key].Material;
+	//Require half resources during Crafting PH
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		material := CInt(Ceil(material/2));
+	endif
+
+
+	if( bowcraft >= ( diff + APPEAR_AT ) )
+		if (!hide)
+
+
+			if( logs.amount >= material )
+				return 1;
+			endif
+		else
+		  	foreach item in EnumerateItemsInContainer( character.backpack )
+			if (item.objtype == htype  )
+				num := item;
+			endif
+			endforeach
+			if ((num.amount >= hide ) and ( logs.amount >= material ))
+				return 1;
+			endif
+		endif
+	endif
+
+	return 0;
+
+endfunction
+
+
+function IsArrow( what )
+
+	case( what.objtype )
+		0xf3f	:
+		0x1bfb 	:	return 1;
+
+		default:	return 0;
+	endcase
+
+endfunction
+
+function IsReg( what )
+
+	case( what.objtype )
+		0xf8c	:			//sa
+		0xf8d 	:			//ss
+		0xf7a 	:	return 1; 	//bp
+
+		default:	return 0;
+	endcase
+
+endfunction
+
+
+function MakeArrowsOrBolts( character, want_objtype, shaftsRequest, feathersRequest )
+
+	if( GetAvailableResource(character, shaftsRequest).total < 1 or GetAvailableResource(character, feathersRequest).total < 1 )
+		SendSysMessage( character, "I can't seem to find either the shafts or the feathers!" );
+		return;
+	endif
+
+	var thepoints := get_default_points(SKILLID_BOWCRAFT);
+
+	if (CheckSkill( character,
+	                SKILLID_BOWCRAFT,
+	                1,                     // difficulty
+	                thepoints ))                   // points
+		var num_to_make := Min( GetAvailableResource(character, shaftsRequest).total,
+		                        GetAvailableResource(character, feathersRequest).total );
+
+		var arrows := CreateItemInBackpack( character, want_objtype, num_to_make );
+		if (arrows and arrows.amount > 0)
+			ConsumeResource( character, shaftsRequest, num_to_make );
+			ConsumeResource( character, feathersRequest, num_to_make );
+			SendSysMessage( character, "You create some arrows and put them in your pack." );
+		endif
+	else
+		ConsumeResource( character, shaftsRequest, 1 );
+		ConsumeResource( character, feathersRequest, 1 );
+		SendSysMessage( character, "You destroy some materials." );
+	endif
+
+endfunction
+
+
+function UpgradeArrows ( character, use_on )
+
+	SendSysmessage( character, "What would you like combine that with?" );
+	var use_reg := Target( character );
+	if ( !IsReg(use_reg) )
+		SendSysmessage( character, "You don't know how to use those together." );
+		return;
+	else
+	  	foreach item in EnumerateItemsInContainer( character.backpack )
+		if (item.objtype == use_on )
+				use_on := item;
+			endif
+		endforeach
+		if ( use_on.objtype == 0x1bfb and use_reg.objtype != 0xf7a)
+			SendSysmessage( character, "You must use black pearl." );
+			return;
+		endif
+		if ( use_on.objtype == 0xf3f and use_reg.objtype == 0xf7a)
+			SendSysmessage( character, "You must use sulphurous ash or spiders silk." );
+			return;
+		endif
+		var useOnRequest := MakeBackpackRequest(character, use_on);
+		var useRegRequest := MakeBackpackRequest(character, use_reg);
+		var val1 := GetAvailableResource(character, useOnRequest).total;
+		var val2 := GetAvailableResource(character, useRegRequest).total;
+		var num;
+		if (val1 > val2)
+			num := val2;
+		else
+			num := val1;
+		endif
+		if ( use_reg.objtype == 0xf8c )
+		sendDiff( character, 114 );
+			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 114 )
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
+				CreateItemInBackpack( character, 0x6051, num );
+				SendSysMessage( character, "You create some fire arrows and put them in your pack." );
+			else
+				SendSysMessage( character, "You fail, and destroy some materials." );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
+			endif
+		elseif ( use_reg.objtype == 0xf8d )
+		sendDiff( character, 119 );
+			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 119 )
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
+				CreateItemInBackpack( character, 0xb200, num );
+				SendSysMessage( character, "You create some ice arrows and put them in your pack." );
+			else
+				SendSysMessage( character, "You fail, and destroy some materials." );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
+			endif
+		elseif ( use_reg.objtype == 0xf7a )
+		sendDiff( character, 124 );
+			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 124 )
+				ConsumeResource( character, useOnRequest, num );
+				ConsumeResource( character, useRegRequest, num );
+				CreateItemInBackpack( character, 0x824e, num );
+				SendSysMessage( character, "You create some thunderbolts and put them in your pack." );
+			else
+				SendSysMessage( character, "You fail, and destroy some materials." );
+				ConsumeResource( character, useOnRequest, 1 );
+				ConsumeResource( character, useRegRequest, 1 );
+			endif
+		endif
+		return;
+	endif
+
+endfunction

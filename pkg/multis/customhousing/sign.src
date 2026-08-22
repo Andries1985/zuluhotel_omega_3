@@ -1,6 +1,7 @@
 use uo;
 use os;
 use guilds;
+use polsys;
 
 //include "include/client";
 //include "include/objtype";
@@ -15,6 +16,7 @@ include ":mdgumps:old-gumps";
 include ":houseExtras:settings";
 include ":guilds:include/guildconstants";
 include ":guilds:items/guildstone/companions";
+include ":containers:storageAreas";
 // 2026-08-10: YesNo() used below (Continue?/Sell it?/Remove? prompts) --
 // used to come transitively via housefriends.inc's ":mdgumps:yesNo" include,
 // which was removed as dead weight (nothing in housefriends.inc itself used
@@ -108,6 +110,33 @@ program use_house_sign (character, sign)
 				var hserial := ResolveCustomHouseSerial (sign);
 				var house := SystemFindObjectBySerial (hserial);
 
+				// 2026-08-21: mirrors :house:'s own demolish() guards, which
+				// this redeed path never had. Without this, redeeding a
+				// house that's a guild's active guild hall left the guild's
+				// "GuildHouse" pointer dangling at a serial that no longer
+				// exists, and redeeding with a vendor inside just destroyed
+				// it with no warning/refund.
+				var guild_house_id := GetObjProperty (house, "GuildHouse");
+				if (guild_house_id and !guild_house_id.errortext)
+					foreach guild in ListGuilds ()
+						if (CInt (guild.guildid) == CInt (guild_house_id) and CInt (guild.getprop ("GuildHouse")) == CInt (house.serial))
+							SendSysMessage (character, "This house is your active guild house. Select a new guild house first.", color := 33);
+							return;
+						endif
+					endforeach
+				endif
+				var has_vendor := 0;
+				foreach npc in (house.mobiles)
+					if (npc.npctemplate == "playervendor")
+						has_vendor := 1;
+						break;
+					endif
+				endforeach
+				if (has_vendor)
+					SendSysMessage (character, "You cannot redeed a house with vendors in it.", color := 33);
+					return;
+				endif
+
 				// Omega Cache containers are freestanding items placed inside
 				// the house footage, not tracked in house.components, so they
 				// need their own sweep. Block the redeed if anything is still
@@ -122,6 +151,10 @@ program use_house_sign (character, sign)
 				// DestroyMulti ran below. Collected in the same box sweep as
 				// the Omega Cache containers, destroyed after MakeADeed below.
 				var guildstones := array {};
+				// 2026-08-21: teleporters were never swept for at all -- they
+				// aren't tracked in house.components either, so nothing ever
+				// destroyed/unpaired them on redeed (mirrors :house:'s sweep).
+				var teleporters := array {};
 				if (homeinfo)
 					foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
 						if (thing.objtype == OMEGACACHE_OBJTYPE)
@@ -133,6 +166,8 @@ program use_house_sign (character, sign)
 							cache_serials.append (CInt (GetObjProperty (thing, "houseserial")));
 						elseif (thing.objtype == GUILDSTONE_OBJTYPE)
 							guildstones.append (thing);
+						elseif (thing.objtype == 0x15000)
+							teleporters.append (thing);
 						endif
 					endforeach
 				endif
@@ -140,6 +175,13 @@ program use_house_sign (character, sign)
 				if (!MakeADeed (character, house))
 					return;
 				endif
+				foreach thing in teleporters
+					// May already be gone if it was the *paired* half of a
+					// teleporter destroyed earlier in this same loop.
+					if (SystemFindObjectBySerial (thing.serial))
+						DemolishTeleporter (thing, character);
+					endif
+				endforeach
 				foreach thing in cache_items
 					EraseObjProperty (thing, "houseserial");
 					DestroyItem (thing);
@@ -179,7 +221,85 @@ program use_house_sign (character, sign)
 				endif
 				UnregisterCustomHouseSign (sign);
 				ReleaseAll (character, sign);
-				DestroyMulti (house);
+
+				// 2026-08-21: the packkey/bankkey created at purchase
+				// (customhousedeed.src, tagged with the sign's "lockid") were
+				// never destroyed on redeed, unlike :house:'s
+				// KP_DestroyOwnedKeysForLockIDs. customhousing tags keys with
+				// its own lowercase "lockid" property (not key.inc's
+				// "LockID"), so that shared helper can't be reused directly --
+				// swept here instead.
+				var house_lockid := GetObjProperty (sign, "lockid");
+				if (house_lockid)
+					foreach thing in EnumerateItemsInContainer (character.backpack)
+						if (GetObjProperty (thing, "lockid") == house_lockid)
+							DestroyItem (thing);
+						endif
+					endforeach
+					var bankbox := CP_GetStorageContainerForMobile (character, CP_DEFAULT_AREA);
+					if (bankbox)
+						foreach thing in EnumerateItemsInContainer (bankbox)
+							if (GetObjProperty (thing, "lockid") == house_lockid)
+								DestroyItem (thing);
+							endif
+						endforeach
+					endif
+				endif
+
+				// 2026-08-21: a bare DestroyMulti(house) here could silently
+				// leave the house base standing (structure not removed, or
+				// removed server-side but not refreshed client-side) even
+				// though the sign and every component above were already
+				// destroyed -- reported for 3-story custom houses. Mirrors
+				// :house:'s own redeed hardening (multiSign/use.src): capture
+				// coords/serial first (house may become invalid after),
+				// verify the destroy actually took, retry once, and force a
+				// client revision refresh so no stale multi shell lingers.
+				var hobjtype := house.objtype;
+				var hserial2 := house.serial;
+				var hx := house.x;
+				var hy := house.y;
+				var hz := house.z;
+				var hrealm := house.realm;
+				var destroy_result := DestroyMulti (house);
+				var destroy_failed := 0;
+				var destroy_err := "";
+				if (!destroy_result)
+					destroy_failed := 1;
+					destroy_err := "DestroyMulti returned false";
+				elseif (destroy_result.errortext)
+					destroy_failed := 1;
+					destroy_err := destroy_result.errortext;
+				endif
+
+				var still_exists := SystemFindObjectBySerial (CInt (hserial2));
+				if (still_exists)
+					var destroy_retry := DestroyMulti (still_exists);
+					if ((!destroy_retry) or destroy_retry.errortext or SystemFindObjectBySerial (CInt (hserial2)))
+						destroy_failed := 1;
+						if (destroy_retry and destroy_retry.errortext)
+							destroy_err := destroy_retry.errortext;
+						elseif (destroy_err == "")
+							destroy_err := "multi serial still exists after retry";
+						endif
+					endif
+				endif
+
+				if (destroy_failed)
+					Print ("Custom house redeed failed to remove multi for serial " + CStr (hserial2) + " (objtype " + Hex (hobjtype) + "): " + destroy_err);
+					SendSysMessage (character, "Could not fully remove the house structure: " + destroy_err + " Please page a GM.", color := 33);
+				endif
+
+				foreach viewer in ListMobilesNearLocation (hx, hy, hz, 24, hrealm)
+					if (viewer and viewer.connected)
+						IncRevision (viewer);
+						MoveObjectToLocation (viewer, viewer.x, viewer.y, viewer.z, viewer.realm, MOVEOBJECT_FORCELOCATION);
+					endif
+				endforeach
+				if (character and character.connected)
+					IncRevision (character);
+					MoveObjectToLocation (character, character.x, character.y, character.z, character.realm, MOVEOBJECT_FORCELOCATION);
+				endif
 			endif
 		16:	ChangeHouseLocks (character, sign);
 		20:

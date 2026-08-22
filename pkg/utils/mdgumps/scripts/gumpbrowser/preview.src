@@ -1,6 +1,7 @@
 // Companion preview window for commands/test/gumpbrowser.src.
-// Started via Start_Script with params := array{ mobile, mode, gump_id }.
+// Started via Start_Script with params := array{ mobile, mode, gump_id, transparent }.
 // mode 1 = GFGumpPic (native size), mode 2 = GFResizePic (stretched to 200x200).
+// transparent applies the client's fixed CheckerTrans effect over the previewed art.
 // Registers its own PID so the main browser can force-close this window
 // (via CloseGump) whenever the player picks a new mode or id.
 use uo;
@@ -11,7 +12,8 @@ include ":mdgumps:gumps_ex";
 program GumpBrowserPreview( params )
 	var mobile := params[1],
 		mode := CInt( params[2] ),
-		gump_id := CInt( params[3] );
+		gump_id := CInt( params[3] ),
+		transparent := CInt( params[4] );
 
 	var BTN_BACK := 100,
 		BTN_NEXT := 101,
@@ -33,8 +35,16 @@ program GumpBrowserPreview( params )
 
 		if ( mode == 1 )
 			GFGumpPic( gump, 0, 39, gump_id );
+			// Native art size is unknown here, so cover a generous area -- CheckerTrans
+			// only affects pixels actually drawn by the art, so overshoot is harmless.
+			if ( transparent )
+				GFAddAlphaRegion( gump, 0, 39, 600, 600 );
+			endif
 		else
 			GFResizePic( gump, 0, 39, gump_id, 200, 200 );
+			if ( transparent )
+				GFAddAlphaRegion( gump, 0, 39, 200, 200 );
+			endif
 		endif
 
 		var result := GFSendGump( mobile, gump );

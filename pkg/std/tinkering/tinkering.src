@@ -69,6 +69,37 @@ program MakeTinkerItems( character , tool )
 		return;
 	endif
 
+	// Handle Omega Cache targeting -- logs, ingots, glass, and clay are all
+	// stackable materials that can be pulled directly from an accessible Omega Cache.
+	if( use_on.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return;
+		endif
+		var ot := CInt(cacheRequest.objtype);
+
+		if( IsLogObjtype(ot) )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , WOOD_ID );
+			sound := CARPENTER_SOUND;
+		elseif( IsIngotObjtype(ot) )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , METAL_ID );
+			sound := SFX_ANVIL;
+		elseif( ot == UOBJ_GLASS )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , GLASS_ID );
+			sound := SFX_GLASSBREAK4;
+		elseif( ot == UOBJ_CLAY )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , CLAY_ID );
+			sound := SFX_HAMMER;
+		else
+			SendSysMessage( character, "You don't know how to use that." );
+			return;
+		endif
+
+		resourceRequest := cacheRequest;
+		TryToMakeItem( character , resourceRequest , item_to_make , sound );
+		return;
+	endif
+
 	if( !Accessible( character , use_on ) or !use_on.movable )
 		SendSysmessage( character , "You can't reach that!" );
 		return;
@@ -217,7 +248,7 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 		if( !have_it )
 			return;
 		endif
-		have_it_qual := have_it.qual;
+		have_it_qual := have_it.quality;
 	endif
 
 	var element := FindConfigElem( tinker_cfg , to_be_done_objtype );
@@ -269,7 +300,7 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 			skill := 90;
 		endif
 
-		if( element.Exceptional and (Random(100) < excep_ch) and CheckSkill( character , SKILLID_TINKERING , skill , 0 ) )
+		if( element.Exceptional and (GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) and CheckSkill( character , SKILLID_TINKERING , skill , 0 ))) )
 			if( theitem.quality )
 				//Made something Exceptional
 				var armslore := GetEffectiveSkill( character , SKILLID_ARMSLORE );
@@ -552,7 +583,7 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 			var randomchance := Random(10);
 			Print("Random Chance Roll: " + randomchance + " while Excep Chance is: " + excep_ch);
 
-			if( ( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TINKERING, excep_diff, 0 ) )
+			if( GetObjProperty(character, "ForceExceptional") or (( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TINKERING, excep_diff, 0 )) )
 
 				//Made something Exceptional
 				if( give_deed )
@@ -586,7 +617,7 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 					var product_desc := GetItemDescriptor(CInt(give_deed));
 					ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 0, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
-					//itemname := GetObjProperty( theitem , "DeedName" );
+					itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem, itemname );
 					IncRevision(theitem);
 				else
@@ -600,6 +631,11 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 				SendSysmessage( character, "You create the item and place it in your pack." );
 			endif
 
+			if( !theitem )
+				ConsumeResource( character, resourceRequest, material );
+				SendSysmessage( character, "Your backpack is full." );
+				break;
+			endif
 
 				// skill := skill + Cint( resource_diff / DIVIDER );
 
@@ -714,12 +750,7 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 			//SetName( theitem, itemname );
 			//IncRevision(theitem);
 			//else
-			if( !theitem )
-				ConsumeResource( character, resourceRequest, material );
-				SendSysmessage( character, "Your backpack is full." );
-				break;
-			endif
-			
+
 			// theitem.hp := theitem.maxhp;
 			// SetObjProperty( theitem , "BaseName" , itemname );
 			// SetName( theitem , itemname );
@@ -1091,6 +1122,28 @@ function GetRessourceName( ressource )
 
 	return t_name;
 
+endfunction
+
+// Objtype-based checks for Omega Cache selections (no physical item reference needed).
+function IsLogObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_LOGS_START and objtype <= UOBJ_LOGS_END ) or
+	   ( objtype == UOBJ_LOGS_GODDESS ) or ( objtype == UOBJ_LOGS ))
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsIngotObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_INGOTS_START  and objtype <= UOBJ_INGOTS_END  ) or
+	   ( objtype >= UOBJ_INGOTS2_START and objtype <= UOBJ_INGOTS2_END ) or
+	   ( objtype == UOBJ_GOLD_INGOT ) or
+	   ( objtype == UOBJ_SILVER_INGOT ) or
+	   ( objtype == UOBJ_COIN_COPPER_INGOT ))
+		return 1;
+	endif
+	return 0;
 endfunction
 
 

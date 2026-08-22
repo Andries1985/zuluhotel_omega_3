@@ -1,0 +1,48 @@
+// Synopsis: View-only mockup of the classic OSI bulk-order-deed gump layout (gump 0x1C7)
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program osibulkgump(staff)
+	var gump := GFCreateGump(50, 50);
+
+	// [text] section from the capture is "15" at index 0, referenced by
+	// the "text 250 72 1152 0" line below.
+	(gump.data).Append("15");
+
+	var lines := array{
+		"page 0",
+		"resizepic 25 10 5054 430 192",
+		"gumppictiled 33 20 413 173 2624",
+		"checkertrans 33 20 413 173",
+		"gumppic 20 5 10460",
+		"gumppic 430 5 10460",
+		"gumppic 20 177 10460",
+		"gumppic 430 177 10460",
+		"xmfhtmlgumpcolor 40 48 350 20 1045135 0 0 16777215",
+		"xmfhtmlgumpcolor 40 72 210 20 1045138 0 0 16777215",
+		"text 250 72 1152 0",
+		"xmfhtmlgumpcolor 40 144 350 20 1045139 0 0 16777215",
+		"xmfhtmlgumpcolor 135 168 120 20 1006044 0 0 16777215",
+		"xmfhtmlgumpcolor 310 168 120 20 1011012 0 0 16777215",
+		"button 100 168 4005 4007 1 0 1",
+		"button 275 168 4005 4007 1 0 0",
+		"xmfhtmlgumpcolor 190 25 120 20 1045133 0 0 16777215",
+		"xmfhtmlgumpcolor 40 96 120 20 1045136 0 0 16777215",
+		"tilepic 315 96 5181",
+		"kr_xmfhtmlgump 0 0 0 0 -1 0 0",
+		"kr_xmfhtmlgump 0 0 0 0 -1 0 0",
+		"kr_xmfhtmlgump 0 0 0 0 -1 0 0",
+		"kr_xmfhtmlgump 0 0 0 0 -1 0 0",
+		"xmfhtmltok 40 120 210 20 0 0 16777215 1114057 @#1025181"
+	};
+
+	foreach line in lines
+		(gump.layout).Append(line);
+	endforeach
+
+	SendSysmessage(staff, "Sending the OSI-style bulk order deed gump layout as a view-only mockup.");
+	GFSendGump(staff, gump);
+
+endprogram

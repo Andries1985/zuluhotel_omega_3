@@ -66,6 +66,37 @@ program use_hammer( character, hammer )
 		return;
 	endif
 
+	// Handle Omega Cache targeting -- ingots and bone are both stackable materials,
+	// so they can be pulled directly from an accessible Omega Cache instead of the backpack.
+	if( use_on.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return;
+		endif
+
+		if( IsBoneObjtype(cacheRequest.objtype) )
+			SendSysMessage( character, "What ingots would you like to use?" );
+			var ingotRequest := ResolveIngotTarget( character );
+			if( !ingotRequest )
+				return;
+			endif
+			if( !NearAnvil(character) )
+				SendSysmessage( character , "You must be near an anvil to smith items!" );
+				return;
+			endif
+			MakeBoneItems( character , ingotRequest , cacheRequest );
+		elseif( IsIngotObjtype(cacheRequest.objtype) )
+			if( !NearAnvil(character) )
+				SendSysmessage( character , "You must be near an anvil to smith items!" );
+				return;
+			endif
+			MakeBlacksmithItems( character , cacheRequest );
+		else
+			SendSysMessage( character, "You don't know how to use that." );
+		endif
+		return;
+	endif
+
 	if( !Accessible( character , use_on ) )
 		SendSysMessage( character , "You can't reach that." );
 		return;
@@ -76,18 +107,14 @@ program use_hammer( character, hammer )
 	endif
 
 	if( smith_cfg[use_on.graphic] && use_on.hp && use_on.quality)
-		var near := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
- 		foreach thing in near
-	  		if ((thing.objtype == UOBJ_ANVIL1) or (thing.objtype == UOBJ_ANVIL2) or (thing.objtype == UOBJ_ELVEN_ANVIL1) or (thing.objtype == UOBJ_ELVEN_ANVIL2) or ((thing.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (thing.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
-	   			repair_item( character, use_on, SKILLID_BLACKSMITHY );
-	   			return;
-	  		endif
- 		endforeach
-		SendSysmessage( character , "You must be near an anvil to repair items!" );
+		if( NearAnvil(character) )
+			repair_item( character, use_on, SKILLID_BLACKSMITHY );
+		else
+			SendSysmessage( character , "You must be near an anvil to repair items!" );
+		endif
 		return;
-
 	endif
-	
+
 	if( !IsInContainer( character.backpack , use_on ) )
 		SendSysmessage( character, "That item has to be in your backpack." );
 		return;
@@ -95,45 +122,23 @@ program use_hammer( character, hammer )
 
  	if (IsBone(use_on))
 	SendSysMessage( character, "What ingots would you like to use?" );
-	var bone := use_on;
-	var boneRequest := MakeBackpackRequest( character , bone );
-	use_on := Target( character, TGTOPT_CHECK_LOS );
-	
-	if( !use_on )
+	var boneRequest := MakeBackpackRequest( character , use_on );
+	var ingotRequest := ResolveIngotTarget( character );
+
+	if( !ingotRequest )
 		return;
 	endif
 
-	if( !Accessible( character , use_on ) )
-		SendSysMessage( character , "You can't reach that." );
+	if( !NearAnvil(character) )
+		SendSysmessage( character , "You must be near an anvil to smith items!" );
 		return;
 	endif
 
-	if( !ReserveItem(use_on) )
-		return;
+	MakeBoneItems( character , ingotRequest , boneRequest );
+	return;
 	endif
 
-	if( !IsInContainer( character.backpack , use_on ) )
-		SendSysmessage( character, "That item has to be in your backpack." );
-		return;
-	endif
-
-	if ( !IsIngot(use_on) )
-		SendSysMessage( character, "You must select ingots!" );
-		return;
-	endif
-	
-	var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
- 	foreach item in Near_Items
-	  	if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2) or (item.objtype == UOBJ_ELVEN_ANVIL1) or (item.objtype == UOBJ_ELVEN_ANVIL2) or ((item.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (item.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
-	   		MakeBoneItems( character , MakeBackpackRequest( character , use_on ) , boneRequest );
-	   		return;
-	  	endif
- 	endforeach
-
-	SendSysmessage( character , "You must be near an anvil to smith items!" );
-	endif
-
-	if( !IsIngot(use_on) ) 
+	if( !IsIngot(use_on) )
 		if ( !IsBone(use_on) )
 			SendSysMessage( character, "You don't know how to use that." );
 			return;
@@ -142,14 +147,11 @@ program use_hammer( character, hammer )
 
 	//   **Anvil finding snippet.  Inserted by Ingot Head
  	if (IsIngot(use_on))
-		var Near_Items := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
-		foreach item in Near_Items
-			if ((item.objtype == UOBJ_ANVIL1) or (item.objtype == UOBJ_ANVIL2) or (item.objtype == UOBJ_ELVEN_ANVIL1) or (item.objtype == UOBJ_ELVEN_ANVIL2) or ((item.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (item.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
-				MakeBlacksmithItems( character , MakeBackpackRequest( character , use_on ) );
-				return;
-			endif
-		endforeach
-		SendSysmessage( character , "You must be near an anvil to smith items!" );
+		if( NearAnvil(character) )
+			MakeBlacksmithItems( character , MakeBackpackRequest( character , use_on ) );
+		else
+			SendSysmessage( character , "You must be near an anvil to smith items!" );
+		endif
 	endif
 
 endprogram
@@ -230,7 +232,7 @@ function MakeBlacksmithItems( character, ingotRequest )
 
 		var product_desc := GetItemDescriptor(CInt(product_type));
 		if( CheckSkill( character , SKILLID_BLACKSMITHY , skill , points ) )		
-			if ( (Random(100) < excep_ch) && CheckSkill( character, SKILLID_BLACKSMITHY, excep_diff, 0) )
+			if ( GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) && CheckSkill( character, SKILLID_BLACKSMITHY, excep_diff, 0)) )
 
 				ApplyMaterialProperties(product_desc, ingotRequest, 1, character, SKILLID_BLACKSMITHY);				
 
@@ -251,6 +253,7 @@ function MakeBlacksmithItems( character, ingotRequest )
 			ConsumeResource( character , ingotRequest , material );
 			var product := CreateItemInBackpack( character , product_desc );
 			product.hp := product.maxhp;
+			IncRevision( product );
 			if(GetObjProperty(product, "IsExceptional"))
 				if(product.hitscript)
 					//was *12.. changed to *8
@@ -371,11 +374,11 @@ function MakeBoneItems( character, ingotRequest, boneRequest )
 		var product_desc := GetItemDescriptor(CInt(product_type));
 		if( CheckSkill( character , SKILLID_BLACKSMITHY , skill , points ) )
 
-			product_desc.Cprops.insert("OnHitScript","Undead");
-			product_desc.Cprops.insert("ProtectedType",":combat:raceresistonhit");
-			product_desc.Cprops.insert("OnHitscriptNumber",32);
+			product_desc.CProps.insert("OnHitScript","Undead");
+			product_desc.CProps.insert("ProtectedType",":combat:raceresistonhit");
+			product_desc.CProps.insert("OnHitscriptNumber",32);
 
-			if ( (Random(100) < excep_ch) and CheckSkill( character , SKILLID_BLACKSMITHY , excep_diff , 0 ) )
+			if ( GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) and CheckSkill( character , SKILLID_BLACKSMITHY , excep_diff , 0 )) )
 
 				ApplyMaterialProperties(product_desc, ingotRequest, 1, character, SKILLID_BLACKSMITHY);
 
@@ -397,6 +400,7 @@ function MakeBoneItems( character, ingotRequest, boneRequest )
 			ConsumeResource( character , boneRequest , material );
 			var product := CreateItemInBackpack( character , product_desc );
 			product.hp := product.maxhp;
+			IncRevision( product );
 		else
 			var bs 	:= GetEffectiveSkill( character , SKILLID_BLACKSMITHY );
 			var destroy	:= 75 - Cint( bs / 2 );
@@ -577,4 +581,78 @@ function IsBone( what )
 		default:	return 0;
 	endcase
 
+endfunction
+
+// True if character is standing next to an anvil (mundane, elven, or soulforge).
+function NearAnvil( character )
+	var near := ListItemsNearLocation( character.x , character.y , character.z , 1, character.realm );
+	foreach thing in near
+		if ((thing.objtype == UOBJ_ANVIL1) or (thing.objtype == UOBJ_ANVIL2) or (thing.objtype == UOBJ_ELVEN_ANVIL1) or (thing.objtype == UOBJ_ELVEN_ANVIL2) or ((thing.objtype >= UOBJ_SOULFORGE_ANVIL_START) and (thing.objtype <= UOBJ_SOULFORGE_ANVIL_END)))
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+// Prompts for and resolves the ingot half of a bone-armor craft.
+// Accepts either a physical backpack ingot stack or an Omega Cache selection.
+function ResolveIngotTarget( character )
+	var ingot_target := Target( character, TGTOPT_CHECK_LOS );
+	if( !ingot_target )
+		return 0;
+	endif
+
+	if( ingot_target.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return 0;
+		endif
+		if( !IsIngotObjtype(cacheRequest.objtype) )
+			SendSysMessage( character, "You must select ingots!" );
+			return 0;
+		endif
+		return cacheRequest;
+	endif
+
+	if( !Accessible( character, ingot_target ) )
+		SendSysMessage( character, "You can't reach that." );
+		return 0;
+	endif
+
+	if( !ReserveItem(ingot_target) )
+		return 0;
+	endif
+
+	if( !IsInContainer( character.backpack, ingot_target ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return 0;
+	endif
+
+	if( !IsIngot(ingot_target) )
+		SendSysMessage( character, "You must select ingots!" );
+		return 0;
+	endif
+
+	return MakeBackpackRequest( character, ingot_target );
+endfunction
+
+// Objtype-based checks for Omega Cache selections (no physical item reference needed).
+function IsIngotObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_INGOTS_START  and objtype <= UOBJ_INGOTS_END  ) or
+	   ( objtype >= UOBJ_INGOTS2_START and objtype <= UOBJ_INGOTS2_END ) or
+	   ( objtype == UOBJ_GOLD_INGOT ) or
+	   ( objtype == UOBJ_SILVER_INGOT ) or
+	   ( objtype == UOBJ_COIN_COPPER_INGOT ))
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsBoneObjtype( objtype )
+	var desc := GetItemDescriptor(CInt(objtype));
+	if(desc and desc.Graphic == 0xf7e)
+		return 1;
+	endif
+	return 0;
 endfunction

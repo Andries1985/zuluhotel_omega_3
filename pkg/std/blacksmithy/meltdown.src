@@ -26,17 +26,46 @@ const DIVIDER			:= 3;
 const SOUND_EFFECT_BELLOWS 	:= 0x2c;
 const SOUND_EFFECT_BUBBLE 	:= 0x22;
 
+// How many coins of each type melt down into a single ingot.
+const GOLD_COIN_TO_INGOT_RATIO		:= 500;
+const SILVER_COIN_TO_INGOT_RATIO	:= 1000;
+const COPPER_COIN_TO_INGOT_RATIO	:= 2000;
+
 var smith_cfg := ReadConfigFile( "blacksmithy" );
 
 program smeltarmor(character)
 
 	SendSysmessage( character, "What do you wish to smelt into ingots?" );
 	var use_on := Target( character , TGTOPT_CHECK_LOS );
-				
+
 		if (IsIngot(use_on) or IsBone(use_on))
 			SendSysMessage ( character, "That cannot be melted down!");
 			return;
 		endif
+
+	if (IsCoin(use_on))
+		if(!ReserveItem(use_on)) return; endif
+
+		if( !use_on )
+			SendSysmessage( character, "Targetting canceled" );
+			return;
+		endif
+
+		SendSysmessage(character, "Select a forge to use that on");
+
+		var coin_forge := Target( character );
+		if (!coin_forge)
+			SendSysmessage( character, "Targetting canceled" );
+			return;
+		endif
+
+		if (IsForge(coin_forge))
+			MeltCoinsToIngot( character , use_on );
+		else
+			SendSysmessage( character, "You must use that on a forge" );
+		endif
+		return;
+	endif
 
 	if(!ReserveItem(use_on)) return; endif
 
@@ -44,18 +73,18 @@ program smeltarmor(character)
 		SendSysmessage( character, "Targetting canceled" );
 		return;
 	endif
-	
+
 	if( smith_cfg[use_on.objtype] and !GetObjProperty( use_on , "ownerserial" ) )
-	
+
 		SendSysmessage(character, "Select a forge to use that on");
-	
+
 		var use_forge := Target( character );
 		if (!use_forge)
 			SendSysmessage( character, "Targetting canceled" );
 			return;
 		endif
 
-		if ((use_forge.objtype == UOBJ_SMALL_FORGE) or ((use_forge.objtype >= UOBJ_FORGE_START) and (use_forge.objtype <= UOBJ_FORGE_END)) or (use_forge.objtype == UOBJ_ELVEN_FORGE) or ((use_forge.objtype >= UOBJ_MINISOULFORGE_START) and (use_forge.objtype <= UOBJ_MINISOULFORGE_END)) or ((use_forge.objtype >= UOBJ_LARGESOULFORGE_START) and (use_forge.objtype <= UOBJ_LARGESOULFORGE_END)))
+		if (IsForge(use_forge))
 	   		SmeltToIngots( character , use_on );
 		else
 	   		SendSysmessage( character, "You must use that on a forge" );
@@ -63,8 +92,61 @@ program smeltarmor(character)
 	else
 		SendSysMessage( character, "That cannot be melted down!");
 	endif
-	
+
 endprogram
+
+function IsForge( item )
+	return ((item.objtype == UOBJ_SMALL_FORGE) or ((item.objtype >= UOBJ_FORGE_START) and (item.objtype <= UOBJ_FORGE_END)) or (item.objtype == UOBJ_ELVEN_FORGE) or ((item.objtype >= UOBJ_MINISOULFORGE_START) and (item.objtype <= UOBJ_MINISOULFORGE_END)) or ((item.objtype >= UOBJ_LARGESOULFORGE_START) and (item.objtype <= UOBJ_LARGESOULFORGE_END)));
+endfunction
+
+function GetCoinIngotType( what )
+	case( what.objtype )
+		UOBJ_GOLD_COIN:		return UOBJ_GOLD_INGOT;
+		UOBJ_SILVER_COIN:	return UOBJ_SILVER_INGOT;
+		UOBJ_COPPER_COIN:	return UOBJ_COIN_COPPER_INGOT;
+		default:		return 0;
+	endcase
+endfunction
+
+function GetCoinRatio( what )
+	case( what.objtype )
+		UOBJ_GOLD_COIN:		return GOLD_COIN_TO_INGOT_RATIO;
+		UOBJ_SILVER_COIN:	return SILVER_COIN_TO_INGOT_RATIO;
+		UOBJ_COPPER_COIN:	return COPPER_COIN_TO_INGOT_RATIO;
+		default:		return 0;
+	endcase
+endfunction
+
+function IsCoin( what )
+	return (GetCoinIngotType(what) != 0);
+endfunction
+
+function MeltCoinsToIngot( character, coinstack )
+
+	var ingottype := GetCoinIngotType( coinstack );
+	var ratio := GetCoinRatio( coinstack );
+	var ingots := CInt( coinstack.amount / ratio );
+
+	if( ingots < 1 )
+		SendSysmessage( character, "You need at least " + ratio + " coins to melt down an ingot." );
+		return;
+	endif
+
+	PlaySoundEffect(character,SOUND_EFFECT_BELLOWS);
+	Sleep (1);
+	PlaySoundEffect(character,SOUND_EFFECT_BELLOWS);
+	Sleep (1);
+	PlaySoundEffect(character,SOUND_EFFECT_BUBBLE);
+
+	var spent := ingots * ratio;
+	SubtractAmount( coinstack, spent );
+
+	var item := CreateItemInBackpack( character, ingottype, ingots );
+	if( item )
+		SendSysmessage( character, "You melt down " + spent + " coins into " + ingots + " ingots." );
+	endif
+
+endfunction
 
 function SmeltToIngots( character, tbsmelted )
 
