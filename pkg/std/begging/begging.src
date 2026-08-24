@@ -6,6 +6,7 @@ include "include/skillpoints";
 include "include/random";
 include "include/classes";
 include "include/attributes";
+include "include/objtype";
 include "../pkg/opt/karmafame/karmafame";
 
 const Minutes:=1; // You can beg only after this time
@@ -49,7 +50,7 @@ program begging ( character )
 		var delay2:=7;
 		var delay3:=3;
 		var delay4:=2;
-		var money := CInt((GetEffectiveSkill( character , SKILLID_BEGGING )/3)+Random(20));
+		var money := CInt((GetEffectiveSkill( character , SKILLID_BEGGING )/3)+Random(51));
 		var level := GetClasseLevel(character);
 		var bonus := level * 10;
 
@@ -139,8 +140,27 @@ program begging ( character )
 		        	AwardFame( character , -25 );
 			endif//ZHS BEGGING UPDATE
 
-			CreateItemInBackpack(character, 0xeed, money);
-			SendSysmessage (character, "You receive "+money+" gold coins!");
+			var coin_roll := Random(100);
+			var currency_type;
+			var currency_name;
+			var coin_amount;
+
+			if( coin_roll < 30 )
+				currency_type := UOBJ_COPPER_COIN;
+				currency_name := "copper";
+				coin_amount := money * 4;
+			elseif( coin_roll < 60 )
+				currency_type := UOBJ_SILVER_COIN;
+				currency_name := "silver";
+				coin_amount := money * 2;
+			else
+				currency_type := UOBJ_GOLD_COIN;
+				currency_name := "gold";
+				coin_amount := money;
+			endif
+
+			CreateItemInBackpack(character, currency_type, coin_amount);
+			SendSysmessage (character, "You receive "+coin_amount+" "+currency_name+" coins!");
 
 		else
 			case (Random(5))
