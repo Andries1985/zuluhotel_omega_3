@@ -439,13 +439,6 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 			return;
 		endif
 	endif
-	
-	if ( CInt(choice) == 27 ) // Soulforge Crafting
-		If (!NearASoulforge(who))
-			SendSysMessage(who,"You must be closer to a SoulForge!");
-			return;
-		endif
-	endif
 
 	menu := CreateMenu( "What would you like to make?" );
 

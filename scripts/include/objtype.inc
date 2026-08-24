@@ -781,7 +781,9 @@ const UOBJ_TGOLD_INGOT                  := 0x1be9;
 
 const UOBJ_ARROW			:= 0x0f3f;
 const UOBJ_BOLT		        	:= 0x1bfb;
-const UOBJ_FIRE_ARROW		        := 0x16051;
+const UOBJ_FIRE_ARROW		        := 0x6051;
+const UOBJ_ICE_ARROW		        := 0xb200;
+const UOBJ_THUNDER_BOLT	        	:= 0x824e;
 
 const UOBJ_WOOD_YEW                     := 0x16351;
 const UOBJ_WOOD_ASH                     := 0x16352;

@@ -121,4 +121,38 @@ var GUILD_HOUSE_PERM_COLUMN_KEY := {GUILD_HOUSE_PERM_SECURE, GUILD_HOUSE_PERM_SE
 // guild clothes
 var CLOTHING := {0x1EFD, 0x1EFF, 0x1F01, 0x1F03, 0x1F7B, 0x1F9F, 0x1FA1, 0x1FFD, 0x1FFE, 0x1515, 0x1516, 0x1517, 0x152E, 0x1537, 0x1539, 0x153B, 0x153D, 0x1541, 0x153F, 0x1543, 0x141b, 0x1545, 0x1547, 0x1549, 0x154c, 0x1713, 0x1714, 0x1715, 0x1716, 0x1717, 0x1718, 0x1719, 0x171A, 0x171B, 0x171C, 0x170B, 0x170D, 0x170F, 0x1711};
 
-var COLOURS := {1152, 1153, 1154, 2730, 2731, 2732, 2733, 2734, 2669, 1655, 2741, 2742, 2743, 2744, 2745, 1555, 2746, 2747, 2243, 1184, 2750, 2751, 2752, 2753, 2729, 2755, 2756, 2757, 2758, 2759, 2760, 1183, 1185, 1260, 1261, 1262, 1263, 1264, 1265, 1266, 1267, 1268, 1269, 1271, 1272, 2298,2299,1282,1283,1284,1285,1286, 1287, 1288, 1289, 1291, 1292, 1293, 1294, 1295, 1296, 1297, 1298, 1299, 1300, 2819, 2820, 2821, 2823, 2824, 1362, 1364, 1368, 1371, 1372, 1375, 1377, 1380, 1383, 1384, 1385, 1386, 1387, 1388, 1389, 1390, 1391, 1392, 1393, 1394, 1397, 1399, 1400, 1467, 1472, 1476, 1481, 1482, 1483, 1484, 1485, 1486, 1487, 1488, 1491, 1493, 1497, 1500, 2706, 2707, 2708, 2709, 2710, 2711, 2712, 2713, 2714, 2715, 2716, 2717, 2718, 2719, 2720, 2721, 2722, 2724, 2725, 2726, 2728, 2729, 2730, 2732, 2733, 2735, 2736, 2738, 2743, 2745, 2746, 2747, 2748, 2749, 2750, 2751, 2752, 2753, 2754, 2755, 2928, 2955};
+// Guild colour picker (SetGuildColour() in guilds.src) now offers the full
+// dyeable hue range 1000-2999, minus a handful of bands that are skin tones,
+// near-duplicates, or otherwise not worth offering -- pruned by hand
+// 2026-08-23. Swatches are shown GUILD_COLOUR_PER_PAGE at a time, each page
+// its own gump send (a single gump covering all ~1300 swatches at once has
+// broken the server before).
+var GUILD_COLOUR_EXCLUDE_RANGES := {
+	{1000,1082}, {1102,1149}, {1201,1254}, {1301,1354}, {1401,1454},
+	{1501,1554}, {1601,1654}, {1702,1781}, {1801,1899}, {1901,1908},
+	{2001,2018}, {2101,2130}, {2201,2224}, {2300,2318}, {2401,2430}
+};
+
+const GUILD_COLOUR_PER_PAGE := 150;
+
+function IsGuildColourExcluded(hue)
+	foreach range in GUILD_COLOUR_EXCLUDE_RANGES
+		if (hue >= range[1] && hue <= range[2])
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function BuildGuildColours()
+	var colours := array;
+	var hue;
+	for (hue := 1000; hue <= 2999; hue := hue + 1)
+		if (!IsGuildColourExcluded(hue))
+			colours.append(hue);
+		endif
+	endfor
+	return colours;
+endfunction
+
+var COLOURS := BuildGuildColours();

@@ -3,6 +3,8 @@ use os;
 use uo;
 use cfgfile;
 
+include "include/namingbyenchant";
+
 const DEFAULT_PER_ROW := 20;
 const MAX_PER_ROW := 50;
 const X_SPACING := 1;
@@ -65,6 +67,17 @@ program createitemdesc(who, text)
             item.movable := 0;
             SetObjProperty(item, "StaffCreatedSerial", who.serial);
             SetObjProperty(item, "StaffCreatedName", who.name);
+
+            // Reveal true name/color immediately (same path ItemID() uses for a
+            // successful identify) instead of leaving it in the client's
+            // "unidentified magic item" state -- these are spawned for visual
+            // inspection, not for players to find.
+            if (GetObjProperty(item, "UnIDedMagicalItem") || GetObjProperty(item, "Enchanted")
+                    || GetObjProperty(item, "IsGMItem") || GetObjProperty(item, "EnchantColor")
+                    || GetObjProperty(item, "StaticName"))
+                SetNameByEnchant(item);
+            endif
+            SetObjProperty(item, "IDed", 1);
 
             var elem := FindConfigElem(cfg, objtype);
             var item_name := "";

@@ -1,10 +1,11 @@
-// Synopsis: Drop a chest of 5000 of every crafting material plus one of every crafting tool at your feet for crafting testing
+// Synopsis: Drop 6 backpacks (Logs, Ore, Ingots, Hides, Tailoring, Materials) of 5000 of every crafting material plus one of every crafting tool at your feet for crafting testing
 use uo;
 
 include "include/objtype";
 include ":staff:include/staff";
 
 const MATERIAL_STACK_AMOUNT := 5000;
+const CRAFTING_BACKPACK := 0x9B2;
 
 function FillMaterials(chest, materials)
 	foreach objtype in materials
@@ -17,13 +18,41 @@ program materialbag(who)
 	// Several "standard" POL wood/board/exotic-ore constants (objtype.inc) are vestigial
 	// on this shard and have no itemdesc entry at all -- they are intentionally omitted.
 
-	var chest := CreateItemAtLocation(who.x, who.y, who.z, 0xE42, 1, who.realm);
-	if (!chest)
-		SendSysMessage(who, "Couldn't create a chest at your feet.");
+	var logsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var oreChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var ingotsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var hidesChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var tailoringChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var materialsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+
+	if (!logsChest or !oreChest or !ingotsChest or !hidesChest or !tailoringChest or !materialsChest)
+		SendSysMessage(who, "Couldn't create a backpack at your feet.");
 		return 0;
 	endif
-	chest.name := "Crafting Materials Chest";
-	chest.movable := 1;
+
+	logsChest.name := "Logs Backpack";
+	logsChest.movable := 1;
+	logsChest.color := 1102;
+
+	oreChest.name := "Ore Backpack";
+	oreChest.movable := 1;
+	oreChest.color := 2101;
+
+	ingotsChest.name := "Ingots Backpack";
+	ingotsChest.movable := 1;
+	ingotsChest.color := 2406;
+
+	hidesChest.name := "Hides Backpack";
+	hidesChest.movable := 1;
+	hidesChest.color := 1828;
+
+	tailoringChest.name := "Tailoring Backpack";
+	tailoringChest.movable := 1;
+	tailoringChest.color := 1358;
+
+	materialsChest.name := "Materials Backpack";
+	materialsChest.movable := 1;
+	materialsChest.color := 1150;
 
 	var ore := {
 		UOBJ_IRON_ORE, UOBJ_BRONZE_ORE, UOBJ_DULLCOPPER_ORE, UOBJ_ORICHALCUM_ORE,
@@ -51,12 +80,11 @@ program materialbag(who)
 
 	// This shard's wood-variety system lives entirely on colored LOGS (0x7300-0x7316 plus
 	// base/goddess logs) -- there is no separate "board" objtype at all, so boards are omitted.
-	var logs := {
-		UOBJ_LOGS, UOBJ_LOGS_GODDESS
-	};
+	// All 23 colored objtypes confirmed present in pkg/std/lumberjacking/itemdesc.cfg.
+	var logs := { UOBJ_LOGS, UOBJ_LOGS_GODDESS };
 	var logcolor;
 	for (logcolor := 0x7300; logcolor <= 0x7316; logcolor := logcolor + 1)
-		logs[len(logs)+1] := logcolor;
+		logs.append(logcolor);
 	endfor
 
 	var hides := {
@@ -88,9 +116,12 @@ program materialbag(who)
 	};
 
 	// Bowcraft (pkg/std/bowcraft): Logs -> Shafts, Shafts + Feathers -> Arrows/Bolts.
-	// Feathers has no other source in this bag.
+	// Feathers has no other source in this bag. Plain Arrow/Bolt included too so
+	// the Bowcraft Tool gump's Improve-to-elemental recipes have something to
+	// upgrade right away instead of requiring a craft-from-scratch step first.
 	var bowcraft := {
-		UOBJ_FEATHER, UOBJ_SHAFTS
+		UOBJ_FEATHER, UOBJ_SHAFTS, UOBJ_ARROW, UOBJ_BOLT,
+		UOBJ_FIRE_ARROW, UOBJ_ICE_ARROW, UOBJ_THUNDER_BOLT
 	};
 
 	var reagents := {
@@ -123,34 +154,34 @@ program materialbag(who)
 		UOBJ_FISH, UOBJ_BROWN_FISH, UOBJ_BLUE_FISH, UOBJ_YELLOW_FISH
 	};
 
-	FillMaterials(chest, ore);
-	FillMaterials(chest, ingots);
-	FillMaterials(chest, logs);
-	FillMaterials(chest, hides);
-	FillMaterials(chest, cloth);
-	FillMaterials(chest, misc);
-	FillMaterials(chest, preciousmetals);
-	FillMaterials(chest, bowcraft);
-	FillMaterials(chest, reagents);
-	FillMaterials(chest, cooking);
-	FillMaterials(chest, fishing);
+	FillMaterials(logsChest, logs);
+	FillMaterials(oreChest, ore);
+	FillMaterials(ingotsChest, ingots);
+	FillMaterials(hidesChest, hides);
+	FillMaterials(tailoringChest, cloth);
+	FillMaterials(materialsChest, misc);
+	FillMaterials(materialsChest, preciousmetals);
+	FillMaterials(materialsChest, bowcraft);
+	FillMaterials(materialsChest, reagents);
+	FillMaterials(materialsChest, cooking);
+	FillMaterials(materialsChest, fishing);
 
-	// One of every crafting tool, so every skill can be tested from this single chest
-	// without having to go find/buy the tool separately.
-	CreateItemInContainer(chest, "SmithyHammer", 1);
-	CreateItemInContainer(chest, "Tongs", 1);
-	CreateItemInContainer(chest, "Saw", 1);
-	CreateItemInContainer(chest, "TinkersTools", 1);
-	CreateItemInContainer(chest, "SewingKit", 1);
-	CreateItemInContainer(chest, "Scissors", 1);
-	CreateItemInContainer(chest, "rollingpin", 1);
-	CreateItemInContainer(chest, "woodenbowl", 1);
-	CreateItemInContainer(chest, "fryingpan", 1);
-	CreateItemInContainer(chest, "FishingPole", 1);
-	CreateItemInContainer(chest, 0x0e9b, 1);
-	CreateItemInContainer(chest, "BowcraftTool", 1);
+	// One of every crafting tool, so every skill can be tested without having
+	// to go find/buy the tool separately. Lives in the materials chest.
+	CreateItemInContainer(materialsChest, "SmithyHammer", 1);
+	CreateItemInContainer(materialsChest, "Tongs", 1);
+	CreateItemInContainer(materialsChest, "Saw", 1);
+	CreateItemInContainer(materialsChest, "TinkersTools", 1);
+	CreateItemInContainer(materialsChest, "SewingKit", 1);
+	CreateItemInContainer(materialsChest, "Scissors", 1);
+	CreateItemInContainer(materialsChest, "rollingpin", 1);
+	CreateItemInContainer(materialsChest, "woodenbowl", 1);
+	CreateItemInContainer(materialsChest, "fryingpan", 1);
+	CreateItemInContainer(materialsChest, "FishingPole", 1);
+	CreateItemInContainer(materialsChest, 0x0e9b, 1);
+	CreateItemInContainer(materialsChest, "BowcraftTool", 1);
 
-	SendSysMessage(who, "Crafting Materials Chest dropped at your feet, " + MATERIAL_STACK_AMOUNT + " of each material.");
+	SendSysMessage(who, "Dropped 6 backpacks at your feet -- Logs, Ore, Ingots, Hides, Tailoring, and Materials -- " + MATERIAL_STACK_AMOUNT + " of each material.");
 	LogCommand(who, GetProcess(GetPid()).name);
 	return 1;
 endprogram
