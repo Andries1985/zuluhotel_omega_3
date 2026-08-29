@@ -12,6 +12,7 @@ include "include/math";
 include ":itemid:itemid";
 include "include/attributes";
 include ":armor:armorZones";
+include ":bulkorders:bulkorder";
 
 /*todo
 add magic/bardic efficiency
@@ -35,6 +36,19 @@ program itemdata(parms)
 		prop.clilocid := 1061113; // Owner:
 		prop.values := array {SystemFindObjectBySerial(Cint(owner),SYSFIND_SEARCH_OFFLINE_MOBILES).name};
 		allprops.append(prop);
+	endif
+	var consecrated := GetObjProperty(xObject, "Consecrated");
+	if(consecrated)
+		prop.clilocid := 1070722; // Nothing - raw text
+		prop.values := array {"Consecrated"};
+		allprops.append(prop);
+
+		var consecratedTo := SystemFindObjectBySerial(Cint(consecrated), SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if(consecratedTo)
+			prop.clilocid := 1061113; // Owner:
+			prop.values := array {consecratedTo.name};
+			allprops.append(prop);
+		endif
 	endif
 	var fishtier := GetObjProperty(xObject, "FishTier");
 	if(fishtier)
@@ -397,6 +411,48 @@ program itemdata(parms)
 			endif
 		endif
 	endif
+
+	// Bulk Order Deed / Book mouseover -- locked decision: both computed on
+	// demand, no persisted summary state.
+	if( xObject.objtype == UOBJ_BULKORDER_DEED )
+		var bod_skillid := CInt(BOD_GetCraft(xObject));
+		var bod_line := BOD_CraftName(bod_skillid);
+		if( CInt(BOD_GetExceptional(xObject)) )
+			bod_line := "(Exceptional) " + bod_line;
+		endif
+		bod_line := bod_line + " BOD";
+		if( CInt(BOD_GetSize(xObject)) )
+			var bod_filled := BOD_GetSlotsFilled(xObject);
+			var bod_have := 0;
+			foreach bod_f in bod_filled
+				if( CInt(bod_f) )
+					bod_have := bod_have + 1;
+				endif
+			endforeach
+			bod_line := bod_line + ", " + bod_have + " of " + Len(bod_filled) + " filled";
+		else
+			bod_line := bod_line + ", " + CInt(BOD_GetAmountFilled(xObject)) + " of " + CInt(BOD_GetAmount(xObject)) + " filled";
+		endif
+		prop.clilocid := 1070722; // Nothing - raw text
+		prop.values := array {bod_line};
+		allprops.append(prop);
+	elseif( xObject.objtype == UOBJ_BULKORDER_BOOK )
+		var bod_small := 0;
+		var bod_large := 0;
+		foreach bod_item in EnumerateItemsInContainer(xObject)
+			if( bod_item.objtype == UOBJ_BULKORDER_DEED )
+				if( CInt(BOD_GetSize(bod_item)) )
+					bod_large := bod_large + 1;
+				else
+					bod_small := bod_small + 1;
+				endif
+			endif
+		endforeach
+		prop.clilocid := 1070722; // Nothing - raw text
+		prop.values := array {"Bulk Order Book: " + bod_small + " Small, " + bod_large + " Large"};
+		allprops.append(prop);
+	endif
+
 	return allprops;
 
 endprogram

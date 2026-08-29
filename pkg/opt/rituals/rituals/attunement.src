@@ -42,7 +42,7 @@ function ApplyRitualEffect( mobile, item )
                 break;
 	endwhile
  
-        SetObjProperty( item, "owner", targ.serial );
+        SetObjProperty( item, "Owner", targ.serial );
         SetObjProperty( item, "NameSpec", "Owned by "+targ.name );
         
 	SendSysMessage( mobile, "From now on, only "+targ.name+" will be able to equip "+item.desc+"." );

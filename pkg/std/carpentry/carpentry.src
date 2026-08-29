@@ -497,6 +497,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 					var product_desc := GetItemDescriptor(CInt(item));
 					ApplyMaterialProperties(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY);
 					theitem := CreateItemInBackpack( character , product_desc );
+					IncRevision(theitem);
 					//itemname := GetObjProperty( theitem , "BaseName" );
 				endif
 				if( skill >= 130 )
@@ -525,6 +526,7 @@ function TryToCreateItem( character , use_on , item , sfx := CARPENTER_SOUND )
 				var product_desc := GetItemDescriptor(CInt(item));
 				ApplyMaterialProperties(product_desc, primaryRequest, 0, character, SKILLID_CARPENTRY);
 				theitem := CreateItemInBackpack( character , product_desc );
+				IncRevision(theitem);
 				//itemname := GetObjProperty( theitem , "BaseName" );
 			endif
 		endif
@@ -842,6 +844,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 				AddMenuItem( menu , 0x9AC , "Straw Items" );
 				AddMenuItem( menu , 0x35EE , "Crystal Items" );
 				AddMenuItem( menu , 0x3084 , "Elven Items" );
+				AddMenuItem( menu , 0x2819 , "Tokuno Furniture" );
 				break;
 
 		ID_INGOTS:	AddMenuItem( menu , 0x0fb1 , "Smith Furniture" );
@@ -856,6 +859,7 @@ function MakeAndProcessMenu( character , byref use_on , id )
 		ID_CLOTH:	AddMenuItem( menu , 0x0A69 , "House Furniture" );
 				AddMenuItem( menu , 0x0eb2 , "Musical Instruments" );
 				AddMenuItem( menu , 0x1070 , "Tools and Training Items" );
+				AddMenuItem( menu , 0x240D , "Tokuno Furniture" );
 				break;
 
 		ID_BONES:	AddMenuItem( menu , 0x0F7E , "Bone Furniture" );

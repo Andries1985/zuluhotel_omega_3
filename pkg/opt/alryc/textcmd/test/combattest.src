@@ -1,0 +1,54 @@
+// Synopsis: Toggle -- revokes/regrants your own "invul" privilege AND bypasses the Thief/Mage/Bard class-weapon damage restriction, so a Test-level staff member can actually deal and take real combat damage for QA
+use uo;
+use os;
+
+include "include/classes";
+
+const COMBATTEST_SAVED_CLASSES := "CombatTestSavedClasses";
+
+program combattest(who, text)
+
+	var has_invul := 0;
+	foreach priv in (who.privileges().keys())
+		if (priv == "invul")
+			has_invul := 1;
+		endif
+	endforeach
+
+	if (has_invul)
+		who.disable("invul");
+		RevokePrivilege(who, "invul");
+
+		// pkg/systems/combat/include/hitscriptinc.inc's RecalcPhysicalDmg
+		// zeroes basedamage outright for a Thief/Mage/Bard not wielding a
+		// weapon on their class's allowed list -- that's the actual "swing
+		// but deal 0 damage" cause, unrelated to invul. Stash whichever of
+		// these are set so they can be restored exactly on toggle-off.
+		var saved := dictionary;
+		var class_ids := array{CLASSEID_THIEF, CLASSEID_MAGE, CLASSEID_BARD};
+		foreach classid in class_ids
+			var level := GetObjProperty(who, classid);
+			if (level)
+				saved[classid] := level;
+				EraseObjProperty(who, classid);
+			endif
+		endforeach
+		SetObjProperty(who, COMBATTEST_SAVED_CLASSES, saved);
+
+		SendSysMessage(who, "Combat test mode ON -- invulnerability revoked and any class-weapon damage restriction bypassed. You can now deal and take real damage. Run .combattest again to restore both.", 3, 33);
+	else
+		who.enable("invul");
+		GrantPrivilege(who, "invul");
+
+		var saved := GetObjProperty(who, COMBATTEST_SAVED_CLASSES);
+		if (saved)
+			foreach classid in (saved.keys())
+				SetObjProperty(who, classid, saved[classid]);
+			endforeach
+		endif
+		EraseObjProperty(who, COMBATTEST_SAVED_CLASSES);
+
+		SendSysMessage(who, "Combat test mode OFF -- invulnerability and any class restrictions restored.", 3, 73);
+	endif
+
+endprogram

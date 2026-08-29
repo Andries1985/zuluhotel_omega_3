@@ -443,6 +443,7 @@ function MakeAndProcessMenu( who , ingotRequest , orediff )
 	AddMenuItem( menu , 0x1b75 , "Shields" );
 	AddMenuItem( menu , 0x0f4b , "Weapons" );
 	AddMenuItem( menu , 0x151a , "Decorations" );
+	AddMenuItem( menu , 0x1573 , "Decorative Shields" );
 	choice := SelectMenuItem2( who , menu ).index;
 	if( !choice )
 		return 0;
@@ -471,6 +472,8 @@ function MakeAndProcessMenu( who , ingotRequest , orediff )
 			break;
 
 		4:	break;
+
+		5:	break;
 	endcase
 
 

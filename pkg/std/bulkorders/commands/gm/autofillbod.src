@@ -1,0 +1,44 @@
+// Synopsis: GM test command -- instantly fills a targeted bulk order deed,
+// skipping crafting, so turn-in/payout can be tested repeatedly.
+
+use uo;
+use os;
+
+include ":bulkorders:bulkorder";
+include "include/objtype";
+
+program autofillbod(who)
+
+	SendSysMessage(who, "Target the bulk order deed to instantly fill.", color := 88);
+	var deed := Target(who);
+	if( !deed )
+		SendSysMessage(who, "Never mind.", color := 33);
+		return;
+	endif
+
+	if( deed.objtype != UOBJ_BULKORDER_DEED )
+		SendSysMessage(who, "That isn't a bulk order deed.", color := 33);
+		return;
+	endif
+
+	if( CInt(BOD_GetSize(deed)) )
+		var filled := BOD_GetSlotsFilled(deed);
+		var i;
+		for( i := 1; i <= Len(filled); i := i+1 )
+			filled[i] := 1;
+		endfor
+		SetObjProperty(deed, "BODSlotsFilled", filled);
+		// Give it a plausible accrued Gold/Points total too, since real play
+		// would have accrued this from each combined Small along the way.
+		var skillid := CInt(BOD_GetCraft(deed));
+		var difficulty := BOD_RewardDifficulty(deed);
+		var per_small_gold := BOD_GoldReward(difficulty, BOD_HasMaterialAxis(skillid));
+		SetObjProperty(deed, "BODAccruedGold", per_small_gold * Len(filled));
+		SetObjProperty(deed, "BODAccruedPoints", BOD_POINTS_PER_SMALL * Len(filled));
+		SendSysMessage(who, "Filled all " + Len(filled) + " slots on that Large bulk order deed.", color := 66);
+	else
+		SetObjProperty(deed, "BODAmountFilled", CInt(BOD_GetAmount(deed)));
+		SendSysMessage(who, "Filled that bulk order deed's amount to " + CInt(BOD_GetAmount(deed)) + ".", color := 66);
+	endif
+
+endprogram

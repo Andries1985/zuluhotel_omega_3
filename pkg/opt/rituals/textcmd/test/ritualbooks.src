@@ -1,0 +1,41 @@
+// Synopsis: Give yourself a bag with every ritual chant book (all 25 rituals plus the DrawCircle/UndoCircle circle rites) for testing, so you don't have to spawn each one by hand
+use uo;
+use os;
+
+include "../pkg/opt/rituals/include/chantbook";
+
+program textcmd_ritualbooks( who, what )
+
+	var bag := CreateItemInContainer( who.backpack, 0x0E76 );
+	if( bag.errortext )
+		SendSysMessage( who, "Error creating bag -->"+bag.errortext );
+		return 0;
+	endif
+	SetName( bag, "ritual chant books" );
+
+	var ritualids := array{
+		131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
+		141, 142, 143, 144, 145, 146, 147, 148, 149, 150,
+		151, 152, 153, 154, 155
+	};
+	foreach ritualid in ritualids
+		var book := CreateRitualChantBookInContainer( bag, ritualid );
+		if( book.errortext )
+			SendSysMessage( who, "Error creating chant book for ritual "+CStr(ritualid)+" -->"+book.errortext );
+		endif
+	endforeach
+
+	var draw_book := CreateRitualChantBookInContainer( bag, "DrawCircle" );
+	if( draw_book.errortext )
+		SendSysMessage( who, "Error creating Drawing the Circle book -->"+draw_book.errortext );
+	endif
+
+	var undo_book := CreateRitualChantBookInContainer( bag, "UndoCircle" );
+	if( undo_book.errortext )
+		SendSysMessage( who, "Error creating Closing the Circle book -->"+undo_book.errortext );
+	endif
+
+	SendSysMessage( who, "Ritual chant books added: all 25 rituals plus Drawing the Circle and Closing the Circle." );
+
+	return 1;
+endprogram

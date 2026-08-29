@@ -106,6 +106,7 @@ program CheckPoint( point )
 			"NPC":		ret := CreateSpawnPointNpc( point, pt_data[2], pt_data );
 			"Group":	ret := CreateSpawnPointNpcFromGroup( point, pt_data );
 			"Item":		ret := CreateSpawnPointItem( point, pt_data );
+			"Item Group":	ret := CreateSpawnPointItemFromGroup( point, pt_data );
 			"Container":	ret := CreateSpawnPointContainer( point, pt_data );
 			"Custom NPC":   ret := CreateSpawnPointNpc( point, pt_data[2], pt_data );
 		endcase
@@ -396,9 +397,36 @@ function CreateSpawnPointItem( byref point, byref pt_data )
 	SetObjProperty( item, PROPID_MOBILE_SPAWNPOINT_SERIAL, point.serial );
 	serials.append( item.serial );
 	SetObjProperty( point, PROPID_SPAWNPOINT_SPAWNED_OBJECTS, serials );
-	
+
 	return item;
-	
+
+endfunction
+
+
+function CreateSpawnPointItemFromGroup( byref point, byref pt_data )
+
+	var group := pt_data[2];
+	var cfg := ReadConfigFile( ":spawnpoint:itemgroups" );
+	if( !cfg )
+		return 0;
+	endif
+
+	var elem	:= cfg[group];
+	var possibles	:= GetConfigStringArray( elem, "spawn" );
+	if( !possibles.size() )
+		return 0;
+	endif
+
+	var template := possibles[RandomInt(possibles.size())+1];
+	if( !template )
+		return 0;
+	endif
+
+	var item_pt_data := pt_data;
+	item_pt_data[2] := template;
+
+	return CreateSpawnPointItem( point, item_pt_data );
+
 endfunction
 
 
@@ -729,11 +757,12 @@ function ValidatePointSpawns( byref point, byref pt_data )
 			obj := SystemFindObjectBySerial(serial);
 			if( obj )
 				case( pt_data[1] )
-					"Item":	
+					"Item":
+					"Item Group":
 						if( !obj.container )
 							new.append(serial);
 						endif
-					
+
 					"Container":
 						if( !TheresPlayersNear(obj) )
 							if( !obj.locked )

@@ -81,6 +81,8 @@ function define_food_dictionary ()
 	food [ "ITEM_RAW_LEG_OF_LAMB" ]	:= 0x1609;
 	food [ "ITEM_HOPS_CONES" ]	:= 0x1aa2;
 	food [ "ITEM_GRAPES2" ]		:= 0x09d1;
+	food [ "ITEM_GREEN_TEA_LEAF" ]	:= 0x284b;
+	food [ "ITEM_CORN" ]			:= 0x0c82;
 
 	//products that are used as ingredients in other recipes
 	food [ "ITEM_BALL_OF_DOUGH" ]		:= 0xc805;
@@ -179,6 +181,8 @@ function define_food_name_dictionary ()
 	food [ "ITEM_RAW_LEG_OF_LAMB" ]	:= "raw leg of lamb";
         food [ "ITEM_HOPS_CONES" ]      := "hops cones";
 	food [ "ITEM_GRAPES2" ]		:= "bunch of grapes";
+	food [ "ITEM_GREEN_TEA_LEAF" ]	:= "green tea leaf";
+	food [ "ITEM_CORN" ]			:= "corn";
 
 	//products that are used as ingredients in other recipes
 	food [ "ITEM_BALL_OF_DOUGH" ]		:= "ball of dough";

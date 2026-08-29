@@ -1,0 +1,163 @@
+/*
+        New 2026-08-26 - the Demonstration Ritual, per the Rituals Package
+        Revival plan. Lets a player practice the circle's choreography -
+        timing, tile, facing, speech - with nothing real on the line: no
+        mana cost, no Gate 1/Gate 2 risk, no real gear required, and no item
+        or life ever actually at risk. Sold as a genuine scroll by the
+        Scribe vendor for 5,000 gold, spell id 155.
+*/
+use uo;
+use os;
+
+include "include/string";
+include "include/sysevent";
+include "../pkg/opt/rituals/include/rituals";
+
+const PRACTICE_TRINKET_GRAPHIC := 0x1F14;
+
+program ritual_demonstration( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        SetObjProperty( mobile, "#Casting", GetPid() );
+
+        if( !CheckRitualCircle( mobile ))
+                return 0;
+        endif
+
+        var trinket := CreateItemInContainer( mobile.backpack, PRACTICE_TRINKET_GRAPHIC );
+        if( trinket.errortext )
+                SendSysMessage( mobile, "Error creating practice trinket -->"+trinket.errortext );
+                return 0;
+        endif
+
+        SetName( trinket, "practice trinket" );
+        trinket.movable := 0;
+        SetObjProperty( trinket, "noloot", 1 );
+
+        if( !DrawRitualCircle( mobile, spell_id ))
+                DestroyDone( mobile, 0, trinket );
+                return 0;
+        endif
+
+        // A real ritual moves its target item to the circle's center for the
+        // duration of the chant (see ProcessRitual in rituals.inc) - the
+        // trinket mirrors that here so the demonstration actually shows what
+        // that looks like, instead of sitting invisibly in your backpack.
+        var north_rune := GetRitualRuneNorth( mobile );
+        if( !north_rune )
+                SendSysMessage( mobile, "Your circle was corrupted!" );
+                DestroyDone( mobile, 0, trinket );
+                return 0;
+        endif
+
+        trinket.movable := 1;
+        MoveObjectToLocation( trinket, north_rune.x, north_rune.y+5, north_rune.z, mobile.realm, MOVEOBJECT_FORCELOCATION );
+        trinket.movable := 0;
+
+        if( !RunDemonstrationChant( mobile, spell_id, trinket, north_rune ))
+                return 0;
+        endif
+
+        if( !UndoRitualCircle( mobile, trinket, 1 ))
+                return 0;
+        endif
+
+        DestroyItem( trinket );
+        ChangeLightLevel( mobile, 0 );
+
+        SendSysMessage( mobile, "You completed the ritual sequence perfectly." );
+
+        return 1;
+endprogram
+
+// A minimal, mana-free, risk-free chant loop - same timing/positioning
+// pattern as the real ProcessRitual(), without the mana drain, Gate 1/Gate
+// 2 machinery, or item targeting, since nothing here is actually being
+// enchanted.
+function RunDemonstrationChant( mobile, spell_id, trinket, north_rune )
+
+        var ritual_cfg := RITUAL_GetSettingsCfgElem( spell_id ),
+            elem_settings := RITUAL_GetSettingsCfgElem( "General" ),
+            speech_delay := elem_settings.DelaySpeech,
+            base_hp := GetHP( mobile ),
+            current_speech := 1;
+
+        var x := north_rune.x,
+            y := north_rune.y;
+
+        while( mobile.connected )
+
+                var speech := GetConfigString( ritual_cfg, "Speech"+current_speech );
+                if( !speech )
+                        break;
+                elseif( !captor )
+                        return 0;
+                endif
+
+                var text := GetConfigString( ritual_cfg, "Print"+current_speech ),
+                    x_mod := GetConfigInt( ritual_cfg, "Xmod"+current_speech ),
+                    y_mod := GetConfigInt( ritual_cfg, "Ymod"+current_speech ),
+                    facing := GetConfigInt( ritual_cfg, "Facing"+current_speech );
+
+                SendSysMessage( mobile, "Ritual: "+speech, 3, 553 );
+
+                var starting_delay := ReadGameClock();
+                while( mobile.connected )
+
+                        if( !captor )
+                                RITUAL_FailFeedback( mobile, "*The practice circle collapses - something disrupted it!*" );
+                                DestroyDone( mobile, 0, trinket );
+                                return 0;
+                        elseif( ReadGameClock() - starting_delay > speech_delay )
+                                RITUAL_FailFeedback( mobile, "*You took too long to speak the words!*" );
+                                SendSysMessage( mobile, "You lost the rhythm at step "+current_speech+" - try again." );
+                                DestroyDone( mobile, 0, trinket );
+                                return 0;
+                        elseif( GetHP( mobile ) < base_hp )
+                                RITUAL_FailFeedback( mobile, "*You were hurt and lost your concentration!*" );
+                                SendSysMessage( mobile, "You lost your concentration at step "+current_speech+" - try again." );
+                                DestroyDone( mobile, 0, trinket );
+                                return 0;
+                        endif
+
+                        var event := os::Wait_For_Event(1);
+                        if( event && event.source == mobile )
+                                if( event.type == SYSEVENT_SPEECH )
+                                        if( event.text[speech] )
+                                                break;
+                                        else
+                                                RITUAL_FailFeedback( mobile, "*Those weren't the right words!*" );
+                                                SendSysMessage( mobile, "You lost the rhythm at step "+current_speech+" - try again." );
+                                                DestroyDone( mobile, 0, trinket );
+                                                return 0;
+                                        endif
+                                endif
+                        endif
+                endwhile
+
+                Sleep(1);
+
+                if( mobile.x != ( x+x_mod ) || mobile.y != ( y+y_mod ))
+                        RITUAL_FailFeedback( mobile, "*You are standing in the wrong spot for this step!*" );
+                        SendSysMessage( mobile, "You lost the rhythm at step "+current_speech+" - try again." );
+                        DestroyDone( mobile, 0, trinket );
+                        return 0;
+                elseif( facing != mobile.facing )
+                        RITUAL_FailFeedback( mobile, "*You are facing the wrong direction for this step!*" );
+                        SendSysMessage( mobile, "You lost the rhythm at step "+current_speech+" - try again." );
+                        DestroyDone( mobile, 0, trinket );
+                        return 0;
+                endif
+
+                if( text )
+                        PrintTextAbove( mobile, text );
+                endif
+
+                current_speech += 1;
+                Sleep(2);
+        endwhile
+
+        return 1;
+endfunction

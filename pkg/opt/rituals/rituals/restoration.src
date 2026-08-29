@@ -3,6 +3,12 @@
 
         2010-11-19
 */
+
+/*
+        CUT 2026-08-26: removed from the rituals package during the revival pass,
+        per the finalized cut list (Rituals Package Revival plan). Left in place,
+        commented out, rather than deleted.
+
 use uo;
 use os;
 
@@ -33,8 +39,9 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc );
 
 	item.hp := item.maxhp;
- 
+
 	SendSysMessage( mobile, "This "+item_desc+" is now in perfect state." );
 
         return 1;
 endfunction
+*/

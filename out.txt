@@ -1,0 +1,42 @@
+    else if (!r.craftable_via || r.craftable_via.length === 0){ status = "Not craftable"; kind = "warn"; }
+    else { status = "Complete"; kind = "good"; }
+    rows.push({
+      file, status, kind,
+      name: (r.deed_names && r.deed_names[0]) || file.replace(/\.cfg$/,""),
+      source: r.source_folder_guess || "—",
+      comps: r.n_components,
+      facings: r.n_facings,
+      missing_id: r.missing_itemdesc_count,
+      missing_tiles: r.missing_tiles_count,
+      multi: r.matching_multi ? "yes"
+-----
+archInput.addEventListener("input", applyFilters);
+  selects.forEach(sel => sel.addEventListener("change", applyFilters));
+}
+
+// ---------------- Ported coverage table ----------------
+function buildPortedRows(){
+  const rows = [];
+  for (const [folder, d] of Object.entries(MASTER.survey)){
+    if (!d.already_in_repo) continue;
+    const missing = d.polmd_missing_from_repo || [];
+    rows.push({
+ 
+-----
+omplete, l: "Deed builds missing itemdesc, tiles, or a recipe", cls:"warn"},
+    {n: gaps, l: "Ported packs with items still missing", cls: gaps? "warn":"good"},
+    {n: clear, l: "Unported packs clear to copy as-is", cls:"good"},
+    {n: merge, l: "Unported packs that overlap — diff, don't copy", c
+-----
+e."],
+];
+
+document.addEventListener("DOMContentLoaded", () => {
+  const deedRows = buildDeedRows();
+  const portedRows = buildPortedRows();
+  const unportedRows = buildUnportedRows();
+
+  renderStats(deedRows, unportedRows, portedRows);
+
+  renderTable("deedTable", deedRows, [
+    {key:"name", label:"

@@ -33,12 +33,15 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc );
 
         var ar_mod := item.ar_mod;
-        if( ar_mod >= 30 )
+        if( RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This armor's protection is already bound to a different enchantment and cannot hold another." );
+                return 0;
+        elseif( ar_mod >= 6 )
 		SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
                 return 0;
         endif
 
-	item.ar_mod := ar_mod + 5;
+	item.ar_mod := ar_mod + 1;
 	SetNameByEnchant( item );
 
 	SendSysMessage( mobile, "This "+item_desc+" is more protective than ever." );

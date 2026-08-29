@@ -13,14 +13,10 @@ endprogram
 
 exported function IsRitualEquipment( item )
 
-        item := item; //Avoid compiler warnings
-
-	return 1;
+	return item.objtype == 0xBA28;
 endfunction
 
 exported function IsOakStaff( item )
 
-        item := item; //Avoid compiler warnings
-        
-	return 1;
+	return item.objtype == 0xBA28;
 endfunction

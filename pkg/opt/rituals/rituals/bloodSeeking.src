@@ -33,7 +33,10 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc );
 
         var dmg_mod := item.dmg_mod;
-        if( dmg_mod >= 30 )
+        if( RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This weapon's power is already bound to a different enchantment and cannot hold another." );
+                return 0;
+        elseif( dmg_mod >= 30 )
 		SendSysMessage( mobile, "There's already a stronger enchantment on this item." );
                 return 0;
         endif

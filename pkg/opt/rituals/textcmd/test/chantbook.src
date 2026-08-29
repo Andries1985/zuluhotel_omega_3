@@ -1,0 +1,30 @@
+// Synopsis: Give yourself a ritual chant book for testing -- .chantbook <ritualid>, e.g. .chantbook 134 for Consecration, or .chantbook drawcircle / .chantbook undocircle for the two circle rites
+use uo;
+use os;
+
+include "../pkg/opt/rituals/include/chantbook";
+
+program textcmd_chantbook( who, what )
+
+	var ritualid := CInt(what);
+	if(!ritualid)
+		if(Lower(what) == "drawcircle")
+			ritualid := "DrawCircle";
+		elseif(Lower(what) == "undocircle")
+			ritualid := "UndoCircle";
+		else
+			SendSysMessage(who, "Usage: .chantbook <ritualid> (e.g. 134 for Consecration), or .chantbook drawcircle / .chantbook undocircle");
+			return 0;
+		endif
+	endif
+
+	var book := CreateRitualChantBookInContainer(who.backpack, ritualid);
+	if(book.errortext)
+		SendSysMessage(who, "Error creating chant book -->"+book.errortext);
+		return 0;
+	endif
+
+	SendSysMessage(who, "Created: "+book.name);
+
+	return 1;
+endprogram

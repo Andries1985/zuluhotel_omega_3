@@ -3,6 +3,14 @@
 
         2010-11-19
 */
+
+/*
+        CUT 2026-08-26: removed from the rituals package during the revival pass.
+        Doubles item.quality uncapped - redundant with pkg/opt/crafterboost's
+        alloy/incremental-refining system, which already improves item quality
+        through a dedicated mechanism (capped at quality 3.6). Left in place,
+        commented out, rather than deleted.
+
 use uo;
 use os;
 
@@ -31,7 +39,7 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc ),
             excep := GetObjProperty( item, "IsExceptional" ),
             quality := item.quality;
-            
+
 	if( excep || !quality )
 		SendSysMessage( mobile, "You can't improve the quality of "+item_desc+"." );
 		return 0;
@@ -39,8 +47,9 @@ function ApplyRitualEffect( mobile, item )
 
         item.quality := CInt( quality * 2 );
 	item.hp := item.maxhp;
-        
+
 	SendSysMessage( mobile, "The quality of "+item_desc+" was greatly improved." );
- 
+
         return 1;
 endfunction
+*/

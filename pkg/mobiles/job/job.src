@@ -175,8 +175,14 @@ function GetJobType (byref unused player, byref unused merchant)
 	// The following mods were added by Yukiko on 04-Oct-2006 to make this a general purpose "job" system.
     var tradelist := {};
 
-    tradelist := {34, 37, 7, 11, 13, 23, 12, 44, 45, 18};
-    var index:= RandomInt(9) +1;
+    // SKILLID_BLACKSMITHY (7), SKILLID_TAILORING (34), SKILLID_CARPENTRY (11),
+    // SKILLID_COOKING (13), SKILLID_INSCRIPTION (23), and SKILLID_TINKERING (37)
+    // are all retired from job.src now that Bulk Order Deeds cover all 8 crafts
+    // (see pkg/std/bulkorders) -- the two systems never compete on the same
+    // skill. Only the 4 gathering-only skills BODs don't touch are left here.
+    // Case tables below are left in place for these remaining skills; not deleted.
+    tradelist := {12, 44, 45, 18};
+    var index:= RandomInt(4) +1;
     return tradelist[index];
 endfunction
 

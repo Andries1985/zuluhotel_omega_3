@@ -1,0 +1,16 @@
+use uo;
+use os;
+
+include "../pkg/utils/itemUtils/include/itemUtil";
+include "../pkg/opt/rituals/include/chantbook";
+
+program chantbook_use(who, book)
+
+	if(!useItem_check(who, book, ITEM_INCONTAINER))
+		return 0;
+	endif
+
+	ShowRitualChantBookGump(who, book);
+
+	return 1;
+endprogram

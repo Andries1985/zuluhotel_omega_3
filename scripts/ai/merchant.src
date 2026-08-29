@@ -53,6 +53,7 @@ include "include/npcboosts";
 include ":containers:storageAreas";
 include "include/managers";
 include "include/all";
+include ":bulkorders:bulkorder_generation";
 
 //const RESPAWN_MINUTES := 30;              // In how many minutes will the NPC respawn if killed.
 const RESTOCK_INVENTORY_MINUTES := 3600; 
@@ -221,6 +222,14 @@ program merchantai()
 						parms[1] := ev.source;
 						parms[2] := me;
 						start_script (":job:job", parms);
+					elseif(Find(txt, "bulk order rewards", 1))
+						if( BOD_SkillIdForNPCType(merchant_type) )
+							TurnToward(ev.source);
+							start_script(":bulkorders:bulkorderrewards", ev.source);
+						endif
+					elseif(Find(txt, "bulk order", 1))
+						TurnToward(ev.source);
+						BOD_HandleRequestSpeech(me, ev.source, merchant_type);
 					elseif((Find(txt, "vendor train", 1)) || (Find(txt, "vendor teach", 1)) || (Find(txt, "merchant train", 1)) || (Find(txt, "merchant teach", 1)))
 						TurnToward(ev.source);
 						MerchantTrain(me, ev.source, ev.text);
@@ -293,6 +302,8 @@ program merchantai()
 				TurnToward (ev.source);
 				if ( GetObjProperty( ev.item, "merchant") )
 					PayForJobCompleted ( ev );
+				elseif ( ev.item.objtype == UOBJ_BULKORDER_DEED )
+					BOD_HandleTurnIn( me, ev.source, ev.item, merchant_type );
 				elseif (ev.item.objtype==UOBJ_GOLD_COIN || ev.item.objtype==UOBJ_SILVER_COIN || ev.item.objtype==UOBJ_COPPER_COIN);
 					Say("Bah, I have no use for this. Be off with ye.");
 						MoveItemToContainer( ev.item, ev.source.backpack );

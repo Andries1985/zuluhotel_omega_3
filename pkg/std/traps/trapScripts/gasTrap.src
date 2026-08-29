@@ -1,0 +1,25 @@
+/* Poison gas trap trigger.
+ */
+
+use uo;
+use os;
+use util;
+
+include "include/client";
+include "include/dotempmods";
+
+program trapScript(params)
+	var mobile := params[1];
+	var object := params[2];
+	var trap_info := params[3];
+	//var trap_index := params[4];
+	params := 0; // Not needed anymore.
+
+	SendSysMessage(mobile, "You set off a poison gas trap!", color := 33);
+	PlaySoundEffect(object, SFX_TRAP_POISON);
+	PlayStationaryEffectEx( object.x, object.y, object.z, object.realm, 0x3709, 0x0a, 0x1e, 56, 4 );
+	SleepMS(1500);
+	SetPoison(mobile, CInt(trap_info.Strength), "You have been poisoned!");
+
+	return 1;
+endprogram

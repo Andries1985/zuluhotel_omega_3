@@ -1,0 +1,26 @@
+// Synopsis: GM command -- creates a bulk order book in the targeted
+// player's backpack (or the GM's own if no target given).
+
+use uo;
+use os;
+
+include "include/objtype";
+
+program givebulkorderbook(who)
+
+	var recipient := who;
+	SendSysMessage(who, "Target a player to give a bulk order book to, or press <ESC> for yourself.", color := 88);
+	var picked := Target(who);
+	if( picked )
+		recipient := picked;
+	endif
+
+	var book := CreateItemInContainer( recipient.backpack, UOBJ_BULKORDER_BOOK, 1 );
+	if( !book )
+		SendSysMessage(who, "Couldn't create the book -- backpack full?", color := 33);
+		return;
+	endif
+
+	SendSysMessage(who, "Gave " + recipient.name + " a bulk order book.", color := 66);
+
+endprogram

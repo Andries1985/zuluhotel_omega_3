@@ -1,0 +1,82 @@
+/*
+        New 2026-08-26 - design specified in the Rituals Package Revival plan.
+        No original author; this ritual never had a script.
+*/
+use uo;
+use os;
+
+include "include/string";
+include ":mdgumps:yesNo";
+include "include/namingbyenchant";
+include "../pkg/opt/rituals/include/rituals";
+
+program ritual_planardWard( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        var item := PerformRitual( mobile, spell_id );
+	if( !item )
+                ChangeLightLevel( mobile, 0 );
+		return 0;
+	endif
+
+        ApplyRitualEffect( mobile, item );
+
+        return 1;
+endprogram
+
+function ApplyRitualEffect( mobile, item )
+
+        var item_desc := TruncateArticle( item.desc ),
+            has_holy := CInt( GetObjProperty( item, "HolyProtection" )),
+            has_necro := CInt( GetObjProperty( item, "NecroProtection" )),
+            element;
+
+        if( has_holy )
+                element := "HolyProtection";
+        elseif( has_necro )
+                element := "NecroProtection";
+        elseif( RitualHasOtherImmunity( item, "" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( YesNo( mobile, "Ward this item with Holy balance?" ))
+                element := "HolyProtection";
+        elseif( YesNo( mobile, "Ward this item with Necro balance?" ))
+                element := "NecroProtection";
+        else
+                SendSysMessage( mobile, "Cancelled." );
+                return 0;
+        endif
+
+        var current := CInt( GetObjProperty( item, element )),
+            next_level := RITUAL_NextProtLevel( current );
+
+        if( !next_level )
+		SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                return 0;
+        endif
+
+        SetObjProperty( item, element, next_level );
+	SetNameByEnchant( item );
+
+	SendSysMessage( mobile, "This "+item_desc+" now holds a balance between the brightest world and the darkest land." );
+
+        return 1;
+endfunction
+
+// The real shard scale - 25/50/65/75/85/95 - traced from starteqp.inc's
+// loot generator and modenchantdesc.cfg's naming tiers, not a raw 1-6.
+function RITUAL_NextProtLevel( current )
+
+        case( CInt( current ))
+                0: return 25;
+                25: return 50;
+                50: return 65;
+                65: return 75;
+                75: return 85;
+                85: return 95;
+                default: return 0;
+        endcase
+
+endfunction

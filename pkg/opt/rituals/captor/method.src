@@ -14,8 +14,5 @@ endprogram
 
 exported function IsRitualCaptor( item )
 
-        //Avoid compiler warnings
-        item := item;
-
-        return 1;
+        return item.objtype == 0xBA2B;
 endfunction

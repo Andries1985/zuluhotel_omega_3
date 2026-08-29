@@ -1,0 +1,28 @@
+// Synopsis: Calibration tool -- opens gump 0xA9C with a "Z" at each guessed page corner so the real edges can be read off a screenshot and the chant book layout dialed in
+use uo;
+use os;
+
+include ":mdgumps:gumps_ex";
+
+program textcmd_chantbookcalib( who, what )
+
+	var gump := GFCreateGump();
+	GFPage(gump, 0);
+	GFGumpPic(gump, 0, 0, 0xA9C);
+
+	// Left page corners
+	GFTextLine(gump, 96, 20, 0, "Z");
+	GFTextLine(gump, 340, 20, 0, "Z");
+	GFTextLine(gump, 96, 457, 0, "Z");
+	GFTextLine(gump, 340, 457, 0, "Z");
+
+	// Right page corners
+	GFTextLine(gump, 434, 20, 0, "Z");
+	GFTextLine(gump, 695, 20, 0, "Z");
+	GFTextLine(gump, 434, 457, 0, "Z");
+	GFTextLine(gump, 695, 457, 0, "Z");
+
+	GFSendGump(who, gump);
+
+	return 1;
+endprogram

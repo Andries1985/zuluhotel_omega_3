@@ -8,9 +8,9 @@ use os;
 use uo;
 
 const SEARCH_RANGE := 1;
-const DEED_VENDOR_HUMAN := 0x7008;
-const DEED_VENDOR_ELF := 0x700a;
-const DEED_VENDOR_GARGOYLE := 0x700b;
+const DEED_VENDOR_HUMAN := 0xB600;
+const DEED_VENDOR_ELF := 0xB601;
+const DEED_VENDOR_GARGOYLE := 0xB602;
 
 
 program makevendor(who, deed)

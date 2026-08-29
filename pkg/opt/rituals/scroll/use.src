@@ -7,7 +7,7 @@ use uo;
 use os;
 
 include "../pkg/utils/itemUtils/include/itemUtil";
-include ":areas:areafunctions";
+include "include/areas";
 include "include/spelldata";
 
 program use_scroll( mobile, scroll )
@@ -17,7 +17,7 @@ program use_scroll( mobile, scroll )
 	elseif( GetProcess( CInt( GetObjProperty( mobile, "#Casting" ))))
 		SendSysMessage( mobile, "You are already casting a spell." );
 		return 0;
-    elseif( IsInSafeArea( mobile ))
+    elseif( IsInSafeArea( mobile ) || IsInGuardedArea( mobile ) || IsInACity( mobile ) || mobile.multi )
 		SendSysMessage( mobile, "You can not start a ritual here." );
 		return 0;
     //elseif( GetObjProperty( mobile, MAGE ) < 2 )

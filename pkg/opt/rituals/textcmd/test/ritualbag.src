@@ -1,0 +1,71 @@
+// Synopsis: Give yourself a bag with a ready-to-use ritual kit (consecrated robe, staff, charged mana crystals, and one of every ritual scroll) for testing
+use uo;
+use os;
+
+include "../pkg/opt/rituals/include/rituals";
+
+program textcmd_ritualbag( who, what )
+
+        var bag := CreateItemInContainer( who.backpack, 0x0E76 );
+        if( bag.errortext )
+                SendSysMessage( who, "Error creating ritual bag -->"+bag.errortext );
+                return 0;
+        endif
+        SetName( bag, "ritual test kit" );
+
+        var robe := CreateItemInContainer( bag, 0xBA29 );
+        if( robe.errortext )
+                SendSysMessage( who, "Error creating ritual robe -->"+robe.errortext );
+                return 0;
+        endif
+        SetObjProperty( robe, "Consecrated", who.serial );
+
+        var staff := CreateItemInContainer( bag, 0xBA28 );
+        if( staff.errortext )
+                SendSysMessage( who, "Error creating young oak staff -->"+staff.errortext );
+                return 0;
+        endif
+        SetObjProperty( staff, "Consecrated", who.serial );
+
+        // Charge amount is a placeholder pending the standing "mana crystal
+        // charge amount" decision - generous and flat until that's settled.
+        // 2 charged (usable) + 2 uncharged (to test the "no mystic energy
+        // left" rejection path in ProcessRitual).
+        var i;
+        for( i:=1; i<=2; i+=1 )
+                var crystal := CreateItemInContainer( bag, 0x1f6f );
+                if( crystal.errortext )
+                        SendSysMessage( who, "Error creating mana crystal -->"+crystal.errortext );
+                        continue;
+                endif
+                SetObjProperty( crystal, "ManaLevel", 500 );
+                SetObjProperty( crystal, "NameSpec", "Charges: 500" );
+        endfor
+
+        for( i:=1; i<=2; i+=1 )
+                var empty_crystal := CreateItemInContainer( bag, 0x1f6f );
+                if( empty_crystal.errortext )
+                        SendSysMessage( who, "Error creating mana crystal -->"+empty_crystal.errortext );
+                        continue;
+                endif
+                SetObjProperty( empty_crystal, "NameSpec", "Uncharged" );
+        endfor
+
+        // One of every ritual scroll, real and Demonstration alike.
+        var scrolls := array{
+                0x1F6D, 0x1F6E, 0x1F71, 0x1F72, 0x1F73, 0x1F74, 0x1F76, 0x1F78,
+                0x1F79, 0x1FA3, 0x1FA4, 0x1FA5, 0x1FA6, 0x1FA7, 0x1FA8, 0x1FA9,
+                0x1FAA, 0x1FAB, 0x1FAD, 0x1FB1, 0x1FB2, 0x1FB3, 0x1FB4, 0x1FB5,
+                0x1FB6
+        };
+        foreach objtype in scrolls
+                var scroll := CreateItemInContainer( bag, objtype );
+                if( scroll.errortext )
+                        SendSysMessage( who, "Error creating scroll "+objtype+" -->"+scroll.errortext );
+                endif
+        endforeach
+
+        SendSysMessage( who, "Ritual test kit added: a bag with a consecrated robe, a consecrated staff, 2 mana crystals at 500 charges each, 2 uncharged mana crystals, and one of every ritual scroll." );
+
+        return 1;
+endprogram

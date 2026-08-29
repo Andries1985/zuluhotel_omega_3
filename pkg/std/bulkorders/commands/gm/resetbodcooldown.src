@@ -1,0 +1,44 @@
+// Synopsis: GM command -- clears the targeted player's daily bulk order
+// issuance cap for one craft (or every craft if none given).
+// Usage: .resetbodcooldown [craft]
+
+use uo;
+use os;
+
+include ":bulkorders:bulkorder";
+include ":bulkorders:bulkorder_matching";
+
+program resetbodcooldown(who, craftname)
+
+	SendSysMessage(who, "Target the player to reset a bulk order cooldown for.", color := 88);
+	var recipient := Target(who);
+	if( !recipient )
+		SendSysMessage(who, "Never mind.", color := 33);
+		return;
+	endif
+
+	var skillids := {};
+	if( craftname and craftname != "" )
+		var matched := 0;
+		foreach candidate in (BOD_AllCraftSkillIds())
+			if( Lower(BOD_CraftName(candidate)) == Lower(craftname) )
+				matched := candidate;
+				break;
+			endif
+		endforeach
+		if( !matched )
+			SendSysMessage(who, "Unknown craft: " + craftname, color := 33);
+			return;
+		endif
+		skillids.Append(matched);
+	else
+		skillids := BOD_AllCraftSkillIds();
+	endif
+
+	foreach eachskill in skillids
+		EraseObjProperty(recipient, "bod_daily_" + BOD_CraftName(eachskill));
+	endforeach
+
+	SendSysMessage(who, "Reset " + recipient.name + "'s bulk order cooldown.", color := 66);
+
+endprogram

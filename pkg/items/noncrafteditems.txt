@@ -1,0 +1,96 @@
+Items ported into pkg/items/* that have NO crafting recipe in POLMD's own
+carpentry/tinkering/blacksmithy/tailoring config files. Verified by grepping
+POLMD's actual pkg/skills/*/config/*.cfg for these objtypes -- zero hits, so
+any recipe stats for these would have to be invented rather than ported.
+
+Per decision 2026-08-28: these items' raw itemdesc definitions (and, where
+structurally correct, their deed/built cfg entries) stay in the items
+package, but they get NO entry in any pkg/std/<skill> crafting cfg until a
+decision is made on each. Do not add a MakeDeed/craft recipe for anything
+below without checking back in first.
+
+This file only tracks items already ported into pkg/items/* -- not items
+still waiting to be ported at all (those live in the POLMD port plan/audit
+instead, see project_polmd_items_folder_port memory).
+
+=====================================================================
+2026-08-28: Kings Collection and Crystal Throne recipes added
+=====================================================================
+
+All Kings Collection items and the Crystal Throne (previously listed below)
+now have Carpentry recipes -- see pkg/std/carpentry/carpentry.cfg, sections
+"Kings Collection -- deed recipes", "Kings Collection -- direct-craft
+recipes, no deed", and "Crystal Theme Pack -- direct-craft". Stats were
+invented (no real POLMD recipe exists for these objtypes) following existing
+in-game templates for similarly-sized furniture/instruments/statues. Rotate-
+script items (paintings, instruments, bells, shelves, chair, throne) are
+direct-craft with no MakeDeed, per Rule 0 in feedback_new_deed_item_workflow
+memory -- deeding a rotate item locks movable=0 and permanently breaks the
+rotate. Flag any of these in-game if the balance feels off; nothing here was
+ported from a real POLMD source.
+
+=====================================================================
+Tables Package (pkg/items/tables) -- checked 2026-08-28
+=====================================================================
+
+Everything in this package is now craftable EXCEPT the pieces below.
+"Table Pieces" and "Yew-Style Table Pieces" are each a 7-piece-per-side
+static assembly, but the only verified spatial layout (from POLMD's real
+SmallTableDeed, and our own construction mirroring it for Yew-Style) covers
+just pieces 1-2 of each side. POLMD's own attempt at the full assembly
+(LongTableDeed) is broken upstream too -- script/methodscript commented out,
+no built cfg ever created. This repo's OLD legacy deed for the same pieces
+(0xbc22, since retired) also only covered 5 of 7 East pieces with a
+duplicated objtype (authoring bug). No one has ever finished this layout.
+
+Ported (raw Item{} definitions only, no deed/recipe) -- needs real in-game
+tile measurement before a deed can be built safely:
+
+Table Pieces East 3-7    0x0B70 0x0B71 0x0B72 0x0B73 0x0B74
+Table Pieces South 3-7   0x0B83 0x0B84 0x0B85 0x0B86 0x0B87
+Yew-Style Table Pieces East 3-7   0x0B77 0x0B78 0x0B79 0x0B7A 0x0B7B
+Yew-Style Table Pieces South 3-7  0x0B8A 0x0B8B 0x0B8C 0x0B8D 0x0B8E
+
+Pieces 1-2 of each (0x0B6E/0x0B6F, 0x0B81/0x0B82 for generic; 0x0B75/0x0B76,
+0x0B88/0x0B89 for Yew-Style) ARE craftable via SmallTableDeed (0xDEED09F)
+and YewStyleTablePiecesDeed (0xDEED0A0).
+
+Note also: several Tables-package objtypes (0x0B35, 0x0B40, 0x0B4A, 0x0B70,
+0x0B7E, 0x0B81, 0x0B88, 0x0B8F, 0x0B90, 0x1204) collided with this repo's
+own pre-existing native Carpentry recipes for the same stock tile IDs --
+those were retired and replaced/merged during this port, see the "Moved to
+new deeds package" section in pkg/std/carpentry/itemdesc.cfg for the full
+list of what was retired and why.
+
+=====================================================================
+Batch 1 packages (gargishFurniture, fountains, shadowThemePack,
+displayCases, gothicThemePack, coffins, musicStand, waterTrough)
+-- checked 2026-08-28
+=====================================================================
+
+Coffins was already fully ported and craftable before this batch (existing
+Carpentry 0x1C42 "Wooden Coffin Deed" -> 0xDEED00F -> built/woodenCoffin.cfg,
+complete 6-piece East+South) -- just gave the objtypes a real itemdesc
+package so they have proper names, no new recipe needed.
+
+Fixed two authoring bugs found in POLMD's own (already-imported) built
+cfgs while wiring up gargishFurniture/shadowThemePack: globeOfSosaria.cfg
+had two components at the same offset (0x3660 now moved to -1,-1 instead
+of overlapping 0x3657 at 0,0); shadowFirePit.cfg had a 4th component with
+an invalid objtype (0xdeef000, clearly a leftover placeholder) -- dropped
+it, leaving the real 3 corners (North/East/West).
+
+Also added a missing 16th piece to fountains (0x19EB, "SandstoneFountain16")
+-- POLMD's own built/sandstoneFountain.cfg references it but POLMD's own
+itemdesc.cfg never defined it. Named it to match its siblings.
+
+Everything else in these 8 packages is now craftable EXCEPT:
+
+Stone Ritual Table (gothicThemePack)   0x4982 0x4983 0x4984 0x4985
+  4 pieces, no facing labels, no rotate, no deed anywhere in POLMD, and no
+  spatial/offset reference exists to build one from. Ported as bare Item{}
+  definitions only. Needs real in-game tile measurement before a deed can
+  be built, same situation as the Tables leftover pieces above.
+
+Nothing currently tracked beyond the above. Add future ported-but-uncrafted
+items here as they come up.

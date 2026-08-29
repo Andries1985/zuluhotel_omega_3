@@ -184,6 +184,14 @@ const UOBJ_DUMMYFREEZE_NS    := 0x1070;
 const UOBJ_DUMMYSWING_EW     := 0x1075;
 const UOBJ_DUMMYFREEZE_EW    := 0x1074;
 
+// Relocated 2026-08-29 -- 0x9821/0x981C/0x9822 collided with
+// pkg/systems/combat/config/itemdesc.cfg's armor catalog (server wouldn't
+// boot). See pkg/items/advancedTrainingDummy/config/itemdesc.cfg.
+const UOBJ_DUMMYSWING_ADV_NS     := 0x9844;
+const UOBJ_DUMMYFREEZE_ADV_NS    := 0x9835;
+const UOBJ_DUMMYSWING_ADV_EW     := 0x9845;
+const UOBJ_DUMMYFREEZE_ADV_EW    := 0x9834;
+
 const UOBJ_BLOOD        := 0x122D;
 
 const UOBJ_BOW          := 0x13B2;
@@ -197,6 +205,9 @@ const UOBJ_ROLLED_MAP2  := 0x14EE;
 const UOBJ_HOUSE_DEED1  := 0x14ef;
 const UOBJ_SHIP_DEED1   := 0x14F1;
 const UOBJ_SHIP_DEED2   := 0x14F2;
+
+const UOBJ_BULKORDER_DEED := 0x2258;
+const UOBJ_BULKORDER_BOOK := 0x2259;
 
 const UOBJ_CHEST        := 0x0E40;
 

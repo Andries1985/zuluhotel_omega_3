@@ -18,13 +18,33 @@ include "include/attributes";
 include ":guilds:include/guilds";
 
 program equip( who, it )
-	
+
+	// Ownership enforcement for the rituals package's Attunement and
+	// Consecration - added 2026-08-26. Both properties only exist on
+	// items that have actually gone through one of those two rituals, so
+	// this is a no-op for every other item in the shard.
+	if( who.cmdlevel < 1 )
+		var owner := GetObjProperty( it, "Owner" );
+		if( owner && owner != who.serial )
+			SendSysMessage( who, "This item is bound to another owner and rejects you." );
+			MoveItemToContainer( it, who.backpack );
+			return 0;
+		endif
+
+		var consecrated := GetObjProperty( it, "Consecrated" );
+		if( consecrated && consecrated != who.serial )
+			SendSysMessage( who, "This consecrated item rejects you as its bearer." );
+			MoveItemToContainer( it, who.backpack );
+			return 0;
+		endif
+	endif
+
 	if(GetObjProperty(it, "GuildUniform") || GetObjProperty(it, "Entwined"))
 		if (!EquipGuildUniform(who, it))
 			return 0;
 		endif
 	endif
-	
+
 	FixWeapon(who, it);
 	FixProt(who, it);	
 

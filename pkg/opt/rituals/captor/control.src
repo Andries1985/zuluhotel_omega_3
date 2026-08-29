@@ -33,12 +33,12 @@ program ritual_captor( captor )
                     wizard_found := 0;
                     
 		foreach mobile in near_circle
-                        if( mobile.serial != wizard.serial )
-			        mobile.Kill();
-           
-                                DestroyItem( captor );
-                        else
+                        if( mobile.serial == wizard.serial )
                                 wizard_found := 1;
+                        elseif( mobile.cmdlevel < 4 )
+			        mobile.Kill();
+
+                                DestroyItem( captor );
                         endif
    
                         SleepMS(5);

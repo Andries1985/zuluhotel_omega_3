@@ -33,12 +33,15 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc );
 
         var hp_mod := item.maxhp_mod;
-        if( hp_mod >= 60 )
+        if( RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This item's durability is already bound to a different enchantment and cannot hold another." );
+                return 0;
+        elseif( hp_mod >= 30 )
 		SendSysMessage( mobile, "There's already have a more powerfull enchantment on "+item_desc+"." );
                 return 0;
         endif
 
-	item.maxhp_mod := hp_mod + 10;
+	item.maxhp_mod := hp_mod + 5;
 	item.hp := item.maxhp;
  
 	SetNameByEnchant( item );

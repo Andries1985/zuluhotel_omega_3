@@ -1,0 +1,77 @@
+/*
+        New 2026-08-26 - design specified in the Rituals Package Revival plan.
+        No original author; this ritual never had a script.
+*/
+use uo;
+use os;
+
+include "include/string";
+include ":mdgumps:yesNo";
+include "include/namingbyenchant";
+include "../pkg/opt/rituals/include/rituals";
+
+program ritual_vitalInfusion( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        var item := PerformRitual( mobile, spell_id );
+	if( !item )
+                ChangeLightLevel( mobile, 0 );
+		return 0;
+	endif
+
+        ApplyRitualEffect( mobile, item );
+
+        return 1;
+endprogram
+
+function ApplyRitualEffect( mobile, item )
+
+        var item_desc := TruncateArticle( item.desc ),
+            is_armor := item.IsBoneArmor() || item.IsChainmailArmor() || item.IsPlatemailArmor() ||
+                        item.IsLeatherArmor() || item.IsRingmailArmor() || item.IsShield() || item.IsStuddedLeatherArmor();
+
+        if( is_armor && RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a Fury enchantment and cannot also hold a stat bonus." );
+                return 0;
+        elseif( item.IsJewel() && GetObjProperty( item, "skilladv" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a skill bonus and cannot also hold a stat bonus." );
+                return 0;
+        endif
+
+        var has_str := GetObjProperty( item, "str" ),
+            has_int := GetObjProperty( item, "int" ),
+            has_dex := GetObjProperty( item, "dex" ),
+            stat;
+
+        if( has_str )
+                stat := "str";
+        elseif( has_int )
+                stat := "int";
+        elseif( has_dex )
+                stat := "dex";
+        elseif( YesNo( mobile, "Bind Strength into this item?" ))
+                stat := "str";
+        elseif( YesNo( mobile, "Bind Intelligence into this item?" ))
+                stat := "int";
+        elseif( YesNo( mobile, "Bind Dexterity into this item?" ))
+                stat := "dex";
+        else
+                SendSysMessage( mobile, "Cancelled." );
+                return 0;
+        endif
+
+        var current := CInt( GetObjProperty( item, stat ));
+        if( current >= 12 )
+		SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                return 0;
+        endif
+
+        SetObjProperty( item, stat, current + 2 );
+	SetNameByEnchant( item );
+
+	SendSysMessage( mobile, "This "+item_desc+" now carries the accumulated memories of the fallen." );
+
+        return 1;
+endfunction

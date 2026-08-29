@@ -34,13 +34,16 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
-        if( GetObjProperty( item, "SpellReflection" ))
+        if( RitualHasOtherImmunity( item, "SpellReflect" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( GetObjProperty( item, "SpellReflect" ))
 		SendSysMessage( mobile, "This "+item_desc+" already have a powerful enchantment on it." );
                 return 0;
         endif
 
-	//SetObjProperty( item, "SpellReflection", CInt( AP_GetStat( mobile, INTELLIGENCE )));
-        SetObjProperty( item, "SpellReflection", CInt( GetIntelligence( mobile) ));
+        var charges := Min( 50, CInt( GetIntelligence( mobile ) / 10 ));
+        SetObjProperty( item, "SpellReflect", charges );
 	SetNameByEnchant( item );
 
 	SendSysMessage( mobile, "This "+item_desc+" will now reflect the spells casted at his wearer." );

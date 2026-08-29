@@ -53,6 +53,14 @@ function CheckSwing(who, skillid, action, dummy)
     dummy.graphic := UOBJ_DUMMYSWING_EW;
     sleepms(3600);
     dummy.graphic := UOBJ_DUMMYFREEZE_EW;
+  elseif(dummy.objtype == UOBJ_DUMMYFREEZE_ADV_NS)
+    dummy.graphic := UOBJ_DUMMYSWING_ADV_NS;
+    sleepms(3600);
+    dummy.graphic := UOBJ_DUMMYFREEZE_ADV_NS;
+  elseif(dummy.objtype == UOBJ_DUMMYFREEZE_ADV_EW)
+    dummy.graphic := UOBJ_DUMMYSWING_ADV_EW;
+    sleepms(3600);
+    dummy.graphic := UOBJ_DUMMYFREEZE_ADV_EW;
   endif
   EraseObjProperty(dummy, "#swinging");
 endfunction

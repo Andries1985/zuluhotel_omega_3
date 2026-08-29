@@ -11,6 +11,7 @@ use polsys;
 include "include/math";
 include "include/attributes";
 include "include/classes";
+include ":questpkg:queststate";
 
 
 /*todo
@@ -48,6 +49,16 @@ program mobiledata(parms)
 			allprops.append(prop);
 		endif
 	endif
+
+	// Only shown if this giver still has a quest `who` hasn't completed --
+	// matches OSI's "!" quest-giver behavior instead of tagging every NPC
+	// with a QuestGiverTag CProp forever, even after all their quests are done.
+	if(npc && QP_GiverHasUndoneQuest(xObject, who))
+		prop.clilocid := 1072269; // Quest Giver
+		prop.values := array {};
+		allprops.append(prop);
+	endif
+
 	var boss;
 	var superboss;
 	var lesserboss;

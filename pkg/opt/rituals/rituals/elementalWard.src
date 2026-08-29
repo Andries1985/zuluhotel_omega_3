@@ -1,0 +1,92 @@
+/*
+        New 2026-08-26 - design specified in the Rituals Package Revival plan.
+        No original author; this ritual never had a script.
+*/
+use uo;
+use os;
+
+include "include/string";
+include ":mdgumps:yesNo";
+include "include/namingbyenchant";
+include "../pkg/opt/rituals/include/rituals";
+
+program ritual_elementalWard( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        var item := PerformRitual( mobile, spell_id );
+	if( !item )
+                ChangeLightLevel( mobile, 0 );
+		return 0;
+	endif
+
+        ApplyRitualEffect( mobile, item );
+
+        return 1;
+endprogram
+
+function ApplyRitualEffect( mobile, item )
+
+        var item_desc := TruncateArticle( item.desc ),
+            has_fire := CInt( GetObjProperty( item, "FireProtection" )),
+            has_water := CInt( GetObjProperty( item, "WaterProtection" )),
+            has_air := CInt( GetObjProperty( item, "AirProtection" )),
+            has_earth := CInt( GetObjProperty( item, "EarthProtection" )),
+            element;
+
+        if( has_fire )
+                element := "FireProtection";
+        elseif( has_water )
+                element := "WaterProtection";
+        elseif( has_air )
+                element := "AirProtection";
+        elseif( has_earth )
+                element := "EarthProtection";
+        elseif( RitualHasOtherImmunity( item, "" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( YesNo( mobile, "Ward this item against Fire?" ))
+                element := "FireProtection";
+        elseif( YesNo( mobile, "Ward this item against Water?" ))
+                element := "WaterProtection";
+        elseif( YesNo( mobile, "Ward this item against Air?" ))
+                element := "AirProtection";
+        elseif( YesNo( mobile, "Ward this item against Earth?" ))
+                element := "EarthProtection";
+        else
+                SendSysMessage( mobile, "Cancelled." );
+                return 0;
+        endif
+
+        var current := CInt( GetObjProperty( item, element )),
+            next_level := RITUAL_NextProtLevel( current );
+
+        if( !next_level )
+		SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                return 0;
+        endif
+
+        SetObjProperty( item, element, next_level );
+	SetNameByEnchant( item );
+
+	SendSysMessage( mobile, "This "+item_desc+" now wards its wearer against harm." );
+
+        return 1;
+endfunction
+
+// The real shard scale - 25/50/65/75/85/95 - traced from starteqp.inc's
+// loot generator and modenchantdesc.cfg's naming tiers, not a raw 1-6.
+function RITUAL_NextProtLevel( current )
+
+        case( CInt( current ))
+                0: return 25;
+                25: return 50;
+                50: return 65;
+                65: return 75;
+                75: return 85;
+                85: return 95;
+                default: return 0;
+        endcase
+
+endfunction

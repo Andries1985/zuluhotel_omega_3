@@ -1,0 +1,24 @@
+/* Dart/needle trap trigger.
+ */
+
+use uo;
+use os;
+use util;
+
+include "include/client";
+include "include/dotempmods";
+
+program trapScript(params)
+	var mobile := params[1];
+	//var object := params[2];
+	var trap_info := params[3];
+	//var trap_index := params[4];
+	params := 0; // Not needed anymore.
+
+	SendSysMessage(mobile, "You set off a needle trap!");
+	PerformAction(mobile, ANIM_HIT);
+	var strngth := trap_info.Strength;
+	ApplyRawDamage(mobile, strngth);
+
+	return 1;
+endprogram

@@ -1,0 +1,99 @@
+// Bulk Order Deeds -- reward redemption gump (Phase 4).
+// Shows the player's shared points balance and the reward catalog
+// (rewards.cfg), letting them redeem points into real items -- starts with
+// just the Omega Token entry, GM-extensible from there.
+
+use uo;
+use os;
+use cfgfile;
+
+include ":bulkorders:bulkorder";
+include ":bulkorders:bulkorder_ledger";
+include ":mdgumps:gumps";
+
+const BOD_REWARDS_BTN_EXIT        := 0;
+const BOD_REWARDS_BTN_REDEEM_BASE := 100;
+
+program bulkorderrewards(who)
+	BOD_ShowRewardsGump(who);
+endprogram
+
+function BOD_RewardsCfg()
+	return ReadConfigFile(":bulkorders:rewards");
+endfunction
+
+function BOD_ShowRewardsGump(byref who)
+	var balance := BOD_GetPoints(who);
+	var cfg := BOD_RewardsCfg();
+	var keys := GetConfigStringKeys(cfg);
+	BOD_Debug("BOD_ShowRewardsGump: " + who.name + " has " + balance + " points, " + Len(keys) + " catalog entries loaded" );
+	if( !cfg )
+		BOD_Debug("BOD_ShowRewardsGump: rewards.cfg failed to load!");
+	endif
+
+	var gump := GFCreateGump(50, 50, 420, 400);
+	GFResizePic(gump, 0, 0, 5054, 420, 400);
+	GFTextLine(gump, 20, 15, 1153, "Bulk Order Rewards");
+	GFTextLine(gump, 20, 40, 900, "Points: " + balance);
+
+	var y := 70;
+	var i;
+	for( i := 1; i <= Len(keys); i := i+1 )
+		var elem := cfg[keys[i]];
+		var name := GetConfigString(elem, "Name");
+		var cost := CInt(GetConfigInt(elem, "Cost"));
+		GFTextLine(gump, 20, y, 1153, name + " -- " + cost + " points");
+		if( balance >= cost )
+			GFAddButton(gump, 350, y, 4005, 4007, GF_CLOSE_BTN, BOD_REWARDS_BTN_REDEEM_BASE + i);
+		endif
+		y := y + 26;
+	endfor
+
+	if( !Len(keys) )
+		GFTextLine(gump, 20, y, 1153, "Nothing available yet.");
+		y := y + 26;
+	endif
+
+	y := y + 10;
+	GFAddButton(gump, 20, y, 4017, 4019, GF_CLOSE_BTN, BOD_REWARDS_BTN_EXIT);
+	GFTextLine(gump, 55, y+2, 1153, "EXIT");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		return;
+	endif
+
+	var btn := CInt(response[0]);
+	if( btn > BOD_REWARDS_BTN_REDEEM_BASE and btn <= BOD_REWARDS_BTN_REDEEM_BASE + Len(keys) )
+		BOD_RedeemReward(who, keys[btn - BOD_REWARDS_BTN_REDEEM_BASE]);
+	endif
+endfunction
+
+function BOD_RedeemReward(byref who, rewardkey)
+	var cfg := BOD_RewardsCfg();
+	var elem := cfg[rewardkey];
+	if( !elem )
+		return;
+	endif
+
+	var cost := CInt(GetConfigInt(elem, "Cost"));
+	var objtype := CInt(GetConfigInt(elem, "Objtype"));
+	var name := GetConfigString(elem, "Name");
+	BOD_Debug("BOD_RedeemReward: " + who.name + " redeeming '" + rewardkey + "' (" + name + ", cost=" + cost + ", objtype=" + Hex(objtype) + ")");
+
+	if( !BOD_SpendPoints(who, cost) )
+		BOD_Debug("BOD_RedeemReward: insufficient points (has " + BOD_GetPoints(who) + ", needs " + cost + ")");
+		SendSysMessage(who, "You don't have enough points for that.", color := 33);
+		return;
+	endif
+
+	var reward := CreateItemInContainer(who.backpack, objtype, 1);
+	if( !reward )
+		BOD_AddPoints(who, cost);   // refund -- couldn't deliver it
+		SendSysMessage(who, "Your backpack is full -- couldn't create the reward.", color := 33);
+		return;
+	endif
+
+	SendSysMessage(who, "You redeem " + cost + " points for " + name + ".", color := 66);
+	BOD_ShowRewardsGump(who);
+endfunction

@@ -28,8 +28,7 @@ endprogram
 function ApplyRitualEffect( mobile, item )
 
 	SetObjProperty( item, "Consecrated", mobile.serial );
-        SetObjProperty( item, "NameSpec", "Consecrated" );
- 
+
 	item.newbie := 1;
 
         return 1;

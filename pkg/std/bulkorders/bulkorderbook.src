@@ -1,0 +1,627 @@
+// Bulk Order Book -- double-click shows a paginated listing of the deeds
+// physically stored inside: Type/Item/Quality/Material/Amount columns (no
+// Price/Set -- this shard deliberately has no deed-vendoring/pricing
+// mechanic, unlike real OSI). "Drop" ejects one deed back to the player's
+// backpack as a real physical item, same as pulling a rune out of a
+// runebook. Large deeds list their template name and slots-filled count.
+//
+// Filtering: this is one universal 500-slot Book shared across all 8
+// crafts (a locked earlier design decision), so an unfiltered list gets
+// long fast. "Filters/Options" opens a Filter Preference gump (type,
+// quality, material-per-craft, amount) with three ways to commit it:
+//   - Set Book Filter -- persists on the Book itself, active for anyone
+//     who opens it, until changed or cleared.
+//   - Set Your Filter -- persists on the player, follows them to any Book
+//     that doesn't have its own explicit Book Filter or a cleared state.
+//   - APPLY -- a one-off view filter for this Book only, not saved as
+//     either of the above.
+//   - Clear Filter -- explicitly shows everything, overriding even a
+//     saved personal filter, until changed again.
+
+use uo;
+use os;
+
+include ":bulkorders:bulkorder";
+include ":bulkorders:bulkorder_matching";
+include ":bulkorders:bulkorder_gumpstyle";
+include "include/objtype";
+include ":mdgumps:gumps";
+
+const BOD_BOOK_PAGE_SIZE       := 10;
+const BOD_BOOK_BTN_EXIT        := 0;
+const BOD_BOOK_BTN_NEXT        := 1;
+const BOD_BOOK_BTN_PREV        := 2;
+const BOD_BOOK_BTN_FILTEROPTS  := 3;
+const BOD_BOOK_BTN_DROP_BASE   := 100;   // row buttons are 101..100+PAGE_SIZE
+
+const BOD_FILTER_BTN_SET_BOOK := 1;
+const BOD_FILTER_BTN_CLEAR    := 3;
+const BOD_FILTER_BTN_APPLY    := 4;
+
+const BOD_FILTER_CB_TYPE_ALL    := 9;
+const BOD_FILTER_CB_TYPE_SMALL  := 10;
+const BOD_FILTER_CB_TYPE_LARGE  := 11;
+const BOD_FILTER_CB_QUAL_ALL    := 19;
+const BOD_FILTER_CB_QUAL_NORMAL := 20;
+const BOD_FILTER_CB_QUAL_EXC    := 21;
+const BOD_FILTER_CB_AMT_ALL     := 29;
+const BOD_FILTER_CB_AMT_10      := 30;
+const BOD_FILTER_CB_AMT_15      := 31;
+const BOD_FILTER_CB_AMT_20      := 32;
+const BOD_FILTER_CRAFT_BASE     := 100;  // + skillid (0..37)
+const BOD_FILTER_MAT_BASE       := 200;  // + sequential material index
+
+program bulkorderbook(who, book)
+
+	if( !Accessible(who, book) )
+		SendSysMessage(who, "You can't reach that.", color := 33);
+		return;
+	endif
+
+	if( !ReserveItem(book) )
+		return;
+	endif
+
+	BOD_ShowBookGump(who, book, 1);
+
+endprogram
+
+function BOD_BlankFilter()
+	var f := struct;
+	f.types := {};
+	f.quality := -1;
+	f.crafts := {};
+	f.materials := {};
+	f.amounts := {};
+	return f;
+endfunction
+
+// mode "none" -- explicitly cleared, show everything. mode "book" -- the
+// persisted Book filter. mode "view" -- a one-off APPLY, not persisted.
+// Anything else (unset) -- unfiltered.
+function BOD_ActiveFilter(byref who, byref book)
+	var mode := GetObjProperty(book, "BODFilterMode");
+	if( mode == "book" )
+		return GetObjProperty(book, "BODBookFilter");
+	elseif( mode == "view" )
+		return GetObjProperty(book, "BODViewFilter");
+	endif
+	return 0;
+endfunction
+
+function BOD_ActiveFilterLabel(byref who, byref book)
+	var mode := GetObjProperty(book, "BODFilterMode");
+	if( mode == "book" )
+		return "Using Book Filter";
+	elseif( mode == "view" )
+		return "Using Temporary Filter";
+	endif
+	return "No Filter";
+endfunction
+
+function BOD_DeedMatchesFilter(byref deed, filter)
+	if( !filter )
+		return 1;
+	endif
+
+	var size := CInt(BOD_GetSize(deed));
+	if( Len(filter.types) and !BOD_ArrayContains(filter.types, size) )
+		return 0;
+	endif
+
+	if( filter.quality >= 0 )
+		var is_exc := CInt(BOD_GetExceptional(deed));
+		if( filter.quality == 1 and !is_exc )
+			return 0;
+		elseif( filter.quality == 0 and is_exc )
+			return 0;
+		endif
+	endif
+
+	var craft := CInt(BOD_GetCraft(deed));
+	if( Len(filter.crafts) and !BOD_ArrayContains(filter.crafts, craft) )
+		return 0;
+	endif
+
+	if( Len(filter.materials) )
+		var mat := 0;
+		if( size )
+			mat := CInt(BOD_GetMaterial(deed));
+		else
+			mat := CInt(BOD_GetFilledMaterial(deed));
+		endif
+		if( !BOD_ArrayContains(filter.materials, mat) )
+			return 0;
+		endif
+	endif
+
+	if( Len(filter.amounts) and !size )
+		if( !BOD_ArrayContains(filter.amounts, CInt(BOD_GetAmount(deed))) )
+			return 0;
+		endif
+	endif
+
+	return 1;
+endfunction
+
+function BOD_LargeFilledCount(byref deed)
+	var slots := BOD_GetSlotsFilled(deed);
+	var count := 0;
+	foreach f in slots
+		if( CInt(f) )
+			count := count + 1;
+		endif
+	endforeach
+	return count;
+endfunction
+
+function BOD_FilteredDeeds(byref book, filter)
+	var deeds := EnumerateItemsInContainer(book);
+	if( !filter )
+		return deeds;
+	endif
+	var filtered := {};
+	foreach deed in deeds
+		if( BOD_DeedMatchesFilter(deed, filter) )
+			filtered.Append(deed);
+		endif
+	endforeach
+	return filtered;
+endfunction
+
+function BOD_ShowBookGump(byref who, byref book, page)
+	var all_deeds := EnumerateItemsInContainer(book);
+	var filter := BOD_ActiveFilter(who, book);
+	var deeds := BOD_FilteredDeeds(book, filter);
+	var total := deeds.Size();
+	var page_count := Cint(Ceil(CDbl(total) / BOD_BOOK_PAGE_SIZE));
+	if( page_count < 1 )
+		page_count := 1;
+	endif
+	if( page > page_count )
+		page := page_count;
+	endif
+	if( page < 1 )
+		page := 1;
+	endif
+
+	var fw := 680;
+	var fh := 420;
+	var gump := GFCreateGump(50, 50, BOD_FRAME_FX*2 + fw, fh + BOD_FRAME_FY*2);
+	BOD_DrawParchmentFrame(gump, BOD_FRAME_FX, BOD_FRAME_FY, fw, fh);
+
+	GFAddButton(gump, 40, 45, 4011, 4013, GF_CLOSE_BTN, BOD_BOOK_BTN_FILTEROPTS);
+	GFTextLine(gump, 65, 47, 1153, "Filters/Options");
+	GFTextLine(gump, 220, 47, 1153, "Bulk Order Book (" + all_deeds.Size() + "/500)");
+	GFTextLine(gump, 500, 47, 88, BOD_ActiveFilterLabel(who, book));
+
+	// Material names in this repo can run long (e.g. "Radiant Nimbus
+	// Diamond"), so col_amt needs real clearance past col_mat -- a narrow
+	// gap here is what let material text bleed into the Amount column.
+	var col_type := 80;
+	var col_item := 140;
+	var col_qual := 300;
+	var col_mat  := 400;
+	var col_amt  := 590;
+
+	GFTextLine(gump, col_type, 78, 900, "Type");
+	GFTextLine(gump, col_item, 78, 900, "Item");
+	GFTextLine(gump, col_qual, 78, 900, "Quality");
+	GFTextLine(gump, col_mat,  78, 900, "Material");
+	GFTextLine(gump, col_amt,  78, 900, "Amount");
+
+	var start := (page-1)*BOD_BOOK_PAGE_SIZE + 1;
+	var stop := start + BOD_BOOK_PAGE_SIZE - 1;
+	if( stop > total )
+		stop := total;
+	endif
+
+	if( !total )
+		if( filter )
+			GFTextLine(gump, 40, 103, 1153, "No deeds match the current filter.");
+		else
+			GFTextLine(gump, 40, 103, 1153, "This book is empty.");
+		endif
+	endif
+
+	var y := 103;
+	var i;
+	for( i := start; i <= stop; i := i+1 )
+		var deed := deeds[i];
+		var skillid := CInt(BOD_GetCraft(deed));
+		var size := CInt(BOD_GetSize(deed));
+		var has_axis := BOD_HasMaterialAxis(skillid) and skillid != SKILLID_INSCRIPTION;
+
+		GFAddButton(gump, 40, y, 4005, 4007, GF_CLOSE_BTN, BOD_BOOK_BTN_DROP_BASE + (i - start + 1));
+
+		if( size )
+			GFTextLine(gump, col_type, y+2, 1153, "Large");
+			GFTextLine(gump, col_item, y+2, 1153, BOD_TemplateName(BOD_GetTemplateKey(deed)));
+			GFTextLine(gump, col_amt,  y+2, 1153, BOD_LargeFilledCount(deed) + "/" + Len(BOD_TemplateItems(BOD_GetTemplateKey(deed))));
+			if( has_axis and CInt(BOD_GetMaterial(deed)) )
+				GFTextLine(gump, col_mat, y+2, 1153, BOD_MaterialName(skillid, CInt(BOD_GetMaterial(deed))));
+			else
+				GFTextLine(gump, col_mat, y+2, 1153, "-");
+			endif
+		else
+			GFTextLine(gump, col_type, y+2, 1153, "Small");
+			GFTextLine(gump, col_item, y+2, 1153, BOD_ItemDisplayName(CInt(BOD_GetItemObjtype(deed))));
+			GFTextLine(gump, col_amt,  y+2, 1153, CInt(BOD_GetAmountFilled(deed)) + "/" + CInt(BOD_GetAmount(deed)));
+			if( has_axis and CInt(BOD_GetFilledMaterial(deed)) )
+				GFTextLine(gump, col_mat, y+2, 1153, BOD_MaterialName(skillid, CInt(BOD_GetFilledMaterial(deed))));
+			else
+				GFTextLine(gump, col_mat, y+2, 1153, "-");
+			endif
+		endif
+
+		if( CInt(BOD_GetExceptional(deed)) )
+			GFTextLine(gump, col_qual, y+2, 66, "Exceptional");
+		else
+			GFTextLine(gump, col_qual, y+2, 1153, "Normal");
+		endif
+
+		y := y + 24;
+	endfor
+
+	var btny := 380;
+	if( page > 1 )
+		GFAddButton(gump, 40, btny, 4014, 4016, GF_CLOSE_BTN, BOD_BOOK_BTN_PREV);
+		GFTextLine(gump, 65, btny+2, 1153, "Previous page");
+	endif
+	if( page < page_count )
+		GFAddButton(gump, 220, btny, 4005, 4007, GF_CLOSE_BTN, BOD_BOOK_BTN_NEXT);
+		GFTextLine(gump, 245, btny+2, 1153, "Next page");
+	endif
+	GFTextLine(gump, 520, btny+2, 1153, "Page " + page + "/" + page_count);
+
+	GFAddButton(gump, 40, btny+28, 4017, 4019, GF_CLOSE_BTN, BOD_BOOK_BTN_EXIT);
+	GFTextLine(gump, 65, btny+30, 1153, "EXIT");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		return;
+	endif
+	var btn := CInt(response[0]);
+
+	if( btn == BOD_BOOK_BTN_NEXT )
+		BOD_ShowBookGump(who, book, page+1);
+	elseif( btn == BOD_BOOK_BTN_PREV )
+		BOD_ShowBookGump(who, book, page-1);
+	elseif( btn == BOD_BOOK_BTN_FILTEROPTS )
+		BOD_ShowFilterGump(who, book);
+		BOD_ShowBookGump(who, book, 1);
+	elseif( btn > BOD_BOOK_BTN_DROP_BASE and btn <= BOD_BOOK_BTN_DROP_BASE + BOD_BOOK_PAGE_SIZE )
+		var idx := start + (btn - BOD_BOOK_BTN_DROP_BASE - 1);
+		if( idx <= stop )
+			var dropdeed := deeds[idx];
+			MoveItemToContainer(dropdeed, who.backpack);
+			SendSysMessage(who, "You take the deed out of the book.", color := 66);
+		endif
+		BOD_ShowBookGump(who, book, page);
+	endif
+endfunction
+
+// One material family's choices, straight from its own cfg -- keyed by
+// cfg, NOT by craft. Blacksmithy/Carpentry/Tinkering all draw metal from
+// the same blacksmithy.cfg, so a single shared "Metal" page (rather than
+// one copy per craft) is what keeps each real material as exactly one
+// checkbox -- drawing the same material as separate checkboxes on separate
+// pages meant unchecking one copy left the others (never visited this
+// session) still reporting checked, and the material silently came back.
+function BOD_MaterialChoicesForCfg(cfgname)
+	var owner_skillid := SKILLID_BLACKSMITHY;
+	if( cfgname == ":carpentry:carpentry" )
+		owner_skillid := SKILLID_CARPENTRY;
+	elseif( cfgname == ":tailoring:tailoring" )
+		owner_skillid := SKILLID_TAILORING;
+	endif
+	var excluded := BOD_ExcludedMaterials(owner_skillid);
+	var choices := {};
+	var cfg := ReadConfigFile(cfgname);
+	if( cfg )
+		foreach key in (GetConfigIntKeys(cfg))
+			var elem := cfg[key];
+			if( !GetConfigInt(elem, "Type") and !excluded[key] )
+				var choice := struct;
+				choice.objtype := key;
+				choice.name := GetConfigString(elem, "Name");
+				choices.Append(choice);
+			endif
+			SleepMS(1);
+		endforeach
+	endif
+	return choices;
+endfunction
+
+function BOD_MaterialFamilyLabel(cfgname)
+	if( cfgname == ":carpentry:carpentry" )
+		return "Wood";
+	elseif( cfgname == ":blacksmithy:blacksmithy" )
+		return "Metal";
+	elseif( cfgname == ":tailoring:tailoring" )
+		return "Cloth/Leather";
+	endif
+	return "Material";
+endfunction
+
+function BOD_StringArrayContains(arr, val)
+	if( !arr )
+		return 0;
+	endif
+	foreach v in arr
+		if( v == val )
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function BOD_FamilyPageNum(byref families, cfgname)
+	var i;
+	for( i := 1; i <= Len(families); i := i+1 )
+		if( families[i] == cfgname )
+			return i;
+		endif
+	endfor
+	return 0;
+endfunction
+
+function BOD_ShowFilterGump(byref who, byref book)
+	var current := BOD_ActiveFilter(who, book);
+	if( !current )
+		current := BOD_BlankFilter();
+	endif
+
+	var craft_axis := BOD_AllCraftSkillIds();
+	var material_crafts := {};
+	foreach skillid in craft_axis
+		if( BOD_HasMaterialAxis(skillid) and skillid != SKILLID_INSCRIPTION )
+			material_crafts.Append(skillid);
+		endif
+	endforeach
+
+	// One page per unique material FAMILY (cfg), not per craft -- Blacksmithy,
+	// Carpentry, and Tinkering all draw metal from the same blacksmithy.cfg,
+	// so a shared "Metal" page keeps each real material as exactly one
+	// checkbox. (Confirmed live: without this, Bronze rendered as 3 separate
+	// checkboxes across 3 pages; unchecking one left the other two -- never
+	// visited that session -- still reporting checked, so it silently
+	// reappeared in the saved filter.)
+	var families := {};
+	foreach skillid in material_crafts
+		foreach cfgname in (BOD_MaterialCfgCandidates(skillid))
+			if( !BOD_StringArrayContains(families, cfgname) )
+				families.Append(cfgname);
+			endif
+		endforeach
+	endforeach
+
+	var max_half := 0;
+	var pi;
+	for( pi := 1; pi <= Len(families); pi := pi+1 )
+		var n := Len(BOD_MaterialChoicesForCfg(families[pi]));
+		var half := Cint(Ceil(CDbl(n) / 2));
+		if( half > max_half )
+			max_half := half;
+		endif
+	endfor
+
+	// Rail row count: one row per material craft, plus one indented row per
+	// material family it draws from (Carpentry/Tinkering need more than
+	// one), plus one row per non-material craft.
+	var rail_rows := 0;
+	foreach skillid in material_crafts
+		rail_rows := rail_rows + 1 + Len(BOD_MaterialCfgCandidates(skillid));
+	endforeach
+	rail_rows := rail_rows + 3;
+
+	var fw := 800;
+	var top_y := 35;
+	var content_top := top_y + 198;
+	var content_bottom := content_top + 24 + max_half*24;
+	var rail_bottom := content_top + rail_rows*24;
+	var body_bottom := content_bottom;
+	if( rail_bottom > body_bottom )
+		body_bottom := rail_bottom;
+	endif
+	var fh := body_bottom + 26 + 40;
+
+	var gump := GFCreateGump(50, 20, BOD_FRAME_FX*2 + fw, fh + BOD_FRAME_FY*2);
+	BOD_DrawParchmentFrame(gump, BOD_FRAME_FX, BOD_FRAME_FY, fw, fh);
+	GFTextLine(gump, 60, top_y, 1153, "Filter Preference");
+
+	// -- Top band (page 0, always visible): Type / Quality / Amount --
+	GFTextLine(gump, 40, top_y+28, 900, "Bulk Order Type");
+	GFCheckBox(gump, 40, top_y+50, 9026, 9027, Len(current.types) == 0, BOD_FILTER_CB_TYPE_ALL);
+	GFTextLine(gump, 62, top_y+52, 1153, "All");
+	GFCheckBox(gump, 120, top_y+50, 9026, 9027, BOD_ArrayContains(current.types, 0), BOD_FILTER_CB_TYPE_SMALL);
+	GFTextLine(gump, 142, top_y+52, 1153, "Small");
+	GFCheckBox(gump, 200, top_y+50, 9026, 9027, BOD_ArrayContains(current.types, 1), BOD_FILTER_CB_TYPE_LARGE);
+	GFTextLine(gump, 222, top_y+52, 1153, "Large");
+
+	GFTextLine(gump, 40, top_y+76, 900, "Quality");
+	GFCheckBox(gump, 40, top_y+98, 9026, 9027, current.quality < 0, BOD_FILTER_CB_QUAL_ALL);
+	GFTextLine(gump, 62, top_y+100, 1153, "All");
+	GFCheckBox(gump, 120, top_y+98, 9026, 9027, current.quality == 0, BOD_FILTER_CB_QUAL_NORMAL);
+	GFTextLine(gump, 142, top_y+100, 1153, "Normal");
+	GFCheckBox(gump, 220, top_y+98, 9026, 9027, current.quality == 1, BOD_FILTER_CB_QUAL_EXC);
+	GFTextLine(gump, 242, top_y+100, 1153, "Exceptional");
+
+	GFTextLine(gump, 40, top_y+124, 900, "Amount");
+	GFCheckBox(gump, 40, top_y+146, 9026, 9027, Len(current.amounts) == 0, BOD_FILTER_CB_AMT_ALL);
+	GFTextLine(gump, 62, top_y+148, 1153, "All");
+	GFCheckBox(gump, 120, top_y+146, 9026, 9027, BOD_ArrayContains(current.amounts, 10), BOD_FILTER_CB_AMT_10);
+	GFTextLine(gump, 142, top_y+148, 1153, "10");
+	GFCheckBox(gump, 190, top_y+146, 9026, 9027, BOD_ArrayContains(current.amounts, 15), BOD_FILTER_CB_AMT_15);
+	GFTextLine(gump, 212, top_y+148, 1153, "15");
+	GFCheckBox(gump, 260, top_y+146, 9026, 9027, BOD_ArrayContains(current.amounts, 20), BOD_FILTER_CB_AMT_20);
+	GFTextLine(gump, 282, top_y+148, 1153, "20");
+
+	GFTextLine(gump, 40, top_y+176, 900, "Material Filters");
+
+	// -- Rail (page 0, always visible): one row per material craft with its
+	// own "any material" checkbox, then one indented row per family it
+	// draws from (Carpentry/Tinkering get more than one), each pointing at
+	// that family's SHARED page.
+	var rail_y := content_top;
+	foreach skillid in material_crafts
+		GFCheckBox(gump, 40, rail_y, 9026, 9027, BOD_ArrayContains(current.crafts, skillid), BOD_FILTER_CRAFT_BASE + skillid);
+		GFTextLine(gump, 62, rail_y+2, 88, BOD_CraftName(skillid));
+		rail_y := rail_y + 24;
+
+		foreach cfgname in (BOD_MaterialCfgCandidates(skillid))
+			GFAddButton(gump, 70, rail_y, 4005, 4007, GF_PAGE_BTN, BOD_FamilyPageNum(families, cfgname));
+			GFTextLine(gump, 92, rail_y+2, 1153, BOD_MaterialFamilyLabel(cfgname));
+			rail_y := rail_y + 24;
+		endforeach
+	endforeach
+
+	foreach skillid in craft_axis
+		if( !BOD_HasMaterialAxis(skillid) or skillid == SKILLID_INSCRIPTION )
+			GFCheckBox(gump, 40, rail_y, 9026, 9027, BOD_ArrayContains(current.crafts, skillid), BOD_FILTER_CRAFT_BASE + skillid);
+			GFTextLine(gump, 62, rail_y+2, 88, BOD_CraftName(skillid));
+			rail_y := rail_y + 24;
+		endif
+	endforeach
+
+	// -- Content pane: one GFPage per unique family, 2-column grid --
+	var mat_meta := {};
+	var mat_index := 0;
+	var content_x1 := 260;
+	var content_x2 := 540;
+	for( pi := 1; pi <= Len(families); pi := pi+1 )
+		GFPage(gump, pi);
+		var cfgname := families[pi];
+		GFTextLine(gump, content_x1, content_top, 900, BOD_MaterialFamilyLabel(cfgname));
+
+		var choices := BOD_MaterialChoicesForCfg(cfgname);
+		var half := Cint(Ceil(CDbl(Len(choices)) / 2));
+		var cy := content_top + 24;
+		var ci;
+		for( ci := 1; ci <= half; ci := ci+1 )
+			var meta1 := struct;
+			meta1.objtype := choices[ci].objtype;
+			mat_meta.Append(meta1);
+			var status1 := BOD_ArrayContains(current.materials, CInt(choices[ci].objtype));
+			if( status1 )
+				BOD_Debug("BOD_ShowFilterGump: drawing '" + choices[ci].name + "' pre-CHECKED, switch id=" + (BOD_FILTER_MAT_BASE + mat_index));
+			endif
+			GFCheckBox(gump, content_x1, cy, 9026, 9027, status1, BOD_FILTER_MAT_BASE + mat_index);
+			GFTextLine(gump, content_x1+22, cy+2, 1153, choices[ci].name);
+			mat_index := mat_index + 1;
+
+			var ri := ci + half;
+			if( ri <= Len(choices) )
+				var meta2 := struct;
+				meta2.objtype := choices[ri].objtype;
+				mat_meta.Append(meta2);
+				var status2 := BOD_ArrayContains(current.materials, CInt(choices[ri].objtype));
+				if( status2 )
+					BOD_Debug("BOD_ShowFilterGump: drawing '" + choices[ri].name + "' pre-CHECKED, switch id=" + (BOD_FILTER_MAT_BASE + mat_index));
+				endif
+				GFCheckBox(gump, content_x2, cy, 9026, 9027, status2, BOD_FILTER_MAT_BASE + mat_index);
+				GFTextLine(gump, content_x2+22, cy+2, 1153, choices[ri].name);
+				mat_index := mat_index + 1;
+			endif
+			cy := cy + 24;
+		endfor
+	endfor
+
+	// Reset back to the shared page before the action row -- otherwise
+	// these buttons (and the gump's default-shown page) inherit whichever
+	// page the loop above last left active, instead of staying visible on
+	// every page and leaving the content pane blank until a family button
+	// is clicked.
+	GFPage(gump, 0);
+
+	// -- Action row (page 0, always visible), one row, evenly spaced --
+	var ay := body_bottom + 20;
+	GFAddButton(gump, 40, ay, 4005, 4007, GF_CLOSE_BTN, BOD_FILTER_BTN_SET_BOOK);
+	GFTextLine(gump, 62, ay+2, 1153, "Set Book Filter");
+	GFAddButton(gump, 220, ay, 4005, 4007, GF_CLOSE_BTN, BOD_FILTER_BTN_APPLY);
+	GFTextLine(gump, 242, ay+2, 1153, "APPLY");
+	GFAddButton(gump, 340, ay, 4005, 4007, GF_CLOSE_BTN, BOD_FILTER_BTN_CLEAR);
+	GFTextLine(gump, 362, ay+2, 1153, "Clear Filter");
+	GFAddButton(gump, 500, ay, 4017, 4019, GF_CLOSE_BTN, BOD_BOOK_BTN_EXIT);
+	GFTextLine(gump, 522, ay+2, 1153, "Cancel");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		return;
+	endif
+
+	var btn := CInt(response[0]);
+	if( btn == BOD_BOOK_BTN_EXIT )
+		return;
+	endif
+
+	if( btn == BOD_FILTER_BTN_CLEAR )
+		SetObjProperty(book, "BODFilterMode", "none");
+		SendSysMessage(who, "Filter cleared -- showing everything.", color := 66);
+		return;
+	endif
+
+	var checked := response.keys;
+	var checked_str := "";
+	foreach k in checked
+		if( checked_str != "" )
+			checked_str := checked_str + ", ";
+		endif
+		checked_str := checked_str + CStr(k);
+	endforeach
+	BOD_Debug("BOD_ShowFilterGump: btn=" + btn + " checked switches=[" + checked_str + "] (Bronze etc. -- compare against the mat_index id logged when its checkbox was drawn, if it's missing here the client isn't reporting the toggle, if it's present the bug is in decode)");
+
+	var picked := BOD_BlankFilter();
+
+	if( !BOD_ArrayContains(checked, BOD_FILTER_CB_TYPE_ALL) )
+		if( BOD_ArrayContains(checked, BOD_FILTER_CB_TYPE_SMALL) )
+			picked.types.Append(0);
+		endif
+		if( BOD_ArrayContains(checked, BOD_FILTER_CB_TYPE_LARGE) )
+			picked.types.Append(1);
+		endif
+	endif
+
+	if( BOD_ArrayContains(checked, BOD_FILTER_CB_QUAL_NORMAL) )
+		picked.quality := 0;
+	elseif( BOD_ArrayContains(checked, BOD_FILTER_CB_QUAL_EXC) )
+		picked.quality := 1;
+	else
+		picked.quality := -1;
+	endif
+
+	foreach skillid in craft_axis
+		if( BOD_ArrayContains(checked, BOD_FILTER_CRAFT_BASE + skillid) )
+			picked.crafts.Append(skillid);
+		endif
+	endforeach
+
+	var mi;
+	for( mi := 0; mi <= Len(mat_meta)-1; mi := mi+1 )
+		if( BOD_ArrayContains(checked, BOD_FILTER_MAT_BASE + mi) )
+			picked.materials.Append(CInt(mat_meta[mi+1].objtype));
+		endif
+	endfor
+
+	if( !BOD_ArrayContains(checked, BOD_FILTER_CB_AMT_ALL) )
+		if( BOD_ArrayContains(checked, BOD_FILTER_CB_AMT_10) )
+			picked.amounts.Append(10);
+		endif
+		if( BOD_ArrayContains(checked, BOD_FILTER_CB_AMT_15) )
+			picked.amounts.Append(15);
+		endif
+		if( BOD_ArrayContains(checked, BOD_FILTER_CB_AMT_20) )
+			picked.amounts.Append(20);
+		endif
+	endif
+
+	if( btn == BOD_FILTER_BTN_SET_BOOK )
+		SetObjProperty(book, "BODBookFilter", picked);
+		SetObjProperty(book, "BODFilterMode", "book");
+		SendSysMessage(who, "Book filter set.", color := 66);
+	elseif( btn == BOD_FILTER_BTN_APPLY )
+		SetObjProperty(book, "BODViewFilter", picked);
+		SetObjProperty(book, "BODFilterMode", "view");
+		SendSysMessage(who, "Filter applied.", color := 66);
+	endif
+endfunction

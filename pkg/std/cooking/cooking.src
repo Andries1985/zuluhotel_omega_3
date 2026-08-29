@@ -470,6 +470,10 @@ function near_a_fire(character)
 	if (nearby_objtype_in_range(character, 0x0475, 0x048e)) return 1; endif
 	if (nearby_objtype_in_range(character, 0x0935, 0x096c)) return 1; endif
 	if (nearby_objtype_in_range(character, 0x0de3, 0x0de8)) return 1; endif
+	if (nearby_objtype_in_range(character, 0x2352, 0x2366)) return 1; endif // Hearth of Home fireplace
+	if (nearby_objtype_in_range(character, 0x2a04, 0x2a04)) return 1; endif // Fire pit
+	if (nearby_objtype_in_range(character, 0x2ddb, 0x2ddc)) return 1; endif // Elven stove
+	if (nearby_objtype_in_range(character, 0x3651, 0x3653)) return 1; endif // Shadow fire pit
 	return 0;
 endfunction
 

@@ -1,0 +1,71 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	earthFuryScript :
+//
+//	Single-element trim of trielementalscript - Earth. The base "Elemental
+//	Fury" enchant is missing this element despite the "tri" name; written
+//	for the rituals package's Perilous Theurgy (2026-08-26) so the ritual
+//	can grant all 6 base elements individually, Earth included.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+
+include "include/spelldata";
+include ":combat:hitscriptinc";
+include "include/random";
+include "include/areas";
+include "include/client";
+
+program earthFuryScript(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+    if (lower(TypeOf(attacker)) == "array")
+        defender 	:= attacker[2];
+        weapon 	:= attacker[3];
+        armor 	:= attacker[4];
+        basedamage := attacker[5];
+        rawdamage	:= attacker[6];
+        attacker 	:= attacker[1];
+    endif
+
+    var is_casting := GetObjProperty(attacker, "#Casting");
+	if(is_casting)
+		SendSysMessage( attacker, "Spellstrike failed! You are already casting something!");
+		return 0;
+	endif
+
+    rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
+
+    var chance := GetObjProperty(weapon, "ChanceOfEffect");
+    if(RandomDiceStr("1d100") <= chance)
+
+        var targ;
+        if( GetObjProperty( weapon , "Cursed" ) )
+            targ := attacker;
+        else
+            targ := defender;
+        endif
+
+        var spelldmg := (CalcSpellDamage( attacker, targ , 5 )*0.5);
+        spelldmg := Resisted( attacker , targ , 8 , spelldmg );
+
+        if(GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_MYSTIC_ARCHER))
+            spelldmg *= 0.7;
+        endif
+
+        PlayStationaryEffect( targ.x , targ.y , targ.z , FX_SPELL_EARTHQUAKE, speed:=7, loop:=7 );
+        PlaySoundEffect( targ , SFX_SPELL_EARTHQUAKE );
+        ApplyElementalDamage( attacker , targ , 1 , spelldmg , DMGID_EARTH );
+
+        if(DEBUG_MODE)
+            PrintTextAbovePrivate( attacker , "I'm dealing this much spell damage: " +spelldmg, attacker );
+        endif
+    endif
+
+    if(DEBUG_MODE)
+        PrintTextAbovePrivate( attacker , "I'm dealing this much physical damage: " +rawdamage, attacker );
+    endif
+
+    DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
+
+endprogram
