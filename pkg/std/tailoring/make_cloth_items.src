@@ -1,9 +1,16 @@
-//Edited August 25, 2024
+//Edited August 30, 2026 -- OSI-style crafting gump, ported onto the shared
+//pkg/systems/crafting/include/craftmenu framework (see bowcraft.src for the
+//reference pattern). Replaces the old upfront-target-a-material-then-
+//CreateMenu flow: the Sewing Kit now opens the gump directly (auto-detecting
+//Hide/Cloth from backpack + Omega Cache, with a picker for which hide to use,
+//exactly like bowcraft's Log picker), matching how Bowcraft already works.
+//Repair Item and Fortify a Hat are still available as gump Options, each
+//doing its own follow-up targeting step just like bowcraft's Repair Item.
 
 /////////////////////////////////////////////////////////////////////////////
 //
 //	Tailoring: Original Code by Racalac
-//		
+//
 /////////////////////////////////////////////////////////////////////////////
 
 use uo;
@@ -27,20 +34,21 @@ include "include/difficulty";
 include ":karmafame:karmafame";
 include ":crafting:craftingfunctions";
 include "include/resourcemanager";
+include ":crafting:craftmenu";
 
 const SCISSORS_SOUND    := 0x0249;
-const ID_HIDES          := 1;
-const ID_CLOTH          := 2;
 const DIVIDER           := 3;
 const APPEAR_AT         := -10;
 const POINTS_MULTIPLIER := 8;
 const FAME_BONUS        := 10;
 
+// Non-objtype button-id sentinels for the category gump's Options. All real
+// recipe/material objtypes in tailoring.cfg are well under this.
+const TL_BTN_REPAIR   := 900021;
+const TL_BTN_FORTIFY  := 900022;
+
 var tailor_cfg          := ReadConfigFile( "tailoring" );
 var tailor_items        := ReadConfigFile( ":tailoring:itemdesc" );
-var resource_diff       := 0;
-var resource_qual       := 1;
-var resource_name 		:= 0;
 
 program use_sewing_kit( character, sewing_kit )
 
@@ -48,189 +56,110 @@ program use_sewing_kit( character, sewing_kit )
 		return;
 	endif
 
-	var item;
-	var resourceRequest;
-
-	SendSysmessage( character, "What would you like to use that on?" );
-	var use_on := Target( character, TGTOPT_CHECK_LOS );
-
-	if( !use_on )
-		return;
-	endif
-
-	// Handle Omega Cache targeting -- hides and cloth are both stackable
-	// materials that can be pulled directly from an accessible Omega Cache.
-	if( use_on.objtype == OMEGACACHE_OBJTYPE )
-		var cacheRequest := SelectMaterialFromCache( character );
-		if( !cacheRequest )
-			return;
-		endif
-		var ot := CInt(cacheRequest.objtype);
-
-		if( IsHide(ot) )
-			item := MakeAndProcessMenu( character, cacheRequest, ID_HIDES );
-		elseif( ot == UOBJ_MUTLI_CLOTH )
-			item := MakeAndProcessMenu( character, cacheRequest, ID_CLOTH );
-		else
-			SendSysMessage( character, "You don't know how to use that." );
-			return;
-		endif
-
-		if( !item )
-			return;
-		endif
-
-		item := item.objtype;
-		if( !item )
-			return;
-		endif
-
-		TryToMakeItem( character, cacheRequest, item );
-		return;
-	endif
-
-	if( !Accessible( character, use_on ) )
-		SendSysMessage( character, "You can't reach that." );
-		return;
-	endif
-
-	if( !ReserveItem(use_on) )
-		return;
-	endif
-
-	if( !IsInContainer( character.backpack, use_on ) )
-		SendSysmessage( character, "That item has to be in your backpack." );
-		return;
-	endif
-
-	if(!use_on.hp && use_on.quality && tailor_items[use_on.objtype])
-		use_on.hp := 1;
-	endif
-
-	if( IsHat( use_on ) and use_on.hp == use_on.maxhp )
-		FortifyHat( character, use_on );
-
-	elseif( IsHide( use_on.objtype ) )
-		resourceRequest := MakeBackpackRequest( character, use_on );
-		item := MakeAndProcessMenu( character, resourceRequest, ID_HIDES );
-
-	elseif( use_on.objtype == UOBJ_MUTLI_CLOTH )
-		resourceRequest := MakeBackpackRequest( character, use_on );
-		item := MakeAndProcessMenu( character, resourceRequest, ID_CLOTH );
-
-	elseif( use_on.hp and use_on.quality and tailor_cfg[use_on.graphic] )
-		repair_item( character, use_on, SKILLID_TAILORING );
-	else
-		SendSysMessage( character, "You don't know how to use those items together." );
-	endif
-
-	if( !item )
-		return;
-	endif
-
-	item := item.objtype;
-	if( !item )
-		return;
-	endif
-
-	if( !resourceRequest )
-		resourceRequest := MakeBackpackRequest( character, use_on );
-	endif
-
-	TryToMakeItem( character, resourceRequest, item );
+	RunTailoringGump( character );
 
 return;
 endprogram
 
 
-function MakeAndProcessMenu( character, resourceRequest, id )
+// Top-level loop: category/selection gump -> detail gump -> back to top, until
+// the player crafts something, picks Repair/Fortify, or closes out entirely.
+// The gump flow itself lives in the shared craftmenu.inc -- this is just the
+// tailoring-specific wiring: Repair Item / Fortify a Hat handling, and
+// dispatching a completed pick into TryToMakeItem below.
+function RunTailoringGump( character )
 
-	resource_diff := tailor_cfg[resourceRequest.objtype].Difficulty;
-	var skill := GetEffectiveSkill( character, SKILLID_TAILORING );
-	if( skill < resource_diff )
-		sendDiff( character , resource_diff );
-		SendSysmessage( character, "You aren't skilled enough to make anything with this yet." );
-		return;
-	endif
+	while( 1 )
+		var extra_options := array{
+			struct{ label := "Repair Item", value := TL_BTN_REPAIR },
+			struct{ label := "Fortify a Hat", value := TL_BTN_FORTIFY }
+		};
+		var choice := CraftMenu_ShowCategoryGump( character, tailor_cfg, "Tailoring", SKILLID_TAILORING, APPEAR_AT, extra_options );
+		if( !choice )
+			return;
+		endif
 
-	resource_name := tailor_cfg[resourceRequest.objtype].Name;
-	resource_qual := tailor_cfg[resourceRequest.objtype].Quality;
-
-	var elemkeys := GetConfigStringKeys( tailor_cfg );
-	var can_make;
-	var choice;
-
-	var menu := CreateMenu( "What would you like to make?" );
-
-	case( id )
-
-		ID_HIDES:
-			AddMenuItem( menu, 0x13CC, "Leather Armors" );
-			AddMenuItem( menu, 0x13DB, "Studded Leather Armors" );
-			AddMenuItem( menu, 0x1C02, "Females Armors" );
-			AddMenuItem( menu, 0x1711, "Shoes" );
-			AddMenuItem( menu, 0x141b, "Misc" );
-			AddMenuItem( menu, 0x0E76, "Containers" );
-			AddMenuItem( menu, 0x1E54, "Rugs" );
-			break;
-
-		ID_CLOTH:
-			AddMenuItem( menu, 0x1517, "Shirts" );
-			AddMenuItem( menu, 0x1539, "Pants" );
-			AddMenuItem( menu, 0x1713, "Caps" );
-			AddMenuItem( menu, 0x153D, "Misc" );
-			AddMenuItem( menu, 0x0AD1, "House Decorations" );
-			break;
-
-	endcase
-
-	choice := SelectMenuItem2( character, menu ).index;
-	if( !choice )
-		return;
-	endif
-
-	choice := (id * 10) + choice;
-
-	menu := CreateMenu( "What would you like to make?" );
-
-	foreach key in elemkeys
-		if( tailor_cfg[key].Type == choice )
-			if( CanMake( character, key, resourceRequest ) )
-				AddMenuItem( menu, Cint(key), tailor_cfg[key].Name );
-				can_make := 1;
+		if( choice == TL_BTN_REPAIR )
+			SendSysmessage( character, "What would you like to repair?" );
+			var use_on := Target( character, TGTOPT_CHECK_LOS );
+			if( use_on and Accessible(character, use_on) )
+				if( use_on.hp and use_on.quality and tailor_cfg[use_on.graphic] )
+					repair_item( character, use_on, SKILLID_TAILORING );
+				else
+					SendSysMessage( character, "You can't repair that with this." );
+				endif
 			endif
+			return;
 		endif
-	endforeach
 
-	if( can_make )
-		return SelectMenuItem2( character, menu );
-	else
-		SendSysmessage( character, "You can't make anything of this category." );
+		if( choice == TL_BTN_FORTIFY )
+			RunFortifyHat( character );
+			return;
+		endif
+
+		var element := tailor_cfg[choice];
+		if( !element )
+			continue;
+		endif
+
+		var detail := CraftMenu_ShowDetailGump( character, tailor_cfg, choice, SKILLID_TAILORING, "Tailoring", array{} );
+		if( !detail )
+			continue;
+		endif
+
+		TryToMakeItem( character, detail.slot1, choice );
+		return;
+	endwhile
+
+endfunction
+
+
+// Fortify a Hat gump option -- targets the hat (must be an undamaged hat in
+// the backpack), then hands off to FortifyHat below, which targets the helm.
+function RunFortifyHat( character )
+
+	SendSysmessage( character, "What hat would you like to fortify?" );
+	var hat := Target( character, TGTOPT_CHECK_LOS );
+	if( !hat )
 		return;
 	endif
 
-endfunction
-
-function CanMake( who, key, resourceRequest )
-
-	var diff := tailor_cfg[key].Skill + Cint( resource_diff / DIVIDER );
-	if( diff < 1 )
-		diff := 1;
-	elseif( diff > 150 )
-		diff := 150;
+	if( !Accessible( character, hat ) )
+		SendSysMessage( character, "You can't reach that." );
+		return;
 	endif
 
-	if( GetEffectiveSkill( who, SKILLID_TAILORING ) >= ( diff + APPEAR_AT ) )
-		if( GetAvailableResource(who, resourceRequest).total >= tailor_cfg[key].Material )
-			return 1;
-		endif
+	if( !ReserveItem(hat) )
+		return;
 	endif
 
-	return 0;
+	if( !IsInContainer( character.backpack, hat ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return;
+	endif
+
+	if( !hat.hp and hat.quality and tailor_items[hat.objtype] )
+		hat.hp := 1;
+	endif
+
+	if( !IsHat(hat) )
+		SendSysMessage( character, "That's not a hat." );
+		return;
+	endif
+
+	if( hat.hp != hat.maxhp )
+		SendSysMessage( character, "That hat needs to be undamaged to fortify a helm with it." );
+		return;
+	endif
+
+	FortifyHat( character, hat );
 
 endfunction
+
 
 function TryToMakeItem( character, resourceRequest, item )
+
+	var resource_diff := tailor_cfg[resourceRequest.objtype].Difficulty;
 
 	var material;
 	var itemname;
@@ -257,7 +186,7 @@ function TryToMakeItem( character, resourceRequest, item )
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
 		material := CInt(Ceil(material/2));
 	endif
-	
+
 	var excep_ch := 10;
 	var excep_diff	:= skill;
 
@@ -274,9 +203,9 @@ function TryToMakeItem( character, resourceRequest, item )
 
 	LeaseResource( character, resourceRequest, material );
 
-	//itemname := resource_name + " " + itemname;
-
-	AutoLoop_init( character );
+	// Loop count was already fixed by CraftMenu_ShowDetailGump (AutoLoop_initFixed
+	// for Make Max/Now, or AutoLoop_init with a capped maxx for Make Number) --
+	// do NOT call AutoLoop_init again here, it would overwrite that count.
 	while( AutoLoop_more() && ( GetAvailableResource(character, resourceRequest).total >= material ) && NOT character.dead)
 
 		sendDiff( character , skill );
@@ -295,29 +224,16 @@ function TryToMakeItem( character, resourceRequest, item )
 				var total_cloth := GetAvailableResource(character, resourceRequest).total;
 				consume_amount := total_cloth;
 				theitem := CreateItemInBackpack( character, item, CInt( consume_amount / 4 ) );
-			// else
-			// 	theitem := CreateItemInBackpack( character, item );
 			else
-
-				//if( theitem )
 
 				var cprops := GetConfigStringArray( tailor_cfg[resourceRequest.objtype], "CProp" );
 
-				// if( resource_name )
-				// 	itemname := resource_name + " " + itemname;
-				// endif
-
-				// if( theitem.quality and resource_qual )
-				// 	theitem.quality := resource_qual;
-				// endif
 				var randomchance := Random(150);
-				//Print("Random chance rolled: " + randomchance + " vs excep chance: " + excep_ch );
 
 				if( GetObjProperty(character, "ForceExceptional") or (( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TAILORING, excep_diff, 0 )) )
 
 					//Made something Exceptional
 					if( give_deed )
-						//Print("Creating exceptionaldeed item: " + give_deed );
 						var product_desc := GetItemDescriptor(CInt(give_deed));
 						ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 1, character, SKILLID_TAILORING, deedname);
 						theitem := CreateItemInBackpack( character , product_desc );
@@ -325,42 +241,11 @@ function TryToMakeItem( character, resourceRequest, item )
 						SetName( theitem, itemname );
 						IncRevision(theitem);
 					else
-						//Non Deed Item
-						//Print("Creating Non Deed Exceptional Item");
 						var product_desc := GetItemDescriptor(CInt(item));
 						ApplyMaterialProperties(product_desc, resourceRequest, 1, character, SKILLID_TAILORING);
 						theitem := CreateItemInBackpack( character , product_desc );
-						//itemname := GetObjProperty( theitem , "BaseName" );
 					endif
 
-
-					// if( theitem.quality )
-
-					// 	var armslore := GetEffectiveSkill( character, SKILLID_ARMSLORE );
-					// 	var multiplier := 5 + Cint( armslore / 10 );
-
-					// 	if( GetObjProperty( character, CLASSEID_CRAFTER ) )
-					// 		multiplier := Cint( multiplier * ClasseBonus( character, CLASSEID_CRAFTER ) );
-					// 	endif
-
-					// 	multiplier := 100 + multiplier;
-					// 	var newquality := Cint(theitem.quality * multiplier);
-					// 	newquality := Cdbl(newquality);
-					// 	newquality := newquality / 100;
-					// 	theitem.quality := newquality;
-					// endif
-
-					// itemname := "Exceptional " + itemname;
-					// if(GetObjProperty(character, "ToggleBuildMark"))
-					// 	if( YesNo( character, "Add Builder Mark?" ) )
-					// 		SetObjProperty( theitem , "CraftedBy" , character.name );
-					// 	endif
-					// else
-					// 	SetObjProperty( theitem , "CraftedBy" , character.name );
-					// endif
-
-					// SendSysmessage( character, "You make an exceptional item and put it in your pack" );
-					// SetObjProperty( theitem, "IsExceptional", 1 );
 					if( excep_diff >= 130 )
 						SendSysmessage( character, "This masterpiece will make you famous around the world." );
 						AwardFame( character, FAME_BONUS );
@@ -371,9 +256,7 @@ function TryToMakeItem( character, resourceRequest, item )
 					SendSysmessage( character, "You make an exceptional item and put it in your pack" );
 				else
 					//Failed to make Exceptional, make normal item
-					//Print("Creating normal item after failing exceptional");
 					if( give_deed )
-						//Print("Creating normal deed item: " + give_deed );
 						var product_desc := GetItemDescriptor(CInt(give_deed));
 						ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 0, character, SKILLID_TAILORING, deedname);
 						theitem := CreateItemInBackpack( character , product_desc );
@@ -381,12 +264,9 @@ function TryToMakeItem( character, resourceRequest, item )
 						SetName( theitem, itemname );
 						IncRevision(theitem);
 					else
-						//Non Deed Item
-						//Print("Creating Non Deed Normal Item");
 						var product_desc := GetItemDescriptor(CInt(item));
 						ApplyMaterialProperties(product_desc, resourceRequest, 0, character, SKILLID_TAILORING);
 						theitem := CreateItemInBackpack( character , product_desc );
-						//itemname := GetObjProperty( theitem , "BaseName" );
 					endif
 					SendSysmessage( character, "You create the item and place it in your pack." );
 				endif
@@ -408,7 +288,7 @@ function TryToMakeItem( character, resourceRequest, item )
 									prop_mod := 0 - presently;
 								endif
 							endif
-		
+
 							var resulting := presently + prop_mod;
 							if( resulting > 0 and prop_name == "DefaultDex" )
 								resulting := 0;
@@ -420,7 +300,6 @@ function TryToMakeItem( character, resourceRequest, item )
 							// Toadstool - 21/04/2012 - Due to a core bug with items (just armour that i know of)
 							// getting back their basic props on server restart. Set deleted ones to 0
 								SetObjProperty( theitem, prop_name, 0);
-								//EraseObjProperty( theitem, prop_name );
 							endif
 						endif
 					endforeach
@@ -429,12 +308,8 @@ function TryToMakeItem( character, resourceRequest, item )
 
 			theitem.hp := theitem.maxhp;
 			theitem.color := resourceRequest.color;
-			//SetObjProperty( theitem , "CraftedWith", resource.objtype );
 			ConsumeResource( character, resourceRequest, consume_amount );
-			//SetObjProperty( theitem, "BaseName", itemname );
-			// SetName( theitem, itemname );
 			IncRevision(theitem);
-			//else
 			if( !theitem )
 				ConsumeResource( character, resourceRequest, consume_amount );
 				AutoLoop_finish();
@@ -456,7 +331,7 @@ function TryToMakeItem( character, resourceRequest, item )
 			if( destroy < 1 )
 				destroy	:= 1;
 			endif
-			
+
 			ConsumeResource( character, resourceRequest, destroy );
 			SendSysmessage( character, "You destroyed some resources." );
 
@@ -470,27 +345,6 @@ function TryToMakeItem( character, resourceRequest, item )
 
 	ReleaseResourceLease(resourceRequest);
 	AutoLoop_finish();
-
-endfunction
-
-
-function GetresourceName( resource )
-
-	var t_name := resource.desc;
-
-	if( resource.amount > 1 )
-		var i := len( t_name );
-		var amt := resource.amount;
-		var count := 2;
-		while( Cint(amt / 10) )
-			count := count + 1;
-			amt := Cint( amt / 10 );
-		endwhile
-
-		t_name := t_name[count+1, i - count];
-	endif
-
-	return t_name;
 
 endfunction
 
@@ -509,7 +363,7 @@ function _Play_Sound( character )
 endfunction
 
 function FortifyHat( who, hat )
-	
+
 	if (GetObjProperty(hat, "FortifiedWith"))
 		SendSysMessage(who, "This hat is already fortified.");
 		return 0;
@@ -519,7 +373,7 @@ function FortifyHat( who, hat )
 		SendSysMessage(who, "You must unentwine the hat to do that.");
 		return 0;
 	endif
-	
+
 	SendSysMessage( who, "Fortify this hat with what?" );
 	var helm := Target( who, TGTOPT_CHECK_LOS );
 	if( !helm )
@@ -550,7 +404,7 @@ function FortifyHat( who, hat )
 		SendSysMessage(who, "You must unentwine the helm to do that.");
 		return 0;
 	endif
-	
+
 	_Play_Sound( who );
 
 	if( !CheckSkill( who, SKILLID_TAILORING, -1, 250 ) )
@@ -561,7 +415,7 @@ function FortifyHat( who, hat )
 	endif
 
 	SetObjProperty(helm, "FortifiedWith", hat.desc);
-	hat.quality := 2.0; 
+	hat.quality := 2.0;
 	DupeItem( hat, helm );
 	SetName( helm, "a fortified " + TruncateArticle(hat.desc) );
 	helm.hp := helm.maxhp;

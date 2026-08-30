@@ -398,7 +398,10 @@ endfunction
 //	variations.
 ///////////////////
 function MoveItemInDirection(who, hsign, item, newx := 0, newy := 0)
-	if (!hsign.IsLocationInsideHouse(item.x + newx, item.y + newy, item.z))
+	// dispatched method calls don't honor declared defaults (see
+	// guilds.src's IsInsideGuildHouse) -- must pass all 5 args
+	// (sign + x, y, z, realm) or the call mismatches at runtime.
+	if (!hsign.IsLocationInsideHouse(item.x + newx, item.y + newy, item.z, hsign.realm))
 		SHDebug("Move denied: outside house. who=" + who.name + " item=" + item.serial + " from=" + item.x + "," + item.y + "," + item.z + " to=" + (item.x + newx) + "," + (item.y + newy) + "," + item.z);
 		SendSysMessage(who, "That would put the item outside of your house!", 0x3, 0x21);
 	elseif(!CheckLosAt( who, item.x + newx, item.y + newy, item.z ))
