@@ -10,6 +10,7 @@ include ":house:multihouse_settings";
 include "include/omegacache_utils";
 include ":guilds:include/guildconstants";
 include ":guilds:items/guildstone/companions";
+include ":houseExtras:settings";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;
@@ -123,6 +124,11 @@ function DemolishAbandonedCustomHouse (sign)
 		return;
 	endif
 
+	// Looked up here (rather than where it used to be read, further below)
+	// so DemolishTeleporter() below has a "who" to message -- it's fine if
+	// this comes back 0 for an abandoned house with no owner online/found.
+	var owner := SystemFindObjectBySerial (CInt (GetObjProperty (sign, "ownerserial")), SYSFIND_SEARCH_OFFLINE_MOBILES);
+
 	var homeinfo := GetObjProperty (sign, "homeinfo");
 	if (homeinfo)
 		foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
@@ -143,6 +149,12 @@ function DemolishAbandonedCustomHouse (sign)
 					endif
 				endforeach
 				DestroyItem (thing);
+			elseif (thing.objtype == 0x15000)
+				// House teleporter -- mirrors :house:'s manual redeed sweep
+				// (multiSign/use.src). Previously left standing (and its
+				// paired partner elsewhere left dangling with a stale
+				// signserial/numhteles count) once DestroyMulti ran below.
+				DemolishTeleporter (thing, owner);
 			endif
 		endforeach
 	endif
@@ -156,7 +168,6 @@ function DemolishAbandonedCustomHouse (sign)
 	endif
 	UnregisterCustomHouseSign (sign);
 
-	var owner := SystemFindObjectBySerial (CInt (GetObjProperty (sign, "ownerserial")), SYSFIND_SEARCH_OFFLINE_MOBILES);
 	if (owner)
 		ReleaseAll (owner, sign);
 	endif
@@ -168,8 +179,55 @@ function DemolishAbandonedCustomHouse (sign)
 		endforeach
 	endif
 
+	// 2026-08-21: a bare DestroyMulti(house) here could silently leave the
+	// house base standing (structure not removed, or removed server-side but
+	// not refreshed client-side) even though the sign and every component
+	// above were already destroyed -- same bug reported and fixed for the
+	// player-triggered redeed path (sign.src), and originally fixed in
+	// :house:'s own redeed (multiSign/use.src). Capture coords/serial first
+	// (house may become invalid after), verify the destroy actually took,
+	// retry once, and force a client revision refresh so no stale multi
+	// shell lingers for anyone still standing nearby when decay hits.
+	var house_objtype := house.objtype;
 	var house_serial := house.serial;
-	DestroyMulti (house);
+	var hx := house.x;
+	var hy := house.y;
+	var hz := house.z;
+	var hrealm := house.realm;
+	var destroy_result := DestroyMulti (house);
+	var destroy_failed := 0;
+	var destroy_err := "";
+	if (!destroy_result)
+		destroy_failed := 1;
+		destroy_err := "DestroyMulti returned false";
+	elseif (destroy_result.errortext)
+		destroy_failed := 1;
+		destroy_err := destroy_result.errortext;
+	endif
+
+	var still_exists := SystemFindObjectBySerial (CInt (house_serial));
+	if (still_exists)
+		var destroy_retry := DestroyMulti (still_exists);
+		if ((!destroy_retry) or destroy_retry.errortext or SystemFindObjectBySerial (CInt (house_serial)))
+			destroy_failed := 1;
+			if (destroy_retry and destroy_retry.errortext)
+				destroy_err := destroy_retry.errortext;
+			elseif (destroy_err == "")
+				destroy_err := "multi serial still exists after retry";
+			endif
+		endif
+	endif
+
+	if (destroy_failed)
+		Print ("Custom house decay-demolish failed to remove multi for serial " + CStr (house_serial) + " (objtype " + Hex (house_objtype) + "): " + destroy_err);
+	endif
+
+	foreach viewer in ListMobilesNearLocation (hx, hy, hz, 24, hrealm)
+		if (viewer and viewer.connected)
+			IncRevision (viewer);
+			MoveObjectToLocation (viewer, viewer.x, viewer.y, viewer.z, viewer.realm, MOVEOBJECT_FORCELOCATION);
+		endif
+	endforeach
 
 	// Cache containers above were force-cleared regardless of contents, so
 	// nothing further can be recovered from this DataFile either way --

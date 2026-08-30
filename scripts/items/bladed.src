@@ -21,11 +21,6 @@ include "include/resourcemanager";
 const STARTHAIR		:= 0x2006;
 const ENDHAIR		:= 0x2079;
 
-const DIVIDER		:= 4;
-const APPEAR_AT		:= -10;
-const POINTS_MULTIPLIER	:= 8;
-const FAME_BONUS	:= 10;
-
 
 program use_blade( user )
 
@@ -34,15 +29,7 @@ program use_blade( user )
 	if( !use_on )
 		return;
 	endif
-	if( (use_on.objtype == UOBJ_LOGS) or ((use_on.objtype >= UOBJ_LOGS_START) and (use_on.objtype <= UOBJ_LOGS_END) ) )
-		CarveLogs( user, use_on.item );
-	
-	elseif(use_on.item.isa(POLCLASS_WEAPON))
-		var bowcraft_cfg	:= ReadConfigFile( "bowcraft" );
-		if(bowcraft_cfg[use_on.item.graphic])
-			repair_item( user, use_on.item , SKILLID_BOWCRAFT );
-		endif
-	elseif( use_on.objtype == UOBJ_CORPSE )
+	if( use_on.objtype == UOBJ_CORPSE )
 		Carve_Corpse(user, use_on.item);
 
 	elseif( IsFish(use_on.objtype ) )
@@ -50,9 +37,7 @@ program use_blade( user )
 
 	elseif( IsTree(use_on.objtype ) )
 		CarveTree(user,use_on);
-	
-	elseif( IsArrow(use_on) )
-		MakeArrows(user,use_on.objtype);
+
 /*
 	elseif (use_on.mobile && IsThief(user) && blade.graphic == 3921)
 		return Start_Script(":combat:hitscript/balanceddagger", {user, use_on.mobile, blade});
@@ -106,7 +91,7 @@ function CarveTree( user , use_on )
 		SendSysMessage(user, "That's too far away.");
 		return 0;
 	endif
-	
+
 	if( !CheckLosBetween(user.x, user.y, user.z, use_on.x, use_on.y, use_on.z, user.realm) )
 		SendSysMessage(user, "You can't see that.");
 		return 0;
@@ -153,7 +138,7 @@ function CarveFish( user , use_on )
 
 	PlaySoundEffect( user , SFX_57 );
 	PerformAction( user , ANIM_SALUTE );
-	
+
 	if(num_steaks <= 60000)
 		if(!CreateItemInBackpack( user, UOBJ_FISHSTEAK, num_steaks ))
 			if (CreateItemAtLocation(user.x, user.y, user.z, UOBJ_FISHSTEAK, num_steaks, user.realm))
@@ -161,7 +146,7 @@ function CarveFish( user , use_on )
 			else
 				SendSysMessage(user, "Your backpack is too full for you to carve the fish.");
 				return 0;
-			endif	
+			endif
 		else
 			SendSysmessage( user , "You carve the fish and put " + num_steaks + " steaks in your pack." );
 		endif
@@ -297,323 +282,6 @@ function carve_corpse(character, cadaver)
 endfunction
 
 
-function CarveLogs( character, logs )
-
-	if( !Accessible( character , logs ) )
-		SendSysMessage( character , "You can't reach that." );
-		return;
-	endif
-
-	if( !ReserveItem( logs ) )
-		return;
-	endif
-
-	if( !IsInContainer( character.backpack , logs ) )
-		SendSysmessage( character, "That item has to be in your backpack." );
-		return;
-	endif
-
-	var logs_cfg		:= ReadConfigFile( ":carpentry:carpentry" );
-	var element		:= FindConfigElem( logs_cfg , logs.objtype );
-	if( !element )
-		SendSysMessage( character , "You can't make anything out of these logs" );
-		return;
-	endif
-
-	var logs_name	:= element.Name;
-	var logs_diff	:= element.Difficulty;
-	var logs_qual	:= element.Quality;
-	var bowcraft	:= GetEffectiveSkill( character , SKILLID_BOWCRAFT );
-
-	if( bowcraft < logs_diff )
-		sendDiff( character, logs_diff );
-		SendSysmessage( character, "You aren't skilled enough to craft anything from those logs yet." );
-		return;
-	endif
-
-	var bowcraft_cfg	:= ReadConfigFile( "bowcraft" );
-	var the_keys		:= GetConfigStringKeys( bowcraft_cfg );
-	var can_make		:= 0;
-	var menu 		:= CreateMenu( "What would you like to make?" );
-	var special;
-	var makespecial		:= 0;
-	foreach key in the_keys
-		if( CanMake( bowcraft , key , logs , logs_diff , bowcraft_cfg, character  ) )
-			AddMenuItem( menu , Cint(key) , bowcraft_cfg[key].Name );
-			can_make := 1;
-		endif
-	endforeach
-
-	if( !can_make )
-		SendSysmessage( character, "You can't make anything yet." );
-		return;
-	endif
-
-	var what := SelectMenuItem2( character , menu );
-	if( !what )
-		return;
-	endif
-
-	
-  	foreach item in EnumerateItemsInContainer(character.backpack )
-		if ( (what.objtype == 0x6050 and item.objtype == 0xf8c) or  (what.objtype == 0xb201 and item.objtype == 0xf8d) or (what.objtype == 0x1403 and item.objtype == 0xf7a))						
-			makespecial := 1;
-			special := item;
-			special.movable := 0;
-
-		endif
-	endforeach
-	what := what.objtype;	
-	element := FindConfigElem( bowcraft_cfg , what );
-
-	var itemname;
-	var material;
-	var points;
-	var skill;
-	var logsRequest := MakeBackpackRequest(character, logs);
-	var specialRequest;
-	if( makespecial and special )
-		specialRequest := MakeBackpackRequest(character, special);
-	endif
-
-	if( element )
-		material := element.Material;
-	else
-		return;
-	endif
-	//Require half resources during Crafting PH
-	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
-	endif
-
-	if( what == UOBJ_SHAFTS or what == UOBJ_KINDLING )
-		itemname := element.Name;
-		skill	 := element.Skill;
-		skill	 := skill + Cint( logs_diff / DIVIDER );
-		if( skill < 1 )
-			skill := 1;
-		elseif( skill > 140 )
-			skill := 140;
-		endif
-		sendDiff( character, skill );
-
-		points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
-
-		PlaySoundEffect( character , SFX_57 );
-		Sleep( 2 );
-
-		if( CheckSkill( character , SKILLID_BOWCRAFT , skill , points ) )
-			var shafts := CreateItemInBackpack( character , what , logs.amount );
-			if( shafts )
-				itemname := logs_name + " " + itemname;
-				shafts.color := logs.color;
-				shafts.hp := shafts.maxhp;
-				SetObjProperty( shafts , "BaseName" , itemname );
-				ConsumeResource( character, logsRequest, material );
-				SetName( shafts , itemname );
-				SendSysMessage( character , "You place the items in your pack." );
-			endif
-			DestroyItem( logs );
-		else
-			var destroy	:= 75 - Cint( bowcraft / 2 );
-			if( IsCrafter( character ) )
-				destroy := Cint( destroy / ClasseBonus( character , CLASSEID_CRAFTER ) );
-			endif
-
-			if( destroy > 50 )
-				destroy	:= 50;
-							endif
-
-			destroy	:= Cint( material * destroy / 100 );
-			if( destroy < 1 )
-				destroy	:= 1;
-			endif
-
-			ConsumeResource( character, logsRequest, destroy );
-			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs." );
-		endif
-		return;
-	endif
-
-
-	AutoLoop_init( character );
-	while( AutoLoop_more() && logs.amount >= material && NOT character.dead)
-
-		if ((!makespecial) or (special and special.amount > 9 ))
-		itemname := element.Name;
-		skill	 := element.Skill;
-		skill	 := skill + Cint( logs_diff / DIVIDER );
-		if( skill < 1 )
-			skill := 1;
-		elseif( skill > 140 )
-			skill := 140;
-		endif
-		
-		sendDiff( character, skill );
-
-		points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
-
-		PlaySoundEffect( character , SFX_57 );
-		Sleep(2);
-		PlaySoundEffect(character, SFX_57);
-		Sleep(2);
-		if( !GetObjProperty( character, CLASSEID_CRAFTER ))
-			PlaySoundEffect(character, SFX_57);
-			Sleep(2);
-		endif
-
-		if( CheckSkill( character , SKILLID_BOWCRAFT , skill , points ) )
-
-			var theitem := CreateItemInBackpack( character , what );
-			if( theitem )
-
-				var excep_ch	:= 10;
-
-				theitem.quality := logs_qual;
-				itemname := logs_name + " " + itemname;
-
-				var crafter := GetObjProperty( character , CLASSEID_CRAFTER );
-				if( crafter )
-					excep_ch	:= Cint( excep_ch * CLASSE_BONUS );
-				else
-					skill		:= skill + 40;
-				endif
-
-				if( skill < 90 )
-					skill := 90;
-				endif
-
-				if ( (randomint(100) < excep_ch) and CheckSkill( character , SKILLID_BOWCRAFT , skill , 0 ) )
-
-					//Made something Exceptional
-					var armslore := GetEffectiveSkill( character , SKILLID_ARMSLORE );
-					var multiplier := 5 + Cint( armslore / 10 );
-
-					if( crafter )
-						multiplier := Cint( multiplier * ClasseBonus( character ,CLASSEID_CRAFTER ) );
-					endif
-
-					multiplier	:= 50 + multiplier;
-					var newquality := Cint(theitem.quality * multiplier);
-					newquality := Cdbl(newquality);
-					newquality := newquality / 100;
-					theitem.quality := newquality;
-					itemname := "Exceptional " + itemname;
-					if(GetObjProperty(character, "ToggleBuildMark"))
-						if( YesNo( character, "Add Builder Mark?" ) )
-							SetObjProperty( theitem , "CraftedBy" , character.name );
-						endif
-					else
-						SetObjProperty( theitem , "CraftedBy" , character.name );
-					endif
-					SendSysmessage( character , "You make an exceptional item and put it in your pack" );
-					SetObjProperty( theitem , "IsExceptional" , 1 );
-					if( skill >= 130 )
-						SendSysmessage( character , "This masterpiece will make you famous around the world." );
-						AwardFame( character , FAME_BONUS );
-					elseif( GetObjProperty( character , CLASSEID_CRAFTER ) and skill >= 110 )
-						SendSysmessage( character , "This masterpiece will make you famous around the world." );
-						AwardFame( character , FAME_BONUS );
-					endif
-				else
-
-					//Made a normal item
-					SendSysmessage( character , "You create the item and place it in your pack." );
-				endif
-				theitem.color := logs.color;
-				if (special and theitem.color == 0 )
-					if (theitem.objtype == 0x6050)
-						theitem.color := 2750;
-					elseif (theitem.objtype == 0xb201)
-						theitem.color := 2243;
-					elseif (theitem.objtype == 0x1403)
-						theitem.color := 1282;
-					endif
-				endif
-				theitem.hp := theitem.maxhp;
-				SetObjProperty( theitem , "BaseName" , itemname );
-				SetName( theitem , itemname );
-			endif
-			ConsumeResource( character, logsRequest, material );
-			if (special)
-				ConsumeResource( character, specialRequest, material );
-			endif
-
-		else
-			var destroy	:= 75 - Cint( bowcraft / 2 );
-			if( IsCrafter( character ) )
-				destroy := Cint( destroy / ClasseBonus( character , CLASSEID_CRAFTER ) );
-			endif
-
-			if( destroy > 50 )
-				destroy	:= 50;
-			endif
-
-			destroy	:= Cint( material * destroy / 100 );
-			if( destroy < 1 )
-				destroy	:= 1;
-			endif
-			
-			ConsumeResource( character, logsRequest, destroy );
-			SendSysmessage( character , "You destroyed " + destroy + " " + logs_name + " logs" );
-			if (special)
-				ConsumeResource( character, specialRequest, destroy );
-				SendSysmessage( character , "and " + destroy + " reagents." );
-			endif
-		endif
-	else
-		AutoLoop_finish();
-	endif
-	endwhile
-	AutoLoop_finish();
-	if (makespecial and special)
-		special.movable := 1;
-	endif
-endfunction
-
-
-function CanMake( bowcraft , key , logs , logs_diff , cfg, character)
-
-	var diff := cfg[key].Skill + Cint( logs_diff / DIVIDER );
-	var hide := cfg[key].Hides;
-	var htype:= cfg[key].HideType;
-	var num;
-	if( diff < 1 )
-		diff := 1;
-	elseif( diff > 130 )
-		diff := 130;
-	endif
-	var material := cfg[key].Material;
-	//Require half resources during Crafting PH
-	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
-	endif
-
-
-	if( bowcraft >= ( diff + APPEAR_AT ) )
-		if (!hide)
-			
-
-			if( logs.amount >= material )
-				return 1;
-			endif
-		else
-		  	foreach item in EnumerateItemsInContainer( character.backpack )
-			if (item.objtype == htype  )
-				num := item;
-			endif
-			endforeach
-			if ((num.amount >= hide ) and ( logs.amount >= material ))
-				return 1;
-			endif
-		endif
-	endif
-
-	return 0;
-
-endfunction
-
-
 function IsFromMagic( corpse )
 
 	if( GetObjProperty( corpse , "summoned" ) or
@@ -621,103 +289,6 @@ function IsFromMagic( corpse )
 		return 1;
 	else
 		return 0;
-	endif
-
-endfunction
-
-
-function IsArrow( what )
-
-	case( what.objtype )
-		0xf3f	:
-		0x1bfb 	:	return 1;
-
-		default:	return 0;
-	endcase
-
-endfunction  
-
-function IsReg( what )
-
-	case( what.objtype )
-		0xf8c	:			//sa
-		0xf8d 	:			//ss
-		0xf7a 	:	return 1; 	//bp
-
-		default:	return 0;
-	endcase
-
-endfunction  
-
-function MakeArrows ( character, use_on )
-
-	SendSysmessage( character, "What would you like combine that with?" );
-	var use_reg := Target( character );
-	if ( !IsReg(use_reg) )
-		SendSysmessage( character, "You don't know how to use those together." );
-		return;
-	else
-	  	foreach item in EnumerateItemsInContainer( character.backpack )
-		if (item.objtype == use_on )
-				use_on := item;
-			endif
-		endforeach
-		if ( use_on.objtype == 0x1bfb and use_reg.objtype != 0xf7a)
-			SendSysmessage( character, "You must use black pearl." );
-			return;
-		endif
-		if ( use_on.objtype == 0xf3f and use_reg.objtype == 0xf7a)
-			SendSysmessage( character, "You must use sulphurous ash or spiders silk." );
-			return;
-		endif
-		var useOnRequest := MakeBackpackRequest(character, use_on);
-		var useRegRequest := MakeBackpackRequest(character, use_reg);
-		var val1 := GetAvailableResource(character, useOnRequest).total;
-		var val2 := GetAvailableResource(character, useRegRequest).total;
-		var num;
-		if (val1 > val2)
-			num := val2;
-		else
-			num := val1;
-		endif
-		if ( use_reg.objtype == 0xf8c )
-		sendDiff( character, 114 );
-			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 114 )
-				ConsumeResource( character, useOnRequest, num );
-				ConsumeResource( character, useRegRequest, num );
-				CreateItemInBackpack( character, 0x6051, num );
-				SendSysMessage( character, "You create some fire arrows and put them in your pack." );
-			else
-				SendSysMessage( character, "You fail, and destroy some materials." );
-				ConsumeResource( character, useOnRequest, 1 );
-				ConsumeResource( character, useRegRequest, 1 );
-			endif
-		elseif ( use_reg.objtype == 0xf8d )
-		sendDiff( character, 119 );
-			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 119 )
-				ConsumeResource( character, useOnRequest, num );
-				ConsumeResource( character, useRegRequest, num );
-				CreateItemInBackpack( character, 0xb200, num );
-				SendSysMessage( character, "You create some ice arrows and put them in your pack." );
-			else
-				SendSysMessage( character, "You fail, and destroy some materials." );
-				ConsumeResource( character, useOnRequest, 1 );
-				ConsumeResource( character, useRegRequest, 1 );
-			endif
-		elseif ( use_reg.objtype == 0xf7a )
-		sendDiff( character, 124 );
-			if( GetEffectiveSkill( character, SKILLID_BOWCRAFT ) > 124 )
-				ConsumeResource( character, useOnRequest, num );
-				ConsumeResource( character, useRegRequest, num );
-				CreateItemInBackpack( character, 0x824e, num );
-				SendSysMessage( character, "You create some thunderbolts and put them in your pack." );
-			else
-				SendSysMessage( character, "You fail, and destroy some materials." );
-				ConsumeResource( character, useOnRequest, 1 );
-				ConsumeResource( character, useRegRequest, 1 );
-			endif
-		endif
-		return;
 	endif
 
 endfunction

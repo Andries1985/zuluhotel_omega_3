@@ -1,0 +1,49 @@
+// CreateScript for every "ritualaltar<id>" item (config/itemdesc.cfg,
+// e.g. Item 0xBA41). Auto-spawns the second statue piece at a fixed offset
+// determined by which orientation graphic the anchor was created with, and
+// links the two pieces together -- same shape as the guildstone two-piece
+// pattern (pkg/opt/guilds/items/guildstone/companions.inc), adapted so the
+// companion resolves back to the ANCHOR's CProps (this altar's content is
+// per-instance, unlike a guildstone's per-guild content).
+use uo;
+
+const RITUALALTAR_GRAPHIC_EW := 0x2A9A;
+const RITUALALTAR_GRAPHIC_EW_PIECE := 0x2A9B;
+const RITUALALTAR_GRAPHIC_NS := 0x2A9C;
+const RITUALALTAR_GRAPHIC_NS_PIECE := 0x2A9D;
+
+program ritualaltar_create(altar)
+
+	var piece_graphic := 0;
+	var dx := 0;
+	var dy := 0;
+
+	if(altar.graphic == RITUALALTAR_GRAPHIC_EW)
+		piece_graphic := RITUALALTAR_GRAPHIC_EW_PIECE;
+		dx := -1;
+	elseif(altar.graphic == RITUALALTAR_GRAPHIC_NS)
+		piece_graphic := RITUALALTAR_GRAPHIC_NS_PIECE;
+		dy := -1;
+	else
+		Print("[RitualAltar] ritualaltar_create: unrecognized anchor graphic 0x"+Hex(altar.graphic)+" on item "+CStr(altar.serial)+", no companion spawned");
+		return 0;
+	endif
+
+	var piece := CreateItemAtLocation(altar.x+dx, altar.y+dy, altar.z, piece_graphic, 1, altar.realm);
+	if(!piece)
+		Print("[RitualAltar] ritualaltar_create: failed to spawn companion piece for altar "+CStr(altar.serial));
+		return 0;
+	endif
+
+	piece.movable := 0;
+	// Same usescript as the anchor, so double-clicking either tile runs the
+	// identical program -- use.src resolves back to the anchor's own CProps
+	// via RitualAltarAnchor, so both tiles always show the same gump.
+	piece.usescript := ":rituals:altar/use";
+	SetName(piece, altar.name);
+	SetObjProperty(piece, "RitualAltarAnchor", altar.serial);
+
+	SetObjProperty(altar, "RitualAltarCompanion", piece.serial);
+
+	return 1;
+endprogram

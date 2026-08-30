@@ -1,0 +1,88 @@
+/*
+        New 2026-08-26 - design specified in the Rituals Package Revival plan.
+        No original author; this ritual never had a script.
+*/
+use uo;
+use os;
+
+include "include/string";
+include "include/starteqp";
+include ":mdgumps:yesNo";
+include "include/namingbyenchant";
+include "../pkg/opt/rituals/include/rituals";
+
+program ritual_perilousTheurgy( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        var item := PerformRitual( mobile, spell_id );
+	if( !item )
+                ChangeLightLevel( mobile, 0 );
+		return 0;
+	endif
+
+        ApplyRitualEffect( mobile, item );
+
+        return 1;
+endprogram
+
+function ApplyRitualEffect( mobile, item )
+
+        var item_desc := TruncateArticle( item.desc ),
+            is_weapon := item.IsA( POLCLASS_WEAPON );
+
+        if( RitualHasGroup3Property( item ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a physical enchantment and cannot also hold a Fury." );
+                return 0;
+        elseif( RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different Fury or Slayer enchantment." );
+                return 0;
+        endif
+
+        var element;
+        if( YesNo( mobile, "Bind the power of Fire into this item?" ))
+                element := "Fire";
+        elseif( YesNo( mobile, "Bind the power of Earth into this item?" ))
+                element := "Earth";
+        elseif( YesNo( mobile, "Bind the power of Air into this item?" ))
+                element := "Air";
+        elseif( YesNo( mobile, "Bind the power of Water into this item?" ))
+                element := "Water";
+        elseif( YesNo( mobile, "Bind the power of Necro into this item?" ))
+                element := "Necro";
+        elseif( YesNo( mobile, "Bind the power of Holy into this item?" ))
+                element := "Holy";
+        else
+                SendSysMessage( mobile, "Cancelled." );
+                return 0;
+        endif
+
+        var weapon_n, armor_n;
+        case( element )
+                "Fire":  weapon_n := 46; armor_n := 48; break;
+                "Earth": weapon_n := 47; armor_n := 49; break;
+                "Air":   weapon_n := 48; armor_n := 50; break;
+                "Water": weapon_n := 49; armor_n := 51; break;
+                "Necro": weapon_n := 50; armor_n := 52; break;
+                "Holy":  weapon_n := 51; armor_n := 53; break;
+        endcase
+
+        if( is_weapon )
+                SetHitscript( item, weapon_n, 0 );
+        else
+                SetOnHitscript( item, armor_n, 0 );
+        endif
+
+        // SetHitscript/SetOnHitscript compute ChanceOfEffect from starteqp.inc's
+        // own `magiclevel` var, which is only meaningful during loot generation
+        // and defaults to 0 (a near-0% chance) called from anywhere else.
+        // Override it with a fixed, reasonable proc chance instead.
+        SetObjProperty( item, "ChanceOfEffect", 10 );
+
+	SetNameByEnchant( item );
+
+	SendSysMessage( mobile, "This "+item_desc+" now burns with the forbidden Fury of "+element+"." );
+
+        return 1;
+endfunction

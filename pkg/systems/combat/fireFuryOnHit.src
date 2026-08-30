@@ -1,0 +1,63 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	fireFuryOnHit :
+//
+//	Single-element trim of trielementalonhit - Fire only. Written for the
+//	rituals package's Perilous Theurgy (2026-08-26): the ritual grants one
+//	of the 6 base Furies individually rather than the combined multi-
+//	element versions.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+use uo;
+
+include "include/spelldata";
+include "include/damages";
+include "include/random";
+
+program fireFuryOnHit( parms )
+
+	var attacker 	 := parms[1];
+	var defender 	 := parms[2];
+	var weapon 	 := parms[3];
+	var armor 	 := parms[4];
+	var basedamage := parms[5];
+	var rawdamage	 := parms[6];
+
+	var chance := GetObjProperty( armor , "ChanceOfEffect" );
+	if(RandomDiceStr("1d100") <= chance)
+
+		var targ;
+		if( GetObjProperty( armor , "Cursed" ) )
+			targ := defender;
+		else
+			targ := attacker;
+		endif
+
+		var spelldmg := (CalcSpellDamage( defender, targ , 5 ) * 0.5);
+		spelldmg := Resisted( defender , targ , 9 , spelldmg );
+
+        if(GetObjProperty( defender , CLASSEID_MAGE) || GetObjProperty( defender , CLASSEID_PALADIN) || GetObjProperty( defender , CLASSEID_MYSTIC_ARCHER))
+            spelldmg *= 0.7;
+        endif
+
+		PlayMovingEffect( defender , targ , FX_SPELL_FIREBALL , 5 , 1 );
+		PlaySoundEffect( targ , SFX_SPELL_FIREBALL );
+		ApplyElementalDamage( defender , targ , 1 , spelldmg , DMGID_FIRE );
+
+		if(DEBUG_MODE)
+			PrintTextAbovePrivate( defender , "I'm dealing this much spell damage: " +spelldmg, defender );
+		endif
+	endif
+
+	if( basedamage != rawdamage )
+		rawdamage := rawdamage;
+		if( rawdamage < 1 )
+			rawdamage := 1;
+		endif
+	endif
+	if(DEBUG_MODE)
+        PrintTextAbovePrivate( attacker , "I'm dealing this much physical damage: " +rawdamage, attacker );
+	endif
+	ApplyTheDamage( defender , attacker , rawdamage );
+
+endprogram

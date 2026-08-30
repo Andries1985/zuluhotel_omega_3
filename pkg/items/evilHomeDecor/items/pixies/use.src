@@ -1,0 +1,20 @@
+use uo;
+use os;
+use util;
+
+include ":itemutils:itemdesc";
+
+program Pixie_use ( unused who, pixie )
+	var sounds := GetObjTypeArray ( pixie.graphic, "Sounds" );
+
+	var playsound := sounds.randomentry();
+
+	PlaySoundEffect ( pixie, CInt ( playsound ) );
+
+	var cfg_info := GetItemDescInfo ( pixie.graphic );
+	if ( cfg_info.RotateTo )
+		pixie.graphic := CInt ( cfg_info.RotateTo );
+	endif
+
+	return 1;
+endprogram

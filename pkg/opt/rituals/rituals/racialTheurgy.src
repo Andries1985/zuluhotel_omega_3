@@ -1,0 +1,58 @@
+/*
+        New 2026-08-26 - design specified in the Rituals Package Revival plan.
+        No original author; this ritual never had a script.
+*/
+use uo;
+use os;
+use cfgfile;
+
+include "include/string";
+include "include/starteqp";
+include "include/namingbyenchant";
+include "../pkg/opt/rituals/include/rituals";
+
+program ritual_racialTheurgy( parms )
+
+        var mobile := parms[1],
+            spell_id := parms[2];
+
+        var item := PerformRitual( mobile, spell_id );
+	if( !item )
+                ChangeLightLevel( mobile, 0 );
+		return 0;
+	endif
+
+        ApplyRitualEffect( mobile, item );
+
+        return 1;
+endprogram
+
+function ApplyRitualEffect( mobile, item )
+
+        var item_desc := TruncateArticle( item.desc );
+
+        if( RitualHasGroup3Property( item ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a physical enchantment and cannot also hold a Slayer." );
+                return 0;
+        elseif( RitualHasHitscript( item ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different Fury or Slayer enchantment." );
+                return 0;
+        endif
+
+        // 17-race Slayer vocabulary, defined once as Enchantment 19-35 in
+        // hitscriptdesc.cfg. Deliberately kept mysterious - one race is
+        // rolled at random and locked in, rather than letting the caster
+        // choose, same spirit as the existing "WhoKnows" wildcard SlayType.
+        var n := Random(17) + 19,
+            hitscriptcfg := ReadConfigFile( ":combat:hitscriptdesc" ),
+            slay_type := hitscriptcfg[n].Type;
+
+        SetObjProperty( item, "SlayType", slay_type );
+        SetHitscript( item, n, 0 );
+
+	SetNameByEnchant( item );
+
+	SendSysMessage( mobile, "This "+item_desc+" now hungers for vengeance - its hatred bound, but its target unknown even to you." );
+
+        return 1;
+endfunction

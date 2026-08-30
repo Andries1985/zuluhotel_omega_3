@@ -1,0 +1,31 @@
+// Bulk Order Book -- CanInsertScript. Restricts the Book to bulk order
+// deeds only, capped at 500 (the locked "one universal 500-slot Book"
+// decision), matching the same reject-by-return-0 pattern as
+// pkg/items/keys/keyRing/canInsert.src.
+
+use uo;
+
+include ":bulkorders:bulkorder";
+include "include/objtype";
+
+const BULKORDER_BOOK_CAPACITY := 500;
+
+program bulkorderbook_caninsert( who, book, movetype, insert_type, adding_item, existing_stack, amt_to_add )
+	movetype := movetype;
+	insert_type := insert_type;
+	existing_stack := existing_stack;
+	amt_to_add := amt_to_add;
+
+	if( adding_item.objtype != UOBJ_BULKORDER_DEED )
+		BOD_Debug("bulkorderbook_caninsert: rejected objtype " + Hex(adding_item.objtype) + " (not a bulk order deed)");
+		SendSysMessage( who, "Only bulk order deeds can go in this book.", color := 33 );
+		return 0;
+	elseif( EnumerateItemsInContainer(book).Size() >= BULKORDER_BOOK_CAPACITY )
+		BOD_Debug("bulkorderbook_caninsert: book at capacity");
+		SendSysMessage( who, "This book is full.", color := 33 );
+		return 0;
+	endif
+
+	BOD_Debug("bulkorderbook_caninsert: accepted deed into book");
+	return 1;
+endprogram

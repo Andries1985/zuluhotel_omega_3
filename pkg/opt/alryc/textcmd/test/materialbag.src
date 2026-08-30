@@ -1,0 +1,187 @@
+// Synopsis: Drop 6 backpacks (Logs, Ore, Ingots, Hides, Tailoring, Materials) of 5000 of every crafting material plus one of every crafting tool at your feet for crafting testing
+use uo;
+
+include "include/objtype";
+include ":staff:include/staff";
+
+const MATERIAL_STACK_AMOUNT := 5000;
+const CRAFTING_BACKPACK := 0x9B2;
+
+function FillMaterials(chest, materials)
+	foreach objtype in materials
+		CreateItemInContainer(chest, objtype, MATERIAL_STACK_AMOUNT);
+	endforeach
+endfunction
+
+program materialbag(who)
+	// Only objtypes confirmed to have a live itemdesc entry in this repo are listed below.
+	// Several "standard" POL wood/board/exotic-ore constants (objtype.inc) are vestigial
+	// on this shard and have no itemdesc entry at all -- they are intentionally omitted.
+
+	var logsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var oreChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var ingotsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var hidesChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var tailoringChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+	var materialsChest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+
+	if (!logsChest or !oreChest or !ingotsChest or !hidesChest or !tailoringChest or !materialsChest)
+		SendSysMessage(who, "Couldn't create a backpack at your feet.");
+		return 0;
+	endif
+
+	logsChest.name := "Logs Backpack";
+	logsChest.movable := 1;
+	logsChest.color := 1102;
+
+	oreChest.name := "Ore Backpack";
+	oreChest.movable := 1;
+	oreChest.color := 2101;
+
+	ingotsChest.name := "Ingots Backpack";
+	ingotsChest.movable := 1;
+	ingotsChest.color := 2406;
+
+	hidesChest.name := "Hides Backpack";
+	hidesChest.movable := 1;
+	hidesChest.color := 1828;
+
+	tailoringChest.name := "Tailoring Backpack";
+	tailoringChest.movable := 1;
+	tailoringChest.color := 1358;
+
+	materialsChest.name := "Materials Backpack";
+	materialsChest.movable := 1;
+	materialsChest.color := 1150;
+
+	var ore := {
+		UOBJ_IRON_ORE, UOBJ_BRONZE_ORE, UOBJ_DULLCOPPER_ORE, UOBJ_ORICHALCUM_ORE,
+		UOBJ_ONYX_ORE, UOBJ_PYRITE_ORE, UOBJ_MALACHITE_ORE, UOBJ_AZURITE_ORE,
+		UOBJ_PLATINUM_ORE, UOBJ_LAVAROCK_ORE, UOBJ_MYSTIC_ORE, UOBJ_ZULU_ORE,
+		UOBJ_SPIKE_ORE, UOBJ_FRUITY_ORE, UOBJ_GREYVIXEN_ORE, UOBJ_SILVERROCK_ORE,
+		UOBJ_SPECTRAL_ORE, UOBJ_UNDEAD_ORE, UOBJ_DARKPAGAN_ORE, UOBJ_OLDBRITAIN_ORE,
+		UOBJ_VIRGINITY_ORE, UOBJ_BLACKDWARF_ORE, UOBJ_REDELVEN_ORE,
+		UOBJ_DRIPSTONE_ORE, UOBJ_EXECUTOR_ORE, UOBJ_PEACHBLUE_ORE, UOBJ_DESTRUCTION_ORE,
+		UOBJ_ANRA_ORE, UOBJ_GODDESS_ORE, UOBJ_CRYSTAL_ORE, UOBJ_DOOM_ORE,
+		UOBJ_SAPPHIRE_ORE, UOBJ_RUBY_ORE, UOBJ_DIAMOND_ORE
+	};
+
+	var ingots := {
+		UOBJ_IRON_INGOT, UOBJ_BRONZE_INGOT, UOBJ_DULLCOPPER_INGOT, UOBJ_ORICHALCUM_INGOT,
+		UOBJ_ONYX_INGOT, UOBJ_PYRITE_INGOT, UOBJ_MALACHITE_INGOT, UOBJ_AZURITE_INGOT,
+		UOBJ_PLATINUM_INGOT, UOBJ_LAVAROCK_INGOT, UOBJ_MYSTIC_INGOT, UOBJ_ZULU_INGOT,
+		UOBJ_SPIKE_INGOT, UOBJ_FRUITY_INGOT, UOBJ_GREYVIXEN_INGOT, UOBJ_SILVERROCK_INGOT,
+		UOBJ_SPECTRAL_INGOT, UOBJ_UNDEAD_INGOT, UOBJ_DARKPAGAN_INGOT, UOBJ_OLDBRITAIN_INGOT,
+		UOBJ_VIRGINITY_INGOT, UOBJ_BLACKDWARF_INGOT, UOBJ_REDELVEN_INGOT,
+		UOBJ_DRIPSTONE_INGOT, UOBJ_EXECUTOR_INGOT, UOBJ_PEACHBLUE_INGOT, UOBJ_DESTRUCTION_INGOT,
+		UOBJ_ANRA_INGOT, UOBJ_GODDESS_INGOT, UOBJ_CRYSTAL_INGOT, UOBJ_DOOM_INGOT,
+		UOBJ_SAPPHIRE_INGOT, UOBJ_RUBY_INGOT, UOBJ_DIAMOND_INGOT
+	};
+
+	// This shard's wood-variety system lives entirely on colored LOGS (0x7300-0x7316 plus
+	// base/goddess logs) -- there is no separate "board" objtype at all, so boards are omitted.
+	// All 23 colored objtypes confirmed present in pkg/std/lumberjacking/itemdesc.cfg.
+	var logs := { UOBJ_LOGS, UOBJ_LOGS_GODDESS };
+	var logcolor;
+	for (logcolor := 0x7300; logcolor <= 0x7316; logcolor := logcolor + 1)
+		logs.append(logcolor);
+	endfor
+
+	var hides := {
+		UOBJ_HIDES_NORMAL1, UOBJ_HIDES_NORMAL2, UOBJ_HIDES_RAT, UOBJ_HIDES_DRAGON,
+		UOBJ_HIDES_TROLL, UOBJ_HIDES_LIZARD, UOBJ_HIDES_SERPENT, UOBJ_HIDES_OSTARD,
+		UOBJ_HIDES_BALRON, UOBJ_HIDES_LAVA, UOBJ_HIDES_NECROMANCER, UOBJ_HIDES_LICHE,
+		UOBJ_HIDES_WYRM, UOBJ_HIDES_GOLDEN_DRAGON, UOBJ_HIDES_WOLF, UOBJ_HIDES_BEAR,
+		UOBJ_HIDES_ICE_CRYSTAL, UOBJ_HIDES_BALROG, UOBJ_HIDES_ORC, UOBJ_HIDES_TERATHAN,
+		UOBJ_HIDES_DAEMON, UOBJ_HIDES_SILVER_DRAGON, UOBJ_HIDES_ANGEL
+	};
+
+	var cloth := {
+		UOBJ_BOLT_OF_CLOTH1, UOBJ_BOLT_OF_CLOTH2, UOBJ_BOLT_OF_CLOTH3, UOBJ_BOLT_OF_CLOTH4,
+		UOBJ_BOLT_OF_CLOTH5, UOBJ_BOLT_OF_CLOTH6, UOBJ_BOLT_OF_CLOTH7, UOBJ_BOLT_OF_CLOTH8,
+		UOBJ_CLOTH1, UOBJ_CLOTH2, UOBJ_CLOTH3, UOBJ_CLOTH4, UOBJ_CLOTH5,
+		UOBJ_CLOTH6, UOBJ_CLOTH7, UOBJ_CLOTH8, UOBJ_CLOTH9, UOBJ_CLOTH10,
+		UOBJ_WOOL
+	};
+
+	var misc := {
+		UOBJ_SAND, UOBJ_CLAY, UOBJ_GLASS
+	};
+
+	// Coins (to test melting them into ingots via Tongs+forge) and the coin-melted
+	// ingots themselves (to test the ingots directly without melting).
+	var preciousmetals := {
+		UOBJ_GOLD_COIN, UOBJ_SILVER_COIN, UOBJ_COPPER_COIN,
+		UOBJ_GOLD_INGOT, UOBJ_SILVER_INGOT, UOBJ_COIN_COPPER_INGOT
+	};
+
+	// Bowcraft (pkg/std/bowcraft): Logs -> Shafts, Shafts + Feathers -> Arrows/Bolts.
+	// Feathers has no other source in this bag. Plain Arrow/Bolt included too so
+	// the Bowcraft Tool gump's Improve-to-elemental recipes have something to
+	// upgrade right away instead of requiring a craft-from-scratch step first.
+	var bowcraft := {
+		UOBJ_FEATHER, UOBJ_SHAFTS, UOBJ_ARROW, UOBJ_BOLT,
+		UOBJ_FIRE_ARROW, UOBJ_ICE_ARROW, UOBJ_THUNDER_BOLT
+	};
+
+	var reagents := {
+		UOBJ_BATWING, UOBJ_BLACKMOOR, UOBJ_BLACK_PEARL, UOBJ_BLOOD_MOSS,
+		UOBJ_BLOODSPAWN, UOBJ_VIAL_OF_BLOOD, UOBJ_BONE, UOBJ_BRIMSTONE,
+		UOBJ_DAEMON_BONE, UOBJ_FERTILE_DIRT, UOBJ_DRAGONS_BLOOD, UOBJ_EXECUTIONERS_CAP,
+		UOBJ_GARLIC, UOBJ_GINSENG, UOBJ_MANDRAKE_ROOT, UOBJ_EYE_OF_NEWT,
+		UOBJ_NIGHTSHADE, UOBJ_OBSIDIAN, UOBJ_PIG_IRON, UOBJ_PUMICE,
+		UOBJ_SULPHUROUS_ASH, UOBJ_SPIDER_SILK, UOBJ_SERPENT_SCALE, UOBJ_VOLCANIC_ASH,
+		UOBJ_DEAD_WOOD, UOBJ_WYRMS_HEART
+	};
+
+	// Cooking (pkg/std/cooking/cooking.cfg recipe ingredients). Doesn't include the
+	// already-crafted intermediates (dough, batter, crusts) so the deep recipe chains
+	// (flour -> dough -> bread, etc.) can still be tested from raw ingredients.
+	var cooking := {
+		UOBJ_FLOUR, UOBJ_CORNMEAL, UOBJ_EGG, UOBJ_RAW_RIB, UOBJ_RAW_FISHSTEAK,
+		UOBJ_RAW_BIRD, UOBJ_RAW_HAM, UOBJ_BACON_SLAB, UOBJ_RAW_SAUSAGE, UOBJ_LARD,
+		UOBJ_HONEY, UOBJ_CARROT, UOBJ_APPLE, UOBJ_PEACH, UOBJ_LEMON, UOBJ_LIME,
+		UOBJ_BANANA, UOBJ_GRAPES, UOBJ_GRAPES2, UOBJ_PUMPKIN, UOBJ_LETTUCE, UOBJ_ONION,
+		UOBJ_TURNIP, UOBJ_COCONUT, UOBJ_RAW_CHICKEN_LEG, UOBJ_RAW_LEG_OF_LAMB,
+		UOBJ_HOPS_CONES, UOBJ_GENERAL_WATER, UOBJ_GENERAL_MILK, UOBJ_WEDGE_OF_CHEESE,
+		UOBJ_GLASS_OF_WATER
+	};
+
+	// Fishing catch used by cooking recipes 10-12 (lemon-herb fish, smoked salmon,
+	// sushi) plus the generic caught Fish that bladed.src's CarveFish turns into
+	// UOBJ_RAW_FISHSTEAK.
+	var fishing := {
+		UOBJ_FISH, UOBJ_BROWN_FISH, UOBJ_BLUE_FISH, UOBJ_YELLOW_FISH
+	};
+
+	FillMaterials(logsChest, logs);
+	FillMaterials(oreChest, ore);
+	FillMaterials(ingotsChest, ingots);
+	FillMaterials(hidesChest, hides);
+	FillMaterials(tailoringChest, cloth);
+	FillMaterials(materialsChest, misc);
+	FillMaterials(materialsChest, preciousmetals);
+	FillMaterials(materialsChest, bowcraft);
+	FillMaterials(materialsChest, reagents);
+	FillMaterials(materialsChest, cooking);
+	FillMaterials(materialsChest, fishing);
+
+	// One of every crafting tool, so every skill can be tested without having
+	// to go find/buy the tool separately. Lives in the materials chest.
+	CreateItemInContainer(materialsChest, "SmithyHammer", 1);
+	CreateItemInContainer(materialsChest, "Tongs", 1);
+	CreateItemInContainer(materialsChest, "Saw", 1);
+	CreateItemInContainer(materialsChest, "TinkersTools", 1);
+	CreateItemInContainer(materialsChest, "SewingKit", 1);
+	CreateItemInContainer(materialsChest, "Scissors", 1);
+	CreateItemInContainer(materialsChest, "rollingpin", 1);
+	CreateItemInContainer(materialsChest, "woodenbowl", 1);
+	CreateItemInContainer(materialsChest, "fryingpan", 1);
+	CreateItemInContainer(materialsChest, "FishingPole", 1);
+	CreateItemInContainer(materialsChest, 0x0e9b, 1);
+	CreateItemInContainer(materialsChest, "BowcraftTool", 1);
+
+	SendSysMessage(who, "Dropped 6 backpacks at your feet -- Logs, Ore, Ingots, Hides, Tailoring, and Materials -- " + MATERIAL_STACK_AMOUNT + " of each material.");
+	LogCommand(who, GetProcess(GetPid()).name);
+	return 1;
+endprogram

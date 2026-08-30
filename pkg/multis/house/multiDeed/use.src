@@ -214,7 +214,21 @@ function CreatehouseKeysAndBuiltDeed2(character, housetype, where, deed)
   var placement := FindBestHousePlacement(character, housetype, where);
   var house := placement.house;
   if(!house)
-    print(house.errortext);
+    // 2026-08-21: this used to only Print() to the server console -- the
+    // player saw nothing at all (their pack/bank key just flickered in and
+    // out as this cleanup ran), with no way to tell a real placement
+    // rejection apart from "the deed is silently broken." Surface the
+    // engine's actual reason so it's visible both places.
+    var placement_err := "";
+    if(house and house.errortext)
+      placement_err := house.errortext;
+    endif
+    Print("House placement failed for housetype " + Hex(housetype) + " near " + x + ", " + y + ", " + z + ": " + placement_err);
+    if(len(placement_err))
+      PrintTextAbovePrivate(deed, "Could not build the house there: " + placement_err, character, color := 33);
+    else
+      PrintTextAbovePrivate(deed, "Could not build the house there or anywhere nearby.", character, color := 33);
+    endif
     DestroyItem(packkey);
     DestroyItem(bankkey);
     DestroyItem(builtdeed);

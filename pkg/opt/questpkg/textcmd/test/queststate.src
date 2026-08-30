@@ -1,0 +1,22 @@
+// Synopsis: Target a character and view their status on every quest in a gump, with a Reset button per quest so testers can retry without needing a fresh character
+use uo;
+use os;
+
+include ":questpkg:questdebuggump";
+
+program queststate(who, text)
+
+	SendSysMessage(who, "Target the character to inspect.");
+	var subject := Target(who);
+	if(!subject)
+		SendSysMessage(who, "Cancelled.");
+		return 0;
+	elseif(!subject.IsA(POLCLASS_MOBILE) || subject.IsA(POLCLASS_NPC))
+		SendSysMessage(who, "That isn't a player character.");
+		return 0;
+	endif
+
+	ShowQuestDebugGump(who, subject);
+
+	return 1;
+endprogram

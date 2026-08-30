@@ -21,9 +21,11 @@ program GumpBrowser(who, start_id)
 			gump_id := CInt(synced);
 		endif
 
+		var transparent := CInt( GetObjProperty( who, "#GumpBrowserTransparent" ) );
+
 		var gump := GFCreateGump( 50, 50 );
 		GFClosable( gump, 0 );
-		GFResizePic( gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 340, 195 );
+		GFResizePic( gump, 0, 0, GFGetCfgConst("Defaults", "BackGround"), 340, 230 );
 
 		GFTextLine( gump, 15, 15, 1153, "Gump Browser" );
 
@@ -31,20 +33,25 @@ program GumpBrowser(who, start_id)
 		GFResizePic( gump, 88, 44, GFGetCfgConst("BackGrounds", "GOLDTRIM"), 104, 26 );
 		var id_txt := GFTextEntry( gump, 92, 47, 96, 20, 1153, CStr(gump_id) );
 
+		GFTextLine( gump, 15, 85, 1153, "Transparent (0/1):" );
+		GFResizePic( gump, 155, 79, GFGetCfgConst("BackGrounds", "GOLDTRIM"), 50, 26 );
+		var trans_txt := GFTextEntry( gump, 159, 82, 42, 20, 1153, CStr(transparent) );
+
 		// Buttons are the ~66px-wide "OK"/"CANCEL" art (text baked into the graphic),
 		// so labels get their own column with a wide gap instead of sitting flush against them.
-		GFTextLine( gump, 15, 92, 1153, "View: GumpPic (native)" );
-		GFAddButton( gump, 245, 85, 2128, 2129, GF_CLOSE_BTN, BTN_GUMPPIC );
+		GFTextLine( gump, 15, 120, 1153, "View: GumpPic (native)" );
+		GFAddButton( gump, 245, 113, 2128, 2129, GF_CLOSE_BTN, BTN_GUMPPIC );
 
-		GFTextLine( gump, 15, 127, 1153, "View: ResizePic (200x200)" );
-		GFAddButton( gump, 245, 120, 2128, 2129, GF_CLOSE_BTN, BTN_RESIZEPIC );
+		GFTextLine( gump, 15, 155, 1153, "View: ResizePic (200x200)" );
+		GFAddButton( gump, 245, 148, 2128, 2129, GF_CLOSE_BTN, BTN_RESIZEPIC );
 
-		GFAddButton( gump, 245, 155, 2119, 2120, GF_CLOSE_BTN, BTN_EXIT );
+		GFAddButton( gump, 245, 190, 2119, 2120, GF_CLOSE_BTN, BTN_EXIT );
 
 		var result := GFSendGump( who, gump );
 		if ( !result || result[BTN_EXIT] )
 			StopGumpBrowserPreview( who );
 			SetObjProperty( who, "#GumpBrowserGumpID", 0 );
+			SetObjProperty( who, "#GumpBrowserTransparent", 0 );
 			break;
 		endif
 
@@ -54,12 +61,15 @@ program GumpBrowser(who, start_id)
 		endif
 		SetObjProperty( who, "#GumpBrowserGumpID", gump_id );
 
+		transparent := CInt( GFExtractData( result, trans_txt ) );
+		SetObjProperty( who, "#GumpBrowserTransparent", transparent );
+
 		if ( result[BTN_GUMPPIC] )
 			StopGumpBrowserPreview( who );
-			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 1, gump_id } );
+			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 1, gump_id, transparent } );
 		elseif ( result[BTN_RESIZEPIC] )
 			StopGumpBrowserPreview( who );
-			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 2, gump_id } );
+			Start_Script( ":mdgumps:scripts/gumpbrowser/preview", array{ who, 2, gump_id, transparent } );
 		endif
 	endwhile
 endprogram

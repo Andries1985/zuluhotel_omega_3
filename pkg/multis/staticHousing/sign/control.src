@@ -11,6 +11,8 @@ include "include/housing";
 include ":statichousing:include/settings";
 include ":house:multihouse_settings";
 include "include/omegacache_utils";
+include ":keys:key";
+include ":houseExtras:settings";
 
 var owneracct;
 var ownerser;
@@ -605,6 +607,27 @@ function demolish(sign)									// Decay timer has ran out. House will go up for
 	SetObjProperty(sign, "lastownerserial", GetObjProperty(sign, "ownerserial"));
 	var stone;
 
+	// 2026-08-21: this decay path never resolved the owner or destroyed
+	// their keys at all -- unlike the manual redeed (sign/destroy.src),
+	// which already does both. A decayed house left the former owner's
+	// packkey/bankkey alive with a dead LockID.
+	var ownrserial := CInt(GetObjProperty(sign, "ownerserial"));
+	var who := SystemFindObjectBySerial(ownrserial);
+	if(!who)
+		who := SystemFindObjectBySerial(ownrserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	var lock_ids := {};
+	foreach thing in GetObjProperty(sign, "components")
+		var lockobj := SystemFindObjectBySerial(thing);
+		if(lockobj)
+			var id := GetObjProperty(lockobj, "LockID");
+			if(id)
+				lock_ids.append(id);
+			endif
+		endif
+	endforeach
+	KP_DestroyOwnedKeysForLockIDs(who, CP_BANK_AREA, lock_ids);
+
 	// Account-wide house cap bookkeeping (:house:multihouse_settings), shared
 	// across house/staticHousing/customhousing -- replaces the old
 	// per-package TotalValueOfHouses/HouseValuesCount value tracking.
@@ -639,6 +662,13 @@ function demolish(sign)									// Decay timer has ran out. House will go up for
       // orphaned when the rest of the house disappears around it.
       EraseObjProperty(thing, "houseserial");
       DestroyItem(thing);
+    elseif(thing.objtype == 0x15000)
+      // 2026-08-21: house teleporters were never swept for here (or in the
+      // manual redeed, sign/destroy.src) -- mirrors :house:'s own redeed
+      // sweep. Left standing otherwise, with its paired partner elsewhere
+      // left dangling (stale signserial, numhteles never decremented) once
+      // the house resets to "for sale".
+      DemolishTeleporter(thing, who);
     elseif(GetObjProperty(thing, "houseserial") == sign.serial)
       if((GetObjProperty(thing, "secure")) && (!thing.movable))
         EraseObjProperty(thing, "secure");

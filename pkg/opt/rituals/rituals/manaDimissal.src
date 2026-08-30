@@ -34,16 +34,19 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
-        if( GetObjProperty( item, "MagicProtection" ))
+        if( RitualHasOtherImmunity( item, "MagicImmunity" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( GetObjProperty( item, "MagicImmunity" ))
 		SendSysMessage( mobile, "This "+item_desc+" already have a powerful enchantment on it." );
                 return 0;
         endif
-        
-	//SetObjProperty( item, "MagicProtection", CInt( AP_GetStat( mobile, INTELLIGENCE )));
-        SetObjProperty( item, "MagicProtection", CInt( GetIntelligence( mobile) ));
+
+        var charges := Min( 50, CInt( GetIntelligence( mobile ) / 10 ));
+        SetObjProperty( item, "MagicImmunity", charges );
 	SetNameByEnchant( item );
- 
+
 	SendSysMessage( mobile, "This "+item_desc+" will now immunise his wearer from certain spells." );
- 
+
         return 1;
 endfunction

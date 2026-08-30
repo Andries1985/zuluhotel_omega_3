@@ -1,0 +1,32 @@
+// Synopsis: GM test tool -- target an NPC and tag it as the kill-objective for a quest, to validate the quest package pipeline without any real content
+use uo;
+use os;
+
+include ":questpkg:questdeath";
+
+program questtag(who, text)
+
+	text := SplitWords(text);
+	if(text.size() < 2)
+		SendSysMessage(who, "Usage: .questtag <questid> <objindex>");
+		return 0;
+	endif
+
+	var questid := CInt(text[1]);
+	var obj_index := CInt(text[2]);
+
+	SendSysMessage(who, "Target the NPC to tag.");
+	var npc := Target(who);
+	if(!npc)
+		SendSysMessage(who, "Cancelled.");
+		return 0;
+	elseif(!npc.IsA(POLCLASS_NPC))
+		SendSysMessage(who, "That isn't an NPC.");
+		return 0;
+	endif
+
+	TagNpcForQuest(npc, questid, obj_index);
+	Print("[QuestPkg] .questtag: "+who.name+" tagged "+npc.name+" ("+CStr(npc.serial)+") as quest "+CStr(questid)+" objective "+CStr(obj_index));
+	SendSysMessage(who, "Tagged "+npc.name+" as quest "+CStr(questid)+" objective "+CStr(obj_index)+".", 3, 73);
+
+endprogram

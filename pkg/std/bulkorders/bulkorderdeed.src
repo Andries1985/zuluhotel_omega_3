@@ -1,0 +1,347 @@
+// Bulk Order Deeds -- deed item script.
+//
+// Frame styling matches the real OSI bulk-order-deed gump byte-for-byte
+// (captured via pkg/opt/alryc/textcmd/test/osibulkgump.src): a 5054
+// parchment border, a 2624 tiled-paper fill with a CheckerTrans region over
+// it (the see-through "torn parchment" look), and 10460 corner ornaments at
+// each corner. BOD_DrawParchmentFrame below reproduces that recipe; content
+// coordinates below it match the capture's fixed positions where OSI has an
+// equivalent element (title/amount/item icon/item name), with our
+// shard-specific extra lines (Amount finished, Material) appended below in
+// the same style.
+//
+// Small: double-click shows the order (amount to make / item requested /
+// amount finished / special requirements), with a "Combine this deed with
+// the item requested" button that Targets a crafted item out of the
+// player's own backpack and, on a match, consumes it toward the order.
+//
+// Large: double-click shows the template's child slots (Filled: Yes/No
+// each) plus the shared material/exceptional requirement, with a "Combine
+// this deed with contained items" button that Targets a completed Small
+// deed (from the backpack or an open Book) and fills whichever open slot it
+// matches. OSI's real Large BOD fills each item slot directly with a
+// quantity of crafted items; this shard deliberately fills each slot with
+// one completed Small deed instead (quantity dropped) -- a locked design
+// choice, not something this visual pass changes.
+//
+// Turning a completed deed in is NOT done here -- it's handled by giving the
+// deed to a matching craft NPC (see the SYSEVENT_ITEM_GIVEN hook added to
+// scripts/ai/merchant.src).
+
+use uo;
+use os;
+use cfgfile;
+
+include ":bulkorders:bulkorder";
+include ":bulkorders:bulkorder_matching";
+include ":bulkorders:bulkorder_gumpstyle";
+include "include/objtype";
+include ":mdgumps:gumps";
+
+const BOD_BTN_EXIT             := 0;
+const BOD_BTN_COMBINE          := 1;
+const BOD_BTN_CHOOSE_MATERIAL  := 2;
+const BOD_BTN_MATERIAL_BASE    := 10;   // + index into BOD_MaterialChoices()
+
+program bulkorderdeed(who, deed)
+
+	if( !Accessible(who, deed) )
+		SendSysMessage(who, "You can't reach that.", color := 33);
+		return;
+	endif
+
+	if( !ReserveItem(deed) )
+		return;
+	endif
+
+	if( CInt(BOD_GetSize(deed)) )
+		BOD_ShowLargeGump(who, deed);
+	else
+		BOD_ShowGump(who, deed);
+	endif
+
+endprogram
+
+function BOD_ShowGump(byref who, byref deed)
+	var skillid     := CInt(BOD_GetCraft(deed));
+	var itemtype    := CInt(BOD_GetItemObjtype(deed));
+	var itemname    := BOD_ItemDisplayName(itemtype);
+	var amount      := CInt(BOD_GetAmount(deed));
+	var filled      := CInt(BOD_GetAmountFilled(deed));
+	var exceptional := CInt(BOD_GetExceptional(deed));
+	var has_axis    := BOD_HasMaterialAxis(skillid) and skillid != SKILLID_INSCRIPTION;
+	var material    := CInt(BOD_GetFilledMaterial(deed));
+
+	// Everything from y=145 down is shard-specific, appended below OSI's
+	// fixed title/amount/item block (which ends at y=120) -- compute the
+	// frame height this content actually needs before drawing the frame.
+	var y := 145;
+	y := y + 23;                                    // Amount finished
+	if( has_axis )
+		y := y + 23;                                 // Material line
+		if( !material )
+			y := y + 30;                               // Choose Material button
+		endif
+	endif
+	if( exceptional )
+		y := y + 20 + 26;
+	else
+		y := y + 6;
+	endif
+	y := y + 30;                                     // Combine / ready line
+	var fh := y + 30;                                 // Exit button + margin
+	if( fh < 192 )
+		fh := 192;
+	endif
+
+	var gump := GFCreateGump(50, 50, BOD_FRAME_FX*2 + BOD_FRAME_FW, fh + BOD_FRAME_FY*2);
+	BOD_DrawParchmentFrame(gump, BOD_FRAME_FX, BOD_FRAME_FY, BOD_FRAME_FW, fh);
+
+	GFTextLine(gump, 190, 25, 1153, BOD_CraftName(skillid) + " Bulk Order");
+	GFTextLine(gump, 40, 48, 1153, "This order requests the creation of the following item:");
+	GFTextLine(gump, 40, 72, 1153, "Amount to make:");
+	GFTextLine(gump, 250, 72, 1153, CStr(amount));
+	GFTextLine(gump, 40, 96, 1153, "Item:");
+	GFTilePic(gump, 315, 90, itemtype);
+	GFTextLine(gump, 40, 120, 1153, itemname);
+
+	y := 145;
+	GFTextLine(gump, 40, y, 1153, "Amount finished: " + filled);
+	y := y + 23;
+
+	if( has_axis )
+		if( material )
+			GFTextLine(gump, 40, y, 1153, "Material: " + BOD_MaterialName(skillid, material));
+			y := y + 23;
+		else
+			GFTextLine(gump, 40, y, 33, "Material: not yet chosen");
+			y := y + 23;
+			GFAddButton(gump, 40, y, 4005, 4007, GF_CLOSE_BTN, BOD_BTN_CHOOSE_MATERIAL);
+			GFTextLine(gump, 75, y+2, 1153, "Choose Material");
+			y := y + 30;
+		endif
+	endif
+
+	if( exceptional )
+		GFTextLine(gump, 40, y, 33, "Special requirements to meet:");
+		y := y + 20;
+		GFTextLine(gump, 40, y, 33, "All items must be exceptional.");
+		y := y + 26;
+	else
+		y := y + 6;
+	endif
+
+	if( filled < amount )
+		GFAddButton(gump, 40, y, 4005, 4007, GF_CLOSE_BTN, BOD_BTN_COMBINE);
+		GFTextLine(gump, 75, y+2, 1153, "Combine this deed with the item requested");
+		y := y + 30;
+	else
+		GFTextLine(gump, 40, y, 66, "This order is ready to turn in.");
+		y := y + 26;
+	endif
+
+	GFAddButton(gump, 40, y, 4017, 4019, GF_CLOSE_BTN, BOD_BTN_EXIT);
+	GFTextLine(gump, 75, y+2, 1153, "EXIT");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		return;
+	endif
+
+	if( response[0] == BOD_BTN_COMBINE )
+		BOD_CombineWithItem(who, deed);
+	elseif( response[0] == BOD_BTN_CHOOSE_MATERIAL )
+		BOD_ChooseMaterialGump(who, deed, skillid);
+	endif
+endfunction
+
+// Lets the player lock in which material this Small BOD must be filled
+// with, up front -- before crafting/gathering anything -- rather than only
+// discovering a mismatch after the fact. Reuses the same BODFilledMaterial
+// property BOD_TryFill locks on first fill, so once chosen (or once an item
+// has already filled the deed) the choice can't be changed.
+function BOD_ChooseMaterialGump(byref who, byref deed, skillid)
+	var choices := BOD_MaterialChoices(skillid);
+	if( !Len(choices) )
+		SendSysMessage(who, "There's nothing to choose from for this craft.", color := 33);
+		BOD_ShowGump(who, deed);
+		return;
+	endif
+
+	// Two columns -- some crafts (Blacksmithy especially) have 30+ real
+	// material tiers, which made a single tall column unwieldy.
+	var half := Cint(Ceil(CDbl(Len(choices)) / 2));
+	var fw := 480;
+	var fh := 55 + half*24 + 40;
+	var gump := GFCreateGump(60, 60, BOD_FRAME_FX*2 + fw, fh + BOD_FRAME_FY*2);
+	BOD_DrawParchmentFrame(gump, BOD_FRAME_FX, BOD_FRAME_FY, fw, fh);
+	GFTextLine(gump, 40, 25, 1153, "Choose a Material");
+
+	var y := 55;
+	var i;
+	for( i := 1; i <= half; i := i+1 )
+		GFAddButton(gump, 40, y, 4005, 4007, GF_CLOSE_BTN, BOD_BTN_MATERIAL_BASE + i);
+		GFTextLine(gump, 75, y+2, 1153, choices[i].name);
+
+		var right_index := i + half;
+		if( right_index <= Len(choices) )
+			GFAddButton(gump, 260, y, 4005, 4007, GF_CLOSE_BTN, BOD_BTN_MATERIAL_BASE + right_index);
+			GFTextLine(gump, 295, y+2, 1153, choices[right_index].name);
+		endif
+
+		y := y + 24;
+	endfor
+
+	GFAddButton(gump, 40, y, 4017, 4019, GF_CLOSE_BTN, BOD_BTN_EXIT);
+	GFTextLine(gump, 75, y+2, 1153, "Cancel");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		BOD_ShowGump(who, deed);
+		return;
+	endif
+
+	var btn := CInt(response[0]);
+	if( btn > BOD_BTN_MATERIAL_BASE and btn <= BOD_BTN_MATERIAL_BASE + Len(choices) )
+		var chosen := choices[btn - BOD_BTN_MATERIAL_BASE];
+		if( !BOD_GetFilledMaterial(deed) )
+			SetObjProperty(deed, "BODFilledMaterial", chosen.objtype);
+			SendSysMessage(who, "This order now requires " + chosen.name + ".", color := 66);
+		endif
+	endif
+
+	BOD_ShowGump(who, deed);
+endfunction
+
+function BOD_CombineWithItem(byref who, byref deed)
+	SendSysMessage(who, "Target the item you wish to use to fill this order.", color := 88);
+	var item := Target(who);
+	if( !item )
+		SendSysMessage(who, "Never mind.", color := 33);
+		return;
+	endif
+
+	if( item.container != who.backpack )
+		SendSysMessage(who, "That item must be in your own backpack.", color := 33);
+		return;
+	endif
+
+	var result := BOD_TryFill(deed, item);
+	if( !result.ok )
+		SendSysMessage(who, result.reason, color := 33);
+		return;
+	endif
+
+	if( result.filled >= result.amount )
+		SendSysMessage(who, "You slip the item into the deed. The order is complete -- return it to a matching craftsman for payment.", color := 66);
+	else
+		SendSysMessage(who, "You slip the item into the deed. (" + result.filled + "/" + result.amount + ")", color := 66);
+	endif
+
+	BOD_ShowGump(who, deed);
+endfunction
+
+function BOD_ShowLargeGump(byref who, byref deed)
+	var skillid      := CInt(BOD_GetCraft(deed));
+	var templatekey  := BOD_GetTemplateKey(deed);
+	var items        := BOD_TemplateItems(templatekey);
+	var filled       := BOD_GetSlotsFilled(deed);
+	var exceptional  := CInt(BOD_GetExceptional(deed));
+	var has_axis     := BOD_HasMaterialAxis(skillid) and skillid != SKILLID_INSCRIPTION;
+	var material     := CInt(BOD_GetMaterial(deed));
+
+	var y := 96;
+	if( has_axis and material )
+		y := y + 23;
+	endif
+	y := y + 22;                                      // column headers
+	y := y + Len(items)*24;
+	y := y + 10;
+	if( exceptional )
+		y := y + 23;
+	endif
+	y := y + 30;                                       // Combine / ready line
+	var fh := y + 30;
+	if( fh < 260 )
+		fh := 260;
+	endif
+
+	var gump := GFCreateGump(50, 50, BOD_FRAME_FX*2 + BOD_FRAME_FW, fh + BOD_FRAME_FY*2);
+	BOD_DrawParchmentFrame(gump, BOD_FRAME_FX, BOD_FRAME_FY, BOD_FRAME_FW, fh);
+
+	GFTextLine(gump, 190, 25, 1153, BOD_CraftName(skillid) + " Large Bulk Order");
+	GFTextLine(gump, 40, 48, 900, BOD_TemplateName(templatekey));
+	GFTextLine(gump, 40, 72, 1153, "Amount to make: " + Len(items));
+
+	y := 96;
+	if( has_axis and material )
+		GFTextLine(gump, 40, y, 1153, "Material: " + BOD_MaterialName(skillid, material));
+		y := y + 23;
+	endif
+	if( exceptional )
+		GFTextLine(gump, 40, y, 33, "All items must be exceptional.");
+		y := y + 23;
+	endif
+
+	y := y + 10;
+	GFTextLine(gump, 75, y, 900, "Items requested:");
+	GFTextLine(gump, 340, y, 900, "Amount finished:");
+	y := y + 22;
+
+	var i;
+	for( i := 1; i <= Len(items); i := i+1 )
+		GFTilePic(gump, 40, y-4, CInt(BOD_ExpectedFillObjtype(skillid, CInt(items[i]))));
+		GFTextLine(gump, 75, y, 1153, BOD_ItemDisplayName(CInt(items[i])));
+		if( CInt(filled[i]) )
+			GFTextLine(gump, 340, y, 66, "Yes");
+		else
+			GFTextLine(gump, 340, y, 33, "No");
+		endif
+		y := y + 24;
+	endfor
+
+	y := y + 10;
+	if( !BOD_IsComplete(deed) )
+		GFAddButton(gump, 40, y, 4005, 4007, GF_CLOSE_BTN, BOD_BTN_COMBINE);
+		GFTextLine(gump, 75, y+2, 1153, "Combine this deed with another deed.");
+		y := y + 30;
+	else
+		GFTextLine(gump, 40, y, 66, "This order is ready to turn in.");
+		y := y + 26;
+	endif
+
+	GFAddButton(gump, 40, y, 4017, 4019, GF_CLOSE_BTN, BOD_BTN_EXIT);
+	GFTextLine(gump, 75, y+2, 1153, "EXIT");
+
+	var response := GFSendGump(who, gump);
+	if( !response )
+		return;
+	endif
+
+	if( response[0] == BOD_BTN_COMBINE )
+		BOD_CombineWithContainedItem(who, deed);
+	endif
+endfunction
+
+function BOD_CombineWithContainedItem(byref who, byref deed)
+	SendSysMessage(who, "Target the completed Small deed you wish to combine into this order.", color := 88);
+	var small := Target(who);
+	if( !small )
+		SendSysMessage(who, "Never mind.", color := 33);
+		return;
+	endif
+
+	var result := BOD_TryFillLargeSlot(deed, small);
+	if( !result.ok )
+		SendSysMessage(who, result.reason, color := 33);
+		return;
+	endif
+
+	if( result.filled_count >= result.total_slots )
+		SendSysMessage(who, "You combine the deeds. The order is complete -- return it to a matching craftsman for payment.", color := 66);
+	else
+		SendSysMessage(who, "You combine the deeds. (" + result.filled_count + "/" + result.total_slots + " slots filled)", color := 66);
+	endif
+
+	BOD_ShowLargeGump(who, deed);
+endfunction

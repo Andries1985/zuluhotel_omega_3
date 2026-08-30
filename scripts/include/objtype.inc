@@ -19,12 +19,20 @@ const UOBJ_FISHSTEAK    := 0x097A;
 
 const UOBJ_BOX          := 0x09aa;
 const UOBJ_GOLD_COIN   := 0x0EED; // A gold coin
+// UOBJ_SILVER_COIN and UOBJ_COPPER_COIN are already defined further down this file.
 
 const UOBJ_FISH_START   := 0x09CC;
-const UOBJ_FISH_END     := 0x09D0;
+const UOBJ_FISH_END     := 0x09D0; // NOTE: overlaps UOBJ_APPLE (0x09d0) -- pre-existing, not touched here.
 
 const UOBJ_SFISH_START  := 0x0DD6;
 const UOBJ_SFISH_END    := 0x0DD9;
+
+// Generic caught fish (carved with a blade into fishsteaks) and the three named
+// fish used directly as cooking ingredients (cooking.cfg recipes 10-12).
+const UOBJ_FISH			:= 0x09cc;
+const UOBJ_BROWN_FISH		:= 0x09cd;
+const UOBJ_BLUE_FISH		:= 0x09ce;
+const UOBJ_YELLOW_FISH		:= 0x09cf;
 
 const UOBJ_HAIRS_END			:= 0x20d4;
 const UOBJ_HAIRS_START			:= 0x203b;
@@ -114,7 +122,9 @@ const UOBJ_HIDE1	:= 0x1078;
 const UOBJ_HIDE2	:= 0x1079;
 
 const UOBJ_HIDES_START	:= 0x7020;
-const UOBJ_HIDES_END	:= 0x7030; // Missing Orc, Terathan, Angel and Silverdragon
+const UOBJ_HIDES_END	:= 0x7030; // Orc (0xdc0a), Terathan (0xdc13), Angel (0xff17), and
+                                       // Silverdragon (0xff18) hides live outside this contiguous
+                                       // range -- use their own named consts, not this range.
 
 //Human Crafting
 const UOBJ_ANVIL1       := 0x0FAF;
@@ -174,6 +184,14 @@ const UOBJ_DUMMYFREEZE_NS    := 0x1070;
 const UOBJ_DUMMYSWING_EW     := 0x1075;
 const UOBJ_DUMMYFREEZE_EW    := 0x1074;
 
+// Relocated 2026-08-29 -- 0x9821/0x981C/0x9822 collided with
+// pkg/systems/combat/config/itemdesc.cfg's armor catalog (server wouldn't
+// boot). See pkg/items/advancedTrainingDummy/config/itemdesc.cfg.
+const UOBJ_DUMMYSWING_ADV_NS     := 0x9844;
+const UOBJ_DUMMYFREEZE_ADV_NS    := 0x9835;
+const UOBJ_DUMMYSWING_ADV_EW     := 0x9845;
+const UOBJ_DUMMYFREEZE_ADV_EW    := 0x9834;
+
 const UOBJ_BLOOD        := 0x122D;
 
 const UOBJ_BOW          := 0x13B2;
@@ -187,6 +205,9 @@ const UOBJ_ROLLED_MAP2  := 0x14EE;
 const UOBJ_HOUSE_DEED1  := 0x14ef;
 const UOBJ_SHIP_DEED1   := 0x14F1;
 const UOBJ_SHIP_DEED2   := 0x14F2;
+
+const UOBJ_BULKORDER_DEED := 0x2258;
+const UOBJ_BULKORDER_BOOK := 0x2259;
 
 const UOBJ_CHEST        := 0x0E40;
 
@@ -271,7 +292,11 @@ const UOBJ_ORE_START	    := 0x6009;
 const UOBJ_IRON_ORE         := 0x6009;
 const UOBJ_BRONZE_ORE       := 0x600a;  
 const UOBJ_DULLCOPPER_ORE   := 0x600b;
+// Renamed in-game to OrichalcumOre (Color 1917) 2026-08-21; kept mineable at the same
+// objtype. See pkg/std/mining/itemdesc.cfg. UOBJ_COPPER_ORE name kept for compatibility
+// even though the item's Name/Desc no longer say "copper".
 const UOBJ_COPPER_ORE       := 0x600c;
+const UOBJ_ORICHALCUM_ORE   := 0x600c;
 const UOBJ_ONYX_ORE         := 0x600d;
 const UOBJ_PYRITE_ORE       := 0x600e;
 const UOBJ_MALACHITE_ORE    := 0x600f;
@@ -309,6 +334,8 @@ const UOBJ_DOOM_ORE         := 0xc53a;
 const UOBJ_SAPPHIRE_ORE     := 0xc53b;
 const UOBJ_RUBY_ORE         := 0xc53c;
 const UOBJ_DIAMOND_ORE      := 0xc53d;
+// Reserved slots per the note above (0x6300 recommendation) -- not implemented yet,
+// no itemdesc entry exists for these on this shard as of 2026-08-21.
 const UOBJ_DAMASIN_ORE      := 0xc53e;
 const UOBJ_KORGAN_ORE	    := 0Xc53f;
 const UOBJ_AURORA_ORE	    := 0Xc540;
@@ -321,12 +348,23 @@ const UOBJ_SANCTUARY_ORE    := 0Xc546;
 const UOBJ_ORE3_END	    := 0xc546;
 //
 //
+// Coin-melted precious metals below -- objtype doubles as the item's own graphic
+// (the real OSI ingot-pile tile art), unlike the tiered ingots which all share
+// graphic 0x1bf2 tinted via Color. See pkg/std/mining/itemdesc.cfg and
+// pkg/std/blacksmithy/meltdown.src (Tongs + forge, target a coin stack).
 const UOBJ_GOLD_INGOT       := 0x1be9;
-const UOBJ_INGOTS_START     := 0x6011;       
+const UOBJ_SILVER_INGOT     := 0x1bf5;
+const UOBJ_COIN_COPPER_INGOT := 0x1be3;
+
+const UOBJ_INGOTS_START     := 0x6011;
 const UOBJ_IRON_INGOT       := 0x6011;
-const UOBJ_BRONZE_INGOT     := 0x6012;  
+const UOBJ_BRONZE_INGOT     := 0x6012;
 const UOBJ_DULLCOPPER_INGOT := 0x6013;
+// Renamed in-game to Orichalcum Ingot (Color 1917) 2026-08-21; kept at the same
+// objtype. UOBJ_COPPER_INGOT name kept for compatibility. Not the same item as
+// UOBJ_COIN_COPPER_INGOT above, which is the new coin-melted copper.
 const UOBJ_COPPER_INGOT     := 0x6014;
+const UOBJ_ORICHALCUM_INGOT := 0x6014;
 const UOBJ_ONYX_INGOT       := 0x6015;
 const UOBJ_PYRITE_INGOT     := 0x6016;
 const UOBJ_MALACHITE_INGOT  := 0x6017;
@@ -360,6 +398,8 @@ const UOBJ_DOOM_INGOT       := 0xc526;
 const UOBJ_SAPPHIRE_INGOT   := 0xc527;
 const UOBJ_RUBY_INGOT       := 0xc528;
 const UOBJ_DIAMOND_INGOT    := 0xc529;
+// Reserved slots (mirrors the UOBJ_ORE3 tail above) -- not implemented yet,
+// no itemdesc entry exists for these on this shard as of 2026-08-21.
 const UOBJ_DAMASIN_INGOT    := 0xc52a;
 const UOBJ_KORGAN_INGOT     := 0Xc52b;
 const UOBJ_AURORA_INGOT	    := 0Xc52c;
@@ -474,9 +514,11 @@ const UOBJ_GREATER_POISON_POTION	:= 0xdc06;
 const UOBJ_GREATER_STRENGTH_POTION	:= 0xdc12;
 const UOBJ_HARP_BIG			:= 0x0eb1;
 const UOBJ_HEAL_POTION			:= 0xdc02;
+const UOBJ_HIDES_ANGEL			:= 0xff17;
 const UOBJ_HIDES_BALROG			:= 0x702f;
 const UOBJ_HIDES_BALRON			:= 0x7026;
 const UOBJ_HIDES_BEAR			:= 0x702d;
+const UOBJ_HIDES_DAEMON			:= 0x7030;
 const UOBJ_HIDES_DRAGON			:= 0x7021;
 const UOBJ_HIDES_GOLDEN_DRAGON		:= 0x702b;
 const UOBJ_HIDES_ICE_CRYSTAL		:= 0x702e;
@@ -486,9 +528,12 @@ const UOBJ_HIDES_LIZARD			:= 0x7023;
 const UOBJ_HIDES_NECROMANCER		:= 0x7028;
 const UOBJ_HIDES_NORMAL1		:= 0x1078;
 const UOBJ_HIDES_NORMAL2		:= 0x1079;
+const UOBJ_HIDES_ORC			:= 0xdc0a;
 const UOBJ_HIDES_OSTARD			:= 0x7025;
 const UOBJ_HIDES_RAT			:= 0x7020;
 const UOBJ_HIDES_SERPENT		:= 0x7024;
+const UOBJ_HIDES_SILVER_DRAGON		:= 0xff18;
+const UOBJ_HIDES_TERATHAN		:= 0xdc13;
 const UOBJ_HIDES_TROLL			:= 0x7022;
 const UOBJ_HIDES_WOLF			:= 0x702c;
 const UOBJ_HIDES_WYRM			:= 0x702a;
@@ -700,6 +745,17 @@ const UOBJ_TURNIP			:= 0x0d3a;
 const UOBJ_COCONUT			:= 0x1726;
 const UOBJ_RAW_CHICKEN_LEG	:= 0x1607;
 const UOBJ_RAW_LEG_OF_LAMB	:= 0x1609;
+const UOBJ_FLOUR			:= 0x1045;
+const UOBJ_CORNMEAL			:= 0xc800;
+const UOBJ_LARD				:= 0x1e8a;
+const UOBJ_HOPS_CONES		:= 0x1aa2;
+const UOBJ_GRAPES2			:= 0x09d1;
+const UOBJ_GENERAL_WATER	:= 0x1f9e; // pitcher of water
+const UOBJ_GENERAL_MILK		:= 0x09ad; // pitcher of milk
+const UOBJ_WEDGE_OF_CHEESE	:= 0x097d; // large wedge of cheese, cooking.cfg's ITEM_GENERAL_CHEESE
+const UOBJ_GLASS_OF_WATER	:= 0x1f91;
+const UOBJ_MIXING_BOWL		:= 0x15f8;
+const UOBJ_FRYING_PAN		:= 0x097f;
 
 
 //////////
@@ -724,8 +780,10 @@ const UOBJ_HIDE                         := 0x1078;
 const UOBJ_THREAD1			:= 0x0fa0;
 const UOBJ_THREAD2			:= 0x0fa1;
 const UOBJ_YARN			        := 0x0e1d;
+// No itemdesc entry exists for any objtype in this range on this shard as of 2026-08-21.
 const UOBJ_COLORED_HIDE_START	        := 0x17050;
 const UOBJ_COLORED_HIDE_END	        := 0x17054;
+// Duplicate of UOBJ_GOLD_INGOT (see the ore/ingot section above) -- same objtype, unused.
 const UOBJ_TGOLD_INGOT                  := 0x1be9;
 
 //////////////////////////
@@ -734,7 +792,9 @@ const UOBJ_TGOLD_INGOT                  := 0x1be9;
 
 const UOBJ_ARROW			:= 0x0f3f;
 const UOBJ_BOLT		        	:= 0x1bfb;
-const UOBJ_FIRE_ARROW		        := 0x16051;
+const UOBJ_FIRE_ARROW		        := 0x6051;
+const UOBJ_ICE_ARROW		        := 0xb200;
+const UOBJ_THUNDER_BOLT	        	:= 0x824e;
 
 const UOBJ_WOOD_YEW                     := 0x16351;
 const UOBJ_WOOD_ASH                     := 0x16352;
@@ -750,6 +810,12 @@ const UOBJ_SHAFT	                := 0x1bd4;
 ////////////////////////////////////////////////
 
 const UOBJ_LOG                         := 0x1bdd;
+
+// The species consts below (0x16351-0x16367) are NOT used on this shard -- no itemdesc
+// entry exists for any of them as of 2026-08-21. This shard's actual wood-variety system
+// is the colored log range UOBJ_LOGS_START..UOBJ_LOGS_END (0x7300-0x7316, see top of this
+// file) plus UOBJ_LOGS/UOBJ_LOGS_GODDESS -- not species-specific graphics. Named consts
+// for each color in that range are provided further down.
 const UOBJ_YEW_LOG                      := 0x16351;
 const UOBJ_ASH_LOG                      := 0x16352;
 const UOBJ_CYPRESS_LOG                  := 0x16353;
@@ -768,10 +834,43 @@ const UOBJ_JUNIPER_LOG                  := 0x16367;
 const UOBJ_VENOMOUS_LOG                 := 0x1635B;
 const UOBJ_WORMWOOD_LOG                 := 0x16355;
 
+//////////////////////////////////////////////////////////////////////////////
+// This shard's real wood-variety system: colored logs, graphic 0x1bdd tinted //
+// per objtype (UOBJ_LOGS_START..UOBJ_LOGS_END above). All defined in         //
+// pkg/std/tailoring/itemdesc.cfg.                                            //
+//////////////////////////////////////////////////////////////////////////////
+
+const UOBJ_LOG_PINETREE      := 0x7300;
+const UOBJ_LOG_CHERRY        := 0x7301;
+const UOBJ_LOG_OAK           := 0x7302;
+const UOBJ_LOG_PURPLEPASSION := 0x7303;
+const UOBJ_LOG_GOLDENREFLECTIONS := 0x7304;
+const UOBJ_LOG_JADE          := 0x7305;
+const UOBJ_LOG_DARKWOOD      := 0x7306;
+const UOBJ_LOG_STONEWOOD     := 0x7307;
+const UOBJ_LOG_SUN           := 0x7308;
+const UOBJ_LOG_SWAMP         := 0x7309;
+const UOBJ_LOG_STARDUST      := 0x730a;
+const UOBJ_LOG_SILVERLEAF    := 0x730b;
+const UOBJ_LOG_STORMTEAL     := 0x730c;
+const UOBJ_LOG_EMERALD       := 0x730d;
+const UOBJ_LOG_BLOOD         := 0x730e;
+const UOBJ_LOG_CRYSTAL       := 0x730f;
+const UOBJ_LOG_DOOM          := 0x7310;
+const UOBJ_LOG_ZULU          := 0x7311;
+const UOBJ_LOG_HARDRANGER    := 0x7312;
+const UOBJ_LOG_GAUNTLET      := 0x7313;
+const UOBJ_LOG_BLOODHORSE    := 0x7314;
+const UOBJ_LOG_DARKNESS      := 0x7315;
+const UOBJ_LOG_ELVEN         := 0x7316;
+
 /////////////////////////////////////////////////////////////////////////
 // Types of boards are available from various trees when logs are sawn //
 /////////////////////////////////////////////////////////////////////////
 
+// NONE of the consts in this section (including the plain UOBJ_BOARD) have an itemdesc
+// entry anywhere on this shard as of 2026-08-21 -- there is no board item at all here.
+// Carpentry/tinkering consume logs directly. Kept only for reference/future use.
 const UOBJ_BOARD                          := 0x1bd7;
 const UOBJ_YEW_BOARD                      := 0x16370;
 const UOBJ_ASH_BOARD                      := 0x16371;
@@ -816,6 +915,9 @@ const UOBJ_FORGE8       := 0x1986;
 const UOBJ_FORGE9       := 0x198a;
 
 
+// The OSI-expansion metals below (Shadow/Kindred/Agapite/Verite/Valorite) have no
+// itemdesc entry on this shard as of 2026-08-21 -- this shard's metal tiers are the
+// custom UOBJ_ORE/UOBJ_ORE2/UOBJ_ORE3 sets above instead.
 const UOBJ_SHADOW_ORE		:= 0x16302;
 const UOBJ_KINDRED_ORE          := 0x16305;
 const UOBJ_AGAPITE_ORE          := 0x16306;

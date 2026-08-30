@@ -42,6 +42,13 @@ exported function OnSingleClick( who, byref packet )
                            define_Packet( who, serial, object, "[Magic Charges: "+wand_charges+"]" );
                   elseif( object.newbie )
                            define_Packet( who, serial, object, "[Blessed]" );
+                  elseif( GetObjProperty( object, "Consecrated" ))
+                           var owner := SystemFindObjectBySerial( GetObjProperty( object, "Consecrated" ));
+                           if( owner )
+                                    define_Packet( who, serial, object, "[Consecrated to "+owner.name+"]" );
+                           else
+                                    define_Packet( who, serial, object, "[Consecrated]" );
+                           endif
                   //elseif( skinned_by )
                   //         var nameID := SystemFindObjectBySerial( skinned_by );
                   //         define_Packet( who, serial, object, "[Skinned by "+nameID+"]" );

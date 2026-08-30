@@ -1,0 +1,7 @@
+use uo;
+
+include "include/clock";
+
+program ClockUse(who, unused item)
+	SendSysmessage(who, ("Time of Day: " + GetTimeofDay()));
+endprogram

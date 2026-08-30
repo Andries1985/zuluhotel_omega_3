@@ -9,4 +9,24 @@ program on_insert(who, container, movetype, inserttype, adding_item, existing_st
 		item := adding_item;
 	endif
 	SetObjProperty(item, "#DestroyAt", ReadGameClock() + 60);
+
+	// Same material-based insert sound pkg/items/containers/container/onInsert.src
+	// uses for regular containers -- the trash can never had this at all.
+	var ContainerMaterial := container.GetBaseMaterial();
+	var Sound := 0;
+	if(adding_item.IsCoin())
+		case(ContainerMaterial)
+			"Leather":	Sound := 0x2E6;
+			"Wood":		Sound := 0x037;
+			"Metal":	Sound := 0x2E4;
+			"Straw":	Sound := 0x2E6;
+			"Bones":	Sound := 0x035;
+			default:	Sound := 0x2E3;
+		endcase
+	elseif(adding_item.IsGem())
+		Sound := adding_item.GetDropSound();
+	else
+		Sound := 0x3AF;
+	endif
+	PlaySoundEffect(container, Sound);
 endprogram

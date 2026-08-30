@@ -1,0 +1,71 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+//	holyFuryScript :
+//
+//	Single-element trim of dualplanarscript - Holy only. Written for the
+//	rituals package's Perilous Theurgy (2026-08-26): the ritual grants one
+//	of the 6 base Furies individually rather than the combined multi-
+//	element versions.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+
+include "include/spelldata";
+include ":combat:hitscriptinc";
+include "include/random";
+include "include/areas";
+include "include/client";
+
+program holyFuryScript(attacker, defender, weapon, armor, basedamage, rawdamage)
+
+    if (lower(TypeOf(attacker)) == "array")
+        defender 	:= attacker[2];
+        weapon 	:= attacker[3];
+        armor 	:= attacker[4];
+        basedamage := attacker[5];
+        rawdamage	:= attacker[6];
+        attacker 	:= attacker[1];
+    endif
+
+    var is_casting := GetObjProperty(attacker, "#Casting");
+	if(is_casting)
+		SendSysMessage( attacker, "Spellstrike failed! You are already casting something!");
+		return 0;
+	endif
+
+    rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
+
+    var chance := GetObjProperty(weapon, "ChanceOfEffect");
+    if(RandomDiceStr("1d100") <= chance)
+
+        var targ;
+        if( GetObjProperty( weapon , "Cursed" ) )
+            targ := attacker;
+        else
+            targ := defender;
+        endif
+
+        var spelldmg := (CalcSpellDamage( attacker, targ , 5 )*0.5);
+        spelldmg := Resisted( attacker , targ , 9 , spelldmg );
+
+        if(GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_MYSTIC_ARCHER))
+            spelldmg *= 0.7;
+        endif
+
+        PlayMovingEffect( attacker, targ, FX_SPELL_DIVINE_FURY, SPEED_SPELL_DIVINE_FURY, LOOP_SPELL_DIVINE_FURY );
+        PlaySoundEffect( attacker, SFX_SPELL_DIVINE_FURY );
+        ApplyPlanarDamage( attacker , targ , 1 , spelldmg , DMGID_HOLY );
+
+        if(DEBUG_MODE)
+            PrintTextAbovePrivate( attacker , "I'm dealing this much spell damage: " +spelldmg, attacker );
+        endif
+    endif
+
+    if(DEBUG_MODE)
+        PrintTextAbovePrivate( attacker , "I'm dealing this much physical damage: " +rawdamage, attacker );
+    endif
+
+    DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
+
+endprogram

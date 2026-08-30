@@ -43,6 +43,12 @@ const GLASS_ID	:= 3;
 const CLAY_ID	:= 4;
 
 var tinker_cfg	:= ReadConfigFile( "tinker" );
+// tinker.cfg only defines finished Tinkeritem recipes (keyed by product
+// objtype) -- raw material Difficulty/Quality for logs and ingots live in
+// Carpentry's and Blacksmithy's own resource tables instead, the same tables
+// Bowcraft already reuses for its own log selection.
+var carpentry_cfg   := ReadConfigFile( ":carpentry:carpentry" );
+var blacksmithy_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
 var resource_diff := 0;
 var resource_name;
 var resource_qual := 1;
@@ -69,6 +75,37 @@ program MakeTinkerItems( character , tool )
 		return;
 	endif
 
+	// Handle Omega Cache targeting -- logs, ingots, glass, and clay are all
+	// stackable materials that can be pulled directly from an accessible Omega Cache.
+	if( use_on.objtype == OMEGACACHE_OBJTYPE )
+		var cacheRequest := SelectMaterialFromCache( character );
+		if( !cacheRequest )
+			return;
+		endif
+		var ot := CInt(cacheRequest.objtype);
+
+		if( IsLogObjtype(ot) )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , WOOD_ID );
+			sound := CARPENTER_SOUND;
+		elseif( IsIngotObjtype(ot) )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , METAL_ID );
+			sound := SFX_ANVIL;
+		elseif( ot == UOBJ_GLASS )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , GLASS_ID );
+			sound := SFX_GLASSBREAK4;
+		elseif( ot == UOBJ_CLAY )
+			item_to_make := MakeAndProcessMenu( character , cacheRequest , CLAY_ID );
+			sound := SFX_HAMMER;
+		else
+			SendSysMessage( character, "You don't know how to use that." );
+			return;
+		endif
+
+		resourceRequest := cacheRequest;
+		TryToMakeItem( character , resourceRequest , item_to_make , sound );
+		return;
+	endif
+
 	if( !Accessible( character , use_on ) or !use_on.movable )
 		SendSysmessage( character , "You can't reach that!" );
 		return;
@@ -84,20 +121,12 @@ program MakeTinkerItems( character , tool )
 	endif
 
 	if( IsLog( use_on ) )
-	   	var cfg := ReadConfigFile( ":carpentry:carpentry" );
 		resourceRequest := MakeBackpackRequest( character, use_on );
-		// resource_diff := cfg[use_on.objtype].Difficulty;
-		// resource_name := cfg[use_on.objtype].Name;
-		// resource_qual := cfg[use_on.objtype].Quality;
 	   	item_to_make := MakeAndProcessMenu( character , resourceRequest , WOOD_ID );
 	   	sound := CARPENTER_SOUND;
 
 	elseif(IsIngot( use_on ))
-		var cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
 		resourceRequest := MakeBackpackRequest( character, use_on );
-		// resource_diff := cfg[use_on.objtype].Difficulty;
-		// resource_name := cfg[use_on.objtype].Name;
-		// resource_qual := cfg[use_on.objtype].Quality;
 		item_to_make := MakeAndProcessMenu( character , resourceRequest , METAL_ID );
 		sound := SFX_ANVIL;
 
@@ -217,7 +246,7 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 		if( !have_it )
 			return;
 		endif
-		have_it_qual := have_it.qual;
+		have_it_qual := have_it.quality;
 	endif
 
 	var element := FindConfigElem( tinker_cfg , to_be_done_objtype );
@@ -269,7 +298,7 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 			skill := 90;
 		endif
 
-		if( element.Exceptional and (Random(100) < excep_ch) and CheckSkill( character , SKILLID_TINKERING , skill , 0 ) )
+		if( element.Exceptional and (GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) and CheckSkill( character , SKILLID_TINKERING , skill , 0 ))) )
 			if( theitem.quality )
 				//Made something Exceptional
 				var armslore := GetEffectiveSkill( character , SKILLID_ARMSLORE );
@@ -350,15 +379,29 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 
 	
 
-	resource_diff := tinker_cfg[resourceRequest.objtype].Difficulty;
+	// Look up material Difficulty/Quality against the craft that actually owns
+	// this resource type -- tinker.cfg itself has no per-material entries, so
+	// querying it directly (as this used to) silently resolved to nothing.
+	case( id )
+		WOOD_ID:	resource_diff := carpentry_cfg[resourceRequest.objtype].Difficulty;
+				resource_name := carpentry_cfg[resourceRequest.objtype].Name;
+				resource_qual := carpentry_cfg[resourceRequest.objtype].Quality;
+				break;
+		METAL_ID:	resource_diff := blacksmithy_cfg[resourceRequest.objtype].Difficulty;
+				resource_name := blacksmithy_cfg[resourceRequest.objtype].Name;
+				resource_qual := blacksmithy_cfg[resourceRequest.objtype].Quality;
+				break;
+		default:	resource_diff := 0;
+				resource_name := "";
+				resource_qual := 1;
+				break;
+	endcase
+
 	var skill := GetEffectiveSkill( who , SKILLID_TINKERING );
 	if( skill < resource_diff )
 		SendSysmessage( who, "You aren't skilled enough to make anything with this yet." );
 		return;
 	endif
-
-	resource_name := tinker_cfg[resourceRequest.objtype].Name;
-	resource_qual := tinker_cfg[resourceRequest.objtype].Quality;
 
 	var elemkeys := GetConfigStringKeys( tinker_cfg );
 	var can_make;
@@ -371,6 +414,7 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 		WOOD_ID:	AddMenuItem( menu , 0x1032 , "Tools" );
 				AddMenuItem( menu , 0x0e34 , "Paper items" );
 				AddMenuItem( menu , 0x14F3 , "Miscellaneous" );
+				AddMenuItem( menu , 0x28DC , "Tokuno Furniture" );
 				break;
 
 		METAL_ID:	AddMenuItem( menu , 0x1EBB , "Tools" );
@@ -382,6 +426,7 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 				AddMenuItem( menu , 0x1640 , "Miscellaneous" );
 				AddMenuItem( menu , 0x0e80 , "Containers" );
 				AddMenuItem( menu , 0x35EF , "Crystal Items" );
+				AddMenuItem( menu , 0x2843 , "Tokuno Furniture" );
 				break;
 
 		GLASS_ID:	AddMenuItem( menu , 0x185b , "Alchemical Tools" );
@@ -391,6 +436,7 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 		CLAY_ID:	AddMenuItem( menu , 0x181d , "Foci" );
 				AddMenuItem( menu , 0x12ca , "Statues" );
 				AddMenuItem( menu , 0x0b46 , "Miscellaneous" );
+				AddMenuItem( menu , 0x241C , "Tokuno Furniture" );
 				break;
 
 	endcase
@@ -405,13 +451,6 @@ function MakeAndProcessMenu( who , resourceRequest , id )
 	if (CInt(choice) == 29) // Crystal Furniture Crafting
 		If (!NearAnElvenAnvilOrForge(who))
 			SendSysMessage(who,"You must be closer to an Elven Anvil or Forge!");
-			return;
-		endif
-	endif
-	
-	if ( CInt(choice) == 27 ) // Soulforge Crafting
-		If (!NearASoulforge(who))
-			SendSysMessage(who,"You must be closer to a SoulForge!");
 			return;
 		endif
 	endif
@@ -447,6 +486,11 @@ function CanMake( who , key , resourceRequest )
 	endif
 
 	if( GetEffectiveSkill( who , SKILLID_TINKERING ) >= ( diff + APPEAR_AT ) )
+		if( tinker_cfg[key].CoSkillid )
+			if( GetEffectiveSkill( who , CInt( tinker_cfg[key].CoSkillid ) ) < CInt( tinker_cfg[key].CoSkill ) )
+				return 0;
+			endif
+		endif
 		var material := tinker_cfg[key].Material;
 		if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
 			material := CInt(Ceil(material/2));
@@ -479,6 +523,73 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 		return;
 	endif
 
+	// Statues (and any future combo recipe) require a second, player-chosen
+	// material -- either wood or ore -- gated by that material's own craft
+	// skill (Carpentry for logs, Blacksmithy for ingots), on top of the base
+	// Tinkering requirement above. The chosen material's name/hue is what
+	// ends up on the finished item, not the clay.
+	var material2 := element.CoMaterial;
+	var secondaryRequest;
+	var skillid2;
+	var skill2;
+	var points2;
+
+	if( material2 )
+		SendSysmessage( character , "Select the second material (wood or ore) for this item." );
+		var use_with := Target( character , TGTOPT_CHECK_LOS );
+		if( !use_with )
+			return;
+		endif
+
+		if( !Accessible( character , use_with ) or !use_with.movable )
+			SendSysmessage( character , "You can't reach that!" );
+			return;
+		endif
+
+		if( !IsInContainer( character.backpack , use_with ) )
+			SendSysmessage( character , "That item has to be in your backpack." );
+			return;
+		endif
+
+		var use_with_diff;
+
+		if( IsLog( use_with ) )
+			skillid2 := SKILLID_CARPENTRY;
+			use_with_diff := carpentry_cfg[use_with.objtype].Difficulty;
+		elseif( IsIngot( use_with ) )
+			skillid2 := SKILLID_BLACKSMITHY;
+			use_with_diff := blacksmithy_cfg[use_with.objtype].Difficulty;
+		else
+			SendSysmessage( character , "That must be wood or metal ore." );
+			return;
+		endif
+
+		secondaryRequest := MakeBackpackRequest( character, use_with );
+
+		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+			material2 := CInt(Ceil(material2/2));
+		endif
+
+		skill2 := element.CoSkill + CInt( use_with_diff / DIVIDER );
+		if( skill2 < 1 )
+			skill2 := 1;
+		elseif( skill2 > 150 )
+			skill2 := 150;
+		endif
+
+		if( GetEffectiveSkill( character , skillid2 ) < skill2 )
+			SendSysmessage( character , "You aren't skilled enough with that material to use it here." );
+			return;
+		endif
+
+		if( GetAvailableResource(character, secondaryRequest).total < material2 )
+			SendSysmessage( character , "You don't have enough of that material." );
+			return;
+		endif
+
+		points2 := CInt( (skill2 + CInt(material2 / 3)) * POINTS_MULTIPLIER / 3 );
+	endif
+
 	var skill := element.Skill + CInt( resource_diff / DIVIDER );
 	if( skill < 1 )
 		skill := 1;
@@ -509,11 +620,18 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 
 	
 	LeaseResource( character, resourceRequest, material );
+	if( material2 )
+		LeaseResource( character, secondaryRequest, material2 );
+	endif
 
 	AutoLoop_init( character );
-	while( AutoLoop_more() && GetAvailableResource(character, resourceRequest).total >= material && NOT character.dead)
+	while( AutoLoop_more() && GetAvailableResource(character, resourceRequest).total >= material && (!material2 || GetAvailableResource(character, secondaryRequest).total >= material2) && NOT character.dead)
 
 		sendDiff( character , skill );
+		if( material2 )
+			sendSecDiff( character , skill2 );
+			CheckSkill( character , skillid2 , skill2 , points2 );
+		endif
 
 		itemname := element.Name;
 		deedname := element.Name;
@@ -544,6 +662,11 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 
 		_Play_Sound( character , sfx );
 
+		var namingResource := resourceRequest;
+		if( material2 )
+			namingResource := secondaryRequest;
+		endif
+
 		if( CheckSkill( character , SKILLID_TINKERING , skill , points ) )
 
 			var theitem;
@@ -552,13 +675,13 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 			var randomchance := Random(10);
 			Print("Random Chance Roll: " + randomchance + " while Excep Chance is: " + excep_ch);
 
-			if( ( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TINKERING, excep_diff, 0 ) )
+			if( GetObjProperty(character, "ForceExceptional") or (( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TINKERING, excep_diff, 0 )) )
 
 				//Made something Exceptional
 				if( give_deed )
 					Print("Creating exceptional deed item: ");
 					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 1, character, SKILLID_TINKERING, deedname);
+					ApplyMaterialPropertiesDeed(product_desc, namingResource, 1, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
 					itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem, itemname );
@@ -567,8 +690,9 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 					//Non Deed Item
 					Print("Creating exceptional Non Deed Item");
 					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, resourceRequest, 1, character, SKILLID_TINKERING);
+					ApplyMaterialProperties(product_desc, namingResource, 1, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );
+					IncRevision(theitem);
 				endif
 
 				if( skill >= 130 )
@@ -584,22 +708,31 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 				if( give_deed )
 					Print("Creating normal deed item: " + give_deed );
 					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, resourceRequest, 0, character, SKILLID_TINKERING, deedname);
+					ApplyMaterialPropertiesDeed(product_desc, namingResource, 0, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
-					//itemname := GetObjProperty( theitem , "DeedName" );
+					itemname := GetObjProperty( theitem , "DeedName" );
 					SetName( theitem, itemname );
 					IncRevision(theitem);
 				else
 					//Non Deed Item
 					Print("Creating Non Deed Normal Item");
 					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, resourceRequest, 0, character, SKILLID_TINKERING);
+					ApplyMaterialProperties(product_desc, namingResource, 0, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );
+					IncRevision(theitem);
 					//itemname := GetObjProperty( theitem , "BaseName" );
 				endif
 				SendSysmessage( character, "You create the item and place it in your pack." );
 			endif
 
+			if( !theitem )
+				ConsumeResource( character, resourceRequest, material );
+				if( material2 )
+					ConsumeResource( character, secondaryRequest, material2 );
+				endif
+				SendSysmessage( character, "Your backpack is full." );
+				break;
+			endif
 
 				// skill := skill + Cint( resource_diff / DIVIDER );
 
@@ -710,16 +843,14 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 			endif
 			//SetObjProperty( theitem , "CraftedWith", resource.objtype );
 			ConsumeResource( character, resourceRequest, material );
+			if( material2 )
+				ConsumeResource( character, secondaryRequest, material2 );
+			endif
 			//SetObjProperty( theitem, "BaseName", itemname );
 			//SetName( theitem, itemname );
 			//IncRevision(theitem);
 			//else
-			if( !theitem )
-				ConsumeResource( character, resourceRequest, material );
-				SendSysmessage( character, "Your backpack is full." );
-				break;
-			endif
-			
+
 			// theitem.hp := theitem.maxhp;
 			// SetObjProperty( theitem , "BaseName" , itemname );
 			// SetName( theitem , itemname );
@@ -747,30 +878,45 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 			//SubtractAmount( resource , material );
 		else
 			var tink := GetEffectiveSkill( character , SKILLID_TINKERING );
-			var destroy := 75 - Cint( tink / 2 );
+			var destroy_pct := 75 - Cint( tink / 2 );
 			if( GetObjProperty( character , CLASSEID_CRAFTER ) )
-				destroy := Cint( destroy / ClasseBonus( character , CLASSEID_CRAFTER ) );
+				destroy_pct := Cint( destroy_pct / ClasseBonus( character , CLASSEID_CRAFTER ) );
 			endif
 
-			if( destroy > 50 )
-				destroy	:= 50;
+			if( destroy_pct > 50 )
+				destroy_pct	:= 50;
 			endif
 
-			destroy	:= Cint( material * destroy / 100 );
+			var destroy	:= Cint( material * destroy_pct / 100 );
 			if( destroy < 1 )
 				destroy	:= 1;
 			endif
-			
+
 			ConsumeResource( character , resourceRequest , destroy );
+
+			if( material2 )
+				var destroy2 := Cint( material2 * destroy_pct / 100 );
+				if( destroy2 < 1 )
+					destroy2 := 1;
+				endif
+				ConsumeResource( character , secondaryRequest , destroy2 );
+			endif
+
 			SendSysmessage( character , "You destroyed some resources." );
 		endif
 
 		if( !ExtendResourceLease(resourceRequest, character, material) )
 			break;
 		endif
+		if( material2 and !ExtendResourceLease(secondaryRequest, character, material2) )
+			break;
+		endif
 
 	endwhile
 	ReleaseResourceLease(resourceRequest);
+	if( material2 )
+		ReleaseResourceLease(secondaryRequest);
+	endif
 	AutoLoop_finish();
 
 endfunction
@@ -1091,6 +1237,28 @@ function GetRessourceName( ressource )
 
 	return t_name;
 
+endfunction
+
+// Objtype-based checks for Omega Cache selections (no physical item reference needed).
+function IsLogObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_LOGS_START and objtype <= UOBJ_LOGS_END ) or
+	   ( objtype == UOBJ_LOGS_GODDESS ) or ( objtype == UOBJ_LOGS ))
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function IsIngotObjtype( objtype )
+	objtype := CInt(objtype);
+	if(( objtype >= UOBJ_INGOTS_START  and objtype <= UOBJ_INGOTS_END  ) or
+	   ( objtype >= UOBJ_INGOTS2_START and objtype <= UOBJ_INGOTS2_END ) or
+	   ( objtype == UOBJ_GOLD_INGOT ) or
+	   ( objtype == UOBJ_SILVER_INGOT ) or
+	   ( objtype == UOBJ_COIN_COPPER_INGOT ))
+		return 1;
+	endif
+	return 0;
 endfunction
 
 

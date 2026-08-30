@@ -23,6 +23,7 @@ use uo;
 include "include/client";
 include "include/skillpoints";
 include "include/attributes";
+include ":traps:traps";
 
 program remove_trap( character )
 var thepoints := get_default_points(SKILLID_REMOVETRAP);
@@ -41,6 +42,8 @@ var thepoints := get_default_points(SKILLID_REMOVETRAP);
 	 	trap_type := GetObjProperty( item, "Trap_Type" );
 	 endif
 
+	 var trap_list := GetTrapList( item );
+
      if( trap_type )
         if( CheckSkill( character, SKILLID_REMOVETRAP, -1, thepoints ) )
 		   EraseObjProperty( item, "trap_type" );
@@ -50,6 +53,13 @@ var thepoints := get_default_points(SKILLID_REMOVETRAP);
            EraseObjProperty( item, "Trap_Strength" );
 		   EraseObjProperty( item, "Trapped_By" );
            item.usescript := "";
+		   SendSysmessage( character , "You sucessfully disarmed the trap." );
+        else
+           SendSysmessage( character , "You failed to disarm the trap." );
+        endif
+     elseif( trap_list.Size() )
+        if( CheckSkill( character, SKILLID_REMOVETRAP, -1, thepoints ) )
+		   RemoveTrap( item, "all" );
 		   SendSysmessage( character , "You sucessfully disarmed the trap." );
         else
            SendSysmessage( character , "You failed to disarm the trap." );

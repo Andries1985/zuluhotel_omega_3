@@ -35,7 +35,10 @@ function ApplyRitualEffect( mobile, item )
 
         //var level := GetClass( mobile, MAGE );
         var level := GetClasseLevel(mobile);
-        if( GetObjProperty( item, "PhysicalProtection" ) >= level )
+        if( RitualHasOtherImmunity( item, "PhysicalProtection" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( GetObjProperty( item, "PhysicalProtection" ) >= level )
 		SendSysMessage( mobile, "This "+item_desc+" already have a more powerful enchantment on it." );
                 return 0;
         endif

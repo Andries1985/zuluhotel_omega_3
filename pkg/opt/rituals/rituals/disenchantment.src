@@ -3,6 +3,15 @@
 
         2010-11-19
 */
+
+/*
+        CUT 2026-08-26: removed from the rituals package during the revival pass.
+        TargOptions restricted this to cursed items, but the effect (destroy +
+        recreate from scratch) wiped everything about the item - color, quality,
+        enchant mods, name - not just the curse. Purification (BanishCurse) covers
+        the intended "remove a curse" use case without the collateral damage.
+        Left in place, commented out, rather than deleted.
+
 use uo;
 use os;
 
@@ -35,11 +44,12 @@ function ApplyRitualEffect( mobile, item )
                 SendSysMessage( mobile, "Error creating ritual item -->"+new_item.errortext );
                 return 0;
         endif
-        
+
         DestroyItem( item );
 	SetNameByEnchant( new_item );
- 
+
 	SendSysMessage( mobile, "This "+TruncateArticle( new_item.desc )+" is now completely disenchanted." );
- 
+
         return 1;
 endfunction
+*/

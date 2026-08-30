@@ -35,12 +35,15 @@ function ApplyRitualEffect( mobile, item )
 
         //var level := GetClass( mobile, MAGE );
         var level := GetClasseLevel(mobile);
-        if( GetObjProperty( item, "PermSpellReflection" ) >= level )
+        if( RitualHasOtherImmunity( item, "Permmr" ))
+		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
+                return 0;
+        elseif( GetObjProperty( item, "Permmr" ) >= level )
 		SendSysMessage( mobile, "This "+item_desc+" already have a more powerful enchantment on it." );
                 return 0;
         endif
 
-	SetObjProperty( item, "PermSpellReflection", level );
+	SetObjProperty( item, "Permmr", level );
 	SetNameByEnchant( item );
 
 	SendSysMessage( mobile, "This "+item_desc+" will now reflect certain spells casted at his wearer." );

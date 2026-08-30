@@ -1,0 +1,66 @@
+// Synopsis: GM command -- force-issues a bulk order deed to the targeted
+// player for the given craft, bypassing the skill check and daily cap.
+// Usage: .forcegivebod <craft>
+// <craft> matches BOD_CraftName (e.g. Blacksmithy, Bowcraft, Carpentry,
+// Tailoring, Tinkering, Inscription, Cooking, Alchemy).
+
+use uo;
+use os;
+use util;
+
+include ":bulkorders:bulkorder";
+include ":bulkorders:bulkorder_generation";
+include "include/objtype";
+include "include/client";
+
+program forcegivebod(who, craftname)
+
+	if( !craftname or craftname == "" )
+		SendSysMessage(who, "Usage: .forcegivebod <craft>", color := 33);
+		return;
+	endif
+
+	var skillid := 0;
+	foreach candidate in (BOD_AllCraftSkillIds())
+		if( Lower(BOD_CraftName(candidate)) == Lower(craftname) )
+			skillid := candidate;
+			break;
+		endif
+	endforeach
+
+	if( !skillid )
+		SendSysMessage(who, "Unknown craft: " + craftname, color := 33);
+		return;
+	endif
+
+	SendSysMessage(who, "Target the player to give a " + BOD_CraftName(skillid) + " bulk order deed to.", color := 88);
+	var recipient := Target(who);
+	if( !recipient )
+		SendSysMessage(who, "Never mind.", color := 33);
+		return;
+	endif
+
+	var order := BOD_GenerateSmall(skillid);
+	if( !order )
+		SendSysMessage(who, "Couldn't generate an order for that craft -- check its item pool.", color := 33);
+		return;
+	endif
+
+	var deed := CreateItemInContainer( recipient.backpack, UOBJ_BULKORDER_DEED, 1 );
+	if( !deed )
+		SendSysMessage(who, "Couldn't create the deed -- backpack full?", color := 33);
+		return;
+	endif
+
+	deed.color := BOD_DeedColor(skillid, order.size);
+	SetObjProperty(deed, "BODCraft", skillid);
+	SetObjProperty(deed, "BODSize", order.size);
+	SetObjProperty(deed, "BODExceptional", order.exceptional);
+	SetObjProperty(deed, "BODItemObjtype", order.item);
+	SetObjProperty(deed, "BODAmount", order.amount);
+	SetObjProperty(deed, "BODAmountFilled", 0);
+	deed.name := "a " + BOD_CraftName(skillid) + " bulk order deed";
+
+	SendSysMessage(who, "Gave " + recipient.name + " a " + BOD_CraftName(skillid) + " bulk order deed.", color := 66);
+
+endprogram

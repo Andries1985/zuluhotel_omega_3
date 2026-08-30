@@ -1,0 +1,29 @@
+use uo;
+use os;
+
+include ":itemutils:itemdesc";
+
+program HeatingStandMenu( character, item )
+
+	var menu := CreateMenu( "What would you like to do?" );
+	AddMenuItem( menu, 1, "Brew a Potion" );
+	AddMenuItem( menu, 2, "Toggle Light" );
+
+	var choice := SelectMenuItem2( character, menu ).index;
+	if( !choice )
+		return 0;
+	endif
+
+	if( choice == 1 )
+		start_script( ":alchemyplus:alchemyplus", { character, item } );
+	elseif( choice == 2 )
+		var cfg_info := GetItemDescInfo( item.graphic );
+		if( !cfg_info.ChangeTo )
+			SendSysmessage( character, "This heating stand has no light to toggle." );
+			return 0;
+		endif
+		item.Toggle();
+	endif
+
+	return 1;
+endprogram

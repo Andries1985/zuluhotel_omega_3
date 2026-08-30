@@ -12,6 +12,8 @@ include "include/eventid";
 include ":karmafame:karmafame";
 include "include/dismount";
 include "include/managers";
+include ":questpkg:questdeath";
+include "../pkg/opt/rituals/include/altarquest";
 include ":shilhook:shilcombat";
 include ":champspawns:death";
 include ":lootlottery:lootlottery";
@@ -198,6 +200,15 @@ program npcdeath(corpse)
 
 	if(GetObjProperty(corpse, "Champion"))
 		ProcessChampionCorpse(corpse);
+	endif
+
+	if(GetObjProperty(corpse, "QuestId"))
+		Print("[QuestPkg] npcdeath: QuestId tag seen on corpse "+CStr(corpse.serial)+", handing off to ProcessQuestKill");
+		ProcessQuestKill(corpse);
+	endif
+
+	if(GetObjProperty(corpse, "QuestTrophyObjtype"))
+		ProcessRitualBossTrophyDrop(corpse);
 	endif
 
 	zapstorageareas(corpse);

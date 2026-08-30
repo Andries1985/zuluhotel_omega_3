@@ -1,0 +1,992 @@
+// Bowcraft package -- OSI-style crafting gump (replaced the old
+// CreateMenu/SelectMenuItem2 text-menu flow 2026-08-23; see the isolated
+// pkg/std/testbowcraft build this was validated in before promotion).
+// The Bowcraft Tool (0x1022) opens a category/selection gump (Shafts, Bows,
+// Crossbows, Ammo, Misc) driven entirely by bowcraft.cfg -- no upfront
+// targeting step. Targeting an existing bow/crossbow is still available via
+// the gump's Repair Item option. Auto-detects raw materials in the backpack
+// and Omega Cache; every recipe crafts through AutoLoop one unit at a time
+// (or via the Make Bulk option, one CheckSkill roll for the whole batch).
+
+use uo;
+use os;
+use util;
+use cfgfile;
+use basic;
+use attributes;
+
+include "util/repair";
+include "include/client";
+include ":gumps:yesno";
+include ":gumps:gumps";
+include "include/random";
+include "include/objtype";
+include "include/classes";
+include "include/itemutil";
+include "include/autoloop";
+include "include/utility";
+include ":karmafame:karmafame";
+include "include/attributes";
+include "include/difficulty";
+include "include/resourcemanager";
+include "include/skillpoints";
+
+const DIVIDER			:= 4;
+const APPEAR_AT		:= -10;
+const POINTS_MULTIPLIER	:= 8;
+const FAME_BONUS		:= 10;
+
+// Non-objtype button-id sentinels for the gumps below. All real recipe/material
+// objtypes in this cfg are well under 100000, so these can't collide.
+const BC_BTN_BACK		:= 900001;
+const BC_BTN_REPAIR		:= 900002;
+const BC_BTN_MAKE_MAX		:= 900003;
+const BC_BTN_MAKE_NUMBER	:= 900004;
+const BC_BTN_MAKE_NOW		:= 900005;
+const BC_BTN_MAKE_BULK		:= 900006;
+const BC_BTN_PICK_MATERIAL	:= 900010;
+const BC_BTN_PICK_MATERIAL2	:= 900011;
+const BC_BTN_PICK_MATERIAL3	:= 900012;
+const BC_BTN_MATERIAL_BASE	:= 800000; // + index into the log-picker's option list
+
+var bowcraft_cfg := ReadConfigFile( "bowcraft" );
+
+
+// No upfront "what would you like to use that on" targeting step -- double-
+// clicking the tool opens the crafting gump directly. Repairing an existing
+// bow/crossbow is still available from inside the gump (Repair Item button);
+// the old direct-target elemental-arrow upgrade shortcut is fully superseded
+// by the gump's own Improve Arrow/Bolt recipes (see bowcraft.cfg).
+program use_bowcrafttool( character )
+
+	RunBowcraftGump( character );
+
+endprogram
+
+
+// Top-level loop: category/selection gump -> detail gump -> back to top, until
+// the player crafts something, clicks Repair, or closes out entirely.
+function RunBowcraftGump( character )
+
+	while( 1 )
+		var choice := ShowCategoryGump( character );
+		if( !choice )
+			return;
+		endif
+
+		if( choice == BC_BTN_REPAIR )
+			SendSysmessage( character, "What would you like to repair?" );
+			var use_on := Target( character, TGTOPT_CHECK_LOS );
+			if( use_on and Accessible(character, use_on) )
+				if( use_on.isa(POLCLASS_WEAPON) and bowcraft_cfg[use_on.graphic] )
+					repair_item( character, use_on, SKILLID_BOWCRAFT );
+				else
+					SendSysMessage( character, "You can only repair bows and crossbows with this." );
+				endif
+			endif
+			return;
+		endif
+
+		if( !ShowDetailGump( character, choice ) )
+			continue;
+		endif
+		return;
+	endwhile
+
+endfunction
+
+
+function GetCategories( cfg )
+	var cats := array{};
+	var seen := dictionary;
+	foreach key in GetConfigStringKeys( cfg )
+		var cat := cfg[key].Category;
+		if( cat and !seen[cat] )
+			seen[cat] := 1;
+			cats.append(cat);
+		endif
+	endforeach
+	return cats;
+endfunction
+
+
+// Total available (backpack + Omega Cache) for a single fixed objtype
+// (Shaft/Feather/Reagent -- these never have a "which one" choice to make).
+function GetFixedMaterialTotal( character, objtype )
+	return GetAvailableResource( character, GetMaterialRequest(character, objtype) ).total;
+endfunction
+
+
+// Total available across every log color, backpack + cache combined -- used
+// only to decide whether an Element should appear in the selection list at all.
+function GetLogFamilyTotal( character )
+	var total := 0;
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if( IsLog(item) )
+			total := total + item.amount;
+		endif
+	endforeach
+
+	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	if( access )
+		total := total + GetStoredAmountByObjtype( access.df, UOBJ_LOGS, 0 );
+		total := total + GetStoredAmountByObjtype( access.df, UOBJ_LOGS_GODDESS, 0 );
+		var c;
+		for( c := UOBJ_LOGS_START; c <= UOBJ_LOGS_END; c := c + 1 )
+			total := total + GetStoredAmountByObjtype( access.df, c, 0 );
+		endfor
+	endif
+
+	return total;
+endfunction
+
+
+// True if the player currently has enough skill and enough of every required
+// material (summed across the whole family for Log slots, since we haven't
+// asked which specific one yet) to make at least 1 of this element.
+function CanMakeElement( character, key, cfg )
+
+	var bowcraft := GetEffectiveSkill( character, SKILLID_BOWCRAFT );
+	var diff := cfg[key].Skill;
+	if( diff < 1 )
+		diff := 1;
+	elseif( diff > 130 )
+		diff := 130;
+	endif
+	if( bowcraft < ( diff + APPEAR_AT ) )
+		return 0;
+	endif
+
+	if( !HasEnoughOfSlot( character, cfg[key].MaterialType, cfg[key].Material, 0 ) )
+		return 0;
+	endif
+	if( cfg[key].Material2Type )
+		if( !HasEnoughOfSlot( character, cfg[key].Material2Type, cfg[key].Material2, cfg[key].Material2Objtype ) )
+			return 0;
+		endif
+	endif
+	if( cfg[key].Material3Type )
+		if( !HasEnoughOfSlot( character, cfg[key].Material3Type, cfg[key].Material3, cfg[key].Material3Objtype ) )
+			return 0;
+		endif
+	endif
+
+	return 1;
+
+endfunction
+
+
+function HasEnoughOfSlot( character, materialType, amountNeeded, fixedObjtype )
+	if( materialType == "Log" )
+		return GetLogFamilyTotal(character) >= amountNeeded;
+	else
+		return GetFixedMaterialTotal(character, ResolveFixedObjtype(materialType, fixedObjtype)) >= amountNeeded;
+	endif
+endfunction
+
+
+// "Shaft"/"Feather" always mean the same fixed objtype everywhere in this cfg
+// (unlike "Reagent", which varies per recipe and always carries an explicit
+// MaterialNObjtype) -- resolve them here instead of requiring every Ammo
+// entry to repeat UOBJ_SHAFTS/UOBJ_FEATHER. Without this, slot 1 (which never
+// has a MaterialObjtype field at all) always resolved to objtype 0, so Ammo
+// elements always read as "0 available" and never appeared in the gump.
+function ResolveFixedObjtype( materialType, explicitObjtype )
+	if( materialType == "Shaft" )
+		return UOBJ_SHAFTS;
+	elseif( materialType == "Feather" )
+		return UOBJ_FEATHER;
+	elseif( materialType == "Arrow" )
+		return UOBJ_ARROW;
+	elseif( materialType == "Bolt" )
+		return UOBJ_BOLT;
+	else
+		return CInt(explicitObjtype);
+	endif
+endfunction
+
+
+// Category + selection gump. Returns the chosen Element's objtype (key into
+// bowcraft_cfg), BC_BTN_REPAIR, or 0 on cancel.
+function ShowCategoryGump( character )
+
+	var categories := GetCategories( bowcraft_cfg );
+	var gump := GFCreateGump(50, 50, 520, 420);
+
+	GFResizePic( gump, 0, 0, 5054, 520, 420 );
+	GFTextLine( gump, 20, 15, 1153, "Bowcraft" );
+
+	GFTextLine( gump, 20, 45, 900, "Categories" );
+	var y := 65;
+	var page_num := 1;
+	foreach cat in categories
+		GFAddButton( gump, 20, y, 4005, 4007, GF_PAGE_BTN, page_num );
+		GFTextLine( gump, 55, y+2, 1153, cat );
+		y := y + 25;
+		page_num := page_num + 1;
+	endforeach
+
+	GFTextLine( gump, 20, y+15, 900, "Options" );
+	GFAddButton( gump, 20, y+35, 4005, 4007, GF_CLOSE_BTN, BC_BTN_REPAIR );
+	GFTextLine( gump, 55, y+37, 1153, "Repair Item" );
+
+	page_num := 1;
+	foreach cat in categories
+		GFPage( gump, page_num );
+		GFTextLine( gump, 220, 45, 900, "Selections" );
+		var row_y := 65;
+		foreach key in GetConfigStringKeys( bowcraft_cfg )
+			if( bowcraft_cfg[key].Category == cat and CanMakeElement(character, key, bowcraft_cfg) )
+				GFAddButton( gump, 220, row_y, 4005, 4007, GF_CLOSE_BTN, Cint(key) );
+				GFTextLine( gump, 255, row_y+2, 1153, bowcraft_cfg[key].Name );
+				row_y := row_y + 25;
+			endif
+		endforeach
+		if( row_y == 65 )
+			GFTextLine( gump, 220, 65, 900, "Nothing craftable in this category yet." );
+		endif
+		page_num := page_num + 1;
+	endforeach
+
+	var result := GFSendGump( character, gump );
+	if( !result )
+		return 0;
+	endif
+
+	return CInt(result[0]);
+
+endfunction
+
+
+// Detail page for one recipe: shows required materials with picker buttons,
+// then Make Max/Make Number/Make Now. Returns 1 once something was crafted
+// (or the attempt was made), 0 if the player just backed out.
+function ShowDetailGump( character, objtype )
+
+	var element := bowcraft_cfg[objtype];
+	if( !element )
+		return 0;
+	endif
+
+	var slot1Request;
+	var slot2Request;
+	var slot3Request;
+
+	while( 1 )
+
+		var gump := GFCreateGump(50, 50, 520, 420);
+		GFResizePic( gump, 0, 0, 5054, 520, 420 );
+		GFTextLine( gump, 20, 15, 1153, element.Name );
+		GFTextLine( gump, 20, 45, 900, "Bowcraft skill needed: " + element.Skill );
+		GFTextLine( gump, 20, 65, 900, "Your Bowcraft: " + GetEffectiveSkill(character, SKILLID_BOWCRAFT) );
+
+		GFTextLine( gump, 20, 100, 900, "MATERIALS" );
+		var y := 120;
+
+		var slot1Name := DescribeSlot( character, element.MaterialType, 0, slot1Request );
+		GFAddButton( gump, 20, y, 4005, 4007, GF_CLOSE_BTN, BC_BTN_PICK_MATERIAL );
+		GFTextLine( gump, 55, y+2, 1153, element.MaterialType + " (" + element.Material + ") -- " + slot1Name );
+		y := y + 25;
+
+		if( element.Material2Type )
+			var slot2Name := DescribeSlot( character, element.Material2Type, element.Material2Objtype, slot2Request );
+			GFAddButton( gump, 20, y, 4005, 4007, GF_CLOSE_BTN, BC_BTN_PICK_MATERIAL2 );
+			GFTextLine( gump, 55, y+2, 1153, element.Material2Type + " (" + element.Material2 + ") -- " + slot2Name );
+			y := y + 25;
+		endif
+
+		if( element.Material3Type )
+			var slot3Name := DescribeSlot( character, element.Material3Type, element.Material3Objtype, slot3Request );
+			GFAddButton( gump, 20, y, 4005, 4007, GF_CLOSE_BTN, BC_BTN_PICK_MATERIAL3 );
+			GFTextLine( gump, 55, y+2, 1153, element.Material3Type + " (" + element.Material3 + ") -- " + slot3Name );
+			y := y + 25;
+		endif
+
+		// These notices only apply to Log-based weapon recipes (exceptional
+		// rolls set a maker's mark, and the crafted item inherits the log's
+		// color). CraftAmmoRecipe/CraftAmmoBulk never do either of those for
+		// Arrow/Bolt/elemental-ammo/Improve recipes, so showing this text for
+		// those categories would be actively misleading.
+		if( element.MaterialType == "Log" )
+			GFTextLine( gump, 20, y+15, 900, "OTHER" );
+			GFTextLine( gump, 20, y+35, 900, "This item may hold its maker's mark" );
+			GFTextLine( gump, 20, y+55, 900, "* The item retains the color of this material" );
+		endif
+
+		GFAddButton( gump, 20, 380, 4005, 4007, GF_CLOSE_BTN, BC_BTN_BACK );
+		GFTextLine( gump, 55, 382, 1153, "Back" );
+		GFAddButton( gump, 170, 380, 4005, 4007, GF_CLOSE_BTN, BC_BTN_MAKE_MAX );
+		GFTextLine( gump, 205, 382, 1153, "Make Max" );
+		GFAddButton( gump, 320, 380, 4005, 4007, GF_CLOSE_BTN, BC_BTN_MAKE_NUMBER );
+		GFTextLine( gump, 355, 382, 1153, "Make Number" );
+		GFAddButton( gump, 20, 400, 4005, 4007, GF_CLOSE_BTN, BC_BTN_MAKE_NOW );
+		GFTextLine( gump, 55, 402, 1153, "Make Now" );
+
+		if( element.Bulk )
+			GFAddButton( gump, 170, 400, 4005, 4007, GF_CLOSE_BTN, BC_BTN_MAKE_BULK );
+			GFTextLine( gump, 205, 402, 1153, "Make Bulk" );
+		endif
+
+		var result := GFSendGump( character, gump );
+		if( !result )
+			return 0;
+		endif
+
+		var btn := CInt(result[0]);
+
+		if( btn == BC_BTN_BACK )
+			return 0;
+
+		elseif( btn == BC_BTN_PICK_MATERIAL )
+			if( element.MaterialType == "Log" )
+				var picked := PickLogMaterial( character );
+				if( picked )
+					slot1Request := picked;
+				endif
+			else
+				SendSysMessage( character, "There's only one kind of that -- nothing to choose." );
+			endif
+
+		elseif( btn == BC_BTN_PICK_MATERIAL2 or btn == BC_BTN_PICK_MATERIAL3 )
+			SendSysMessage( character, "There's only one kind of that -- nothing to choose." );
+
+		elseif( btn == BC_BTN_MAKE_MAX or btn == BC_BTN_MAKE_NUMBER or btn == BC_BTN_MAKE_NOW or btn == BC_BTN_MAKE_BULK )
+
+			if( !slot1Request )
+				slot1Request := ResolveDefaultSlot( character, element.MaterialType, 0 );
+			endif
+			if( element.Material2Type and !slot2Request )
+				slot2Request := ResolveDefaultSlot( character, element.Material2Type, element.Material2Objtype );
+			endif
+			if( element.Material3Type and !slot3Request )
+				slot3Request := ResolveDefaultSlot( character, element.Material3Type, element.Material3Objtype );
+			endif
+
+			if( !slot1Request or (element.Material2Type and !slot2Request) or (element.Material3Type and !slot3Request) )
+				SendSysMessage( character, "You don't have the materials to make that." );
+				return 0;
+			endif
+
+			var maxCraftable := GetAvailableResource(character, slot1Request).total / element.Material;
+			if( element.Material2Type )
+				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot2Request).total / element.Material2 );
+			endif
+			if( element.Material3Type )
+				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot3Request).total / element.Material3 );
+			endif
+			maxCraftable := CInt(maxCraftable);
+
+			if( maxCraftable < 1 )
+				SendSysMessage( character, "You don't have enough materials to make even one." );
+				return 0;
+			endif
+
+			// Most recipes create the same objtype as their cfg key. "Improve"
+			// recipes (Arrow+Reagent -> Fire Arrow, etc) key off a synthetic
+			// identifier instead, since 0x6051/0xb200/0x824e are already taken
+			// as keys by the from-scratch Shaft+Feather+Reagent versions -- for
+			// those, ResultObjtype says what to actually create.
+			var craftWhat := objtype;
+			if( element.ResultObjtype )
+				craftWhat := CInt(element.ResultObjtype);
+			endif
+
+			if( btn == BC_BTN_MAKE_BULK )
+				// Bulk: one CheckSkill roll for the whole batch (so it can't be
+				// used to farm skill gains one click at a time), then create/
+				// consume the entire quantity in one shot.
+				var qty := CInt( SendTextEntryGump( character, "Make how many in one go? [0-"+maxCraftable+"]", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 5 ) );
+				if( qty < 1 )
+					SendSysMessage( character, "Nevermind." );
+					return 0;
+				elseif( qty > maxCraftable )
+					qty := maxCraftable;
+				endif
+
+				if( element.MaterialType == "Log" )
+					CraftLogBulk( character, craftWhat, element, slot1Request, slot2Request, qty );
+				else
+					CraftAmmoBulk( character, craftWhat, element, slot1Request, slot2Request, slot3Request, qty );
+				endif
+
+				return 1;
+			endif
+
+			if( btn == BC_BTN_MAKE_NOW )
+				AutoLoop_initFixed( character, 1 );
+			elseif( btn == BC_BTN_MAKE_MAX )
+				AutoLoop_initFixed( character, maxCraftable );
+			else
+				AutoLoop_init( character, maxCraftable );
+			endif
+
+			if( element.MaterialType == "Log" )
+				CraftLogRecipe( character, craftWhat, element, slot1Request, slot2Request );
+			else
+				CraftAmmoRecipe( character, craftWhat, element, slot1Request, slot2Request, slot3Request );
+			endif
+
+			return 1;
+
+		endif
+
+	endwhile
+
+endfunction
+
+
+function DescribeSlot( character, materialType, fixedObjtype, chosenRequest )
+	if( chosenRequest )
+		return GetItemDisplayName(CInt(chosenRequest.objtype)) + " (" + GetAvailableResource(character, chosenRequest).total + " available)";
+	endif
+	if( materialType == "Log" )
+		return "not chosen yet (click to pick a log type)";
+	endif
+	var resolved := ResolveFixedObjtype( materialType, fixedObjtype );
+	return GetItemDisplayName(resolved) + " (" + GetFixedMaterialTotal(character, resolved) + " available)";
+endfunction
+
+
+// If the player never opened the picker for this slot, resolve a sensible
+// default automatically: for Log, plain Log if they have any (matches what
+// "just use whatever log I'm carrying" meant in the original
+// FindLogsInBackpack-based flow), else whichever colored log they have the
+// most of; for everything else there's only one possible objtype anyway.
+function ResolveDefaultSlot( character, materialType, fixedObjtype )
+	if( materialType != "Log" )
+		return GetMaterialRequest( character, ResolveFixedObjtype(materialType, fixedObjtype) );
+	endif
+
+	var plainRequest := GetMaterialRequest( character, UOBJ_LOGS );
+	if( GetAvailableResource(character, plainRequest).total > 0 )
+		return plainRequest;
+	endif
+
+	var options := EnumerateLogOptions( character );
+	var best;
+	var bestTotal := 0;
+	foreach opt in options
+		var req := LogOptionToRequest( character, opt );
+		var total := GetAvailableResource(character, req).total;
+		if( total > bestTotal )
+			bestTotal := total;
+			best := req;
+		endif
+	endforeach
+	return best;
+endfunction
+
+
+function EnumerateLogOptions( character )
+	var options := array{};
+	var seen := dictionary;
+
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if( IsLog(item) and !seen[CInt(item.objtype)] )
+			seen[CInt(item.objtype)] := 1;
+			options.append( struct{ objtype := CInt(item.objtype), item := item } );
+		endif
+	endforeach
+
+	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	if( access )
+		var candidates := array{ UOBJ_LOGS, UOBJ_LOGS_GODDESS };
+		var c;
+		for( c := UOBJ_LOGS_START; c <= UOBJ_LOGS_END; c := c + 1 )
+			candidates.append(c);
+		endfor
+		foreach ot in candidates
+			if( !seen[CInt(ot)] )
+				var amt := GetStoredAmountByObjtype( access.df, ot, 0 );
+				if( amt > 0 )
+					seen[CInt(ot)] := 1;
+					options.append( struct{ objtype := CInt(ot), item := 0 } );
+				endif
+			endif
+		endforeach
+	endif
+
+	return options;
+endfunction
+
+
+function LogOptionToRequest( character, opt )
+	if( opt.item )
+		return MakeBackpackRequest( character, opt.item );
+	endif
+	return GetMaterialRequest( character, opt.objtype );
+endfunction
+
+
+// Lists every log color currently available (backpack + cache) with a total,
+// lets the player pick which one to craft with.
+function PickLogMaterial( character )
+
+	var logs_cfg := ReadConfigFile( ":carpentry:carpentry" );
+	var options := EnumerateLogOptions( character );
+
+	if( len(options) == 0 )
+		SendSysMessage( character, "You don't have any logs available." );
+		return 0;
+	endif
+
+	const BC_LOG_PAGE_SIZE := 10;
+	var total_options := len(options);
+	var pageCount := CInt(Ceil( Cdbl(total_options) / BC_LOG_PAGE_SIZE ));
+	if( pageCount < 1 )
+		pageCount := 1;
+	endif
+
+	var gump := GFCreateGump(80, 80, 400, 400);
+	GFPage( gump, 0 );
+	GFResizePic( gump, 0, 0, 5054, 400, 400 );
+	GFTextLine( gump, 20, 15, 1153, "Choose a log type" );
+
+	// Page 0 is chrome ONLY -- it renders underneath every other page (that's
+	// how ShowCategoryGump's persistent category list works), so it must never
+	// hold a page's worth of item rows or every page bleeds through and
+	// overlaps every other page's rows at the same coordinates (the garbled
+	// double-printed text bug). Item rows always start at page 1, matching the
+	// same pattern resourcemanager.inc's SelectMaterialFromList already uses.
+	var page;
+	for( page := 1; page <= pageCount; page := page + 1 )
+		GFPage( gump, page );
+
+		var startIdx := (page - 1) * BC_LOG_PAGE_SIZE;
+		var endIdx := Min(startIdx + BC_LOG_PAGE_SIZE, total_options) - 1;
+		var y := 45;
+		var idx;
+		for( idx := startIdx; idx <= endIdx; idx := idx + 1 )
+			var opt := options[idx+1];
+			var req := LogOptionToRequest( character, opt );
+			var amt := GetAvailableResource(character, req).total;
+			var name := logs_cfg[opt.objtype].Name;
+			if( !name or name == "" )
+				name := GetItemDisplayName(opt.objtype);
+			endif
+			GFAddButton( gump, 20, y, 4005, 4007, GF_CLOSE_BTN, BC_BTN_MATERIAL_BASE + idx );
+			GFTextLine( gump, 55, y+2, 1153, name + " (" + amt + ")" );
+			y := y + 25;
+		endfor
+
+		if( page > 1 )
+			GFAddButton( gump, 20, 360, 4014, 4016, GF_PAGE_BTN, page - 1 );
+			GFTextLine( gump, 55, 362, 1153, "Previous Page" );
+		endif
+		if( page < pageCount )
+			GFAddButton( gump, 220, 360, 4005, 4007, GF_PAGE_BTN, page + 1 );
+			GFTextLine( gump, 255, 362, 1153, "Next Page" );
+		endif
+	endfor
+
+	var result := GFSendGump( character, gump );
+	if( !result )
+		return 0;
+	endif
+
+	var btn := CInt(result[0]);
+	if( btn < BC_BTN_MATERIAL_BASE )
+		return 0;
+	endif
+
+	var picked_idx := btn - BC_BTN_MATERIAL_BASE;
+	if( picked_idx < 0 or picked_idx >= total_options )
+		return 0;
+	endif
+
+	return LogOptionToRequest( character, options[picked_idx+1] );
+
+endfunction
+
+
+// Log-based recipes (Shafts, Bow, Crossbow, Heavy Crossbow, Fire/Ice Bow,
+// Thunder Crossbow, Kindling, and the new archery weapons). Exceptional-roll/
+// naming/color math ported verbatim from the original CarveLogs/CraftFromLogs
+// implementation. Every recipe goes through the same one-unit-per-iteration
+// AutoLoop, with the iteration count already set by
+// AutoLoop_initFixed/AutoLoop_init before this is called.
+function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
+
+	var logs_cfg := ReadConfigFile( ":carpentry:carpentry" );
+	var logs_element := FindConfigElem( logs_cfg, logRequest.objtype );
+	var logs_name := logRequest.objtype;
+	var logs_qual := 1;
+	var logs_diff := 0;
+	if( logs_element )
+		logs_name := logs_element.Name;
+		logs_qual := logs_element.Quality;
+		logs_diff := logs_element.Difficulty;
+	endif
+	var logs_color := logRequest.color;
+
+	var material := element.Material;
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		material := CInt(Ceil(material/2));
+	endif
+	var material2 := element.Material2;
+	if( reagentRequest and material2 and (GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC")) )
+		material2 := CInt(Ceil(material2/2));
+	endif
+
+	var bowcraft := GetEffectiveSkill( character, SKILLID_BOWCRAFT );
+
+	// Loop count was already fixed by ShowDetailGump (AutoLoop_initFixed for
+	// Make Max/Now, or AutoLoop_init with a capped maxx for Make Number) --
+	// do NOT call AutoLoop_init again here, it would overwrite that count.
+
+	while( AutoLoop_more() && GetAvailableResource(character, logRequest).total >= material && NOT character.dead )
+
+		if( reagentRequest and GetAvailableResource(character, reagentRequest).total < material2 )
+			SendSysmessage( character, "You ran out of " + element.Material2Type + "." );
+			break;
+		endif
+
+		var itemname := element.Name;
+		var skill := element.Skill + Cint( logs_diff / DIVIDER );
+		if( skill < 1 )
+			skill := 1;
+		elseif( skill > 140 )
+			skill := 140;
+		endif
+
+		sendDiff( character, skill );
+
+		var points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
+
+		PlaySoundEffect( character, SFX_57 );
+		Sleep(2);
+		PlaySoundEffect(character, SFX_57);
+		Sleep(2);
+		if( !GetObjProperty( character, CLASSEID_CRAFTER ))
+			PlaySoundEffect(character, SFX_57);
+			Sleep(2);
+		endif
+
+		if( CheckSkill( character, SKILLID_BOWCRAFT, skill, points ) )
+
+			var theitem := CreateItemInBackpack( character, what );
+			if( theitem )
+
+				var excep_ch := 10;
+
+				theitem.quality := logs_qual;
+				itemname := logs_name + " " + itemname;
+
+				var crafter := GetObjProperty( character, CLASSEID_CRAFTER );
+				if( crafter )
+					excep_ch := Cint( excep_ch * CLASSE_BONUS );
+				else
+					skill := skill + 40;
+				endif
+
+				if( skill < 90 )
+					skill := 90;
+				endif
+
+				if ( GetObjProperty(character, "ForceExceptional") or ((randomint(100) < excep_ch) and CheckSkill( character, SKILLID_BOWCRAFT, skill, 0 )) )
+
+					var armslore := GetEffectiveSkill( character, SKILLID_ARMSLORE );
+					var multiplier := 5 + Cint( armslore / 10 );
+
+					if( crafter )
+						multiplier := Cint( multiplier * ClasseBonus( character, CLASSEID_CRAFTER ) );
+					endif
+
+					multiplier := 50 + multiplier;
+					var newquality := Cint(theitem.quality * multiplier);
+					newquality := Cdbl(newquality);
+					newquality := newquality / 100;
+					theitem.quality := newquality;
+					itemname := "Exceptional " + itemname;
+					if(GetObjProperty(character, "ToggleBuildMark"))
+						if( YesNo( character, "Add Builder Mark?" ) )
+							SetObjProperty( theitem, "CraftedBy", character.name );
+						endif
+					else
+						SetObjProperty( theitem, "CraftedBy", character.name );
+					endif
+					SendSysmessage( character, "You make an exceptional item and put it in your pack" );
+					SetObjProperty( theitem, "IsExceptional", 1 );
+					if( skill >= 130 )
+						SendSysmessage( character, "This masterpiece will make you famous around the world." );
+						AwardFame( character, FAME_BONUS );
+					elseif( GetObjProperty( character, CLASSEID_CRAFTER ) and skill >= 110 )
+						SendSysmessage( character, "This masterpiece will make you famous around the world." );
+						AwardFame( character, FAME_BONUS );
+					endif
+				else
+					SendSysmessage( character, "You create the item and place it in your pack." );
+				endif
+
+				theitem.color := logs_color;
+				if( reagentRequest and theitem.color == 0 )
+					if( what == 0x6050 )
+						theitem.color := 2733;
+					elseif( what == 0xb201 )
+						theitem.color := 1152;
+					elseif( what == 0x1403 )
+						theitem.color := 1078;
+					endif
+				endif
+				theitem.hp := theitem.maxhp;
+				SetObjProperty( theitem, "BaseName", itemname );
+				SetName( theitem, itemname );
+			endif
+			ConsumeResource( character, logRequest, material );
+			if( reagentRequest )
+				ConsumeResource( character, reagentRequest, material2 );
+			endif
+
+		else
+			var destroy := 75 - Cint( bowcraft / 2 );
+			if( IsCrafter( character ) )
+				destroy := Cint( destroy / ClasseBonus( character, CLASSEID_CRAFTER ) );
+			endif
+
+			if( destroy > 50 )
+				destroy := 50;
+			endif
+
+			destroy := Cint( material * destroy / 100 );
+			if( destroy < 1 )
+				destroy := 1;
+			endif
+
+			ConsumeResource( character, logRequest, destroy );
+			SendSysmessage( character, "You destroyed " + destroy + " " + logs_name + " logs" );
+			if( reagentRequest )
+				ConsumeResource( character, reagentRequest, destroy );
+				SendSysmessage( character, "and " + destroy + " reagents." );
+			endif
+		endif
+
+	endwhile
+	AutoLoop_finish();
+
+endfunction
+
+
+// Shaft-based recipes (Arrow, Bolt, Fire/Ice Arrow, Thunder Bolt, and the
+// Improve Arrow/Bolt -> elemental recipes). Looped one unit at a time via
+// AutoLoop instead of a single bulk Min() call.
+function CraftAmmoRecipe( character, what, element, shaftsRequest, feathersRequest, reagentRequest )
+
+	var skill := element.Skill;
+	if( skill < 1 )
+		skill := 1;
+	endif
+	var thepoints := get_default_points(SKILLID_BOWCRAFT);
+
+	// Loop count was already fixed by ShowDetailGump -- do NOT call
+	// AutoLoop_init again here, it would overwrite that count.
+
+	while( AutoLoop_more() && GetAvailableResource(character, shaftsRequest).total >= element.Material
+	       && GetAvailableResource(character, feathersRequest).total >= element.Material2
+	       && (!reagentRequest or GetAvailableResource(character, reagentRequest).total >= element.Material3)
+	       && NOT character.dead )
+
+		// Plain Arrow/Bolt (Skill 1) never show a difficulty readout --
+		// everything else (elemental from-scratch AND Improve recipes, whose
+		// reagent sits in slot 2 not slot 3) has a real difficulty and should
+		// show it.
+		if( element.Skill > 1 )
+			sendDiff( character, skill );
+		endif
+
+		if( CheckSkill( character, SKILLID_BOWCRAFT, skill, thepoints ) )
+			var made := CreateItemInBackpack( character, what, 1 );
+			if( made )
+				ConsumeResource( character, shaftsRequest, element.Material );
+				ConsumeResource( character, feathersRequest, element.Material2 );
+				if( reagentRequest )
+					ConsumeResource( character, reagentRequest, element.Material3 );
+				endif
+				SendSysMessage( character, "You create " + element.Name + " and put it in your pack." );
+			endif
+		else
+			ConsumeResource( character, shaftsRequest, element.Material );
+			ConsumeResource( character, feathersRequest, element.Material2 );
+			if( reagentRequest )
+				ConsumeResource( character, reagentRequest, element.Material3 );
+			endif
+			SendSysMessage( character, "You fail, and destroy some materials." );
+		endif
+
+	endwhile
+	AutoLoop_finish();
+
+endfunction
+
+
+// Bulk version of CraftLogRecipe (Shafts/Kindling only -- Bows/Crossbows never
+// set the Bulk cfg flag since they roll exceptional/quality per-unit and
+// should stay one-at-a-time). One CheckSkill roll for the whole requested
+// quantity, so a bulk click can't be used to farm skill gains faster than
+// crafting singles would.
+function CraftLogBulk( character, what, element, logRequest, reagentRequest, qty )
+
+	var logs_cfg := ReadConfigFile( ":carpentry:carpentry" );
+	var logs_element := FindConfigElem( logs_cfg, logRequest.objtype );
+	var logs_name := logRequest.objtype;
+	var logs_diff := 0;
+	if( logs_element )
+		logs_name := logs_element.Name;
+		logs_diff := logs_element.Difficulty;
+	endif
+	var logs_color := logRequest.color;
+
+	var material := CInt(element.Material) * qty;
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		material := CInt(Ceil(material/2));
+	endif
+	var material2 := CInt(element.Material2) * qty;
+	if( reagentRequest and material2 and (GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC")) )
+		material2 := CInt(Ceil(material2/2));
+	endif
+
+	var bowcraft := GetEffectiveSkill( character, SKILLID_BOWCRAFT );
+
+	var itemname := element.Name;
+	var skill := element.Skill + Cint( logs_diff / DIVIDER );
+	if( skill < 1 )
+		skill := 1;
+	elseif( skill > 140 )
+		skill := 140;
+	endif
+	sendDiff( character, skill );
+
+	// Points are computed off element.Material (one unit), not the scaled
+	// batch total -- a bulk click is only worth the same skill gain as
+	// crafting a single item, by design.
+	var points := Cint( (skill + element.Material) * POINTS_MULTIPLIER );
+
+	PlaySoundEffect( character, SFX_57 );
+	Sleep(2);
+
+	if( CheckSkill( character, SKILLID_BOWCRAFT, skill, points ) )
+		var theitem := CreateItemInBackpack( character, what, qty );
+		if( theitem )
+			itemname := logs_name + " " + itemname;
+			theitem.color := logs_color;
+			theitem.hp := theitem.maxhp;
+			SetObjProperty( theitem, "BaseName", itemname );
+			SetName( theitem, itemname );
+			SendSysMessage( character, "You place " + qty + " " + itemname + " in your pack." );
+		endif
+		ConsumeResource( character, logRequest, material );
+		if( reagentRequest )
+			ConsumeResource( character, reagentRequest, material2 );
+		endif
+	else
+		var destroy := 75 - Cint( bowcraft / 2 );
+		if( IsCrafter( character ) )
+			destroy := Cint( destroy / ClasseBonus( character, CLASSEID_CRAFTER ) );
+		endif
+		if( destroy > 50 )
+			destroy := 50;
+		endif
+		destroy := Cint( material * destroy / 100 );
+		if( destroy < 1 )
+			destroy := 1;
+		endif
+		ConsumeResource( character, logRequest, destroy );
+		SendSysmessage( character, "You destroyed " + destroy + " " + logs_name + " logs." );
+		if( reagentRequest )
+			ConsumeResource( character, reagentRequest, destroy );
+			SendSysmessage( character, "and " + destroy + " reagents." );
+		endif
+	endif
+
+endfunction
+
+
+// Bulk version of CraftAmmoRecipe. Same single-CheckSkill-for-the-batch idea;
+// on failure only a single unit's worth of material is destroyed, matching
+// the original MakeArrowsOrBolts fail branch.
+function CraftAmmoBulk( character, what, element, shaftsRequest, feathersRequest, reagentRequest, qty )
+
+	var skill := element.Skill;
+	if( skill < 1 )
+		skill := 1;
+	endif
+	var thepoints := get_default_points(SKILLID_BOWCRAFT);
+
+	// Plain Arrow/Bolt (Skill 1) never show a difficulty readout --
+	// everything else (elemental from-scratch AND Improve recipes, whose
+	// reagent sits in slot 2 not slot 3) has a real difficulty and should
+	// show it.
+	if( element.Skill > 1 )
+		sendDiff( character, skill );
+	endif
+
+	var checkResult := CheckSkill( character, SKILLID_BOWCRAFT, skill, thepoints );
+
+	if( checkResult )
+		var made := CreateItemInBackpack( character, what, qty );
+		if( made )
+			ConsumeResource( character, shaftsRequest, CInt(element.Material) * qty );
+			ConsumeResource( character, feathersRequest, CInt(element.Material2) * qty );
+			if( reagentRequest )
+				ConsumeResource( character, reagentRequest, CInt(element.Material3) * qty );
+			endif
+			SendSysMessage( character, "You create " + qty + " " + element.Name + " and put them in your pack." );
+		else
+			SendSysMessage( character, "Something went wrong creating that -- nothing was made or consumed." );
+		endif
+	else
+		ConsumeResource( character, shaftsRequest, element.Material );
+		ConsumeResource( character, feathersRequest, element.Material2 );
+		if( reagentRequest )
+			ConsumeResource( character, reagentRequest, element.Material3 );
+		endif
+		SendSysMessage( character, "You fail, and destroy some materials." );
+	endif
+
+endfunction
+
+
+function GetMaterialRequest( character, objtype )
+	var item := FindTypeInBackpack( character, objtype );
+	if( item )
+		return MakeBackpackRequest( character, item );
+	endif
+
+	var dataFileHandle := 0;
+	if( !GetObjProperty(character, "omegacache_no_autodraw") )
+		var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+		if( access )
+			dataFileHandle := access.df;
+		endif
+	endif
+
+	// No physical item to read .color from (cache-only) -- fall back to the
+	// objtype's own registered default color instead of hardcoding 0, or a
+	// colored log (e.g. Emerald, itemdesc Color 2734) crafted purely from the
+	// cache loses its hue entirely and the resulting item comes out uncolored.
+	var default_color := 0;
+	var desc_info := GetItemDescriptor(objtype);
+	if( desc_info and desc_info.Color )
+		default_color := CInt(desc_info.Color);
+	endif
+
+	return struct{
+		objtype              := CInt(objtype),
+		key                  := 0,
+		color                := default_color,
+		quality              := 0,
+		preferredSourceOrder := array{ BACKPACK, OMEGA_CACHE },
+		dataFileHandle       := dataFileHandle,
+		houseSerial          := 0,
+		leaseKey             := 0
+	};
+endfunction
+
+
+function FindTypeInBackpack( character, objtype )
+	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
+		if( item.objtype == objtype )
+			return item;
+		endif
+	endforeach
+	return 0;
+endfunction

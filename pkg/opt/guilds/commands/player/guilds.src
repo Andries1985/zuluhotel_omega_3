@@ -1472,33 +1472,52 @@ return GuildMasterGump(who);
 endfunction
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Toadstool
+// Toadstool / rewritten 2026-08-23 for the full 1000-2999 hue range
 //
-// SetGuildColour()- returns a formatted HTML string of guild related matters
+// SetGuildColour() - guild colour picker. COLOURS (guildconstants.inc) can run
+// to ~1300 entries, so the swatch grid is shown GUILD_COLOUR_PER_PAGE at a
+// time, each page its own gump send -- Prev/Next re-enters this function
+// rather than packing every page into one multi-page gump, since a single
+// gump that large has broken the server before.
+//
+// `selected` is the 1-based COLOURS index currently shown in the mannequin
+// preview (mirrors the original _colour_iter-driven preview, which did work
+// -- restored here). Like the original, a preview is always showing --
+// defaults to index 1 so the mannequins are dressed on first open, same as
+// startat:=1 always matched _colour_iter's first iteration before. Two
+// independent nav pairs: the mannequin-area arrows cycle `selected` by +-1
+// across the whole COLOURS array (wrapping), the small arrows by the page
+// counter jump a whole page at a time (keeping selected's relative position
+// within the page); either way the grid page is kept in sync with
+// `selected`. Button values are dispatched by magnitude band so they can't
+// collide with each other or with a raw hue value (always 1000-2999): 999
+// close, 100000+idx swatch pick, 300000+idx preview-nav, 400000+page
+// page-jump, 500000 confirm.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function SetGuildColour(who, startat := 1)
+function SetGuildColour(who, page := 1, selected := 1)
 
-/*
-var gump := GFCreateGump(0, 0, 468, 550);
-GFResizePic(gump, 50, 30, 9250, 468, 550);*/
+var total := COLOURS.size();
+var total_pages := CInt((total + GUILD_COLOUR_PER_PAGE - 1) / GUILD_COLOUR_PER_PAGE);
 
-var gump := GFCreateGump(0, 0, 936, 550);
-GFResizePic(gump, 50, 30, 9250, 936, 550);
-/*
-// title bar
-GFResizePic(gump, 185, 40, 9200, 200, 25);
-GFTextLine(gump, 220, 42, 67, "Guild Colour Selection");*/
+if (selected < 1)
+	selected := total;
+elseif (selected > total)
+	selected := 1;
+endif
+// keep the visible grid page in sync with whichever swatch is previewed
+page := CInt((selected-1) / GUILD_COLOUR_PER_PAGE) + 1;
 
-// title bar
-GFResizePic(gump, 418, 40, 9200, 200, 25);
-GFTextLine(gump, 453, 42, 67, "Guild Colour Selection");
-/*
-GFResizePic(gump, 65, 315, 9200, 440, 210);
-GFTextLine(gump, 190, 540, 67, "Use the selected guild colour?");*/
-
-GFResizePic(gump, 65, 315, 9200, 906, 210);
-GFTextLine(gump, 430, 540, 67, "Use the selected guild colour?");
+// colour -> guild reverse lookup, built once per open instead of the old
+// O(colours * guilds) scan on every render.
+var taken := dictionary;
+var guilds := ListGuilds();
+foreach g in guilds
+	var gcolour := g.getprop(GUILD_COLOUR);
+	if (gcolour)
+		taken[gcolour] := g;
+	endif
+endforeach
 
 var sex;
 if (who.gender == 0)
@@ -1507,130 +1526,189 @@ else
 	sex := 13;
 endif
 
-// Player background box
+var gump := GFCreateGump(0, 0, 936, 550);
+GFResizePic(gump, 50, 30, 9250, 936, 550);
+
+// title bar
+GFResizePic(gump, 418, 40, 9200, 200, 25);
+GFTextLine(gump, 453, 42, 67, "Guild Colour Selection");
+
+GFTextLine(gump, 700, 44, 67, "Page "+page+" / "+total_pages);
+if (page != 1)
+	GFAddButton(gump, 850, 44, 5603, 5607, GF_CLOSE_BTN, 400000 + (page-1));
+else
+	GFAddButton(gump, 850, 44, 5603, 5607, GF_CLOSE_BTN, 400000 + total_pages);
+endif
+if (page != total_pages)
+	GFAddButton(gump, 890, 44, 5601, 5605, GF_CLOSE_BTN, 400001 + page);
+else
+	GFAddButton(gump, 890, 44, 5601, 5605, GF_CLOSE_BTN, 400001);
+endif
+
+// Player background boxes
 GFResizePic(gump, 195, 105, 2620, 180, 200);
-// Player graphic
 GFGumpPic(gump, 195, 70, sex, 1002);
 
-// Player background box
 GFResizePic(gump, 430, 105, 2620, 180, 200);
-// Player graphic
 GFGumpPic(gump, 430, 70, sex, 1002);
 
-// Player background box
 GFResizePic(gump, 665, 105, 2620, 180, 200);
-// Player graphic
 GFGumpPic(gump, 665, 70, sex, 1002);
+
+var pcolour := COLOURS[selected];
+var pname, phue;
+if (taken.Exists(pcolour))
+	var powner := taken[pcolour];
+	pname := powner.getprop(GUILD_ABV);
+	if (powner != who.guild)
+		phue := 35;
+	else
+		phue := 53;
+	endif
+else
+	pname := pcolour;
+	phue := 999;
+endif
+GFTextLine(gump, 210, 115, phue, pname);
+
+// Mage
+GFGumpPic(gump, 195, 70, 60479, pcolour); //Sandals
+GFGumpPic(gump, 195, 70, 60469, pcolour); //Robe
+if (sex == 12) //hair
+	GFGumpPic(gump, 195, 70, 50905, pcolour); //Beard
+	GFGumpPic(gump, 195, 70, 50701, pcolour); //Hair
+else
+	GFGumpPic(gump, 195, 70, 60708, pcolour); //Hair
+endif
+GFGumpPic(gump, 195, 70, 60409, pcolour); //Hat
+GFGumpPic(gump, 195, 70, 50648, 6); //Staff
+GFGumpPic(gump, 195, 70, 60497, 0); //Necklace
+
+// Warrior
+GFGumpPic(gump, 430, 70, 60468, pcolour); //Cloak
+GFGumpPic(gump, 430, 70, 50529, 0); //Legs
+GFGumpPic(gump, 430, 70, 50530, 0); //gloves
+GFGumpPic(gump, 430, 70, 50563, 0); //helm
+GFGumpPic(gump, 430, 70, 60469, pcolour); //Robe
+GFGumpPic(gump, 430, 70, 50531, 0); //gorget
+GFGumpPic(gump, 430, 70, 50581, 0); //Shield
+GFGumpPic(gump, 430, 70, 50940, 621); //Sword
+
+// Ranger
+GFGumpPic(gump, 665, 70, 60476, pcolour); //Leather boots
+GFGumpPic(gump, 665, 70, 60551, 0); //ringmail gloves
+GFGumpPic(gump, 665, 70, 60469, pcolour); //Robe
+if (sex == 12) //hair
+	GFGumpPic(gump, 665, 70, 50806, pcolour); //Beard
+	GFGumpPic(gump, 665, 70, 50702, pcolour); //Hair
+else
+	GFGumpPic(gump, 665, 70, 60902, pcolour); //Hair
+endif
+GFGumpPic(gump, 665, 70, 60412, pcolour); //Hat
+GFGumpPic(gump, 665, 70, 60466, pcolour); //Half Apron
+GFGumpPic(gump, 665, 70, 50649, 1174); //Bow
+
+//back arrow -- cycles the preview across all colours, wrapping
+if (selected != 1)
+	GFAddButton(gump, 120, 190, 4014, 4015, GF_CLOSE_BTN, 300000 + (selected-1));
+else
+	GFAddButton(gump, 120, 190, 4014, 4015, GF_CLOSE_BTN, 300000 + total);
+endif
+
+//forward arrow
+if (selected != total)
+	GFAddButton(gump, 886, 190, 4005, 4006, GF_CLOSE_BTN, 300000 + (selected+1));
+else
+	GFAddButton(gump, 886, 190, 4005, 4006, GF_CLOSE_BTN, 300001);
+endif
+
+//confirm button
+GFAddButton(gump, 70, 540, 2128, 2129, GF_CLOSE_BTN, 500000);
+GFTextLine(gump, 105, 542, 67, "Use this colour");
+
+GFAddButton(gump, 900, 540, 2119, 2120, GF_CLOSE_BTN, 999);
+
+GFResizePic(gump, 65, 315, 9200, 906, 210);
+
+var start_index := ((page-1) * GUILD_COLOUR_PER_PAGE) + 1;
+var end_index := start_index + GUILD_COLOUR_PER_PAGE - 1;
+if (end_index > total)
+	end_index := total;
+endif
 
 var x := 90;
 var y := 320;
-var my := 10;
-var i := 0;
+var row := 0;
+var idx;
 var numname, numcolour;
+for (idx := start_index; idx <= end_index; idx := idx + 1)
+	var colour := COLOURS[idx];
 
-foreach colour in COLOURS
-	foreach guild in ListGuilds()
-		if (guild.getprop("GuildColour") == colour)
-			numname := guild.getprop("GuildAbv");
-			if (guild != who.guild)
-				numcolour := 35;
-			else
-				numcolour := 53;
-			endif
-			break;
+	if (taken.Exists(colour))
+		var owner := taken[colour];
+		numname := owner.getprop(GUILD_ABV);
+		if (owner != who.guild)
+			numcolour := 35;
 		else
-			numname := colour;
-			numcolour := 999;
+			numcolour := 53;
 		endif
-	endforeach
-	
-	if (i >= my)
-		x := x + 60;
-		i := 0;
-		y := 320;
+	else
+		numname := colour;
+		numcolour := 999;
 	endif
 
-	GFPage(gump, 1);
-	
-	if(startat == _colour_iter)
-		// colour text
-		GFTextLine(gump, 210, 115, numcolour, numname);
-
-		// Mage
-		GFGumpPic(gump, 195, 70, 60479, colour); //Sandals
-		GFGumpPic(gump, 195, 70, 60469, colour); //Robe
-		if(sex == 12)//hair
-			GFGumpPic(gump, 195, 70, 50905, colour); //Beard
-			GFGumpPic(gump, 195, 70, 50701, colour); //Hair
-		else
-			GFGumpPic(gump, 195, 70, 60708, colour); //Hair
-		endif
-		GFGumpPic(gump, 195, 70, 60409, colour); //Hat
-		GFGumpPic(gump, 195, 70, 50648, 6); //Staff
-		GFGumpPic(gump, 195, 70, 60497, 0); //Necklace
-		
-		// Warrior
-		GFGumpPic(gump, 430, 70, 60468, colour); //Cloak
-		GFGumpPic(gump, 430, 70, 50529, 0); //Legs
-		GFGumpPic(gump, 430, 70, 50530, 0); //gloves
-		GFGumpPic(gump, 430, 70, 50563, 0); //helm
-		GFGumpPic(gump, 430, 70, 60469, colour); //Robe
-		GFGumpPic(gump, 430, 70, 50531, 0); //gorget
-		GFGumpPic(gump, 430, 70, 50581, 0); //Shield
-		GFGumpPic(gump, 430, 70, 50940, 621); //Sword
-
-		// Ranger
-		GFGumpPic(gump, 665, 70, 60476, colour); //Leather boots
-		GFGumpPic(gump, 665, 70, 60551, 0); //ringmail gloves
-		GFGumpPic(gump, 665, 70, 60469, colour); //Robe
-		if(sex == 12)//hair
-			GFGumpPic(gump, 665, 70, 50806, colour); //Beard
-			GFGumpPic(gump, 665, 70, 50702, colour); //Hair
-		else
-			GFGumpPic(gump, 665, 70, 60902, colour); //Hair
-		endif
-		GFGumpPic(gump, 665, 70, 60412, colour); //Hat
-		//GFGumpPic(gump, 665, 70, 50561, 0); //coif
-		GFGumpPic(gump, 665, 70, 60466, colour); //Half Apron
-		GFGumpPic(gump, 665, 70, 50649, 1174); //Bow
-		
-		
-		//back button
-		if (_colour_iter != 1)
-			GFAddButton(gump, 120, 190, 4014, 4015, 1, _colour_iter-1);
-		else
-			GFAddButton(gump, 120, 190, 4014, 4015, 1, COLOURS.size());
-		endif
-		//next button
-		if (_colour_iter != COLOURS.size())
-			GFAddButton(gump, 886, 190, 4005, 4006, 1, _colour_iter+1);
-		else
-			GFAddButton(gump, 886, 190, 4005, 4006, 1, 1);
-		endif
-
-		GFTextLine(gump, x, y+2,67, "_");
-		GFTextLine(gump, x+8, y+2,67, "_");
-		GFTextLine(gump, x+16, y+2,67, "_");
-
-		//okay
-		GFAddButton(gump, 70, 540, 2128, 2129, 1, colour);
-		GFAddButton(gump, 900, 540, 2119, 2120, 1, 999);
-	
+	if (idx == selected)
+		GFTextLine(gump, x, y+2, 67, "_");
+		GFTextLine(gump, x+8, y+2, 67, "_");
+		GFTextLine(gump, x+16, y+2, 67, "_");
 	endif
-		//GFPage(gump, 0);
-	GFAddButton(gump, x-15, y+5, 2362, 2361, 1, _colour_iter);
+
+	GFAddButton(gump, x-15, y+5, 2362, 2361, GF_CLOSE_BTN, 100000 + idx);
 	GFTextLine(gump, x, y, numcolour, numname);
 
-	y := y + 20;
-	i := i + 1;
-endforeach
+	row := row + 1;
+	if (row >= 10)
+		row := 0;
+		y := 320;
+		x := x + 60;
+	else
+		y := y + 20;
+	endif
+endfor
 
-var data := GFSEndGump(who, gump);
+var data := GFSendGump(who, gump);
+if (!data)
+	SendSysMessage(who, "Cancelled.");
+	return GuildMasterGump(who);
+endif
 
-if (data[0] > 1000)
-	BuyGuildColour(who, data[0]);
-elseif(data[0] < 998 && data[0] > 0)
-	SetGuildColour(who, data[0]);
+var choice := data[0];
+if (choice == 999)
+	SendSysMessage(who, "Cancelled.");
+	return GuildMasterGump(who);
+elseif (choice == 500000)
+	return BuyGuildColour(who, COLOURS[selected]);
+elseif (choice >= 400000)
+	// page-jump: keep selected's position within the page consistent on
+	// the destination page (clamped, since the last page may be short).
+	var newpage := choice - 400000;
+	var new_start := ((newpage-1) * GUILD_COLOUR_PER_PAGE) + 1;
+	var new_end := new_start + GUILD_COLOUR_PER_PAGE - 1;
+	if (new_end > total)
+		new_end := total;
+	endif
+	var cur_start := ((page-1) * GUILD_COLOUR_PER_PAGE) + 1;
+	var new_selected := new_start + (selected - cur_start);
+	if (new_selected > new_end)
+		new_selected := new_end;
+	elseif (new_selected < new_start)
+		new_selected := new_start;
+	endif
+	return SetGuildColour(who, newpage, new_selected);
+elseif (choice >= 300000)
+	return SetGuildColour(who, page, choice - 300000);
+elseif (choice >= 100000)
+	return SetGuildColour(who, page, choice - 100000);
 else
 	SendSysMessage(who, "Cancelled.");
 	return GuildMasterGump(who);

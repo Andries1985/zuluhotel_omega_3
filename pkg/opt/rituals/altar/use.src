@@ -1,0 +1,53 @@
+// Shared click handler for every "ritualaltar<id>" item (both statue
+// pieces -- see create.src). Resolves back to the anchor's CProps (the
+// piece clicked might be the companion, which carries no config of its own),
+// gates on the bound quest being active, then hands off to the gump.
+use uo;
+use os;
+
+include "../pkg/utils/itemUtils/include/itemUtil";
+include ":questpkg:queststate";
+include "../pkg/opt/rituals/altar/gump";
+
+program ritualaltar_use(who, item)
+
+	if(!useItem_check(who, item))
+		return 0;
+	endif
+
+	var config_item := item;
+	var anchor_serial := GetObjProperty(item, "RitualAltarAnchor");
+	if(anchor_serial)
+		config_item := SystemFindObjectBySerial(anchor_serial);
+	endif
+
+	if(!config_item)
+		SendSysMessage(who, "This altar seems to be broken.");
+		return 0;
+	endif
+
+	var questid := CInt(GetObjProperty(config_item, "RitualAltarQuestId"));
+	if(!questid)
+		SendSysMessage(who, "This altar has no ritual bound to it.");
+		return 0;
+	endif
+
+	if(!QP_IsQuestActive(who, questid))
+		var giver_name := GetConfigString(QP_GetQuestElem(questid), "GiverName");
+		if(giver_name)
+			SendSysMessage(who, "You have no reason to disturb this place. Go ask "+giver_name+" about it.");
+		else
+			SendSysMessage(who, "You have no reason to disturb this place. Perhaps a quest-giver knows something.");
+		endif
+		return 0;
+	endif
+
+	if(QP_GetQuestFlag(who, questid, "AltarUsed"))
+		SendSysMessage(who, "The altar is spent for now -- whatever you drew out of it once already answers to no second summons.");
+		return 0;
+	endif
+
+	ShowRitualAltarGump(who, config_item, questid);
+
+	return 1;
+endprogram

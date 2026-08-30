@@ -1,0 +1,17 @@
+// DestroyScript for every "ritualaltar<id>" anchor item -- cleans up the
+// linked companion piece spawned by create.src, mirroring
+// pkg/opt/guilds/items/guildstone/destroy.src.
+use uo;
+
+program ritualaltar_destroy(altar)
+
+	var companion_serial := GetObjProperty(altar, "RitualAltarCompanion");
+	if(companion_serial)
+		var piece := SystemFindObjectBySerial(companion_serial);
+		if(piece)
+			DestroyItem(piece);
+		endif
+	endif
+
+	return 1;
+endprogram

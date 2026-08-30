@@ -55,6 +55,20 @@ function AutoLoop_init( character, maxx := 9999, delay := 5 )
 endfunction
 
 
+// Sets the loop count directly, bypassing the interactive "how many?" prompt --
+// for callers that already know the exact count (e.g. a "Make Max" gump button).
+function AutoLoop_initFixed( character, count, delay := 5 )
+
+	AL_number := count;
+	AL_remain := count;
+	AL_char   := character;
+	AL_charX  := AL_char.x;
+	AL_charY  := AL_char.y;
+	AL_delay  := delay;
+
+endfunction
+
+
 // he numer returned is the number of things STILL to do, use BEFORE creating, not after
 function AutoLoop_more()
 

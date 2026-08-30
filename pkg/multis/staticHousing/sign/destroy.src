@@ -7,6 +7,7 @@ include ":keys:key";
 include ":statichousing:include/settings";
 include ":house:multihouse_settings";
 include "include/omegacache_utils";
+include ":houseExtras:settings";
 
 var settings := STH_GetSettingsCfgElem("Settings");
 
@@ -73,6 +74,13 @@ program StaticHouseDestruction(sgn)
 			DeleteOmegaCacheStore(CInt(GetObjProperty(thing, "houseserial")));
 			EraseObjProperty(thing, "houseserial");
 			DestroyItem(thing);
+		elseif(thing.objtype == 0x15000)
+			// 2026-08-21: house teleporters were never swept for here (or in
+			// control.src's decay demolish) -- mirrors :house:'s own redeed
+			// sweep. Left standing otherwise, with its paired partner
+			// elsewhere left dangling (stale signserial, numhteles never
+			// decremented) once the house resets to "for sale".
+			DemolishTeleporter(thing, who);
 		elseif(GetObjProperty(thing, "houseserial") == sign.serial)
 			if((GetObjProperty(thing, "secure")) && (!thing.movable))
 				EraseObjProperty(thing, "secure");
