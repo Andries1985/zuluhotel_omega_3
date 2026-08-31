@@ -232,6 +232,9 @@ program testclassbooststone( who )
         SetBaseSkill(who, skill, skillamount);
         if( classid == CLASSEID_RANGER )
             SetBaseSkill(who, SKILLID_FORENSICS, skillamount);
+        elseif( classid == CLASSEID_CRAFTER )
+            SetBaseSkill(who, SKILLID_MAGERY, skillamount);
+            SetBaseSkill(who, SKILLID_MUSICIANSHIP, skillamount);
         endif
     endforeach
 

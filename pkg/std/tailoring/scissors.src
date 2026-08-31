@@ -7,7 +7,26 @@ Const UOBJ_BOLT_START	:= 0x0F95; // Bolts <Initial Tile>
 Const UOBJ_BOLT_END	  := 0x0F9C; // Bolts <Final Tile>
 Const UOBJ_CLOTH_STARTS := 0x175D; // Real cloth
 Const UOBJ_CLOTH_END	 := 0x1768; // Real cloth
-Const UOBJ_MUTLI_CLOTH  := 0x1765; // What we will turn bolts into
+Const UOBJ_MUTLI_CLOTH  := 0x1765; // Plain Cloth -- boltofcloth8's match, and the fallback for anything unmapped
+
+// Bolt -> Cloth color pairing (2026-08-30): each of the 8 bolt colors always
+// scissors into the one matching Cloth color below, instead of everything
+// collapsing into plain Cloth regardless of bolt color.
+Const UOBJ_CLOTH1 := 0x175D; // matches boltofcloth1 (0x0F95)
+Const UOBJ_CLOTH2 := 0x175E; // matches boltofcloth2 (0x0F96)
+Const UOBJ_CLOTH3 := 0x1760; // matches boltofcloth3 (0x0F97)
+Const UOBJ_CLOTH4 := 0x1761; // matches boltofcloth4 (0x0F98)
+Const UOBJ_CLOTH5 := 0x1762; // matches boltofcloth5 (0x0F99)
+Const UOBJ_CLOTH6 := 0x1764; // matches boltofcloth6 (0x0F9A)
+Const UOBJ_CLOTH7 := 0x1767; // matches boltofcloth7 (0x0F9B)
+
+// Folded Cloth -- a rare bonus result when cutting ANY bolt color (instead
+// of its usual matching color), and worth double the bandages when it's
+// later cut itself (see the real-cloth branch below).
+Const UOBJ_FOLDED_CLOTH1 := 0x175F;
+Const UOBJ_FOLDED_CLOTH2 := 0x1763;
+Const RARE_FOLDED_CLOTH_CHANCE := 10; // percent chance per bolt cut
+
 Const UACTION_SHEAR := 0x0020;
 Const BRIDLE := 0x1374;
 Const HIDES := 0x1078;
@@ -51,8 +70,19 @@ program use_scissors( character , scissors )
 
   if ((cloth.objtype >= UOBJ_BOLT_START) and (cloth.objtype <= UOBJ_BOLT_END))
 		boltcount := cloth.amount;
-		if ( !CreateItemInBackpack(character, UOBJ_MUTLI_CLOTH, boltcount * 50))
-			if (CreateItemAtLocation(character.x, character.y, character.z, UOBJ_MUTLI_CLOTH, boltcount * 50, character.realm))
+
+		var resultCloth := BoltToClothObjtype(cloth.objtype);
+		if (Random(100) < RARE_FOLDED_CLOTH_CHANCE)
+			if (Random(2) == 0)
+				resultCloth := UOBJ_FOLDED_CLOTH1;
+			else
+				resultCloth := UOBJ_FOLDED_CLOTH2;
+			endif
+			SendSysmessage(character, "You skillfully fold the cloth as you cut it!");
+		endif
+
+		if ( !CreateItemInBackpack(character, resultCloth, boltcount * 50))
+			if (CreateItemAtLocation(character.x, character.y, character.z, resultCloth, boltcount * 50, character.realm))
 				DestroyItem(cloth);
 				SendSysmessage(character, "As your backpack is full, you create the item and place it by your feet.");
 				return 0;
@@ -114,6 +144,9 @@ program use_scissors( character , scissors )
 
 		if(CheckSkill(character, SKILLID_TAILORING , 5 , 20))
 			var amt := cint(cloth.amount * (Random(3)+1));
+			if( cloth.objtype == UOBJ_FOLDED_CLOTH1 or cloth.objtype == UOBJ_FOLDED_CLOTH2 )
+				amt := amt * 2;
+			endif
 			if(amt <= 60000)
 				if(!CreateItemInBackpack( character, 0x0e21, amt ))
 					if (CreateItemAtLocation(character.x, character.y, character.z, 0x0e21, amt, character.realm))
@@ -212,5 +245,30 @@ function Carvesheep(character, sheep, mex, mey)
 	else
 		SendSysmessage(character, "You fail to get any usable wool.");
 		return;
+	endif
+endfunction
+
+
+// Which Cloth color a given bolt color scissors into -- see the header
+// consts for the full pairing. Falls back to plain Cloth for anything
+// outside the mapped 7 colors (boltofcloth8, and a safety net for any
+// future bolt objtype that isn't explicitly mapped yet).
+function BoltToClothObjtype( bolt_objtype )
+	if( bolt_objtype == 0x0F95 )
+		return UOBJ_CLOTH1;
+	elseif( bolt_objtype == 0x0F96 )
+		return UOBJ_CLOTH2;
+	elseif( bolt_objtype == 0x0F97 )
+		return UOBJ_CLOTH3;
+	elseif( bolt_objtype == 0x0F98 )
+		return UOBJ_CLOTH4;
+	elseif( bolt_objtype == 0x0F99 )
+		return UOBJ_CLOTH5;
+	elseif( bolt_objtype == 0x0F9A )
+		return UOBJ_CLOTH6;
+	elseif( bolt_objtype == 0x0F9B )
+		return UOBJ_CLOTH7;
+	else
+		return UOBJ_MUTLI_CLOTH;
 	endif
 endfunction

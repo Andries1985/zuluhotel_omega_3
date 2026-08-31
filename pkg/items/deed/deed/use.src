@@ -61,7 +61,10 @@ program Place_Deeded_Item ( who, deed )
 	elseif( !is_gm && !CheckLosAt( who, CInt( start.x ), CInt( start.y ), CInt( start.z )) )
 		SendSysMessageCL( who, 500950, color := 33 ); // You cannot see that.
 		return 0;
-	elseif( !is_gm && !hsign.IsLocationInsideHouse(start) )
+	// dispatched method calls don't honor declared defaults (see
+	// guilds.src's IsInsideGuildHouse) -- must pass all 5 args
+	// (sign + x, y, z, realm) or the call mismatches at runtime.
+	elseif( !is_gm && !hsign.IsLocationInsideHouse(start.x, start.y, start.z, start.realm) )
 		SendSysMessageCL( who, 500275, color := 33); // You can only build this in a house.
 		return 0;
 	endif
@@ -163,7 +166,10 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 		newx := targ.x + CInt(broken[2]);
 		newy := targ.y + CInt(broken[3]);
 		newz := targStHt.z + CInt(broken[4]);
-		if ( !is_gm && (!sign || !sign.IsLocationInsideHouse(struct{"x" := newx, "y" := newy, "z" := newz, "realm" := targ.realm})) )
+		// dispatched method calls don't honor declared defaults (see
+		// guilds.src's IsInsideGuildHouse) -- must pass all 5 args
+		// (sign + x, y, z, realm) or the call mismatches at runtime.
+		if ( !is_gm && (!sign || !sign.IsLocationInsideHouse(newx, newy, newz, targ.realm)) )
 			outside := 1;
 		endif
 

@@ -20,6 +20,7 @@ include "include/difficulty";
 //include "include/chests";
 include ":crafting:craftingfunctions";
 include "include/resourcemanager";
+include ":crafting:craftmenu";
 
 const CARPENTER_SOUND	:= 0x23e;
 const UOBJECT_CHEST	:= 0x0e42;
@@ -37,200 +38,164 @@ const POINTS_MULTIPLIER	:= 10;
 const TINKER_LOCKABLE	:= 90;
 const FAME_BONUS	:= 10;
 
-const WOOD_ID	:= 1;
-const METAL_ID	:= 2;
-const GLASS_ID	:= 3;
-const CLAY_ID	:= 4;
+// Non-objtype button-id sentinels for the category gump's Options. All real
+// recipe objtypes in tinker.cfg are well under this.
+const TK_BTN_POTIONKEG	:= 900021;
+const TK_BTN_TOTEM	:= 900022;
+const TK_BTN_TRAP	:= 900023;
 
 var tinker_cfg	:= ReadConfigFile( "tinker" );
-// tinker.cfg only defines finished Tinkeritem recipes (keyed by product
-// objtype) -- raw material Difficulty/Quality for logs and ingots live in
-// Carpentry's and Blacksmithy's own resource tables instead, the same tables
-// Bowcraft already reuses for its own log selection.
+// tinker.cfg's own Category/MaterialType fields drive the gump now (see
+// craftmenu.inc) -- Log/Ingot Difficulty/Quality still live in Carpentry's
+// and Blacksmithy's own resource tables, the same ones Bowcraft/Blacksmithy
+// already reuse for their own material selection (CraftMenu_GetFamily-
+// QualityDifficulty reads them directly, but TryToMakeItem below still needs
+// carpentry_cfg/blacksmithy_cfg for the CoMaterial statues' second material).
 var carpentry_cfg   := ReadConfigFile( ":carpentry:carpentry" );
 var blacksmithy_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
-var resource_diff := 0;
-var resource_name;
-var resource_qual := 1;
 
-program MakeTinkerItems( character , tool )
+// 2026-08-30 -- OSI-style crafting gump, ported onto the shared
+// pkg/systems/crafting/include/craftmenu framework (see bowcraft.src for the
+// reference pattern). The tinker tool now opens the gump directly (no
+// upfront targeting) with Wood/Metal/Glass/Clay categories side-by-side --
+// auto-detecting Log/Ingot from backpack + Omega Cache like Bowcraft, with
+// Glass/Clay as plain fixed materials. The non-recipe hardware combos (axle+
+// gears, clock parts, etc.) are tinkering-exclusive parts, so their trigger
+// moved from "use the tool, then target the part" onto the parts' own Script
+// (see itemdesc.cfg) -- this same program now runs when any of them is
+// double-clicked, dispatching on the part's own objtype instead. Potion Keg
+// assembly, the obsidian totem, and chest-trapping still need a targeted
+// item that ISN'T tinkering-exclusive (Empty Bottle, arbitrary containers),
+// so those stay reachable as gump Options that do their own targeting, same
+// pattern as Bowcraft/Tailoring's Repair Item.
+program MakeTinkerItems( character , item )
 
-	var use_on;
-	var item_to_make;
-	var skill;
-	var material;
-	var points;
-	var itemname;
-	var sound;
-	var resourceRequest;
-
-	if( !ReserveItem( tool ) )
+	if( !ReserveItem( item ) )
 		return;
 	endif
 
-	SendSysmessage( character, "Select your material." );
+	case( item.objtype )
 
-	use_on := Target( character , TGTOPT_CHECK_LOS );
-	if( !use_on )
-		return;
-	endif
+		UOBJ_AXLE:		TryToMakeComplex( character , item , UOBJ_AXLE_AND_GEARS , UOBJ_GEARS , CARPENTER_SOUND );
+					return;
 
-	// Handle Omega Cache targeting -- logs, ingots, glass, and clay are all
-	// stackable materials that can be pulled directly from an accessible Omega Cache.
-	if( use_on.objtype == OMEGACACHE_OBJTYPE )
-		var cacheRequest := SelectMaterialFromCache( character );
-		if( !cacheRequest )
-			return;
-		endif
-		var ot := CInt(cacheRequest.objtype);
+		UOBJ_GEARS:		TryToMakeComplex( character , item , UOBJ_AXLE_AND_GEARS , UOBJ_AXLE , CARPENTER_SOUND );
+					return;
 
-		if( IsLogObjtype(ot) )
-			item_to_make := MakeAndProcessMenu( character , cacheRequest , WOOD_ID );
-			sound := CARPENTER_SOUND;
-		elseif( IsIngotObjtype(ot) )
-			item_to_make := MakeAndProcessMenu( character , cacheRequest , METAL_ID );
-			sound := SFX_ANVIL;
-		elseif( ot == UOBJ_GLASS )
-			item_to_make := MakeAndProcessMenu( character , cacheRequest , GLASS_ID );
-			sound := SFX_GLASSBREAK4;
-		elseif( ot == UOBJ_CLAY )
-			item_to_make := MakeAndProcessMenu( character , cacheRequest , CLAY_ID );
-			sound := SFX_HAMMER;
-		else
-			SendSysMessage( character, "You don't know how to use that." );
-			return;
-		endif
+		UOBJ_CLOCK_FRAME:	TryToMakeComplex( character , item , UOBJ_CLOCK , UOBJ_CLOCK_PARTS , SFX_ANVIL );
+					return;
 
-		resourceRequest := cacheRequest;
-		TryToMakeItem( character , resourceRequest , item_to_make , sound );
-		return;
-	endif
+		UOBJ_CLOCK_PARTS:	TryToMakeComplex( character , item , UOBJ_CLOCK , UOBJ_CLOCK_FRAME , SFX_ANVIL );
+					return;
 
-	if( !Accessible( character , use_on ) or !use_on.movable )
-		SendSysmessage( character , "You can't reach that!" );
-		return;
-	endif
+		UOBJ_SPRINGS:		TryToMakeComplex( character , item , UOBJ_CLOCK_PARTS , UOBJ_AXLE_AND_GEARS , SFX_ANVIL );
+					return;
 
-	if( !ReserveItem( use_on ) )
-		return;
-	endif
+		UOBJ_HINGE:		TryToMakeComplex( character , item , UOBJ_SEXTANT_PARTS , UOBJ_AXLE_AND_GEARS , SFX_ANVIL );
+					return;
 
-	if( !IsInContainer( character.backpack , use_on ) )
-		SendSysmessage( character, "That item has to be in your backpack." );
-		return;
-	endif
+		UOBJ_SEXTANT_PARTS:	TryToMakeComplex( character , item , UOBJ_SEXTANT , 0 , SFX_ANVIL );
+					return;
 
-	if( IsLog( use_on ) )
-		resourceRequest := MakeBackpackRequest( character, use_on );
-	   	item_to_make := MakeAndProcessMenu( character , resourceRequest , WOOD_ID );
-	   	sound := CARPENTER_SOUND;
+		UOBJ_AXLE_AND_GEARS:	SendSysMessage( character , "Select either some springs or a hinge." );
+					var thing := Target( character , TGTOPT_CHECK_LOS );
+					if( !thing )
+						return;
+					endif
 
-	elseif(IsIngot( use_on ))
-		resourceRequest := MakeBackpackRequest( character, use_on );
-		item_to_make := MakeAndProcessMenu( character , resourceRequest , METAL_ID );
-		sound := SFX_ANVIL;
+					if( !Accessible( character , thing ) or !thing.movable )
+						SendSysmessage( character , "You can't reach that!" );
+						return;
+					endif
 
-	else
-		case( use_on.objtype )
+					if( !ReserveItem( thing ) )
+						return;
+					endif
 
-			UOBJ_AXLE:		TryToMakeComplex( character , use_on , UOBJ_AXLE_AND_GEARS , UOBJ_GEARS , CARPENTER_SOUND );
-						break;
+					case( thing.objtype )
+						UOBJ_SPRINGS:	TryToMakeComplex( character , item , UOBJ_CLOCK_PARTS , UOBJ_SPRINGS , SFX_ANVIL );
+								return;
 
-			UOBJ_GEARS:		TryToMakeComplex( character , use_on , UOBJ_AXLE_AND_GEARS , UOBJ_AXLE , CARPENTER_SOUND );
-						break;
+						UOBJ_HINGE:	TryToMakeComplex( character , item , UOBJ_SEXTANT_PARTS , UOBJ_HINGE , SFX_ANVIL );
+								return;
 
-			UOBJ_CLOCK_FRAME:	TryToMakeComplex( character , use_on , UOBJ_CLOCK , UOBJ_CLOCK_PARTS , SFX_ANVIL );
-						break;
+						default:	SendSysMessage( character , "You must select either a hinge or springs." );
+								return;
+					endcase
 
-			UOBJ_CLOCK_PARTS:	TryToMakeComplex( character , use_on , UOBJ_CLOCK , UOBJ_CLOCK_FRAME , SFX_ANVIL );
-						break;
-
-			UOBJ_SPRINGS:		TryToMakeComplex( character , use_on , UOBJ_CLOCK_PARTS , UOBJ_AXLE_AND_GEARS , SFX_ANVIL );
-						break;
-
-
-			UOBJ_KEG:
-			UOBJ_BARREL_TAP:
-			UOBJ_BARREL_LID:
-			UOBJ_EMPTY_BOTTLE:	TryToMakePotionKeg( character , use_on );
-						break;
-
-			UOBJ_AXLE_AND_GEARS:	SendSysMessage( character , "Select either some springs or a hinge." );
-						var thing := Target( character , TGTOPT_CHECK_LOS );
-						if( !thing )
-							break;
-						endif
-
-						if( !Accessible( character , thing ) or !thing.movable )
-							SendSysmessage( character , "You can't reach that!" );
-							break;
-						endif
-
-						if( !ReserveItem( thing ) )
-							break;
-						endif
-
-						case( thing.objtype )
-							UOBJ_SPRINGS:	TryToMakeComplex( character , use_on , UOBJ_CLOCK_PARTS , UOBJ_SPRINGS , SFX_ANVIL );
-									break;
-
-							UOBJ_HINGE:	TryToMakeComplex( character , use_on , UOBJ_SEXTANT_PARTS , UOBJ_HINGE , SFX_ANVIL );
-									break;
-
-							default:	SendSysMessage( character , "You must select either a hinge or springs." );
-
-						endcase
-
-
-			UOBJ_HINGE:		TryToMakeComplex( character , use_on , UOBJ_SEXTANT_PARTS , UOBJ_AXLE_AND_GEARS , SFX_ANVIL );
-						break;
-
-			UOBJ_SEXTANT_PARTS:	TryToMakeComplex( character , use_on , UOBJ_SEXTANT , 0 , SFX_ANVIL );
-						break;
-
-
-			UOBJ_OBSIDIAN:		MakeTotem( character , use_on );
-						break;
-
-
-			UOBJ_GLASS:		resourceRequest := MakeBackpackRequest( character, use_on );
-					item_to_make := MakeAndProcessMenu( character , resourceRequest , GLASS_ID );
-						sound := SFX_GLASSBREAK4;
-						break;
-
-
-			UOBJ_CLAY:		resourceRequest := MakeBackpackRequest( character, use_on );
-					item_to_make := MakeAndProcessMenu( character , resourceRequest , CLAY_ID );
-						sound := SFX_HAMMER;
-						break;
-
-
-			//UOBJ_COPPER_KEY:
-			//UOBJ_GOLD_KEY:
-			//UOBJ_IRON_KEY:
-			//UOBJ_RUSTY_IRON_KEY:	TryToMakeAContainerLockable( character , use_on );
-
-
-			default:		if( use_on.isa( POLCLASS_CONTAINER ) and !use_on.isa( POLCLASS_CORPSE ) )
-							SetTrap( character , use_on );
-						else
-							SendSysMessage( character , "You don't know how to use those items together." );
-						endif
-		endcase
-	endif
-
-	//item_to_make := item_to_make.objtype;
-	// if( !item_to_make )
-	// 	return;
-	// endif
-
-	if( !resourceRequest )
-		resourceRequest := MakeBackpackRequest( character, use_on );
-	endif
-
-	TryToMakeItem( character , resourceRequest , item_to_make , sound );
+		default:		RunTinkeringGump( character );
+	endcase
 
 endprogram
+
+
+// Top-level loop: category/selection gump -> detail gump -> back to top,
+// until the player crafts something, picks an Option, or closes out
+// entirely. The gump flow itself lives in the shared craftmenu.inc -- this
+// is just the tinkering-specific wiring: Potion Keg/Totem/Trap handling, and
+// dispatching a completed pick into TryToMakeItem below.
+function RunTinkeringGump( character )
+
+	while( 1 )
+		var extra_options := array{
+			struct{ label := "Assemble Potion Keg", value := TK_BTN_POTIONKEG },
+			struct{ label := "Make Obsidian Totem", value := TK_BTN_TOTEM },
+			struct{ label := "Set a Trap", value := TK_BTN_TRAP }
+		};
+		var choice := CraftMenu_ShowCategoryGump( character, tinker_cfg, "Tinkering", SKILLID_TINKERING, APPEAR_AT, extra_options, DIVIDER );
+		if( !choice )
+			return;
+		endif
+
+		if( choice == TK_BTN_POTIONKEG )
+			SendSysmessage( character, "Select a keg, barrel tap, barrel lid, or empty bottles." );
+			var keg_part := Target( character, TGTOPT_CHECK_LOS );
+			if( keg_part and Accessible(character, keg_part) and ReserveItem(keg_part) )
+				TryToMakePotionKeg( character, keg_part );
+			endif
+			return;
+		endif
+
+		if( choice == TK_BTN_TOTEM )
+			SendSysmessage( character, "Select the obsidian." );
+			var obs := Target( character, TGTOPT_CHECK_LOS );
+			if( !obs )
+				return;
+			endif
+			if( obs.objtype != UOBJ_OBSIDIAN )
+				SendSysMessage( character, "That's not obsidian." );
+				return;
+			endif
+			if( Accessible(character, obs) and ReserveItem(obs) )
+				MakeTotem( character, obs );
+			endif
+			return;
+		endif
+
+		if( choice == TK_BTN_TRAP )
+			SendSysmessage( character, "What would you like to trap?" );
+			var chest := Target( character, TGTOPT_CHECK_LOS );
+			if( chest and Accessible(character, chest) and ReserveItem(chest) )
+				SetTrap( character, chest );
+			endif
+			return;
+		endif
+
+		var element := tinker_cfg[choice];
+		if( !element )
+			continue;
+		endif
+
+		var detail := CraftMenu_ShowDetailGump( character, tinker_cfg, choice, SKILLID_TINKERING, "Tinkering", array{}, DIVIDER );
+		if( !detail )
+			continue;
+		endif
+
+		TryToMakeItem( character, detail.slot1, choice );
+		return;
+	endwhile
+
+endfunction
 
 
 function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objtype , sfx );
@@ -375,151 +340,51 @@ function _Play_Sound( who , sfx )
 endfunction
 
 
-function MakeAndProcessMenu( who , resourceRequest , id )
-
-	
-
-	// Look up material Difficulty/Quality against the craft that actually owns
-	// this resource type -- tinker.cfg itself has no per-material entries, so
-	// querying it directly (as this used to) silently resolved to nothing.
-	case( id )
-		WOOD_ID:	resource_diff := carpentry_cfg[resourceRequest.objtype].Difficulty;
-				resource_name := carpentry_cfg[resourceRequest.objtype].Name;
-				resource_qual := carpentry_cfg[resourceRequest.objtype].Quality;
-				break;
-		METAL_ID:	resource_diff := blacksmithy_cfg[resourceRequest.objtype].Difficulty;
-				resource_name := blacksmithy_cfg[resourceRequest.objtype].Name;
-				resource_qual := blacksmithy_cfg[resourceRequest.objtype].Quality;
-				break;
-		default:	resource_diff := 0;
-				resource_name := "";
-				resource_qual := 1;
-				break;
-	endcase
-
-	var skill := GetEffectiveSkill( who , SKILLID_TINKERING );
-	if( skill < resource_diff )
-		SendSysmessage( who, "You aren't skilled enough to make anything with this yet." );
-		return;
-	endif
-
-	var elemkeys := GetConfigStringKeys( tinker_cfg );
-	var can_make;
-	var choice;
-
-	var menu := CreateMenu( "What would you like to make?" );
-
-	case( id )
-
-		WOOD_ID:	AddMenuItem( menu , 0x1032 , "Tools" );
-				AddMenuItem( menu , 0x0e34 , "Paper items" );
-				AddMenuItem( menu , 0x14F3 , "Miscellaneous" );
-				AddMenuItem( menu , 0x28DC , "Tokuno Furniture" );
-				break;
-
-		METAL_ID:	AddMenuItem( menu , 0x1EBB , "Tools" );
-				AddMenuItem( menu , 0x1059 , "Parts" );
-				AddMenuItem( menu , 0x097f , "Kitchenware" );
-				AddMenuItem( menu , 0x0e85 , "Deadly Tools" );
-				AddMenuItem( menu , 0x0a22 , "Lights" );
-				AddMenuItem( menu , 0x1089 , "Jewelry" );
-				AddMenuItem( menu , 0x1640 , "Miscellaneous" );
-				AddMenuItem( menu , 0x0e80 , "Containers" );
-				AddMenuItem( menu , 0x35EF , "Crystal Items" );
-				AddMenuItem( menu , 0x2843 , "Tokuno Furniture" );
-				break;
-
-		GLASS_ID:	AddMenuItem( menu , 0x185b , "Alchemical Tools" );
-				AddMenuItem( menu , 0x0e2d , "Miscellaneous" );
-				break;
-
-		CLAY_ID:	AddMenuItem( menu , 0x181d , "Foci" );
-				AddMenuItem( menu , 0x12ca , "Statues" );
-				AddMenuItem( menu , 0x0b46 , "Miscellaneous" );
-				AddMenuItem( menu , 0x241C , "Tokuno Furniture" );
-				break;
-
-	endcase
-
-	choice := SelectMenuItem2( who , menu ).index;
-	if( !choice )
-		return;
-	endif
-
-	choice := (id * 10) + choice;
-
-	if (CInt(choice) == 29) // Crystal Furniture Crafting
-		If (!NearAnElvenAnvilOrForge(who))
-			SendSysMessage(who,"You must be closer to an Elven Anvil or Forge!");
-			return;
-		endif
-	endif
-
-	menu := CreateMenu( "What would you like to make?" );
-
-	foreach key in elemkeys
-		if( tinker_cfg[key].Type == choice )
-			if( CanMake( who , key , resourceRequest ) )
-				AddMenuItem( menu , Cint(key) , tinker_cfg[key].Name );
-				can_make := 1;
-			endif
-		endif
-	endforeach
-
-	if( can_make )
-		return SelectMenuItem2( who , menu );
-	else
-		SendSysmessage( who , "You can't make anything of this category." );
-		return;
-	endif
-
-endfunction
-
-
-function CanMake( who , key , resourceRequest )
-
-	var diff := tinker_cfg[key].Skill + Cint( resource_diff / DIVIDER );
-	if( diff < 1 )
-		diff := 1;
-	elseif( diff > 150 )
-		diff := 150;
-	endif
-
-	if( GetEffectiveSkill( who , SKILLID_TINKERING ) >= ( diff + APPEAR_AT ) )
-		if( tinker_cfg[key].CoSkillid )
-			if( GetEffectiveSkill( who , CInt( tinker_cfg[key].CoSkillid ) ) < CInt( tinker_cfg[key].CoSkill ) )
-				return 0;
-			endif
-		endif
-		var material := tinker_cfg[key].Material;
-		if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
-			material := CInt(Ceil(material/2));
-		endif
-		if( GetAvailableResource(who, resourceRequest).total >= material )
-			return 1;
-		endif
-	endif
-
-	return 0;
-
-
-endfunction
-
-
-function TryToMakeItem( character , resourceRequest , item , sfx )
+// item is the recipe's own key/objtype (a plain number, as returned by
+// CraftMenu_ShowCategoryGump/ShowDetailGump) -- category browsing, recipe
+// visibility, and material defaulting/picking are all handled by the shared
+// craftmenu.inc now; this only does the tinkering-specific craft attempt.
+function TryToMakeItem( character , resourceRequest , item )
 
 	var material;
 	var itemname;
 	var give_deed;
 	var deedname;
 
-	item := item.objtype;
-
 	var element := FindConfigElem( tinker_cfg , item );
 	if( element )
 		material := element.Material;
 		deedname := element.Name;
 	else
+		return;
+	endif
+
+	// Crystal Items (Metal: Crystal Items) need an Elven Anvil/Forge nearby --
+	// this used to gate the OLD submenu itself (choice==29) before any
+	// individual recipe was even shown; now it's a craft-time gate instead,
+	// same idea as Carpentry's NearASoulforge check.
+	if( element.Category == "Metal: Crystal Items" )
+		if( !NearAnElvenAnvilOrForge(character) )
+			SendSysMessage(character,"You must be closer to an Elven Anvil or Forge!");
+			return;
+		endif
+	endif
+
+	var sfx;
+	case( element.MaterialType )
+		"Log":		sfx := CARPENTER_SOUND;
+		"Ingot":	sfx := SFX_ANVIL;
+		"Glass":	sfx := SFX_GLASSBREAK4;
+		"Clay":		sfx := SFX_HAMMER;
+		default:	sfx := CARPENTER_SOUND;
+	endcase
+
+	// Difficulty this specific resolved material (whichever wood/ore ended
+	// up in resourceRequest -- default or hand-picked) contributes to the
+	// skill roll below -- 0 for Glass/Clay, which don't have a quality table.
+	var resource_diff := CraftMenu_GetFamilyQualityDifficulty( element.MaterialType, CInt(resourceRequest.objtype) );
+	if( GetEffectiveSkill( character , SKILLID_TINKERING ) < resource_diff )
+		SendSysmessage( character, "You aren't skilled enough to make anything with this yet." );
 		return;
 	endif
 
@@ -624,7 +489,11 @@ function TryToMakeItem( character , resourceRequest , item , sfx )
 		LeaseResource( character, secondaryRequest, material2 );
 	endif
 
-	AutoLoop_init( character );
+	// Loop count was already fixed by CraftMenu_ShowDetailGump
+	// (AutoLoop_initFixed for Make Max/Now, or AutoLoop_init with a capped
+	// maxx for Make Number) -- do NOT call AutoLoop_init again here, it
+	// would overwrite that count (e.g. turning Make Now's fixed 1 back into
+	// an "ask every time" prompt).
 	while( AutoLoop_more() && GetAvailableResource(character, resourceRequest).total >= material && (!material2 || GetAvailableResource(character, secondaryRequest).total >= material2) && NOT character.dead)
 
 		sendDiff( character , skill );
@@ -1218,48 +1087,6 @@ function TryToMakePotionKeg( character , use_on )
 
 endfunction
 
-
-function GetRessourceName( ressource )
-
-	var t_name := ressource.desc;
-
-	if( ressource.amount > 1 )
-		var i := len( t_name );
-		var amt := ressource.amount;
-		var count := 2;
-		while( Cint(amt / 10) )
-			count := count + 1;
-			amt := Cint( amt / 10 );
-		endwhile
-
-		t_name := t_name[count+1 , i - count];
-	endif
-
-	return t_name;
-
-endfunction
-
-// Objtype-based checks for Omega Cache selections (no physical item reference needed).
-function IsLogObjtype( objtype )
-	objtype := CInt(objtype);
-	if(( objtype >= UOBJ_LOGS_START and objtype <= UOBJ_LOGS_END ) or
-	   ( objtype == UOBJ_LOGS_GODDESS ) or ( objtype == UOBJ_LOGS ))
-		return 1;
-	endif
-	return 0;
-endfunction
-
-function IsIngotObjtype( objtype )
-	objtype := CInt(objtype);
-	if(( objtype >= UOBJ_INGOTS_START  and objtype <= UOBJ_INGOTS_END  ) or
-	   ( objtype >= UOBJ_INGOTS2_START and objtype <= UOBJ_INGOTS2_END ) or
-	   ( objtype == UOBJ_GOLD_INGOT ) or
-	   ( objtype == UOBJ_SILVER_INGOT ) or
-	   ( objtype == UOBJ_COIN_COPPER_INGOT ))
-		return 1;
-	endif
-	return 0;
-endfunction
 
 
 // function TryToMakeAContainerLockable( character , key )

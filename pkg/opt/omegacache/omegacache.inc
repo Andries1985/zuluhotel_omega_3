@@ -956,12 +956,15 @@ function FindAccessibleContainer(who, required_privileges)
 	_debug_who := who;
 	var current_house := GetCurrentHouseAtMobile(who);
 
-	// Must be inside a house
+	// Must be inside a house (i.e. within its multi footprint)
 	if(!current_house and who.cmdlevel < 4)
 		return 0;
 	endif
 
-	var nearby := ListItemsNearLocation(who.x, who.y, who.z, 4, who.realm);
+	// 2026-08-30: widened from 4 to 8 tiles -- still gated by the house
+	// check above, so this only ever matters within a multi you're already
+	// standing inside.
+	var nearby := ListItemsNearLocation(who.x, who.y, who.z, 8, who.realm);
 	foreach item in nearby
 		if(item.objtype == OMEGACACHE_OBJTYPE)
 			var house_serial := GetObjProperty(item, "houseserial");

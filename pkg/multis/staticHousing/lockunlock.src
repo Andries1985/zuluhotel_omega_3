@@ -31,7 +31,10 @@ function IsLocationInsideHouseMsg(sign, character, item)
 	// are physically outside its footage (and blocking valid actions on
 	// in-house items if the character was standing just outside). Fixed to
 	// pass the item's own coordinates explicitly.
-	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z))
+	// 2026-08-30: dispatched method calls don't honor declared defaults
+	// (see guilds.src's IsInsideGuildHouse) -- must pass all 5 args
+	// (sign + x, y, z, realm) or the call mismatches at runtime.
+	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z, sign.realm))
 		SHDebug("Location check denied outside house item=" + item.serial + " sign=" + sign.serial);
 		SendSysMessage(character, "That location is not in the house.", color := 33);
 		return 0;
@@ -185,7 +188,10 @@ function HouseLockUnlockItem (sign, character, item)
 	// are physically outside its footage (and blocking valid actions on
 	// in-house items if the character was standing just outside). Fixed to
 	// pass the item's own coordinates explicitly.
-	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z))
+	// 2026-08-30: dispatched method calls don't honor declared defaults
+	// (see guilds.src's IsInsideGuildHouse) -- must pass all 5 args
+	// (sign + x, y, z, realm) or the call mismatches at runtime.
+	if (!sign.IsLocationInsideHouse(item.x, item.y, item.z, sign.realm))
 		SHDebug("Lock/release denied outside house item=" + item.serial + " sign=" + sign.serial);
 		SendSysMessage(character, "That location is not in the house.", color := 33);
 		return;
