@@ -4,6 +4,7 @@ include "include/objtype";
 include "include/spelldata";
 include "include/areas";
 include "include/client";
+include "include/realmcolors";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
 //include ":multistatichousing:recallgatehelp";
@@ -88,6 +89,7 @@ program cast_mark( caster, spell_id )
 	SetObjProperty(cast_on2, "realm", caster.realm);
 
 	SetName(cast_on2, "a marked recall rune");
+	cast_on2.color := GetRealmRuneColor( caster.realm );
 
 	if (caster.cmdlevel > 1)
 		SetObjProperty(cast_on,"LFucker",caster.name);

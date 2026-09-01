@@ -59,6 +59,14 @@ program walk_on_moongate( mobile , gate )
 		endif
 	endif
 
+	var guild_only := Cint( GetObjProperty( gate, "GuildOnly" ) );
+	if( guild_only )
+		if( !mobile.guild or CInt(mobile.guild.guildid) != guild_only )
+			SendSysMessage( mobile, "This gate only allows members of a specific guild through." );
+			return;
+		endif
+	endif
+
 	if( !YesNo( mobile , "Want to Teleport?" ) )
 				return;
 	elseif ( coordist(mobile.x, mobile.y, startx, starty) > 1 )

@@ -50,8 +50,13 @@ function AddRuneToRunebook( runebook, rune )
 	if( !runes_def )
 		runes_def := array;
 	endif
-	
-	if( runes_def.size() >= 16 )
+
+	var max_runes := Cint( GetObjProperty( runebook, "MaxRunes" ) );
+	if( !max_runes )
+		max_runes := 16;
+	endif
+
+	if( runes_def.size() >= max_runes )
 		set_critical(0);
 		return 0;
 	endif
@@ -106,9 +111,12 @@ function RechargeBook( who, runebook, scrolls )
 	var charges	 := Cint( GetObjProperty( runebook, "charges" ) );
 	var maxcharges := Cint( GetObjProperty( runebook, "maxcharges" ) );
 	if( !maxcharges )
-		maxcharges := 5;
+		maxcharges := Cint( GetObjProperty( runebook, "MaxCharges" ) );
+		if( !maxcharges )
+			maxcharges := 5;
+		endif
 	endif
-	
+
 	var maxamount	 := Cint( maxcharges - charges );
 	var amount	 := Cint( scrolls.amount );
 	

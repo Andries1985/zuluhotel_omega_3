@@ -1,0 +1,186 @@
+// Synopsis: Target a runebook or Runic Atlas and fill it with random, recall/gate-valid marked runes drawn from every realm's golocs_by_id.cfg entries, for QA of the runebook/atlas gumps.
+use uo;
+use os;
+use util;
+use cfgfile;
+use polsys;
+
+include "include/areas";
+include "include/objtype";
+
+const TESTRUNEBOOK_PER_REALM	:= 8;
+
+program testrunebook( who, text )
+
+	text := text;
+
+	SendSysMessage( who, "Target the runebook or Runic Atlas to fill." );
+	var book := Target( who );
+	if( !book )
+		SendSysMessage( who, "No target." );
+		return;
+	endif
+
+	if( book.objtype != UOBJ_RUNEBOOK and book.objtype != UOBJ_RUNIC_ATLAS_EW and book.objtype != UOBJ_RUNIC_ATLAS_NS )
+		SendSysMessage( who, "That isn't a runebook or Runic Atlas." );
+		return;
+	endif
+
+	var max_runes := Cint( GetObjProperty( book, "MaxRunes" ) );
+	if( !max_runes )
+		max_runes := 16;
+	endif
+
+	var realm_names := array{ "britannia", "britannia_alt", "ilshenar", "malas", "tokuno", "termur" };
+	var pool := array{};
+	var realm;
+	foreach realm in realm_names
+		var realm_locs := TestRunebook_GetRealmLocations( realm );
+		var picked := TestRunebook_RandomSample( realm_locs, TESTRUNEBOOK_PER_REALM );
+		var loc;
+		foreach loc in picked
+			pool.append( loc );
+		endforeach
+	endforeach
+
+	if( !pool.size() )
+		SendSysMessage( who, "No usable entries were found in golocs_by_id.cfg -- nothing to fill." );
+		return;
+	endif
+
+	if( pool.size() > max_runes )
+		pool := TestRunebook_RandomSample( pool, max_runes );
+	endif
+
+	var runes_def := array{};
+	var entry;
+	foreach entry in pool
+		var rune_data := struct;
+		rune_data.+tox := entry.x;
+		rune_data.+toy := entry.y;
+		rune_data.+toz := entry.z;
+		rune_data.+torealm := entry.realm;
+		rune_data.+name := entry.name;
+		rune_data.+defloc := 0;
+		rune_data.+dtindex := 6;
+		runes_def.append( rune_data );
+	endforeach
+
+	SetObjProperty( book, "RuneDefs", runes_def );
+	SetObjProperty( book, "charges", max_runes );
+	IncRevision( book );
+
+	SendSysMessage( who, "Filled with " + CStr(runes_def.size()) + " test runes spread across all 6 realms." );
+
+endprogram
+
+
+function TestRunebook_GetRealmLocations( realm )
+
+	var results := array{};
+	var cfg := ReadConfigfile( ":*:golocs_by_id" );
+	if( !cfg )
+		return results;
+	endif
+
+	var keys := GetConfigStringKeys( cfg );
+	if( !keys or !keys.size() )
+		return results;
+	endif
+
+	var key;
+	foreach key in keys
+		var region := FindConfigElem( cfg, key );
+		if( !region )
+			continue;
+		endif
+
+		if( Lower(CStr(GetConfigString(region, "Realm"))) != realm )
+			continue;
+		endif
+
+		// Skip dungeons/jails -- more likely to carry no-recall flags or land
+		// you somewhere awkward for a simple functionality test.
+		var rtype := Lower( Trim(GetConfigString(region, "Type")) );
+		if( rtype == "dungeon" or rtype == "jail" )
+			continue;
+		endif
+
+		var x := 0;
+		var y := 0;
+		var z := 0;
+
+		var goloc_value := Trim( GetConfigString(region, "GoLoc") );
+		if( Lower(goloc_value) == "dnp" )
+			continue;
+		endif
+
+		if( Len(goloc_value) )
+			var goloc := SplitWords( goloc_value );
+			if( goloc.size() >= 3 )
+				x := Cint(goloc[1]);
+				y := Cint(goloc[2]);
+				z := Cint(goloc[3]);
+			endif
+		endif
+
+		if( x == 0 and y == 0 and z == 0 )
+			var range := SplitWords( GetConfigString(region, "Range") );
+			if( range.size() >= 4 )
+				x := Cint( (Cint(range[1])+Cint(range[3])) / 2 );
+				y := Cint( (Cint(range[2])+Cint(range[4])) / 2 );
+				z := Cint( GetMapInfo(x, y, realm).Z );
+			endif
+		endif
+
+		if( x == 0 and y == 0 and z == 0 )
+			continue;
+		endif
+
+		// Real engine no-recall/forbidden-zone check. IsForbiddenAreaToRecallTo
+		// short-circuits to "always allowed" for staff (who.cmdlevel), which
+		// would defeat the point here, so the mask is checked directly instead
+		// to reflect what an ordinary player could actually do.
+		var mask := GetAreaPolicyMaskAtLocation( x, y, realm );
+		if( HasPolicy(mask, AREA_POLICY_NO_RECALL_TO) or HasPolicy(mask, AREA_POLICY_FORBIDDEN) )
+			continue;
+		endif
+
+		var name := GetConfigString( region, "Name" );
+		if( !Len(name) )
+			name := CStr(key);
+		endif
+
+		var loc := struct;
+		loc.+name := name;
+		loc.+x := x;
+		loc.+y := y;
+		loc.+z := z;
+		loc.+realm := realm;
+		results.append( loc );
+	endforeach
+
+	return results;
+
+endfunction
+
+
+function TestRunebook_RandomSample( byref source, count )
+
+	var pool := array{};
+	var item;
+	foreach item in source
+		pool.append( item );
+	endforeach
+
+	var picked := array{};
+	var n;
+	for( n := 1; n <= count and pool.size(); n := n + 1 )
+		var idx := RandomInt( pool.size() ) + 1;
+		picked.append( pool[idx] );
+		pool.erase( idx );
+	endfor
+
+	return picked;
+
+endfunction

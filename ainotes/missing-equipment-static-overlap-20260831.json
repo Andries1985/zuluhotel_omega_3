@@ -1,0 +1,2911 @@
+[
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 3912,
+  "desc": "battle axe",
+  "facets": {
+   "britannia_alt": 8,
+   "termur": 7
+  },
+  "placements": {
+   "britannia_alt": [
+    "1558 844 17",
+    "1980 2477 5",
+    "1988 2501 0",
+    "1997 2494 2",
+    "5634 401 16",
+    "6241 2146 -33"
+   ],
+   "termur": [
+    "322 1832 6",
+    "555 1497 46",
+    "659 2119 46",
+    "668 2091 46",
+    "671 2091 46",
+    "684 2060 46",
+    "690 1733 106"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 3935,
+  "desc": "broadsword",
+  "facets": {
+   "britannia_alt": 14,
+   "ilshenar": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "2857 1209 7",
+    "4655 332 12",
+    "5553 1130 6",
+    "5675 1756 0",
+    "6197 693 26",
+    "6307 2695 22",
+    "6618 1989 0"
+   ],
+   "ilshenar": [
+    "33 1498 -28",
+    "44 1484 -28",
+    "418 92 -28",
+    "423 97 -22",
+    "808 595 -37"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 5046,
+  "desc": "scimitar",
+  "facets": {
+   "britannia_alt": 18,
+   "ilshenar": 1,
+   "termur": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "335 1189 -4",
+    "793 1861 26",
+    "1116 2897 41",
+    "1391 1230 102",
+    "1435 1844 53",
+    "1522 817 0",
+    "1521 819 5",
+    "1551 814 0",
+    "1561 843 40",
+    "3532 1456 38",
+    "3532 1457 38",
+    "3530 1460 38",
+    "3530 1461 38",
+    "3965 3316 13",
+    "5271 1022 3",
+    "5679 1755 0",
+    "6595 1965 2"
+   ],
+   "ilshenar": [
+    "816 583 -37"
+   ],
+   "termur": [
+    "58 380 21",
+    "58 578 21",
+    "58 786 21",
+    "323 173 21",
+    "1099 1070 -70"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 5048,
+  "desc": "long sword",
+  "facets": {
+   "britannia_alt": 25,
+   "malas": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "796 1383 55",
+    "2094 2692 25",
+    "2094 2694 25",
+    "2971 2669 0",
+    "2971 2669 2",
+    "2971 2669 4",
+    "2971 2669 6",
+    "2971 2669 8",
+    "3532 1457 26",
+    "3532 1457 28",
+    "3532 1457 30",
+    "3532 1457 32",
+    "3532 1457 34",
+    "3530 1461 26",
+    "3530 1461 28",
+    "3530 1461 30",
+    "3530 1461 32",
+    "3530 1461 34",
+    "4659 335 13",
+    "6197 693 26"
+   ],
+   "malas": [
+    "93 1662 0",
+    "96 1660 0"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 5119,
+  "desc": "katana",
+  "facets": {
+   "britannia_alt": 34,
+   "ilshenar": 2,
+   "malas": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "791 1866 26",
+    "983 1146 6",
+    "1564 835 26",
+    "1571 855 20",
+    "1600 841 35",
+    "2857 1209 8",
+    "2969 2667 0",
+    "2969 2667 2",
+    "2969 2667 4",
+    "2969 2667 6",
+    "2969 2667 8",
+    "3530 1457 26",
+    "3530 1457 28",
+    "3530 1457 30",
+    "3530 1457 32",
+    "3530 1457 34",
+    "3528 1460 26",
+    "3528 1460 28",
+    "3528 1460 30",
+    "3528 1460 32",
+    "3528 1460 34",
+    "5371 1190 5",
+    "6307 2695 23",
+    "6524 1954 20",
+    "6535 1988 0"
+   ],
+   "ilshenar": [
+    "878 1475 -23",
+    "1079 633 -74"
+   ],
+   "malas": [
+    "102 1675 0"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 5185,
+  "desc": "cutlass",
+  "facets": {
+   "britannia_alt": 39
+  },
+  "placements": {
+   "britannia_alt": [
+    "487 1264 2",
+    "492 1259 2",
+    "494 1267 2",
+    "1085 524 36",
+    "1085 526 36",
+    "1379 1778 11",
+    "1546 803 21",
+    "1548 822 0",
+    "1565 849 0",
+    "1572 839 40",
+    "1602 1725 26",
+    "2249 1177 0",
+    "2615 1917 0",
+    "2627 1896 0",
+    "2746 1865 0",
+    "2744 2072 0",
+    "2824 1908 0",
+    "2863 1929 0",
+    "2877 1904 0",
+    "2971 2668 0",
+    "2971 2668 2",
+    "2971 2668 4",
+    "2971 2668 7",
+    "3532 1456 26",
+    "3532 1456 28",
+    "3532 1456 30",
+    "3532 1456 33",
+    "3530 1460 26",
+    "3530 1460 28",
+    "3530 1460 30",
+    "3530 1460 33",
+    "5284 997 6",
+    "5376 1191 5",
+    "6173 316 6",
+    "6655 2914 20"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9100,
+  "desc": "book of bushido",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "5255 2076 41",
+    "5255 2076 42",
+    "5255 2076 43",
+    "6033 692 7"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9120,
+  "desc": "book of ninjitsu",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "5255 2075 41",
+    "5255 2075 42",
+    "5255 2075 43",
+    "5545 1101 3",
+    "6029 683 3"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9559,
+  "desc": "lizardman's mace",
+  "facets": {
+   "britannia_alt": 16,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "959 1475 4",
+    "1426 1839 40",
+    "1553 2297 15",
+    "1838 2236 0",
+    "1841 2241 0",
+    "1927 2188 0",
+    "1930 2193 0",
+    "1936 2184 0",
+    "1947 2187 0",
+    "1964 2496 2",
+    "2459 1857 -2",
+    "2462 1862 -2",
+    "2554 1797 -3",
+    "2557 1802 -3",
+    "2851 2034 0",
+    "2854 2039 0"
+   ],
+   "termur": [
+    "654 3431 22"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9565,
+  "desc": "ratman axe",
+  "facets": {
+   "britannia_alt": 3
+  },
+  "placements": {
+   "britannia_alt": [
+    "1427 1840 43",
+    "1947 2185 2",
+    "5218 1424 0"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9567,
+  "desc": "skeleton axe",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1422 1839 39",
+    "5203 1354 0"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9568,
+  "desc": "skeleton scimitar",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1422 1839 35"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9571,
+  "desc": "terathan mace",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1423 1840 43"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9587,
+  "desc": "magic sword",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "6238 1335 20"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9590,
+  "desc": "magic sword",
+  "facets": {
+   "britannia_alt": 1,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1950 2220 0"
+   ],
+   "termur": [
+    "742 3561 -36"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9596,
+  "desc": "sword",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1422 1840 39",
+    "5254 1372 0"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9597,
+  "desc": "longsword",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5376 1192 5"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9915,
+  "desc": "bone harvester",
+  "facets": {
+   "britannia_alt": 6
+  },
+  "placements": {
+   "britannia_alt": [
+    "1443 2164 15",
+    "1972 2470 5",
+    "5862 415 35"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9916,
+  "desc": "scepter",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "5171 980 16",
+    "5315 374 10"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9920,
+  "desc": "lance",
+  "facets": {
+   "britannia_alt": 6
+  },
+  "placements": {
+   "britannia_alt": [
+    "1120 2890 41",
+    "1420 1839 54",
+    "1439 1723 17",
+    "1438 1840 39",
+    "1442 1723 17",
+    "1445 1723 17"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9925,
+  "desc": "bone harvester",
+  "facets": {
+   "britannia_alt": 15
+  },
+  "placements": {
+   "britannia_alt": [
+    "230 1428 0",
+    "656 1515 66",
+    "681 1465 55",
+    "1030 2903 64",
+    "1116 2888 54",
+    "1420 1839 53",
+    "1424 1835 44",
+    "1643 2125 1",
+    "1968 2446 5",
+    "6173 317 6"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 9926,
+  "desc": "scepter",
+  "facets": {
+   "britannia_alt": 3
+  },
+  "placements": {
+   "britannia_alt": [
+    "699 1493 63",
+    "1427 1835 44",
+    "6181 316 6"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11553,
+  "desc": "Assassin Spike",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5363 1996 29"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11554,
+  "desc": "Leafblade",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5363 1995 26"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11555,
+  "desc": "War Cleaver",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5363 1994 26"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11559,
+  "desc": "Radiant Scimitar",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5366 1989 31"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11565,
+  "desc": "Assassin Spike",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5363 1989 26"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11566,
+  "desc": "Leafblade",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5363 1988 26"
+   ]
+  }
+ },
+ {
+  "layer": 1,
+  "layer_name": "Hand1",
+  "objtype": 11567,
+  "desc": "War Cleaver",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "4247 2207 5"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3908,
+  "desc": "hatchet",
+  "facets": {
+   "britannia_alt": 14,
+   "ilshenar": 1,
+   "malas": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "963 1475 4",
+    "1024 1141 8",
+    "1421 1840 53",
+    "1924 2192 1",
+    "1991 2486 5",
+    "1995 2513 0",
+    "2004 2452 5",
+    "2456 1861 -1",
+    "2551 1801 -2",
+    "2848 2038 1",
+    "4196 296 13",
+    "6562 1263 3",
+    "6585 1960 0"
+   ],
+   "ilshenar": [
+    "1482 958 -8"
+   ],
+   "malas": [
+    "1449 1504 -105"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3910,
+  "desc": "executioner's axe",
+  "facets": {
+   "britannia_alt": 43
+  },
+  "placements": {
+   "britannia_alt": [
+    "486 1263 3",
+    "491 1258 3",
+    "493 1266 3",
+    "795 1864 26",
+    "1028 2907 64",
+    "1125 2887 41",
+    "1347 1913 54",
+    "1419 1840 53",
+    "1547 821 1",
+    "1572 843 40",
+    "1925 2182 0",
+    "1966 2471 5",
+    "1976 2450 5",
+    "1983 2496 2",
+    "1986 2469 5",
+    "1991 2490 6",
+    "1987 2506 0",
+    "1999 2458 5",
+    "2006 2463 5",
+    "2457 1851 -2",
+    "2552 1791 -3",
+    "2614 1916 1",
+    "2626 1895 1",
+    "2743 2071 1",
+    "2745 1864 1",
+    "2823 1907 1",
+    "2849 2028 -2",
+    "2862 1928 1",
+    "2876 1903 1",
+    "4656 332 12",
+    "5568 1149 6",
+    "6726 3294 25",
+    "6726 3294 26",
+    "6726 3294 27",
+    "6783 71 2"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3914,
+  "desc": "axe",
+  "facets": {
+   "britannia_alt": 11,
+   "ilshenar": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1974 2491 2",
+    "3894 3365 7",
+    "3894 3365 8",
+    "4253 3332 7",
+    "4253 3332 8",
+    "5151 555 20",
+    "5339 975 6",
+    "6041 60 10",
+    "6551 1951 20"
+   ],
+   "ilshenar": [
+    "823 585 -34",
+    "2171 865 -22"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3916,
+  "desc": "double axe",
+  "facets": {
+   "britannia_alt": 32,
+   "ilshenar": 1,
+   "termur": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "486 1263 3",
+    "491 1258 3",
+    "493 1266 3",
+    "796 1364 2",
+    "961 1475 4",
+    "966 2502 40",
+    "999 1159 5",
+    "1021 1142 8",
+    "1545 798 20",
+    "1547 821 1",
+    "1956 2500 0",
+    "1970 2489 5",
+    "1982 2500 0",
+    "1988 2458 5",
+    "1994 2492 2",
+    "2002 2447 5",
+    "2614 1916 1",
+    "2626 1895 1",
+    "2743 2071 1",
+    "2794 1809 0",
+    "2834 1954 0",
+    "2862 1928 1",
+    "2876 1903 1",
+    "5238 962 7",
+    "5238 964 7",
+    "5238 967 7",
+    "5238 969 7",
+    "5243 537 20",
+    "5634 406 16",
+    "6383 459 0"
+   ],
+   "ilshenar": [
+    "42 1481 -23"
+   ],
+   "termur": [
+    "1101 1086 -61",
+    "1110 1074 -43"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3917,
+  "desc": "bardiche",
+  "facets": {
+   "britannia_alt": 31
+  },
+  "placements": {
+   "britannia_alt": [
+    "1375 1778 11",
+    "1437 1734 25",
+    "1976 2448 5",
+    "2971 2667 0",
+    "2971 2667 2",
+    "2971 2667 4",
+    "2971 2667 6",
+    "2971 2667 8",
+    "3532 1455 26",
+    "3532 1455 28",
+    "3532 1455 30",
+    "3532 1455 32",
+    "3532 1455 34",
+    "3530 1459 26",
+    "3530 1459 28",
+    "3530 1459 30",
+    "3530 1459 32",
+    "3530 1459 34",
+    "3965 3303 15",
+    "4192 332 13",
+    "5284 1000 6",
+    "6197 692 26",
+    "6356 2932 0",
+    "6387 2953 0",
+    "6475 1934 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 3947,
+  "desc": "torch%es%",
+  "facets": {
+   "britannia_alt": 18,
+   "ilshenar": 5,
+   "termur": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1447 1841 38",
+    "1447 1841 40",
+    "2052 2718 13",
+    "2051 2722 6",
+    "3511 1539 22",
+    "3511 1539 25",
+    "5836 414 16",
+    "6227 1286 0",
+    "6910 1178 0"
+   ],
+   "ilshenar": [
+    "139 48 -22",
+    "139 48 -21",
+    "255 69 -20",
+    "255 69 -21",
+    "255 69 -22"
+   ],
+   "termur": [
+    "659 2120 46",
+    "981 3902 -33"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 5703,
+  "desc": "light source",
+  "facets": {
+   "britannia_alt": 276,
+   "ilshenar": 8
+  },
+  "placements": {
+   "britannia_alt": [
+    "984 1409 91",
+    "984 1422 91",
+    "6986 842 0",
+    "6986 843 0",
+    "6986 844 0",
+    "6986 845 0",
+    "6986 846 0",
+    "6986 847 0",
+    "6987 842 0",
+    "6987 843 0",
+    "6987 844 0",
+    "6987 845 0",
+    "6987 846 0",
+    "6987 847 0",
+    "6988 841 0",
+    "6988 842 0",
+    "6988 843 0",
+    "6988 844 0",
+    "6988 845 0",
+    "6988 846 0",
+    "6988 847 0",
+    "6989 841 0",
+    "6989 842 0",
+    "6989 843 0",
+    "6989 844 0",
+    "6989 845 0",
+    "6989 846 0",
+    "6989 847 0",
+    "6990 841 0",
+    "6990 842 0",
+    "6990 843 0",
+    "6990 844 0",
+    "6990 845 0",
+    "6990 846 0",
+    "6990 847 0",
+    "6991 843 0",
+    "6991 844 0",
+    "6991 845 0",
+    "6991 846 0",
+    "6991 847 0",
+    "6986 848 0",
+    "6986 849 0",
+    "6987 848 0",
+    "6987 849 0",
+    "6988 848 0",
+    "6988 849 0",
+    "6989 848 0",
+    "6989 849 0",
+    "6989 850 0",
+    "6989 851 0",
+    "6990 848 0",
+    "6990 849 0",
+    "6990 850 0",
+    "6990 851 0",
+    "6991 848 0",
+    "6991 849 0",
+    "6991 850 0",
+    "6991 851 0",
+    "6997 779 19",
+    "6997 783 19",
+    "6992 811 0",
+    "6992 812 0",
+    "6992 813 0",
+    "6993 811 0",
+    "6993 812 0",
+    "6993 813 0",
+    "6992 843 0",
+    "6992 844 0",
+    "6992 845 0",
+    "6992 846 0",
+    "6992 847 0",
+    "6993 843 0",
+    "6993 844 0",
+    "6993 845 0",
+    "6993 846 0",
+    "6993 847 0",
+    "6994 843 0",
+    "6994 844 0",
+    "6994 845 0",
+    "6994 846 0",
+    "6994 847 0",
+    "6995 843 0",
+    "6995 844 0",
+    "6995 845 0",
+    "6995 846 0",
+    "6995 847 0",
+    "6996 844 0",
+    "6996 845 0",
+    "6996 846 0",
+    "6992 848 0",
+    "6992 849 0",
+    "6993 848 0",
+    "6993 849 0",
+    "6994 848 0",
+    "6994 849 0",
+    "7001 775 20",
+    "7001 787 21",
+    "7000 827 0",
+    "7001 827 0",
+    "7001 828 0",
+    "7007 844 0",
+    "7007 845 0",
+    "7011 799 0",
+    "7012 798 0",
+    "7012 799 0",
+    "7013 798 0",
+    "7013 799 0",
+    "7014 798 0",
+    "7014 799 0",
+    "7015 799 0",
+    "7010 800 0",
+    "7010 801 0",
+    "7010 802 0",
+    "7010 803 0",
+    "7010 804 0",
+    "7011 800 0",
+    "7011 801 0",
+    "7011 802 0",
+    "7011 803 0",
+    "7011 804 0",
+    "7012 800 0",
+    "7012 801 0",
+    "7012 802 0",
+    "7012 803 0",
+    "7012 804 0",
+    "7013 800 0",
+    "7013 801 0",
+    "7013 802 0",
+    "7013 803 0",
+    "7014 800 0",
+    "7014 801 0",
+    "7014 802 0",
+    "7015 800 0",
+    "7015 801 0",
+    "7015 802 0",
+    "7008 844 0",
+    "7016 800 0",
+    "7016 801 0",
+    "7024 819 0",
+    "7024 820 0",
+    "7024 821 0",
+    "7024 822 0",
+    "7025 818 0",
+    "7025 819 0",
+    "7025 820 0",
+    "7025 821 0",
+    "7025 822 0",
+    "7026 817 0",
+    "7026 818 0",
+    "7026 819 0",
+    "7026 820 0",
+    "7026 821 0",
+    "7026 822 0",
+    "7026 823 0",
+    "7027 817 0",
+    "7027 818 0",
+    "7027 819 0",
+    "7027 820 0",
+    "7027 821 0",
+    "7027 822 0",
+    "7027 823 0",
+    "7028 817 0",
+    "7028 818 0",
+    "7028 819 0",
+    "7028 820 0",
+    "7028 821 0",
+    "7028 822 0",
+    "7028 823 0",
+    "7029 817 0",
+    "7029 818 0",
+    "7029 819 0",
+    "7029 820 0",
+    "7029 821 0",
+    "7029 822 0",
+    "7029 823 0",
+    "7030 817 0",
+    "7030 818 0",
+    "7030 819 0",
+    "7030 820 0",
+    "7030 821 0",
+    "7030 822 0",
+    "7030 823 0",
+    "7031 818 0",
+    "7031 819 0",
+    "7031 820 0",
+    "7031 821 0",
+    "7031 822 0",
+    "7031 823 0",
+    "7028 824 0",
+    "7029 824 0",
+    "7030 824 0",
+    "7032 819 0",
+    "7032 820 0",
+    "7032 821 0",
+    "7060 809 0",
+    "7060 810 0",
+    "7060 811 0",
+    "7060 812 0",
+    "7060 813 0",
+    "7073 804 0",
+    "7074 804 0",
+    "7075 804 0",
+    "7076 804 0",
+    "7090 799 0",
+    "7091 799 0",
+    "7092 798 0",
+    "7092 799 0",
+    "7093 798 0",
+    "7093 799 0",
+    "7094 798 0",
+    "7094 799 0",
+    "7095 799 0",
+    "7090 800 0",
+    "7090 801 0",
+    "7091 800 0",
+    "7091 801 0",
+    "7091 802 0",
+    "7092 800 0",
+    "7092 801 0",
+    "7092 802 0",
+    "7093 800 0",
+    "7093 801 0",
+    "7093 802 0",
+    "7094 800 0",
+    "7094 801 0",
+    "7094 802 0",
+    "7094 804 0",
+    "7095 800 0",
+    "7095 801 0",
+    "7095 802 0",
+    "7095 804 0",
+    "7096 802 0",
+    "7096 804 0",
+    "7097 800 0",
+    "7097 801 0",
+    "7097 802 0",
+    "7105 781 6",
+    "7105 782 6",
+    "7105 783 6",
+    "7106 781 6",
+    "7106 782 6",
+    "7106 783 6",
+    "7107 781 6",
+    "7107 782 6",
+    "7107 783 6",
+    "7108 781 6",
+    "7108 782 6",
+    "7108 783 6",
+    "7109 781 6",
+    "7109 782 6",
+    "7109 783 6",
+    "7105 784 6",
+    "7105 785 6",
+    "7106 784 6",
+    "7106 785 6",
+    "7107 784 6",
+    "7107 785 6",
+    "7108 784 6",
+    "7108 785 6",
+    "7109 784 6",
+    "7109 785 6",
+    "7108 868 0",
+    "7110 868 15",
+    "7110 868 19",
+    "7110 869 1",
+    "7111 866 0",
+    "7111 868 1"
+   ],
+   "ilshenar": [
+    "158 52 -28",
+    "159 52 -28",
+    "158 53 -28",
+    "231 44 -28",
+    "231 53 -28",
+    "245 44 -28",
+    "245 53 -28",
+    "299 26 -25"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 7111,
+  "desc": "scale shield",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "955 1484 1",
+    "6352 500 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9556,
+  "desc": "daemon sword",
+  "facets": {
+   "britannia_alt": 7
+  },
+  "placements": {
+   "britannia_alt": [
+    "688 1460 55",
+    "794 1862 26",
+    "1120 2892 45",
+    "1407 1774 54",
+    "1947 2187 0",
+    "2087 3378 34",
+    "5371 1189 5"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9557,
+  "desc": "ettin hammer",
+  "facets": {
+   "britannia_alt": 4,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1121 2897 41",
+    "1431 1839 44",
+    "1919 2181 0",
+    "1947 2187 2"
+   ],
+   "termur": [
+    "668 3430 18"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9558,
+  "desc": "liche's staff",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1115 2898 87"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9560,
+  "desc": "lizardman's spear",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "795 1861 26",
+    "952 1485 1",
+    "1426 1839 35",
+    "1947 2216 1"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9561,
+  "desc": "ogre's club",
+  "facets": {
+   "britannia_alt": 3,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "697 1493 63",
+    "1919 2189 0",
+    "2000 2439 5"
+   ],
+   "termur": [
+    "670 3430 18"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9563,
+  "desc": "ophidian bardiche",
+  "facets": {
+   "britannia_alt": 18
+  },
+  "placements": {
+   "britannia_alt": [
+    "1430 1840 35",
+    "1842 2234 0",
+    "1922 2186 0",
+    "1926 2196 0",
+    "1928 2183 0",
+    "1934 2193 0",
+    "1931 2199 2",
+    "1947 2186 1",
+    "1974 2444 5",
+    "1981 2440 5",
+    "1984 2442 5",
+    "1990 2504 0",
+    "2460 1852 -2",
+    "2466 1862 -2",
+    "2555 1792 -3",
+    "2561 1802 -3",
+    "2852 2029 -2",
+    "2858 2039 2"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9564,
+  "desc": "orc club",
+  "facets": {
+   "britannia_alt": 13
+  },
+  "placements": {
+   "britannia_alt": [
+    "963 2500 40",
+    "996 2493 40",
+    "1426 1840 35",
+    "1540 2292 5",
+    "1547 2301 15",
+    "1605 1861 24",
+    "5148 566 20",
+    "5496 1000 20",
+    "5521 949 21",
+    "5646 977 21",
+    "6954 1278 -18"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9569,
+  "desc": "terathan staff",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "658 3431 22"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9570,
+  "desc": "terathan spear",
+  "facets": {
+   "britannia_alt": 1,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1422 1840 35"
+   ],
+   "termur": [
+    "656 3431 22"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9573,
+  "desc": "troll maul",
+  "facets": {
+   "britannia_alt": 3,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1121 2890 41",
+    "1431 1840 42",
+    "1839 2246 0"
+   ],
+   "termur": [
+    "672 3430 18"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9575,
+  "desc": "orc lord battleaxe",
+  "facets": {
+   "britannia_alt": 21
+  },
+  "placements": {
+   "britannia_alt": [
+    "955 1485 1",
+    "954 2504 48",
+    "1123 2887 41",
+    "1430 1839 35",
+    "1439 1839 42",
+    "1534 2312 3",
+    "1543 2293 5",
+    "1543 2311 18",
+    "1607 1861 24",
+    "1840 2240 0",
+    "1926 2187 0",
+    "1947 2187 0",
+    "2458 1856 -2",
+    "2553 1796 -3",
+    "2850 2033 0",
+    "5525 945 21",
+    "5523 947 21",
+    "5622 981 21",
+    "5638 976 21"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9576,
+  "desc": "orc mage staff",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "954 2505 53",
+    "1557 2302 6",
+    "1603 1861 24",
+    "5599 976 27"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9577,
+  "desc": "bone mage staff",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1918 2189 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9581,
+  "desc": "magic staff",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1990 2452 5"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9584,
+  "desc": "hatchet",
+  "facets": {
+   "britannia_alt": 12
+  },
+  "placements": {
+   "britannia_alt": [
+    "1427 1839 44",
+    "1834 2250 0",
+    "1922 2187 0",
+    "1927 2193 0",
+    "1947 2187 0",
+    "1946 2221 0",
+    "1990 2508 0",
+    "1994 2509 0",
+    "2459 1862 -2",
+    "2554 1802 -3",
+    "2851 2039 0",
+    "5215 1406 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9585,
+  "desc": "horseman's bow",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "1126 2887 54",
+    "1834 2247 0",
+    "1947 2187 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9586,
+  "desc": "javelin",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1842 2238 0",
+    "1997 2507 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9591,
+  "desc": "naginata",
+  "facets": {
+   "britannia_alt": 13
+  },
+  "placements": {
+   "britannia_alt": [
+    "1439 1839 46",
+    "1832 2246 1",
+    "1927 2191 0",
+    "1933 2184 0",
+    "1991 2440 5",
+    "2001 2444 5",
+    "2459 1860 -2",
+    "2465 1853 -2",
+    "2554 1800 -3",
+    "2560 1793 -3",
+    "2851 2037 0",
+    "2857 2030 -2",
+    "5161 565 20"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9592,
+  "desc": "no-dachi",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1439 1838 42",
+    "1992 2512 0"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9594,
+  "desc": "spear",
+  "facets": {
+   "termur": 4
+  },
+  "placements": {
+   "termur": [
+    "520 1487 46",
+    "521 1490 46",
+    "684 2062 46",
+    "684 2063 46"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9595,
+  "desc": "spear",
+  "facets": {
+   "britannia_alt": 1,
+   "termur": 6
+  },
+  "placements": {
+   "britannia_alt": [
+    "1439 1840 44"
+   ],
+   "termur": [
+    "329 1832 6",
+    "329 1833 6",
+    "329 1833 6",
+    "413 1610 46",
+    "413 1612 46",
+    "661 1712 106"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9918,
+  "desc": "pike",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "699 1494 65",
+    "1438 1839 42"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9927,
+  "desc": "bladed staff",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "794 1868 26",
+    "1419 1839 55",
+    "1983 2462 5",
+    "6588 926 2"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9928,
+  "desc": "pike",
+  "facets": {
+   "britannia_alt": 6
+  },
+  "placements": {
+   "britannia_alt": [
+    "646 2012 32",
+    "1441 1734 18",
+    "1958 2499 0",
+    "1989 2460 5",
+    "2969 2667 11"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 9929,
+  "desc": "double bladed staff",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "1446 1734 25",
+    "2971 2667 12",
+    "6834 116 1"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 10222,
+  "desc": "Tessen",
+  "facets": {
+   "tokuno": 1
+  },
+  "placements": {
+   "tokuno": [
+    "1224 754 12"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 11560,
+  "desc": "Ornate Axe",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5366 1991 26"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16493,
+  "desc": "Dual Pointed Spear",
+  "facets": {
+   "termur": 5
+  },
+  "placements": {
+   "termur": [
+    "654 3400 13",
+    "672 3405 12",
+    "725 3424 -18",
+    "882 3495 -43",
+    "882 3496 -43"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16501,
+  "desc": "Gargish Talwar",
+  "facets": {
+   "termur": 3
+  },
+  "placements": {
+   "termur": [
+    "668 3400 14",
+    "666 3405 16",
+    "728 3428 -15"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16900,
+  "desc": "Large Plate Shield",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "621 3379 37"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16903,
+  "desc": "Gargish Wooden Shie",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "620 3388 37"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16904,
+  "desc": "Large Plate Shield",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "813 3571 -44"
+   ]
+  }
+ },
+ {
+  "layer": 2,
+  "layer_name": "Hand2",
+  "objtype": 16905,
+  "desc": "Medium Plate Shield",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "624 3439 37"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 5900,
+  "desc": "boots",
+  "facets": {
+   "britannia_alt": 7,
+   "malas": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "274 2599 0",
+    "1463 1851 38",
+    "1519 1812 25",
+    "5361 1993 43",
+    "6562 1264 0",
+    "6595 937 2"
+   ],
+   "malas": [
+    "905 588 -63",
+    "2075 1325 -73"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 5902,
+  "desc": "sandals",
+  "facets": {
+   "britannia_alt": 11
+  },
+  "placements": {
+   "britannia_alt": [
+    "1926 3144 10",
+    "3751 3277 2",
+    "3751 3278 2",
+    "3870 3398 25",
+    "6562 1262 0",
+    "6591 935 2",
+    "6839 73 1",
+    "6846 83 0"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 5904,
+  "desc": "shoes",
+  "facets": {
+   "britannia_alt": 10,
+   "malas": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1615 1734 6",
+    "5351 1992 40",
+    "5351 1992 41",
+    "5361 1995 43",
+    "5361 1995 44",
+    "6748 121 1",
+    "6768 124 1",
+    "6777 119 1",
+    "6853 100 1"
+   ],
+   "malas": [
+    "2075 1324 -74"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 9813,
+  "desc": "jester shoes",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "1011 635 11",
+    "5361 1996 43",
+    "5361 1996 44",
+    "5493 1074 4",
+    "6348 490 5"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 9814,
+  "desc": "jester shoes",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "6595 932 2"
+   ]
+  }
+ },
+ {
+  "layer": 3,
+  "layer_name": "Shoes",
+  "objtype": 9903,
+  "desc": "Arcane Thigh Boots",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "954 909 12",
+    "5491 1074 4"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 5423,
+  "desc": "short pants",
+  "facets": {
+   "britannia_alt": 4,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "852 440 45",
+    "1463 1849 40",
+    "1463 1849 41",
+    "3872 3399 25"
+   ],
+   "termur": [
+    "921 493 -10"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 9801,
+  "desc": "jester pants",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "920 494 -12"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 9802,
+  "desc": "jester pants",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1012 639 8"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 9809,
+  "desc": "ninja pants",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "920 493 -12"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 10197,
+  "desc": "Leather Haidate",
+  "facets": {
+   "tokuno": 1
+  },
+  "placements": {
+   "tokuno": [
+    "736 1307 33"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 10204,
+  "desc": "Leather Ninja Pants",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "5353 1987 46",
+    "5353 1987 47"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 16461,
+  "desc": "Gargoyle Armor Leat",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "868 3485 -43"
+   ]
+  }
+ },
+ {
+  "layer": 4,
+  "layer_name": "Pants",
+  "objtype": 16469,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "628 3424 37",
+    "1021 3879 -35"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 7934,
+  "desc": "fancy shirt",
+  "facets": {
+   "britannia_alt": 9,
+   "ilshenar": 1,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1010 638 8",
+    "3878 3429 2",
+    "5623 421 16",
+    "5813 416 8",
+    "6562 1263 2"
+   ],
+   "ilshenar": [
+    "886 607 -37"
+   ],
+   "termur": [
+    "920 497 -12"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9705,
+  "desc": "elite harness",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "948 911 30",
+    "1567 843 40"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9706,
+  "desc": "checkered shirt",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "3583 1529 41"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9707,
+  "desc": "checkered shirt",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "661 2027 33"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9823,
+  "desc": "shirt",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "3582 1529 41",
+    "3724 3268 12",
+    "3724 3270 12",
+    "3884 3423 12",
+    "3884 3425 12"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9824,
+  "desc": "shirt",
+  "facets": {
+   "britannia_alt": 8
+  },
+  "placements": {
+   "britannia_alt": [
+    "3737 3250 12",
+    "3740 3250 12",
+    "3769 3277 12",
+    "3772 3277 12",
+    "3877 3430 9",
+    "3880 3430 9"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9825,
+  "desc": "shirt",
+  "facets": {
+   "britannia_alt": 9
+  },
+  "placements": {
+   "britannia_alt": [
+    "3724 3269 11",
+    "3724 3272 11",
+    "3724 3273 11",
+    "3884 3424 11",
+    "3884 3427 11",
+    "5822 416 8"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9826,
+  "desc": "shirt",
+  "facets": {
+   "britannia_alt": 11
+  },
+  "placements": {
+   "britannia_alt": [
+    "3738 3250 11",
+    "3741 3250 11",
+    "3742 3250 11",
+    "3770 3277 11",
+    "3773 3277 11",
+    "3774 3277 11",
+    "3878 3430 8",
+    "3881 3430 8"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9827,
+  "desc": "shirt",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "920 496 -12"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9829,
+  "desc": "shirt",
+  "facets": {
+   "britannia_alt": 4,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5823 416 8"
+   ],
+   "termur": [
+    "1006 3972 -33"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9830,
+  "desc": "shirt",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "920 495 -12"
+   ]
+  }
+ },
+ {
+  "layer": 5,
+  "layer_name": "Shirt",
+  "objtype": 9831,
+  "desc": "ninja shirt",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "939 494 -6"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 8966,
+  "desc": "flower garland",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "3881 3356 11"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 9068,
+  "desc": "kabuto",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "795 1866 26",
+    "6173 320 6",
+    "6725 3297 25"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 9797,
+  "desc": "dragon helm",
+  "facets": {
+   "britannia_alt": 7
+  },
+  "placements": {
+   "britannia_alt": [
+    "1378 1772 5",
+    "1406 1776 54",
+    "1471 1729 38",
+    "3534 1453 39",
+    "3660 900 4",
+    "5634 402 16"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 9798,
+  "desc": "dragon helm",
+  "facets": {
+   "britannia_alt": 6
+  },
+  "placements": {
+   "britannia_alt": [
+    "955 1483 7",
+    "1116 2884 41",
+    "6588 926 6",
+    "6588 936 5"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 9886,
+  "desc": "robin hood cap",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1963 2441 5"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 9891,
+  "desc": "ninja mask",
+  "facets": {
+   "britannia_alt": 3
+  },
+  "placements": {
+   "britannia_alt": [
+    "5352 1987 46",
+    "5352 1987 47",
+    "5352 1987 48"
+   ]
+  }
+ },
+ {
+  "layer": 6,
+  "layer_name": "Helm",
+  "objtype": 11025,
+  "desc": "Helm of Spiritualit",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "6821 119 1"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 9795,
+  "desc": "dragon gloves",
+  "facets": {
+   "britannia_alt": 8
+  },
+  "placements": {
+   "britannia_alt": [
+    "955 1481 7",
+    "1118 2885 41",
+    "1406 1776 54",
+    "1471 1729 38",
+    "3534 1455 32",
+    "3659 898 5",
+    "5634 406 16"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 9904,
+  "desc": "Arcane Gloves",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "953 909 13",
+    "5356 1997 46",
+    "5356 1997 47",
+    "5490 1073 4"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 10205,
+  "desc": "Leather Ninja Mitts",
+  "facets": {
+   "britannia_alt": 3
+  },
+  "placements": {
+   "britannia_alt": [
+    "5351 1987 46",
+    "5351 1987 47",
+    "5351 1987 48"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16459,
+  "desc": "Gargoyle Armor Leat",
+  "facets": {
+   "termur": 3
+  },
+  "placements": {
+   "termur": [
+    "627 3434 37",
+    "881 3491 -43",
+    "1018 3883 -36"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16460,
+  "desc": "Gargoyle Armor Leat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "627 3409 37",
+    "903 3478 -43"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16467,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "67 799 84",
+    "1021 3875 -37"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16468,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "1022 3875 -37"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16475,
+  "desc": "Gargoyle Armor Ston",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "738 3568 -3",
+    "822 3567 -43"
+   ]
+  }
+ },
+ {
+  "layer": 7,
+  "layer_name": "Gloves",
+  "objtype": 16476,
+  "desc": "Gargoyle Armor Ston",
+  "facets": {
+   "termur": 3
+  },
+  "placements": {
+   "termur": [
+    "625 3389 37",
+    "767 3384 -97",
+    "903 3493 -43"
+   ]
+  }
+ },
+ {
+  "layer": 9,
+  "layer_name": "Talisman",
+  "objtype": 4246,
+  "desc": "Talisman",
+  "facets": {
+   "britannia_alt": 1,
+   "termur": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "6311 232 0"
+   ],
+   "termur": [
+    "663 3526 43"
+   ]
+  }
+ },
+ {
+  "layer": 9,
+  "layer_name": "Talisman",
+  "objtype": 12122,
+  "desc": "Talisman",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "672 3525 42"
+   ]
+  }
+ },
+ {
+  "layer": 10,
+  "layer_name": "Neck",
+  "objtype": 19723,
+  "desc": "Gargish Necklace",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "1402 1886 56"
+   ]
+  }
+ },
+ {
+  "layer": 10,
+  "layer_name": "Neck",
+  "objtype": 41801,
+  "desc": "octopus_necklace_hu",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1397 1884 56"
+   ]
+  }
+ },
+ {
+  "layer": 10,
+  "layer_name": "Neck",
+  "objtype": 41802,
+  "desc": "octopus_necklace_ga",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1398 1884 56"
+   ]
+  }
+ },
+ {
+  "layer": 12,
+  "layer_name": "Waist",
+  "objtype": 5436,
+  "desc": "half apron",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "921 498 -9"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 9794,
+  "desc": "dragon breastplate",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "1116 2883 41"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 10182,
+  "desc": "Leather Do",
+  "facets": {
+   "tokuno": 1
+  },
+  "placements": {
+   "tokuno": [
+    "736 1307 36"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 11017,
+  "desc": "Breastplate of Jus",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "6801 121 17"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 16457,
+  "desc": "Gargoyle Armor Leat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "867 3490 -43",
+    "1018 3882 -37"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 16465,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "624 3379 37",
+    "1018 3881 -37"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 16466,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "821 3552 -43",
+    "1020 3875 -37"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 16473,
+  "desc": "Gargoyle Armor Ston",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "737 3568 -3"
+   ]
+  }
+ },
+ {
+  "layer": 13,
+  "layer_name": "Chest",
+  "objtype": 16474,
+  "desc": "Gargoyle Armor Ston",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "775 3384 -100"
+   ]
+  }
+ },
+ {
+  "layer": 17,
+  "layer_name": "Tunic",
+  "objtype": 5442,
+  "desc": "body sash",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "921 496 -10"
+   ]
+  }
+ },
+ {
+  "layer": 19,
+  "layer_name": "Arms",
+  "objtype": 16464,
+  "desc": "Gargoyle Armor Plat",
+  "facets": {
+   "termur": 2
+  },
+  "placements": {
+   "termur": [
+    "47 797 84",
+    "626 3434 37"
+   ]
+  }
+ },
+ {
+  "layer": 19,
+  "layer_name": "Arms",
+  "objtype": 16472,
+  "desc": "Gargoyle Armor Ston",
+  "facets": {
+   "termur": 3
+  },
+  "placements": {
+   "termur": [
+    "736 3568 -3",
+    "902 3486 -43",
+    "1013 3885 -34"
+   ]
+  }
+ },
+ {
+  "layer": 20,
+  "layer_name": "Cape",
+  "objtype": 8970,
+  "desc": "fur cape",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "5493 1081 4",
+    "5872 435 8"
+   ]
+  }
+ },
+ {
+  "layer": 20,
+  "layer_name": "Cape",
+  "objtype": 9901,
+  "desc": "Arcane Cloak",
+  "facets": {
+   "britannia_alt": 3
+  },
+  "placements": {
+   "britannia_alt": [
+    "952 909 9",
+    "5356 1996 46",
+    "5491 1073 4"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 7936,
+  "desc": "fancy dress",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "662 2027 34",
+    "1010 640 8",
+    "5491 1081 4"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 8974,
+  "desc": "gilded dress",
+  "facets": {
+   "britannia_alt": 1
+  },
+  "placements": {
+   "britannia_alt": [
+    "5494 1073 4"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9713,
+  "desc": "death shroud",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "656 3417 46"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9855,
+  "desc": "long dress",
+  "facets": {
+   "britannia_alt": 4
+  },
+  "placements": {
+   "britannia_alt": [
+    "3724 3271 12",
+    "3884 3426 12",
+    "6591 935 1"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9856,
+  "desc": "long dress",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "3739 3250 13",
+    "3771 3277 13",
+    "3879 3430 10",
+    "5427 1151 4"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9860,
+  "desc": "hooded shroud",
+  "facets": {
+   "malas": 1
+  },
+  "placements": {
+   "malas": [
+    "159 618 -1"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9861,
+  "desc": "death shroud",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "1067 1198 -42"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9862,
+  "desc": "death shroud",
+  "facets": {
+   "termur": 1
+  },
+  "placements": {
+   "termur": [
+    "939 493 -6"
+   ]
+  }
+ },
+ {
+  "layer": 22,
+  "layer_name": "Robe",
+  "objtype": 9902,
+  "desc": "Arcane Robe",
+  "facets": {
+   "britannia_alt": 2
+  },
+  "placements": {
+   "britannia_alt": [
+    "954 909 9",
+    "5492 1073 4"
+   ]
+  }
+ },
+ {
+  "layer": 23,
+  "layer_name": "Skirt",
+  "objtype": 5432,
+  "desc": "kilt",
+  "facets": {
+   "britannia_alt": 9
+  },
+  "placements": {
+   "britannia_alt": [
+    "1464 1844 42",
+    "1464 1844 43",
+    "1464 1844 44",
+    "1464 1844 45",
+    "5356 1999 46",
+    "5815 416 8"
+   ]
+  }
+ },
+ {
+  "layer": 23,
+  "layer_name": "Skirt",
+  "objtype": 8971,
+  "desc": "fur surong",
+  "facets": {
+   "britannia_alt": 5
+  },
+  "placements": {
+   "britannia_alt": [
+    "1464 1843 80",
+    "5872 434 8"
+   ]
+  }
+ },
+ {
+  "layer": 24,
+  "layer_name": "Legs",
+  "objtype": 9799,
+  "desc": "dragon leggings",
+  "facets": {
+   "britannia_alt": 7
+  },
+  "placements": {
+   "britannia_alt": [
+    "1121 2885 41",
+    "1378 1772 5",
+    "1407 1775 54",
+    "1471 1727 38",
+    "3534 1454 32",
+    "3657 899 0"
+   ]
+  }
+ }
+]

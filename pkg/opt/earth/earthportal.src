@@ -67,7 +67,7 @@ program cast_earth_portal( caster )
 		SendSysMessage( caster, "You can't reach that." );
 		EraseObjProperty( caster , "#Casting" );
 		return 0;
-	elseif( cast_on.objtype != UOBJ_RUNE && cast_on.objtype != 0x7100 )
+	elseif( cast_on.objtype != UOBJ_RUNE && cast_on.objtype != 0x7100 && cast_on.objtype != UOBJ_RUNIC_ATLAS_EW && cast_on.objtype != UOBJ_RUNIC_ATLAS_NS )
 		SendSysmessage( caster, "You can only cast that on a recall rune or a runebook!" );
 		EraseObjProperty( caster , "#Casting" );
 		return 0;
@@ -87,7 +87,7 @@ program cast_earth_portal( caster )
 	
 	if( IsForbiddenAreaToGateTo( caster, tox, toy, torealm ) )
 		SendSysMessage(caster, "The destination is a magic place with protection.");
-		if( cast_on.objtype != 0x7100 )
+		if( cast_on.objtype != 0x7100 && cast_on.objtype != UOBJ_RUNIC_ATLAS_EW && cast_on.objtype != UOBJ_RUNIC_ATLAS_NS )
 			DestroyItem( cast_on );
 		endif
 		return;
