@@ -10,6 +10,7 @@ use os;
 // include ":classes:classes";
 include "include/classes";
 include "include/attributes";
+include "include/string";
 //include ":rituals:rituals";
 include "../pkg/opt/rituals/include/rituals";
 
