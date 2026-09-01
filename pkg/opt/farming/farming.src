@@ -6,7 +6,7 @@ use attributes;
 include "include/client";
 include "include/objtype";
 include "include/utility";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/random";
 
 Const UACTION_CHOP := 0x0D;

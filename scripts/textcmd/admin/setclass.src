@@ -3,7 +3,7 @@ use uo;
 use os;
 use polsys;
 
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include "include/classes";
 include "include/attributes";
 

@@ -13,7 +13,7 @@ use os;
 use cfgfile;
 
 include "food";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 Const SOUND_EFFECT_SPLASH	:= 0x0026;
 Const SOUND_EFFECT_MOO		:= 0x007a;

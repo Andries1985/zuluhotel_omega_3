@@ -8,7 +8,7 @@ include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/npccast";
 include "include/randname";
 include "include/string";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 //include "include/rituals";
 include "include/client";
 include "include/spelldata";
@@ -183,7 +183,6 @@ function Fight( opponent )
 				following := ev.target;
 			EVID_ALL_GUARD_CMD:
 				guarding := ev.target;
-				following := ev.target;
 				guardinghp := GetHP(ev.target);
 				PrintTextAbove(me,"*guarding " + guarding.name + "*");
 			SYSEVENT_SPEECH:
@@ -959,7 +958,6 @@ function MainAILoop()
 					autonomous_defense := 0;
 					ClearAttackQueues();
 					guarding := ev.target;
-					following := ev.target;
 					guardinghp := GetHP(ev.target);
 					PrintTextAbove(me,"*guarding " + guarding.name + "*");
 			endcase
@@ -1072,10 +1070,6 @@ function MainAILoop()
 endfunction
 
 function Guard()
-
-	if (guarding)
-		following := guarding;
-	endif
 
 	if (guarding)
 		if (!guardinghp)

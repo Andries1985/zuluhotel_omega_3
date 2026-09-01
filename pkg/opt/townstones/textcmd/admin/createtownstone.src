@@ -1,11 +1,13 @@
 // Synopsis: Create a new town stone from City regions without an active stone
 use uo;
 use os;
+use basic;
 use cfgfile;
 use datafile;
 
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":townstone:tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const BTN_PREV := 7001;
@@ -66,14 +68,7 @@ program textcmd_createtownstone(who)
 endprogram
 
 
-function OpenTownstoneDataFile()
-	var df := OpenDataFile(TOWNSTONE_DATAFILE);
-	if(!df)
-		CreateDataFile(TOWNSTONE_DATAFILE, flags := DF_KEYTYPE_STRING);
-		df := OpenDataFile(TOWNSTONE_DATAFILE);
-	endif
-	return df;
-endfunction
+// OpenTownstoneDataFile moved to tstone.inc (2026-09-01)
 
 
 function FindTownIndexByName(townnames, region_name)
@@ -188,47 +183,7 @@ function HasLiveTownstoneConflict(region_name, town_index, townnames)
 endfunction
 
 
-function GetRegionRange(regions_cfg, region_name)
-	if(!regions_cfg or !region_name)
-		return {};
-	endif
-
-	var elem := regions_cfg[region_name];
-	if(!elem)
-		elem := FindConfigElem(regions_cfg, region_name);
-	endif
-	if(!elem)
-		return {};
-	endif
-
-	var coords := GetConfigStringArray(elem, "Range");
-	if(!coords or coords.size() < 4)
-		return {};
-	endif
-
-	return { CInt(coords[1]), CInt(coords[2]), CInt(coords[3]), CInt(coords[4]) };
-endfunction
-
-
-function IsPointInRange(x, y, range)
-	if(!range or range.size() < 4)
-		return 0;
-	endif
-
-	return (x >= range[1] and x <= range[3] and y >= range[2] and y <= range[4]);
-endfunction
-
-
-function IsRangeInsideRange(inner_range, outer_range)
-	if(!inner_range or inner_range.size() < 4 or !outer_range or outer_range.size() < 4)
-		return 0;
-	endif
-
-	return (inner_range[1] >= outer_range[1] and
-			inner_range[2] >= outer_range[2] and
-			inner_range[3] <= outer_range[3] and
-			inner_range[4] <= outer_range[4]);
-endfunction
+// GetRegionRange / IsPointInRange / IsRangeInsideRange moved to tstone.inc (2026-09-01)
 
 
 function UpdateTownstoneRegionEntry(region_name, town_index, stone_serial)

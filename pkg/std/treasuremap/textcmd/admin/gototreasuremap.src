@@ -5,7 +5,7 @@ use polsys;
 use cfgfile;
 
 include ":staff:staff";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 
 program goto_treasuremap( who )
 

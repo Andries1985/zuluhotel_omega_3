@@ -3,8 +3,8 @@ use uo;
 use os;
 use guilds;
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include ":guilds:include/guildconstants";
 include ":guilds:include/guildchat";
 

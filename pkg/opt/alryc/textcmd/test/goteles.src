@@ -3,7 +3,7 @@ use uo;
 use os;
 
 include "include/teleporters";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 program gototele(who)
 	var i := 0;

@@ -86,6 +86,10 @@ function PerformRitual( mobile, spell_id )
                 return 0;
         endif
 
+        if( RitualIsAlreadyMaxed( mobile, spell_id, item ))
+                return 0;
+        endif
+
         var gate_info := GetRitualGateInfo( spell_id, item );
         if( mobile.cmdlevel < 4 && GetEffectiveSkill( mobile, SKILLID_MAGERY ) < gate_info[1] )
                 SendSysMessage( mobile, "Your skill with Magery isn't strong enough to attempt this ritual." );
@@ -952,6 +956,72 @@ function RITUAL_EndCircleSurvivingItem( mobile, item, kill_pct )
         endif
 
         return 1;
+endfunction
+
+// 2026-09-01: previously each ritual's own item cap was only checked in its
+// ApplyRitualEffect(), which runs after PerformRitual() has already spent
+// the mana, drawn the circle, and resolved the Gate 2 risk roll -- so
+// casting a tiered ritual on an already-maxed item could still destroy the
+// item and kill the caster via a Catastrophic failure for zero possible
+// benefit. Called from PerformRitual() right after the item is targeted,
+// before any mana/circle cost. Mirrors each ritual's own existing cap
+// condition and message (still the authoritative check inside
+// ApplyRitualEffect, unchanged, as a safety net) rather than replacing it
+// with a new formula. Rituals whose outcome depends on an interactive
+// choice (which stat/element to bind) only reject here when every option is
+// already maxed; if any option is still open, this passes through and lets
+// ApplyRitualEffect's own logic handle the choice exactly as before.
+function RitualIsAlreadyMaxed( mobile, spell_id, item )
+
+        var item_desc := TruncateArticle( item.desc );
+
+        case( spell_id )
+                133: // Blood Seeking - dmg_mod cap
+                        if( CInt( item.dmg_mod ) >= 30 )
+                                SendSysMessage( mobile, "There's already a stronger enchantment on this item." );
+                                return 1;
+                        endif
+                139: // Hardening - ar_mod cap
+                        if( CInt( item.ar_mod ) >= 6 )
+                                SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                                return 1;
+                        endif
+                149: // Resilience - maxhp_mod cap
+                        if( CInt( item.maxhp_mod ) >= 30 )
+                                SendSysMessage( mobile, "There's already have a more powerfull enchantment on "+item_desc+"." );
+                                return 1;
+                        endif
+                154: // Vital Infusion - only reject if the item's already-bound stat (if any) is capped
+                        if( (CInt( GetObjProperty( item, "str" )) >= 12) ||
+                            (CInt( GetObjProperty( item, "int" )) >= 12) ||
+                            (CInt( GetObjProperty( item, "dex" )) >= 12) )
+                                SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                                return 1;
+                        endif
+                137: // Elemental Ward - only reject if the item's already-bound element (if any) is at 95
+                        if( Max( Max( CInt( GetObjProperty( item, "FireProtection" )), CInt( GetObjProperty( item, "WaterProtection" ))),
+                                 Max( CInt( GetObjProperty( item, "AirProtection" )), CInt( GetObjProperty( item, "EarthProtection" )))) >= 95 )
+                                SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                                return 1;
+                        endif
+                144: // Planard Ward - same, Holy/NecroProtection
+                        if( Max( CInt( GetObjProperty( item, "HolyProtection" )), CInt( GetObjProperty( item, "NecroProtection" ))) >= 95 )
+                                SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
+                                return 1;
+                        endif
+                147: // Quick Healing - single-shot; any existing value blocks a recast
+                        if( GetObjProperty( item, "HealingIncrease" ))
+                                SendSysMessage( mobile, "This "+item_desc+" already have a powerful enchantment on it." );
+                                return 1;
+                        endif
+                143: // Physical Ward - capped at the caster's own current class level
+                        if( CInt( GetObjProperty( item, "PhysicalProtection" )) >= GetClasseLevel( mobile ))
+                                SendSysMessage( mobile, "This "+item_desc+" already have a more powerful enchantment on it." );
+                                return 1;
+                        endif
+        endcase
+
+        return 0;
 endfunction
 
 // Gate 1 + Gate 2 + consequence-rung lookup, computed per-ritual so a blank

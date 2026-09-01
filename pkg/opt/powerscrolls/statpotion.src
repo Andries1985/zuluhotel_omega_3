@@ -3,7 +3,7 @@ use uo;
 include "include/random";
 include "include/attributes";
 include "include/itemutil";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 var newStatCap := 1500;  //This equals 150 statcap
 

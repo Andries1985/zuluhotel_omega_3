@@ -28,6 +28,7 @@ program setbooktospawn(who)
 	if(shard_library.errortext)
 		LogToFile("::log/sysbook.log", "[removefromlibrary.ecl]: Datastore file error: " + shard_library.errortext, LOG_DATETIME);
 		Print("Sysbook error - check sysbook.log");
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	// Build the list of titles that are not currently set to spawn for the selection gump.
@@ -44,6 +45,7 @@ program setbooktospawn(who)
 
 	if(selected_books.errortext == "No option was selected.")
 		SendSysMessage(who, "No books were selected.", color := 33);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 
@@ -57,5 +59,6 @@ program setbooktospawn(who)
 		endforeach
 	endforeach		// ...selected_title in selected_books
 	SendSysMessage(who, "Finnished setting the selected books to spawn in bookshelves.", color := 66);
+	UnloadDataFile("shard_library");
 
 endprogram

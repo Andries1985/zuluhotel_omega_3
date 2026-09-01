@@ -1428,13 +1428,25 @@ function SmartAoE( caster, victims)
 			to_remove.append(i);
 		elseif (( !victims[i].isa(POLCLASS_NPC)) && victims[i].master == caster )
 			to_remove.append(i);
+		elseif (IsInSafeArea(victims[i]))
+			to_remove.append(i);
 		endif
 		if (!caster.isa(POLCLASS_NPC) && !caster.cmdlevel && !victims[i].isa(POLCLASS_NPC))
 			if((caster_noPK) || (victim_noPK) || (!same_faction) || (same_CWcolor))
 				if (DEBUG_MODE)
 					SendSysMessage( caster, "erased", color :=34);
 				endif
-				to_remove.append(i);
+				// This is a second, independent exclusion check from the
+				// party/master/safe-area chain above -- a victim can match both
+				// (e.g. a party member also standing in a noPK-flagged area).
+				// Guard against appending the same index twice, since the
+				// reverse-order erase below assumes each index appears once;
+				// a duplicate would erase two different array slots for what
+				// was meant to be one victim, incorrectly stripping an extra,
+				// unrelated victim from the AoE.
+				if(!(i in to_remove))
+					to_remove.append(i);
+				endif
 			endif
 		endif
 	endfor

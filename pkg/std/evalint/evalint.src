@@ -11,8 +11,8 @@ include "include/attributes";
 include "include/client";
 include "include/skillpoints";
 include "include/classes";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 
 program evalint( character )
    

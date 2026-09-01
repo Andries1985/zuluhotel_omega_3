@@ -30,10 +30,10 @@ program drink_white (character, potion)
 			var rank;
 			if ( base_str == 1 )
 				rank := 0;
-			elseif ( base_str == 2 || base_str == 4 )
+			elseif ( base_str == 2 )
 				rank := 1 + btm;
 			else
-				rank := 4 + btm;
+				rank := 2 + btm;
 			endif
 			var str_gain  := rank * 10 + 5;
 			var duration  := ( rank + 1 ) * 480;

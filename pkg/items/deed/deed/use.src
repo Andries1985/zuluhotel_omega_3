@@ -9,7 +9,7 @@ include ":itemutils:itemUtil";
 include "include/string";
 include ":containers:containers";
 include "include/housing";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include ":keys:key";
 
 const CANCEL_ID := 999;

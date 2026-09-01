@@ -12,7 +12,7 @@ use os;
 use cfgfile;
 
 include ":containers:storageAreas";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include ":keys:key";
 include ":statichousing:gumpMessage";
 include ":statichousing:include/settings";

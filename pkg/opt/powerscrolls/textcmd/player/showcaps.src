@@ -3,15 +3,15 @@ use uo;
 use os;
 
 include "include/client";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/spelldata";
 
 use uo;
 use os;
 use cfgfile;
 
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include "include/attributes";
 include "include/classes";
 include "include/client";

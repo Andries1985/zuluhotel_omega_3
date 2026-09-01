@@ -31,11 +31,20 @@ program textcmd_householdcap( who, cap_text )
 	endif
 
 	if( !cap_text )
-		cap_text := SendTextEntryGump( who, "Enter household cap (minimum 1).", 4 );
+		// 3rd positional arg is "cancel" (TE_CANCEL_ENABLE/DISABLE), not
+		// "maximum" -- the bare 4 used to land there instead of the intended
+		// 4-character input cap, which was silently falling back to the
+		// default max of 40.
+		cap_text := SendTextEntryGump( who, "Enter household cap (minimum 1).", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 4 );
+	endif
+
+	if( !cap_text || cap_text.errortext )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
 	endif
 
 	var cap := CInt( cap_text );
-	if( cap < 1 )
+	if( cap.errortext || cap < 1 )
 		SendSysMessage( who, "Invalid cap value. Must be >= 1." );
 		return 0;
 	endif

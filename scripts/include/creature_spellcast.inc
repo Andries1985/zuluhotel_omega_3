@@ -25,7 +25,7 @@ use cfgfile;
 include "include/client";
 include "include/dotempmods";
 include "include/tempmod";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 Const REAGENT_START := 0x0f84;
 Const REAGENT_STOP := 0x0f8d;

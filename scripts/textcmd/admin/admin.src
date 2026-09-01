@@ -10,8 +10,8 @@ use guilds;
 
 include "include/attributes";
 include "include/findcity";
-include ":gumps:gumps_ex";
-include ":gumps:yesno";
+include ":mdgumps:gumps_ex";
+include ":mdgumps:yesNo";
 include "include/constants/locations";
 
 var layout := {

@@ -99,7 +99,7 @@ program StaticHouseDestruction(sgn)
 			elseif((!thing.movable) && (!thing.isa(POLCLASS_DOOR)) && (!thing.IsStaticHouseSign()))
 				if(thing.objtype == 0x2a390) // GuildStone
 					thing.movable := 1;
-					MoveObjectToLocation(thing, sign.x, sign.y, sign.z, MOVEOBJECT_FORCELOCATION);
+					MoveObjectToLocation(thing, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
 					thing.movable := 0;
 				endif
 			endif

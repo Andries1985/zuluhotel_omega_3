@@ -4,7 +4,7 @@ use uo;
 use polsys;
 use cfgfile;
 
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 
 program textcmd_commands(who)
 

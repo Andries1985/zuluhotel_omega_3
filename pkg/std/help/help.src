@@ -4,7 +4,7 @@ use uo;
 use os;
 use boat;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
 include "include/dotempmods";

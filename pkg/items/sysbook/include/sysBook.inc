@@ -43,7 +43,11 @@ function RetrieveOrInitShardLibrary()
 		Print(shard_library.errortext);
 		shard_library := CreateDataFile("shard_library", DF_KEYTYPE_INTEGER);
 	endif
-	UnloadDataFile("shard_library");
+	// Unloading here (before the caller ever uses the returned handle)
+	// inverted the "open -> use -> unload last" convention every other
+	// datafile consumer in this repo follows. Callers now unload it
+	// themselves once they're done, matching RetrieveOrInitBookshelfDB()'s
+	// correct sibling pattern.
 	return shard_library;
 endfunction
 

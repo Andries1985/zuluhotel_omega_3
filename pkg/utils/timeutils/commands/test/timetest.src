@@ -1,3 +1,4 @@
+// Synopsis: Test StrFormatTime() by entering a timestamp and format string
 /* $Id: timetest.src 469 2006-06-27 15:00:43Z austinheilman $
  *
  * Note:
@@ -9,8 +10,8 @@
 use uo;
 use util;
 
-include ":gumps:gumpprompt";
-include ":gumps:requestgump";
+include ":mdgumps:gumpPrompt";
+include ":mdgumps:requestGump";
 
 program Command_TimeTest(mobile)
 	var time_stamp := RequestGump(mobile, "Enter time stamp", "Unix Epoch Time", POLCore().systime, CANCEL_BTN_ON);

@@ -4,7 +4,7 @@ use datafile;
 
 /*
  *
- * GFOpenCacheDatafile( path:=":gumps:gumps" )
+ * GFOpenCacheDatafile( path:=":mdgumps:include/gumps" )
  *
  * Parameters:
  * path - String name to a datafile.
@@ -198,7 +198,7 @@ endfunction
  * GFListCachedGumps( datafile )
  *
  * Parameters:
- * datafile - datafile_ref or string name to datafile path, default ':gumps:gumps'.
+ * datafile - datafile_ref or string name to datafile path, default ':mdgumps:include/gumps'.
  *
  * Purpose:
  * Returns a dictionary containing datafile elem names as

@@ -4,8 +4,8 @@ use os;
 use cfgfile;
 use polsys;
 
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 
 var house_itemdesc_cfg := ReadConfigFile(":house:itemdesc");

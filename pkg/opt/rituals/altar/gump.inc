@@ -27,9 +27,10 @@ const RA_OFFER_OFFSET := 100;
 // if a future ritual ever needs more than one.
 const RA_QUEST_OBJ_INDEX := 1;
 
-// Small local name lookup instead of pulling in :omegacache: (which drags
-// the OLD :gumps: package into scope and collides with :mdgumps:, already
-// used here) -- add a case here as new reagents get used by future altars.
+// Small local name lookup instead of pulling in :omegacache: (which pulls in
+// :mdgumps:gumps/gumps_ex, already used here, and a second include would be
+// a duplicate-function compile error) -- add a case here as new reagents get
+// used by future altars.
 function RitualAltar_ReagentName(objtype)
 
 	case(CInt(objtype))

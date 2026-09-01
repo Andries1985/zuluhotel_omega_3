@@ -345,6 +345,16 @@ function DryDock( byref mobile, boat )
 		endif
 		SleepMS(2);
 	endforeach
+	// Row Boats have no hold by design (GetBoatHolds returns {} for them), so
+	// the loop above never finds a LockID for them - fall back to the
+	// rope's own LockID, which GetBoatLockId() reads regardless of ship
+	// family, specifically for this hold-less case.
+	if(!lock_ids.size())
+		var rope_lockid := GetBoatLockId(boat);
+		if(rope_lockid)
+			lock_ids.append(rope_lockid);
+		endif
+	endif
 	var destroyed_keys := KP_DestroyOwnedKeysForLockIDs(mobile, CP_DEFAULT_AREA, lock_ids);
 	if(!destroyed_keys)
 		SysLog("Error --> :boat/multi/listener.src - Could not find key for boat ser# " + Cstr(boat.serial));

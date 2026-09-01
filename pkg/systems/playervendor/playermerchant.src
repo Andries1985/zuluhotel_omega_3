@@ -11,7 +11,7 @@ include "include/objtype";
 include "include/eventid";
 include "include/utility";
 include "include/randname";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/myutil";
 include "include/npcboosts";
 include "include/escrow";

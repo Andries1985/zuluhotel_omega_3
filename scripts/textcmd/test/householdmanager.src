@@ -2,8 +2,8 @@
 use uo;
 
 include ":accounts:accounts";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 const BTN_CREATE_NEW := 10;
 const BTN_CLEAR_HOUSEHOLD := 20;
@@ -40,6 +40,10 @@ program textcmd_householdmanager( who )
 
 	var keys := store.Keys();
 	var result := HouseholdManagerGump( who, targ, info, store, keys );
+	// store's last use is inside HouseholdManagerGump above (store isn't
+	// touched again below this point, only the already-extracted keys array
+	// is) -- unload it here now that the gump wait is over.
+	UnloadDataFile( "AccountsHouseholds" );
 	if( !result || !result[0] )
 		SendSysMessage( who, "Cancelled." );
 		return 0;
@@ -166,6 +170,13 @@ function HouseholdManagerGump( who, targ, info, store, keys )
 		perpage := perpage - 1;
 	endfor
 
+	// Reset to the always-visible page 0 before adding the footer controls --
+	// the loop above may have paged forward (GFPage(gump, page+1)) if there
+	// are more than 20 households, and content added after that only shows
+	// on whichever page was active when it was added. Without this, these
+	// two buttons only worked on the last page once the list grew past 20
+	// entries.
+	GFPage( gump, 0 );
 	GFResizePic( gump, 34, 588, 9200, 712, 34 );
 	GFTextLine( gump, 54, 596, 900, "Create New Household" );
 	GFAddButton( gump, 210, 592, 4023, 4024, GF_CLOSE_BTN, BTN_CREATE_NEW );

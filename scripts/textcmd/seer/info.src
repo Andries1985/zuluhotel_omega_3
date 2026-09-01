@@ -14,8 +14,8 @@ use guilds;
 
 include "include/attributes";
 //include "util/bank";
-include ":gumps:yesno";
-include ":gumps:gumps_ex";
+include ":mdgumps:yesNo";
+include ":mdgumps:gumps_ex";
 include "include/math";
 include ":staff:include/staff";
 include "include/constants/locations";

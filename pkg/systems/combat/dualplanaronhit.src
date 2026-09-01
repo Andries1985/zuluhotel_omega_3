@@ -22,94 +22,94 @@ program dualplanaronhit( parms )
 	var rawdamage	 := parms[6];
 	
 	var chance := GetObjProperty( armor , "ChanceOfEffect" );
-	if(RandomDiceStr("1d100") <= chance)
 
+	var targ;
+	if( GetObjProperty( armor , "Cursed" ) )
+		targ := defender;
+	else
+		targ := attacker;
+	endif
 
+	// The special paralyze/astral-storm effect only procs at ChanceOfEffect, and only
+	// if it isn't already active on the target. Physical damage below always applies
+	// regardless, matching every other on-hit script's convention.
+	var proc := (RandomDiceStr("1d100") <= chance) && (GetObjProperty( targ , "Windsbreath" ) != 1);
 
-		var targ;
-		if( GetObjProperty( armor , "Cursed" ) )
-			targ := defender;
-		else
-			targ := attacker;
-		endif
-
-		if ( GetObjProperty( targ , "Windsbreath" ) == 1)
-			return 0;
-		endif
-
-		SetObjProperty( targ , "Windsbreath" , 1 );
-
-	
-	if( basedamage != rawdamage )
-		rawdamage := rawdamage - 15;
-		if( rawdamage < 1 )
-			rawdamage := 1;
+	if(proc)
+		if( basedamage != rawdamage )
+			rawdamage := rawdamage - 15;
+			if( rawdamage < 1 )
+				rawdamage := 1;
+			endif
 		endif
 	endif
 	if(DEBUG_MODE)
             PrintTextAbovePrivate( defender , "I'm dealing this much physical damage: " +rawdamage, defender );
 	endif
 	ApplyTheDamage( defender , attacker , rawdamage );
-	
-	var wasfrozen := 0;
-	if (targ.frozen == 1)
-		wasfrozen := 1;
-	endif
-	PlaySoundEffect( targ , SFX_SPELL_ASTRAL_STORM );
-	var circle := 5;
 
-	var holyprot := CInt(GetObjProperty(targ, "HolyProtection"));
-	if (holyprot < 0)
-		holyprot := 0;
-	elseif (holyprot > 95)
-		holyprot := 95;
-	endif
+	if(proc)
+		SetObjProperty( targ , "Windsbreath" , 1 );
 
-	var freeaction := GetObjProperty(targ, "FreeAction");
-	var duration;
-	if (freeaction)
-		duration := CInt(((95 - holyprot) * 5) / 95);
-	else
-		duration := CInt(((95 - holyprot) * 7) / 95);
-		if (holyprot < 95 && duration <= 0)
-			duration := 1;
+		var wasfrozen := 0;
+		if (targ.frozen == 1)
+			wasfrozen := 1;
 		endif
-	endif
+		PlaySoundEffect( targ , SFX_SPELL_ASTRAL_STORM );
+		var circle := 5;
 
-	if (duration > 0)
+		var holyprot := CInt(GetObjProperty(targ, "HolyProtection"));
+		if (holyprot < 0)
+			holyprot := 0;
+		elseif (holyprot > 95)
+			holyprot := 95;
+		endif
+
+		var freeaction := GetObjProperty(targ, "FreeAction");
+		var duration;
+		if (freeaction)
+			duration := CInt(((95 - holyprot) * 5) / 95);
+		else
+			duration := CInt(((95 - holyprot) * 7) / 95);
+			if (holyprot < 95 && duration <= 0)
+				duration := 1;
+			endif
+		endif
+
+		if (duration > 0)
+			if (!wasfrozen)
+				targ.frozen := 1;
+				IncRevision(targ);
+			endif
+			BuffOn(targ, "paralyze", 1, CInt(duration));
+			var fxduration := CInt(duration-2);
+			if (fxduration < 1)
+				fxduration := 1;
+			endif
+			PlayStationaryEffect(targ.x, targ.y, targ.z, 0x17bd, fxduration);
+			PlayStationaryEffect(targ.x-1, targ.y, targ.z, 0x17ca, fxduration);
+			PlayStationaryEffect(targ.x+1, targ.y, targ.z, 0x17cc, fxduration);
+			PlayStationaryEffect(targ.x, targ.y+1, targ.z, 0x17c9, fxduration);
+			PlayStationaryEffect(targ.x, targ.y-1, targ.z, 0x17cb, fxduration);
+			PlayStationaryEffect(targ.x-1, targ.y+1, targ.z, 0x17c8, fxduration);
+			PlayStationaryEffect(targ.x-1, targ.y-1, targ.z, 0x17c5, fxduration);
+			PlayStationaryEffect(targ.x+1, targ.y-1, targ.z, 0x17c6, fxduration);
+			PlayStationaryEffect(targ.x+1, targ.y+1, targ.z, 0x17c7, fxduration);
+		else
+			SendSysMessage(defender, targ.name + " is protected from paralyzing effects!");
+			SendSysMessage(targ,  "You are protected from paralyzing effects!");
+		endif
+
+		start_script(":holybook:astralstorm_damage", {defender, targ, circle});
+
+		Sleep(CInt(duration));
 		if (!wasfrozen)
-			targ.frozen := 1;
-			IncRevision(targ);
+			targ.frozen :=0;
 		endif
-		BuffOn(targ, "paralyze", 1, CInt(duration));
-		var fxduration := CInt(duration-2);
-		if (fxduration < 1)
-			fxduration := 1;
-		endif
-		PlayStationaryEffect(targ.x, targ.y, targ.z, 0x17bd, fxduration);
-		PlayStationaryEffect(targ.x-1, targ.y, targ.z, 0x17ca, fxduration);
-		PlayStationaryEffect(targ.x+1, targ.y, targ.z, 0x17cc, fxduration);
-		PlayStationaryEffect(targ.x, targ.y+1, targ.z, 0x17c9, fxduration);
-		PlayStationaryEffect(targ.x, targ.y-1, targ.z, 0x17cb, fxduration);
-		PlayStationaryEffect(targ.x-1, targ.y+1, targ.z, 0x17c8, fxduration);
-		PlayStationaryEffect(targ.x-1, targ.y-1, targ.z, 0x17c5, fxduration);
-		PlayStationaryEffect(targ.x+1, targ.y-1, targ.z, 0x17c6, fxduration);
-		PlayStationaryEffect(targ.x+1, targ.y+1, targ.z, 0x17c7, fxduration);
-	else
-		SendSysMessage(defender, targ.name + " is protected from paralyzing effects!");
-		SendSysMessage(targ,  "You are protected from paralyzing effects!");
-	endif
-
-	start_script(":holybook:astralstorm_damage", {defender, targ, circle});
-	
-	Sleep(CInt(duration));
-	if (!wasfrozen)
-		targ.frozen :=0;
-	endif
-	targ.SetParalyzed(0);
-	BuffOff(targ,"paralyze");
-	IncRevision(targ);
-	EraseObjProperty( targ , "Windsbreath" );
+		targ.SetParalyzed(0);
+		BuffOff(targ,"paralyze");
+		IncRevision(targ);
+		EraseObjProperty( targ , "Windsbreath" );
 	endif
 
 endprogram

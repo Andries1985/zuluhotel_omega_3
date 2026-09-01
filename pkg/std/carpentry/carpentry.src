@@ -32,7 +32,7 @@ use math;
 //include "util/key";
 include ":keys:key";
 include "util/repair";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 include "include/classes";
 include "include/objtype";

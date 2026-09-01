@@ -16,7 +16,8 @@
 use uo;
 use os;
 
-include ":gumps:old-gumps";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 include ":staff:include/staff";
 program silence(who)
 
@@ -33,36 +34,36 @@ if (!silence)
 	silence := {0, 0, 0, 0, 0, 0};
 endif
 
-GFInitGump();
+var gump := GFCreateGump(0, 0, 400, 230);
 
-GFResizePic( 10, 10, 9250, 400, 230);
+GFResizePic( gump, 10, 10, 9250, 400, 230);
 
-GFTextLine( 155, 25, 53, "Silence Player" );
-GFTextLine( 30, 50, 57, "Name:" );
-GFTextLine( 85, 50, 0, targ.name );
+GFTextLine( gump, 155, 25, 53, "Silence Player" );
+GFTextLine( gump, 30, 50, 57, "Name:" );
+GFTextLine( gump, 85, 50, 0, targ.name );
 
-GFGumpPic(335, 28, 223);
+GFGumpPic(gump, 335, 28, 223);
 
-GFTextLine( 30, 85, 57, "Restrictions:" );
+GFTextLine( gump, 30, 85, 57, "Restrictions:" );
 
-GFTextLine( 80, 120, 60, "Speech" );
-GFTextLine( 200, 120, 60, ".chat" );
-GFTextLine( 320, 120, 60, "Guild" );
-GFTextLine( 80, 160, 60, ".msg" );
-GFTextLine( 200, 160, 60, ".barter" );
-GFTextLine( 320, 160, 60, "Paging" );
+GFTextLine( gump, 80, 120, 60, "Speech" );
+GFTextLine( gump, 200, 120, 60, ".chat" );
+GFTextLine( gump, 320, 120, 60, "Guild" );
+GFTextLine( gump, 80, 160, 60, ".msg" );
+GFTextLine( gump, 200, 160, 60, ".barter" );
+GFTextLine( gump, 320, 160, 60, "Paging" );
 
-GFCheckBox( 45, 120, 9026, 9027, silence[1], 1 );
-GFCheckBox( 165, 120, 9026, 9027, silence[2], 2 );
-GFCheckBox( 285, 120, 9026, 9027, silence[3], 3 );
-GFCheckBox( 45, 160, 9026, 9027, silence[4], 4 );
-GFCheckBox( 165, 160, 9026, 9027, silence[5], 5 );
-GFCheckBox( 285, 160, 9026, 9027, silence[6], 6 );
+GFCheckBox( gump, 45, 120, 9026, 9027, silence[1], 1 );
+GFCheckBox( gump, 165, 120, 9026, 9027, silence[2], 2 );
+GFCheckBox( gump, 285, 120, 9026, 9027, silence[3], 3 );
+GFCheckBox( gump, 45, 160, 9026, 9027, silence[4], 4 );
+GFCheckBox( gump, 165, 160, 9026, 9027, silence[5], 5 );
+GFCheckBox( gump, 285, 160, 9026, 9027, silence[6], 6 );
 
-GFButtonID(300, 200, 2128, 2129, 1, 100 );
-GFButtonID(60, 200, 2119, 2120, 1, 0 );
+GFAddButton(gump, 300, 200, 2128, 2129, GF_CLOSE_BTN, 100 );
+GFAddButton(gump, 60, 200, 2119, 2120, GF_CLOSE_BTN );
 
-var data := GFSendGump(who);
+var data := GFSendGump(who, gump);
 
 if (data[0] != 100)
 	SendSysMessage(who, "Cancelled.");

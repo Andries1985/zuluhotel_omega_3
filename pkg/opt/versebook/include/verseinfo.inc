@@ -3,8 +3,8 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "versefunctions";
 
 function GetVerseTypeInfo(gump, type)

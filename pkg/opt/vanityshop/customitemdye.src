@@ -7,7 +7,7 @@ use uo;
 use polsys;
 
 include "include/client";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 program CustomItemDye (who, omegadye)
 

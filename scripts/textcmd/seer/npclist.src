@@ -8,7 +8,7 @@
 use uo;
 use cfgfile;
 include ":staff:include/staff";
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 
 var cfgfile := ReadConfigfile("::npcdesc");
 var npcs := GetConfigStringKeys( cfgfile);

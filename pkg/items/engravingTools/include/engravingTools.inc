@@ -1,8 +1,8 @@
 use uo;
 use os;
 
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 function EngravingGump( byref mobile, byref title )
 

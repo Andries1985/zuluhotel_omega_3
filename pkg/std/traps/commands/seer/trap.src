@@ -1,10 +1,11 @@
+// Synopsis: Open the trap gump to place a trap of a given strength
 // Created 5/5/2022 23:50:07, with Gump Studio.
 // Exported with POLGumpExporter ver 1.1 for gump pkg
 
 use uo;
 use os;
 
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include ":traps:traps";
 
 program set_trap( who, text )

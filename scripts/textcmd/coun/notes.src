@@ -1,8 +1,8 @@
 // Synopsis: Open the staff notes gump
 use uo;
 
-include ":gumps:yesno";
-include ":gumps:gumps_ex";
+include ":mdgumps:yesNo";
+include ":mdgumps:gumps_ex";
 //Include "include/gumputil";
 include ":staff:include/staff";
 

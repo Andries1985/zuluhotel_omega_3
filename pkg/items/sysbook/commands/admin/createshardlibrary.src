@@ -23,6 +23,7 @@ program createshardlibrary(who)
 	if(shard_library.errortext)
 		LogToFile("::log/sysbook.log", "[createlibrary.ecl]: Datastore file error: " + shard_library.errortext, LOG_DATETIME);
 		Print("Sysbook error - check sysbook.log");
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	var bookContents := struct;
@@ -34,6 +35,7 @@ program createshardlibrary(who)
 					"Please ensure the container can hold a lot of items.                   Do you wish to continue?";
 	var do_it := confirmationSizable(who, prompt);
 	if(!do_it)
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 
@@ -41,10 +43,12 @@ program createshardlibrary(who)
 	var holder := Target(who);
 	if(!holder)
 		SendSysMessage(who, "Cancelled.", color := 33);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	if(!holder.IsContainer())
 		SendSysMessage(who, "You must target a valid container.", color := 33);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	book_keys := shard_library.Keys();
@@ -52,6 +56,7 @@ program createshardlibrary(who)
 		book := CreateItemInContainer(holder, 0xFF0, 1); // Tan book (book2)
 		if(!book)
 			SendSysMessage(who, "I could not create a book. Maybe the container is too small to hold all of the in-game books.", color := 33);
+			UnloadDataFile("shard_library");
 			return 0;
 		endif
 		bookContents := GetBookContents(key);
@@ -63,5 +68,6 @@ program createshardlibrary(who)
 		Sleepms(5);
 	endforeach
 	SendSysMessage(who, "The library has been created successfuly.", color := 66);
+	UnloadDataFile("shard_library");
 
 endprogram

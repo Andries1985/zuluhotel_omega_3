@@ -7,7 +7,7 @@ include "include/objtype";
 include "include/client";
 include "include/possess";
 include "include/reportmurder";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include ":karmafame:karmafame";
 include "include/dismount";
 include "include/myutil";

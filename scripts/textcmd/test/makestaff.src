@@ -13,8 +13,8 @@ use os;
 use polsys;
 
 include "include/attributes";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/privs";
 
 program makestaff(who)

@@ -14,7 +14,7 @@ use cfgfile;
 use os;
 
 include "include/attributes";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/bitwise";
 include "include/client";
 include "include/objtype";

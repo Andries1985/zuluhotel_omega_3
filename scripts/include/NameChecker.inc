@@ -1,8 +1,8 @@
 use uo;
 use os;
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 
 var blacklist := {"developer", "admin", "gm", "cn", "dev", "seer", "coun", "counselor", "game master", "gamemaster", "administrator", "dev"};
 var bLTowns := {"vesper", "minoc", "ocllo", "occlo", "cove", "jhelom", "nujel'm", "britain", "trinsic", "moonglow", "elven town", "nujelm", "magincia", "buccaneer's den", "serpent's hold", "skara brae", "yew", "buccaneers den", "serpents hold"};

@@ -1,7 +1,7 @@
 use math;
 
 include "include/bitwise";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 const ORDERGUARDTYPE := 1;
 const CHAOSGUARDTYPE := 2;

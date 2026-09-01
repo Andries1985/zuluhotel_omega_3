@@ -4,7 +4,7 @@ use math;
 use cfgfile;
 
 include "include/client";
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 
 
 const PROPID_MOBILE_BROWSING := "#browsingvanityshop";
@@ -245,12 +245,18 @@ function ConfirmItemPurchase(who, item)
 				created_count += 1;
 			endwhile
 
-			if (!MoveItemToContainer( temp_bag, who.backpack ))
-				DestroyItem(temp_bag);
-				SendSysMessage(who, "You need more room in your backpack.");
-				EraseObjProperty( who, PROPID_MOBILE_BROWSING );
-				return 0;
-			endif
+			// Unpack the bundle into the backpack directly instead of moving
+			// temp_bag itself in -- moving the bag left the purchased items
+			// nested inside an extra pouch instead of loose in the backpack.
+			foreach bundle_contents in EnumerateItemsInContainer( temp_bag, ENUMERATE_ROOT_ONLY )
+				if (!MoveItemToContainer( bundle_contents, who.backpack ))
+					DestroyItem(temp_bag);
+					SendSysMessage(who, "You need more room in your backpack.");
+					EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+					return 0;
+				endif
+			endforeach
+			DestroyItem(temp_bag);
 		else
 			var single_item := CreateItemInBackpack( who, item_type, 1 );
 			if (!single_item)

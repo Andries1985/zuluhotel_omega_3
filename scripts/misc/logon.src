@@ -97,7 +97,21 @@ program logon( who )
 	// The original activateph() instance (setph.src) does not survive a server
 	// reboot, so #SettingPH/#PPHPid would otherwise be stuck forever -- only
 	// that dead instance's own cleanup, or a GM .resetph, would ever clear them.
-	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
+	//
+	// 2026-09-01: gated on the durable "pph_active_type" property instead of
+	// #PPHH/#PPHC/#PPHS directly -- those "#"-prefixed flags aren't reliably
+	// persisted across an actual server restart in this repo, so after a real
+	// reboot this whole block used to silently never trigger: the player's
+	// active hour was lost with no message, and since pph_use_time/
+	// pph_use_weekday (plain, durable) still showed the week as "already
+	// used," they'd also be blocked from starting a new one until next week.
+	// activateph() (setph.src) writes pph_active_type alongside the "#" flag
+	// specifically so this check survives a reboot; the specific #PPHx flag
+	// is re-set from it below (in the same still-running session) so
+	// resumeph.src and every crafting-skill-gain check that reads #PPHH/
+	// #PPHC/#PPHS directly keep working unchanged.
+	var active_type := GetObjProperty(who, "pph_active_type");
+	if(active_type && !active_type.errortext)
 		// A plain disconnect (not a reboot) does NOT kill the original activateph()
 		// instance -- it keeps sleeping toward the same end time. Kill it here so
 		// resumeph.src below is the only thing still counting down; otherwise both
@@ -110,6 +124,8 @@ program logon( who )
 			endif
 		endif
 
+		SetObjProperty(who, active_type, 1);
+
 		var pph_start := CInt(GetObjProperty(who, "pph_use_time"));
 		var remaining := (pph_start + 3600) - POLCore().systime;
 		if( remaining > 0 )
@@ -121,6 +137,7 @@ program logon( who )
 		endif
 		EraseObjProperty(who, "#SettingPH");
 		EraseObjProperty(who, "#PPHPid");
+		EraseObjProperty(who, "pph_active_type");
 	endif
 
 endprogram

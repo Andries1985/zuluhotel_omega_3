@@ -18,7 +18,7 @@ use basic;
 use attributes;
 
 include "util/repair";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/objtype";
 include "include/classes";
 include ":karmafame:karmafame";
@@ -26,6 +26,7 @@ include "include/attributes";
 include "include/difficulty";
 include "include/skillpoints";
 include ":crafting:craftmenu";
+include ":crafting:craftingfunctions";
 
 const DIVIDER			:= 4;
 const APPEAR_AT		:= -10;
@@ -232,14 +233,11 @@ function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
 
 				if ( GetObjProperty(character, "ForceExceptional") or ((randomint(100) < excep_ch) and CheckSkill( character, SKILLID_BOWCRAFT, skill, 0 )) )
 
-					var armslore := GetEffectiveSkill( character, SKILLID_ARMSLORE );
-					var multiplier := 5 + Cint( armslore / 10 );
-
-					if( crafter )
-						multiplier := Cint( multiplier * ClasseBonus( character, CLASSEID_CRAFTER ) );
-					endif
-
-					multiplier := 50 + multiplier;
+					// 2026-09-01: was a 50%-base inline copy of this formula (every
+					// other crafting skill uses a 100% base -- confirmed a bug, not
+					// intentional archery balance). Now shares the same 100%-base
+					// helper tinkering.src uses instead of its own diverged copy.
+					var multiplier := CalcExceptionalQualityMultiplier( character, crafter );
 					var newquality := Cint(theitem.quality * multiplier);
 					newquality := Cdbl(newquality);
 					newquality := newquality / 100;

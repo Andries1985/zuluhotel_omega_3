@@ -7,12 +7,13 @@ use cfgfile;
 include ":keys:key";
 include ":containers:storageAreas";
 include ":currency:currency";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/housing";
 include ":mdgumps:confirmationSizable";
 include "../include/settings";
 include "../include/gumpMessage";
-include "../include/old-gumps";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 include ":house:multihouse_settings";
 include "include/omegacache_utils";
 include ":houseExtras:settings";
@@ -100,135 +101,138 @@ function GetTeleporterCountDisplay(sign)
 endfunction
 
 function ShowHouseSignGump(who, sign, owner_name, decay_display, lockdowns, secures, can_manage)
-	GFInitGump();
-	GFNoDispose();
+	var gump := GFCreateGump(0, 0, 412, 300);
+	GFDisposable(gump, 0);
 	// Plaque (gump art 1764, 205x49) sits above the panel and is centered on
 	// its 412-wide span (100..512, centre 306); GFTextMid centers each line
 	// within the plaque's own width instead of a hand-tuned x offset.
-	GFResizePic(100, 45, 40288, 412, 300);
-	GFGumpPic(204, 0, 1764);
-	GFTextMid(215, 17, 205, 50, GetPlaqueLines(sign));
-	GFResizePic(115, 55, 5100, 382, 25);
-	GFTextLine(125, 57, 0, "Info");
-	GFButtonPage(178, 59, 5209, 5003, 1);
-	GFTextLine(215, 57, 0, "House Lists");
-	GFButtonPage(293, 59, 5209, 5003, 2);
-	GFTextLine(330, 57, 0, "Options");
-	GFButtonPage(390, 59, 5209, 5003, 3);
-	GFButtonID(430, 308, 247, 248, 1, 0);
+	GFResizePic( gump, 100, 45, 40288, 412, 300);
+	GFGumpPic( gump, 204, 0, 1764);
+	GFTextMid( gump, 215, 17, 205, 50, GetPlaqueLines(sign));
+	GFResizePic( gump, 115, 55, 5100, 382, 25);
+	GFTextLine( gump, 125, 57, 0, "Info");
+	GFAddButton( gump, 178,59,5209,5003, GF_PAGE_BTN,1);
+	GFTextLine( gump, 215, 57, 0, "House Lists");
+	GFAddButton( gump, 293,59,5209,5003, GF_PAGE_BTN,2);
+	GFTextLine( gump, 330, 57, 0, "Options");
+	GFAddButton( gump, 390,59,5209,5003, GF_PAGE_BTN,3);
+	GFAddButton( gump, 430,308,247,248, GF_CLOSE_BTN,0);
 
-	GFPage(1);
-	GFTextLine(135, 95, 2020, "Owned by:");
-	GFTextLine(220, 95, 2590, owner_name);
-	GFTextLine(135, 118, 2020, "House Type:");
-	GFTextLine(220, 118, 2590, "Static House");
-	GFTextLine(135, 141, 2020, "House Decays At:");
-	GFTextLine(250, 141, 2590, decay_display);
-	GFTextLine(135, 164, 2020, "Remaining lockdowns:");
-	GFTextLine(370, 164, 2590, CStr(lockdowns));
-	GFTextLine(135, 187, 2020, "Remaining secures:");
-	GFTextLine(370, 187, 2590, CStr(secures));
-	GFTextLine(135, 210, 2020, "Number of Omega Cache containers:");
-	GFTextLine(370, 210, 2590, GetOmegaCacheCountDisplay(sign));
-	GFTextLine(135, 233, 2020, "Number of Teleporters:");
-	GFTextLine(370, 233, 2590, GetTeleporterCountDisplay(sign));
+	GFPage(gump, 1);
+	GFTextLine( gump, 135, 95, 2020, "Owned by:");
+	GFTextLine( gump, 220, 95, 2590, owner_name);
+	GFTextLine( gump, 135, 118, 2020, "House Type:");
+	GFTextLine( gump, 220, 118, 2590, "Static House");
+	GFTextLine( gump, 135, 141, 2020, "House Decays At:");
+	GFTextLine( gump, 250, 141, 2590, decay_display);
+	GFTextLine( gump, 135, 164, 2020, "Remaining lockdowns:");
+	GFTextLine( gump, 370, 164, 2590, CStr(lockdowns));
+	GFTextLine( gump, 135, 187, 2020, "Remaining secures:");
+	GFTextLine( gump, 370, 187, 2590, CStr(secures));
+	GFTextLine( gump, 135, 210, 2020, "Number of Omega Cache containers:");
+	GFTextLine( gump, 370, 210, 2590, GetOmegaCacheCountDisplay(sign));
+	GFTextLine( gump, 135, 233, 2020, "Number of Teleporters:");
+	GFTextLine( gump, 370, 233, 2590, GetTeleporterCountDisplay(sign));
 
-	GFPage(2);
-	GFTextLine(155, 95, 2302, "Manage house friends");
-	GFButtonID(125, 95, 2714, 2715, 1, 8);
-	GFTextLine(155, 118, 2302, "List of banned people");
-	GFButtonID(125, 118, 2714, 2715, 1, 11);
-	GFTextLine(155, 141, 2302, "Ban someone from the house");
-	GFButtonID(125, 141, 2714, 2715, 1, 9);
-	GFTextLine(155, 164, 2302, "Remove a ban");
-	GFButtonID(125, 164, 2714, 2715, 1, 12);
-	GFTextLine(155, 187, 2302, "Eject someone from the house");
-	GFButtonID(125, 187, 2714, 2715, 1, 10);
+	GFPage(gump, 2);
+	GFTextLine( gump, 155, 95, 2302, "Manage house friends");
+	GFAddButton( gump, 125,95,2714,2715, GF_CLOSE_BTN,8);
+	GFTextLine( gump, 155, 118, 2302, "List of banned people");
+	GFAddButton( gump, 125,118,2714,2715, GF_CLOSE_BTN,11);
+	GFTextLine( gump, 155, 141, 2302, "Ban someone from the house");
+	GFAddButton( gump, 125,141,2714,2715, GF_CLOSE_BTN,9);
+	GFTextLine( gump, 155, 164, 2302, "Remove a ban");
+	GFAddButton( gump, 125,164,2714,2715, GF_CLOSE_BTN,12);
+	GFTextLine( gump, 155, 187, 2302, "Eject someone from the house");
+	GFAddButton( gump, 125,187,2714,2715, GF_CLOSE_BTN,10);
 
-	GFPage(3);
-	GFTextLine(155, 95, 2302, "House management");
-	GFButtonID(125, 95, 2714, 2715, 1, 15);
-	GFTextLine(155, 118, 2302, "Change house locks");
-	GFButtonID(125, 118, 2714, 2715, 1, 16);
-	GFTextLine(155, 141, 2302, "Relinquish house back for sale");
-	GFButtonID(125, 141, 2714, 2715, 1, 20);
-	GFTextLine(155, 164, 2302, "Change the house name");
-	GFButtonID(125, 164, 2714, 2715, 1, 1);
+	GFPage(gump, 3);
+	GFTextLine( gump, 155, 95, 2302, "House management");
+	GFAddButton( gump, 125,95,2714,2715, GF_CLOSE_BTN,15);
+	GFTextLine( gump, 155, 118, 2302, "Change house locks");
+	GFAddButton( gump, 125,118,2714,2715, GF_CLOSE_BTN,16);
+	GFTextLine( gump, 155, 141, 2302, "Relinquish house back for sale");
+	GFAddButton( gump, 125,141,2714,2715, GF_CLOSE_BTN,20);
+	GFTextLine( gump, 155, 164, 2302, "Change the house name");
+	GFAddButton( gump, 125,164,2714,2715, GF_CLOSE_BTN,1);
 
 	if(!can_manage)
-		GFTextLine(125, 190, 33, "You can view info, but cannot manage this house.");
+		GFTextLine( gump, 125, 190, 33, "You can view info, but cannot manage this house.");
 	endif
 
-	return GFSendGump(who);
+	var send_res := GFSendGump(who, gump);
+	return send_res;
 endfunction
 
 function ShowPagedNameSelectionGump(who, title, action_label, names, action_x := 165, action_y := 335)
-	GFInitGump();
-	GFNoDispose();
-	GFResizePic(100, 100, 40288, 400, 300);
-	GFResizePic(147, 359, 5100, 310, 25);
-	GFTextLine(185, 118, 995, title);
-	GFButtonID(270, 360, 247, 248, 1, 1);
-	GFTextLine(action_x, action_y, 995, action_label);
+	var gump := GFCreateGump(0, 0, 400, 300);
+	GFDisposable(gump, 0);
+	GFResizePic( gump, 100, 100, 40288, 400, 300);
+	GFResizePic( gump, 147, 359, 5100, 310, 25);
+	GFTextLine( gump, 185, 118, 995, title);
+	GFAddButton( gump, 270,360,247,248, GF_CLOSE_BTN,1);
+	GFTextLine( gump, action_x, action_y, 995, action_label);
 
 	if(names.size() > 10)
-		GFButtonPage(425, 363, 5224, 5224, 2);
+		GFAddButton( gump, 425,363,5224,5224, GF_PAGE_BTN,2);
 	endif
 
-	GFPage(1);
+	GFPage(gump, 1);
 	var i := 1;
 	for(i := 1; i <= 10; i := i + 1)
 		if(names[i])
 			var y := 120 + (i * 20);
-			GFTextLine(180, y, 0, names[i]);
-			GFButtonID(150, y, 210, 211, 1, i + 2);
+			GFTextLine( gump, 180, y, 0, names[i]);
+			GFAddButton( gump, 150,y,210,211, GF_CLOSE_BTN,i + 2);
 		endif
 	endfor
 
-	GFPage(2);
+	GFPage(gump, 2);
 	for(i := 11; i <= 20; i := i + 1)
 		if(names[i])
 			var y2 := 120 + ((i - 10) * 20);
-			GFTextLine(180, y2, 0, names[i]);
-			GFButtonID(150, y2, 210, 211, 1, i + 2);
+			GFTextLine( gump, 180, y2, 0, names[i]);
+			GFAddButton( gump, 150,y2,210,211, GF_CLOSE_BTN,i + 2);
 		endif
 	endfor
-	GFButtonPage(160, 363, 5223, 5223, 1);
+	GFAddButton( gump, 160,363,5223,5223, GF_PAGE_BTN,1);
 
-	return GFSendGump(who);
+	var send_res := GFSendGump(who, gump);
+	return send_res;
 endfunction
 
 function ShowPagedNameListGump(who, title, names)
-	GFInitGump();
-	GFNoDispose();
-	GFResizePic(100, 100, 40288, 400, 300);
-	GFResizePic(147, 359, 5100, 310, 25);
-	GFTextLine(185, 118, 995, title);
-	GFButtonID(270, 360, 247, 248, 1, 1);
+	var gump := GFCreateGump(0, 0, 400, 300);
+	GFDisposable(gump, 0);
+	GFResizePic( gump, 100, 100, 40288, 400, 300);
+	GFResizePic( gump, 147, 359, 5100, 310, 25);
+	GFTextLine( gump, 185, 118, 995, title);
+	GFAddButton( gump, 270,360,247,248, GF_CLOSE_BTN,1);
 
 	if(names.size() > 10)
-		GFButtonPage(425, 363, 5224, 5224, 2);
+		GFAddButton( gump, 425,363,5224,5224, GF_PAGE_BTN,2);
 	endif
 
-	GFPage(1);
+	GFPage(gump, 1);
 	var i := 1;
 	for(i := 1; i <= 10; i := i + 1)
 		if(names[i])
 			var y := 120 + (i * 20);
-			GFTextLine(180, y, 0, names[i]);
+			GFTextLine( gump, 180, y, 0, names[i]);
 		endif
 	endfor
 
-	GFPage(2);
+	GFPage(gump, 2);
 	for(i := 11; i <= 20; i := i + 1)
 		if(names[i])
 			var y2 := 120 + ((i - 10) * 20);
-			GFTextLine(180, y2, 0, names[i]);
+			GFTextLine( gump, 180, y2, 0, names[i]);
 		endif
 	endfor
-	GFButtonPage(160, 363, 5223, 5223, 1);
+	GFAddButton( gump, 160,363,5223,5223, GF_PAGE_BTN,1);
 
-	return GFSendGump(who);
+	var send_res := GFSendGump(who, gump);
+	return send_res;
 endfunction
 
 program static_sign_use(who, sgn)
@@ -662,31 +666,31 @@ function OpenManageHouseFriendsGump(sign, who)
 		SendSysMessage(who, "Only owners or co-owners can manage house friend permissions.", color := 33);
 		return;
 	endif
-	GFInitGump();
-	GFNoDispose();
-	GFResizePic(100, 100, 40288, 400, 280);
-	GFTextLine(155, 120, 995, "Manage House Friends");
-	GFButtonID(130, 150, 2714, 2715, 1, 210);
-	GFTextLine(165, 150, 0, "Add person to house lists");
-	GFButtonID(130, 172, 2714, 2715, 1, 211);
-	GFTextLine(165, 172, 0, "Remove person from house lists");
-	GFButtonID(130, 194, 2714, 2715, 1, 212);
-	GFTextLine(165, 194, 0, "Toggle co-owner");
-	GFButtonID(130, 216, 2714, 2715, 1, 213);
-	GFTextLine(165, 216, 0, "Toggle lockdown permission");
-	GFButtonID(130, 238, 2714, 2715, 1, 214);
-	GFTextLine(165, 238, 0, "Toggle secure permission");
-	GFButtonID(130, 260, 2714, 2715, 1, 215);
-	GFTextLine(165, 260, 0, "Toggle eject permission");
-	GFButtonID(130, 282, 2714, 2715, 1, 216);
-	GFTextLine(165, 282, 0, "Toggle ban permission");
-	GFButtonID(130, 304, 2714, 2715, 1, 217);
-	GFTextLine(165, 304, 0, "Toggle teleporter permission");
-	GFButtonID(130, 326, 2714, 2715, 1, 218);
-	GFTextLine(165, 326, 0, "Show permission overview");
-	GFButtonID(130, 348, 2714, 2715, 1, 219);
-	GFTextLine(165, 348, 0, "Show banned people");
-	var res := GFSendGump(who);
+	var gump := GFCreateGump(0, 0, 400, 280);
+	GFDisposable(gump, 0);
+	GFResizePic( gump, 100, 100, 40288, 400, 280);
+	GFTextLine( gump, 155, 120, 995, "Manage House Friends");
+	GFAddButton( gump, 130,150,2714,2715, GF_CLOSE_BTN,210);
+	GFTextLine( gump, 165, 150, 0, "Add person to house lists");
+	GFAddButton( gump, 130,172,2714,2715, GF_CLOSE_BTN,211);
+	GFTextLine( gump, 165, 172, 0, "Remove person from house lists");
+	GFAddButton( gump, 130,194,2714,2715, GF_CLOSE_BTN,212);
+	GFTextLine( gump, 165, 194, 0, "Toggle co-owner");
+	GFAddButton( gump, 130,216,2714,2715, GF_CLOSE_BTN,213);
+	GFTextLine( gump, 165, 216, 0, "Toggle lockdown permission");
+	GFAddButton( gump, 130,238,2714,2715, GF_CLOSE_BTN,214);
+	GFTextLine( gump, 165, 238, 0, "Toggle secure permission");
+	GFAddButton( gump, 130,260,2714,2715, GF_CLOSE_BTN,215);
+	GFTextLine( gump, 165, 260, 0, "Toggle eject permission");
+	GFAddButton( gump, 130,282,2714,2715, GF_CLOSE_BTN,216);
+	GFTextLine( gump, 165, 282, 0, "Toggle ban permission");
+	GFAddButton( gump, 130,304,2714,2715, GF_CLOSE_BTN,217);
+	GFTextLine( gump, 165, 304, 0, "Toggle teleporter permission");
+	GFAddButton( gump, 130,326,2714,2715, GF_CLOSE_BTN,218);
+	GFTextLine( gump, 165, 326, 0, "Show permission overview");
+	GFAddButton( gump, 130,348,2714,2715, GF_CLOSE_BTN,219);
+	GFTextLine( gump, 165, 348, 0, "Show banned people");
+	var res := GFSendGump(who, gump);
 	if(res)
 		HandleManageFriendsAction(sign, who, res[0]);
 	endif
@@ -831,27 +835,27 @@ function ShowHousePermissionOverview(sign, who)
 endfunction
 
 function OpenHouseManagementGump(sign, who)
-	GFInitGump();
-	GFNoDispose();
-	GFResizePic(100, 100, 40288, 400, 260);
-	GFTextLine(155, 120, 995, "House Management");
-	GFButtonID(130, 150, 2714, 2715, 1, 220);
-	GFTextLine(165, 150, 0, "Lock item down");
-	GFButtonID(130, 172, 2714, 2715, 1, 221);
-	GFTextLine(165, 172, 0, "Release item");
-	GFButtonID(130, 194, 2714, 2715, 1, 222);
-	GFTextLine(165, 194, 0, "Secure container");
-	GFButtonID(130, 216, 2714, 2715, 1, 223);
-	GFTextLine(165, 216, 0, "Delete secure container");
-	GFButtonID(130, 238, 2714, 2715, 1, 224);
-	GFTextLine(165, 238, 0, "Eject target");
-	GFButtonID(130, 260, 2714, 2715, 1, 225);
-	GFTextLine(165, 260, 0, "Ban target");
-	GFButtonID(130, 282, 2714, 2715, 1, 227);
-	GFTextLine(165, 282, 0, "Change house locks");
-	GFButtonID(130, 304, 2714, 2715, 1, 228);
-	GFTextLine(165, 304, 0, "Remove Omega Cache Container");
-	var res := GFSendGump(who);
+	var gump := GFCreateGump(0, 0, 400, 260);
+	GFDisposable(gump, 0);
+	GFResizePic( gump, 100, 100, 40288, 400, 260);
+	GFTextLine( gump, 155, 120, 995, "House Management");
+	GFAddButton( gump, 130,150,2714,2715, GF_CLOSE_BTN,220);
+	GFTextLine( gump, 165, 150, 0, "Lock item down");
+	GFAddButton( gump, 130,172,2714,2715, GF_CLOSE_BTN,221);
+	GFTextLine( gump, 165, 172, 0, "Release item");
+	GFAddButton( gump, 130,194,2714,2715, GF_CLOSE_BTN,222);
+	GFTextLine( gump, 165, 194, 0, "Secure container");
+	GFAddButton( gump, 130,216,2714,2715, GF_CLOSE_BTN,223);
+	GFTextLine( gump, 165, 216, 0, "Delete secure container");
+	GFAddButton( gump, 130,238,2714,2715, GF_CLOSE_BTN,224);
+	GFTextLine( gump, 165, 238, 0, "Eject target");
+	GFAddButton( gump, 130,260,2714,2715, GF_CLOSE_BTN,225);
+	GFTextLine( gump, 165, 260, 0, "Ban target");
+	GFAddButton( gump, 130,282,2714,2715, GF_CLOSE_BTN,227);
+	GFTextLine( gump, 165, 282, 0, "Change house locks");
+	GFAddButton( gump, 130,304,2714,2715, GF_CLOSE_BTN,228);
+	GFTextLine( gump, 165, 304, 0, "Remove Omega Cache Container");
+	var res := GFSendGump(who, gump);
 	if(res)
 		HandleHouseManagementAction(sign, who, res[0]);
 	endif
@@ -1165,7 +1169,7 @@ function Eject(who)
 	elseif(!IsInHouse(who))
 		SendSysMessage(who, "You can only eject people in your house.", 3, 40);
 	else
-		MoveObjectToLocation(targ, sign.x, sign.y, GetWorldHeight(sign.x, sign.y, targ.realm), MOVEOBJECT_FORCELOCATION, targ.realm);
+		MoveObjectToLocation(targ, sign.x, sign.y, GetWorldHeight(sign.x, sign.y, targ.realm), targ.realm, MOVEOBJECT_FORCELOCATION);
 		SendSysMessage(who, targ.name + " was ejected!", 1, 66);
 		SendSysMessage(targ, who.name + " has ejected you from the house!", 3, 40);
 	endif

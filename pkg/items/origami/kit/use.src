@@ -27,6 +27,15 @@ program use_origamikit( who, origamikit )
 		return;
 	endif
 	ItemType := ItemType[0];
+	// GFSendGump always returns a populated (truthy) result struct, even when
+	// the player closes the gump without picking a shape -- the !ItemType
+	// check above only ever catches BuildOrigamiGump's config-read-error path
+	// (a literal 0). A real cancel shows up as result[0] == 0 after indexing,
+	// which must be checked separately or the kit gets consumed anyway.
+	if (!ItemType)
+		SendSysMessageCL( who, 1042021, color := 33 ); //Cancelled
+		return;
+	endif
 
 	var SoundType, SoundChance := RandomInt(3) + 1;
 	case (SoundChance)

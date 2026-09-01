@@ -3,7 +3,7 @@ use uo;
 
 include "include/time";
 include "include/constants/propids";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/areas";
 include ":areas:include/areafunctions";
 //include "util/bank";

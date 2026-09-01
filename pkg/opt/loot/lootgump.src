@@ -1,7 +1,7 @@
 use uo;
 use os;
 
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include "include/constants/propids";
 
 program loogump(corpse)

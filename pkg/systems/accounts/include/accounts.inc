@@ -329,7 +329,10 @@ function ACCT_GetHouseholdStore( create_if_missing:=1 )
 		store := DFOpenDataFile( "AccountsHouseholds", DF_NO_CREATE );
 	endif
 
-	UnloadDataFile( "AccountsHouseholds" );
+	// Unloading here (before the caller ever uses the returned handle)
+	// inverted the "open -> use -> unload last" convention every other
+	// datafile consumer in this repo follows. Callers now unload it
+	// themselves once they're done with it.
 	return store;
 endfunction
 
@@ -345,11 +348,14 @@ function ACCT_GetHouseholdById( household_id, create_if_missing:=0 )
 		return store;
 	endif
 
+	var elem;
 	if( create_if_missing )
-		return DFFindElement( store, household_id, DF_CREATE );
+		elem := DFFindElement( store, household_id, DF_CREATE );
+	else
+		elem := DFFindElement( store, household_id, DF_NO_CREATE );
 	endif
-
-	return DFFindElement( store, household_id, DF_NO_CREATE );
+	UnloadDataFile( "AccountsHouseholds" );
+	return elem;
 endfunction
 
 function ACCT_HouseholdContainsDiscord( household_id, discord_norm )

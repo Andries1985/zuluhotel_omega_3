@@ -3,6 +3,12 @@ include ":champspawns:rewards";
 function ProcessChampSpawnCorpse(corpse)
 
   RegisterChampionSpawnKill(corpse);
+  // Restored -- this call site (scripts/misc/death.src) only destroys the
+  // corpse elsewhere if "nocorpse" is set, which champspawn templates aren't
+  // confirmed to set. Without this, champ-spawn corpses could accumulate on
+  // the ground instead of clearing ~2s after death like they used to.
+  Sleep(2);
+  DestroyItem(corpse);
 
 endfunction
 

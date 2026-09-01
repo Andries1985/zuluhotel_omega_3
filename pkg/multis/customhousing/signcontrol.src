@@ -65,6 +65,20 @@ program SignListener (sign)
 		SetObjProperty (sign, "decay", ReadGameClock() + get_abandon_time());
 	endif
 
+	// Lazily seed the lockdown/secure capacity counters (Lockdown/Secure Item
+	// under House Management, wired in sign.src) the first time a sign loads
+	// under the new system, same one-time-init pattern as "decay" above.
+	// Seeded from this package's own GetMaxLockdowns/GetMaxSecures formula
+	// (house value based) minus whatever's already locked/secured on the
+	// ground, so pre-existing houses with items already locked down don't
+	// get free extra capacity.
+	if (GetObjProperty (sign, "RemainingLockdowns") == error)
+		SetObjProperty (sign, "RemainingLockdowns", GetMaxLockdowns (sign) - GetLockdowns (sign));
+	endif
+	if (GetObjProperty (sign, "RemainingSecures") == error)
+		SetObjProperty (sign, "RemainingSecures", GetMaxSecures (sign) - GetSecures (sign));
+	endif
+
 	RegisterForSpeechEvents (sign, 30);
 
 	//Removed as does not work with ZH scripts

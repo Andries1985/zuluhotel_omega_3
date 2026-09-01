@@ -58,7 +58,12 @@ function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 
 	//================================= Global changes ===================================\\
 	// Global PvP slowdown.
-	if( !by_who.isA(POLCLASS_NPC) && !who.isA(POLCLASS_NPC))
+	// A player-controlled pet attacking is still "player-caused" for this
+	// purpose -- mirrors the equivalent fix already applied to
+	// spelldata.inc's ApplyElementalDamage/ApplyPlanarDamage in this same
+	// patch. Without this, a player's tamed/summoned pet attacking another
+	// player bypassed the PvP damage nerf entirely.
+	if( (!by_who.isA(POLCLASS_NPC) || (by_who.master && !by_who.master.isA(POLCLASS_NPC))) && !who.isA(POLCLASS_NPC))
 		//if( !defender.isA(POLCLASS_NPC))
 		//Print("Applying Overall PvP reduction. Damage is: " + dmg);
 		olddmg := CInt(dmg);

@@ -4,7 +4,7 @@ use cliloc;
 use vitals;
 
 include "include/eventid";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/sysevent";
 include "include/canAccess";
 include "include/housing";
@@ -17,7 +17,6 @@ include ":houseExtras:settings";
 var owneracct;
 var ownerser;
 var settings := STH_GetSettingsCfgElem("Settings");
-footage := sign.GetFootage();
 
 function SHDebug(msg)
 	if(STH_IsDebugEnabled())
@@ -492,10 +491,6 @@ function unsecure(sign, event)
 		if(GetObjProperty(sign, "RemainingSecures") > GetObjProperty(sign, "MaxSecures"))
 			SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "MaxSecures"));
 		endif
-		SetObjProperty(sign,  "RemainingSecures", GetObjProperty(sign, "RemainingSecures") + 1);
-		if(GetObjProperty(sign, "RemainingSecures") > GetObjProperty(sign, "MaxSecures"))
-			SetObjProperty(sign, "RemainingSecures", GetObjProperty(sign, "MaxSecures"));
-		endif
 		EraseObjProperty(item, "oldscript");
 		EraseObjProperty(item, "boxserial");
 		if(lockdowns > 0)
@@ -688,7 +683,7 @@ function demolish(sign)									// Decay timer has ran out. House will go up for
         if(thing.objtype == 0x2a390)									// A guilstone
           stone := thing;
           thing.movable := 1;
-          MoveObjectToLocation(thing, sign.x, sign.y, sign.z, MOVEOBJECT_FORCELOCATION, thing.realm);
+          MoveObjectToLocation(thing, sign.x, sign.y, sign.z, thing.realm, MOVEOBJECT_FORCELOCATION);
           thing.movable := 0;
         endif
       endif

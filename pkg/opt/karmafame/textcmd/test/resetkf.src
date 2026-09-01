@@ -2,7 +2,7 @@
 use uo;
 
 include "../../karmafame";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include ":staff:include/staff";
 program textcmd_resetkf( who )
 

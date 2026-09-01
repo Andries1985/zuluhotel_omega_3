@@ -1,6 +1,8 @@
 use uo;
 use os;
+use basic;
 use datafile;
+use cfgfile;
 
 include "tstone";
 
@@ -9,6 +11,10 @@ const WATCHER_PROP := "#TownstoneElectionWatcherRunning";
 const WATCHER_INTERVAL_SECONDS := 5;
 const TOWNSTONE_OBJTYPE := 0xa320;
 const TOWNSTONE_SEARCH_RANGE := 10000;
+// Player towns aren't confined to Britannia (playertowns.cfg configures
+// Zento, a Tokuno region) -- search every realm the shard defines instead
+// of hardcoding one, or a townstone placed anywhere else is invisible here.
+const TOWNSTONE_REALMS := {"britannia", "britannia_alt", "ilshenar", "malas", "termur", "tokuno"};
 
 
 var user;
@@ -51,8 +57,16 @@ endprogram
 
 
 function ProcessActiveTownstones()
-	var townstones := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, "britannia");
-	if(!townstones or !townstones.size())
+	var townstones := {};
+	foreach realm_name in TOWNSTONE_REALMS
+		var found := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, realm_name);
+		if(found and found.size())
+			foreach item in found
+				townstones.append(item);
+			endforeach
+		endif
+	endforeach
+	if(!townstones.size())
 		return 0;
 	endif
 
@@ -141,104 +155,4 @@ function LoadTownstoneState(item)
 	endif
 endfunction
 
-
-function OpenTownstoneDataFile()
-	var df := OpenDataFile(TOWNSTONE_DATAFILE);
-	if(!df)
-		CreateDataFile(TOWNSTONE_DATAFILE, flags := DF_KEYTYPE_STRING);
-		df := OpenDataFile(TOWNSTONE_DATAFILE);
-	endif
-	return df;
-endfunction
-
-
-function TouchTownstoneRegionEntry(item, region_name)
-	if(!region_name)
-		return;
-	endif
-
-	var df := OpenTownstoneDataFile();
-	if(!df)
-		return;
-	endif
-
-	var elem := df.FindElement(region_name);
-	if(!elem)
-		elem := df.CreateElement(region_name);
-	endif
-	if(!elem)
-		UnloadDataFile(TOWNSTONE_DATAFILE);
-		return;
-	endif
-
-	var gold := CInt(elem.GetProp("gold"));
-	if(gold < 0)
-		gold := 0;
-	endif
-
-	var mayor_state := GetObjProperty(item, "mayor");
-	if(!mayor_state)
-		mayor_state := "No mayor";
-	endif
-	var mayorserial_state := CInt(GetObjProperty(item, "mayorserial"));
-	if(mayorserial_state < 0)
-		mayorserial_state := 0;
-	endif
-	var populacao_state := CInt(GetObjProperty(item, "populacao"));
-	if(populacao_state < 0)
-		populacao_state := 0;
-	endif
-	var eleicao_state := CInt(GetObjProperty(item, "eleicao"));
-	if(eleicao_state < 0)
-		eleicao_state := 0;
-	endif
-	var pleibicito_state := GetObjProperty(item, "pleibicito");
-	if(!pleibicito_state)
-		pleibicito_state := 0;
-	endif
-	var candidatos_state := GetObjProperty(item, "candidatos");
-	if(!candidatos_state)
-		candidatos_state := {};
-	endif
-	var votos_state := CInt(GetObjProperty(item, "votos"));
-	if(votos_state < 0)
-		votos_state := 0;
-	endif
-	var votepercent_state := CInt(GetObjProperty(item, "votepercent"));
-	if(votepercent_state < 0)
-		votepercent_state := 0;
-	endif
-	var timer_state := CInt(GetObjProperty(item, "timer"));
-	if(timer_state < 0)
-		timer_state := 0;
-	endif
-	var poll_result_state := GetObjProperty(item, "Pleibicito_Result");
-	if(!poll_result_state)
-		poll_result_state := {};
-	endif
-	var next_election_state := CInt(GetObjProperty(item, "nextcitizenelection"));
-	if(next_election_state < 0)
-		next_election_state := 0;
-	endif
-	var citizen_state := GetObjProperty(item, "citizen");
-	if(!citizen_state)
-		citizen_state := {};
-	endif
-
-	elem.SetProp("gold", gold);
-	elem.SetProp("town_id", CInt(GetObjProperty(item, "town")));
-	elem.SetProp("stone_serial", item.serial);
-	elem.SetProp("mayor", mayor_state);
-	elem.SetProp("mayorserial", mayorserial_state);
-	elem.SetProp("populacao", populacao_state);
-	elem.SetProp("eleicao", eleicao_state);
-	elem.SetProp("pleibicito", pleibicito_state);
-	elem.SetProp("candidatos", candidatos_state);
-	elem.SetProp("votos", votos_state);
-	elem.SetProp("votepercent", votepercent_state);
-	elem.SetProp("timer", timer_state);
-	elem.SetProp("Pleibicito_Result", poll_result_state);
-	elem.SetProp("nextcitizenelection", next_election_state);
-	elem.SetProp("citizen", citizen_state);
-	UnloadDataFile(TOWNSTONE_DATAFILE);
-endfunction
+// OpenTownstoneDataFile / TouchTownstoneRegionEntry moved to tstone.inc (2026-09-01)

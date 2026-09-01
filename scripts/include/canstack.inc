@@ -7,6 +7,41 @@
 use uo;
 use cfgfile;
 
+// Cached IgnoreCprops set from stacking.cfg -- built once per script on first
+// use instead of re-reading and re-parsing the config on every CanStack()
+// call. stacking.cfg doesn't change at runtime, so there's nothing to
+// invalidate. This matters most for packethook.src, a long-running listener
+// that calls CanStack() on every stack-merge check for its entire uptime.
+// Loaded state is tracked separately from the dictionary itself so a
+// legitimately-empty IgnoreCprops list (nothing configured) still counts as
+// "loaded" and doesn't get rebuilt on every call.
+var CanStack_ignore_list := dictionary;
+var CanStack_ignore_list_loaded := 0;
+
+function CanStack_GetIgnoreList()
+	if(CanStack_ignore_list_loaded)
+		return CanStack_ignore_list;
+	endif
+
+	var stacking_cfg := ReadConfigFile("stacking");
+	if(stacking_cfg)
+		var stacking_elem := FindConfigElem(stacking_cfg, "Stacking");
+		if(stacking_elem)
+			foreach propname in (ListConfigElemProps(stacking_elem))
+				if(propname == "IgnoreCprops")
+					var ignored := SplitWords(GetConfigString(stacking_elem, "IgnoreCprops"));
+					foreach ig in ignored
+						CanStack_ignore_list[ig] := 1;
+					endforeach
+				endif
+			endforeach
+		endif
+	endif
+
+	CanStack_ignore_list_loaded := 1;
+	return CanStack_ignore_list;
+endfunction
+
 // Returns 1 if two items are identical for stacking purposes, 0 otherwise.
 // Checks all properties that define item identity:
 //   objtype, stackable, graphic, color, flags, quality,
@@ -62,21 +97,7 @@ function CanStack(item1, item2)
 	// Compare CProps (skip globally ignored CProps from stacking.cfg)
 	// Note: POL core reads config/stacking.cfg IgnoreCprops for this.
 	// We read it here to match core behaviour from eScript.
-	var ignore_list := dictionary;
-	var stacking_cfg := ReadConfigFile("stacking");
-	if(stacking_cfg)
-		var stacking_elem := FindConfigElem(stacking_cfg, "Stacking");
-		if(stacking_elem)
-			foreach propname in (ListConfigElemProps(stacking_elem))
-				if(propname == "IgnoreCprops")
-					var ignored := SplitWords(GetConfigString(stacking_elem, "IgnoreCprops"));
-					foreach ig in ignored
-						ignore_list[ig] := 1;
-					endforeach
-				endif
-			endforeach
-		endif
-	endif
+	var ignore_list := CanStack_GetIgnoreList();
 
 	var props1 := GetObjPropertyNames(item1);
 	var props2 := GetObjPropertyNames(item2);

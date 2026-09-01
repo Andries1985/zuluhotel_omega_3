@@ -14,7 +14,7 @@ include "include/anchors";
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/dotempmods";
 include "include/myutil";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/random";
 include "ai/setup/modsetup";
 include "include/attributes";

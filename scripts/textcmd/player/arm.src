@@ -3,7 +3,8 @@ use uo;
 use os;
 
 include "include/client";
-include ":gumps:old-gumps";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 include "include/myutil";
 
 program textcmd_arm(me, text)
@@ -79,44 +80,44 @@ if (!settings)
 	settings := {{0},{0},{0},{0},{0},{0},{0},{0},{0},{0}};
 endif
 
-GFInitGump();
+var gump := GFCreateGump(0, 0, 350, 530);
 
-GFResizePic( 10, 10, 3500, 330, 510);
+GFResizePic( gump, 10, 10, 3500, 330, 510);
 
-//GFResizePic( 30, 300, 3000, 290, 140);
+//GFResizePic( gump, 30, 300, 3000, 290, 140);
 
-GFTextLine( 135, 25, 43, "Arm Setup" );
+GFTextLine( gump, 135, 25, 43, "Arm Setup" );
 
-GFResizePic( 60, 60, 9350, 260, 18);
-GFResizePic( 60, 80, 9350, 260, 18);
-GFResizePic( 60, 110, 9350, 260, 18);
-GFResizePic( 60, 130, 9350, 260, 18);
-GFResizePic( 60, 160, 9350, 260, 18);
-GFResizePic( 60, 180, 9350, 260, 18);
-GFResizePic( 60, 210, 9350, 260, 18);
-GFResizePic( 60, 230, 9350, 260, 18);
-GFResizePic( 60, 260, 9350, 260, 18);
-GFResizePic( 60, 280, 9350, 260, 18);
+GFResizePic( gump, 60, 60, 9350, 260, 18);
+GFResizePic( gump, 60, 80, 9350, 260, 18);
+GFResizePic( gump, 60, 110, 9350, 260, 18);
+GFResizePic( gump, 60, 130, 9350, 260, 18);
+GFResizePic( gump, 60, 160, 9350, 260, 18);
+GFResizePic( gump, 60, 180, 9350, 260, 18);
+GFResizePic( gump, 60, 210, 9350, 260, 18);
+GFResizePic( gump, 60, 230, 9350, 260, 18);
+GFResizePic( gump, 60, 260, 9350, 260, 18);
+GFResizePic( gump, 60, 280, 9350, 260, 18);
 
-GFTextLine(125, 320, 0, "Set selected arm setting");
-GFTextLine(125, 350, 0, "Remove selected arm setting");
-GFTextLine(125, 380, 0, "Select disarm bag");
+GFTextLine(gump, 125, 320, 0, "Set selected arm setting");
+GFTextLine(gump, 125, 350, 0, "Remove selected arm setting");
+GFTextLine(gump, 125, 380, 0, "Select disarm bag");
 if(GetObjProperty(who, "AutoDisarm"))
-	GFTextLine(125, 410, 68, "Disarm before arm auto");
+	GFTextLine(gump, 125, 410, 68, "Disarm before arm auto");
 else
-	GFTextLine(125, 410, 34, "Disarm before arm auto");
+	GFTextLine(gump, 125, 410, 34, "Disarm before arm auto");
 endif
-GFTextLine(125, 450, 34, "Wipe all arm settings");
+GFTextLine(gump, 125, 450, 34, "Wipe all arm settings");
 
-GFButtonID(50, 320, 2450, 2451, 1, 100);
-GFButtonID(50, 350, 2450, 2451, 1, 200);
-GFButtonID(50, 380, 2450, 2451, 1, 400);
-GFButtonID(50, 410, 2111, 2112, 1, 500);
-GFButtonID(50, 450, 2450, 2451, 1, 300);
-GFPage(1);
+GFAddButton(gump, 50, 320, 2450, 2451, GF_CLOSE_BTN, 100);
+GFAddButton(gump, 50, 350, 2450, 2451, GF_CLOSE_BTN, 200);
+GFAddButton(gump, 50, 380, 2450, 2451, GF_CLOSE_BTN, 400);
+GFAddButton(gump, 50, 410, 2111, 2112, GF_CLOSE_BTN, 500);
+GFAddButton(gump, 50, 450, 2450, 2451, GF_CLOSE_BTN, 300);
+GFPage(gump, 1);
 
-GFTextLine(220, 487, 0, "Next Page");
-GFButtonPage(305, 490, 9762, 9763, 2);
+GFTextLine(gump, 220, 487, 0, "Next Page");
+GFAddButton(gump, 305, 490, 9762, 9763, GF_PAGE_BTN, 2);
 
 var i := 1;
 var y := 60;
@@ -128,13 +129,13 @@ foreach set in settings
 	if (i == 6)
 		page := page + 1;
 		y := 60;
-		GFPage(page);
-		GFButtonPage(30, 490, 9766, 9767, 1);
-		GFTextLine(50, 487, 0, "Previous Page");
+		GFPage(gump, page);
+		GFAddButton(gump, 30, 490, 9766, 9767, GF_PAGE_BTN, 1);
+		GFTextLine(gump, 50, 487, 0, "Previous Page");
 	endif
 
-	GFRadioButton(37, y+3, 9792, 9793, 0, i);
-	GFTextLine(23, y+5, 0,i);
+	GFRadioButton(gump, 37, y+3, 9792, 9793, 0, i);
+	GFTextLine(gump, 23, y+5, 0,i);
 
 	if(set[1])
 		wep := SystemFindObjectBySerial(set[1]);
@@ -148,19 +149,19 @@ foreach set in settings
 	endif
 
 	if (wep)
-		GFTextCrop( 63, y, 257, 18, 0, wep.desc );
+		GFTextCrop( gump, 63, y, 257, 18, 0, wep.desc );
 	endif
 
 	if (shield)
-		GFTextCrop( 63, y+20, 257, 18, 0, shield.desc );
-	endif	
+		GFTextCrop( gump, 63, y+20, 257, 18, 0, shield.desc );
+	endif
 
 	y := y + 50;
 	i := i + 1;
 endforeach
 
 
-var data := GFSendGump(who);
+var data := GFSendGump(who, gump);
 
 case(data[0])
 	100: AddArm(who, settings, data.keys[2]); 	return ArmMenu(who);
@@ -184,18 +185,17 @@ endfunction
 
 function YesNo(who)
 
-GFInitGump();
-GFResizePic( 10, 10, 3500, 180, 90);
-GFTextLine( 67, 20, 43, "Wipe All?" );
-GFTextLine( 42, 40, 34, "Can't be undone" );
+var gump := GFCreateGump(0, 0, 180, 90);
+GFResizePic( gump, 10, 10, 3500, 180, 90);
+GFTextLine( gump, 67, 20, 43, "Wipe All?" );
+GFTextLine( gump, 42, 40, 34, "Can't be undone" );
 
+var yes_btn := GFAddButton( gump, 25, 65, 0x850, 0x851, GF_CLOSE_BTN, 1 );
+GFAddButton( gump, 120, 65, 0x847, 0x849, GF_CLOSE_BTN );
 
-GFButtonID( 25, 65, 0x850, 0x851, 1 );
-GFButtonID( 120, 65, 0x847, 0x849, 1 );
+var data := GFSendGump( who, gump );
 
-var data := GFSendGump( who );
-
-if (data[0] == 1025)
+if (data[0] == yes_btn)
 	return 1;
 else
 	return 0;

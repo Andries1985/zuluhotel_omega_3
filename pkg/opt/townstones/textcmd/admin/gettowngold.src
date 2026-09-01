@@ -1,7 +1,10 @@
 // Synopsis: Withdraw gold from a targeted townstone treasury into a cheque
 use uo;
 use os;
+use basic;
 use datafile;
+use cfgfile;
+include ":townstone:tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const CHEQUE_OBJTYPE := 0x14000;
@@ -76,67 +79,8 @@ program textcmd_gettowngold(who)
 endprogram
 
 
-function OpenTownstoneDataFile()
-	var df := OpenDataFile(TOWNSTONE_DATAFILE);
-	if(!df)
-		CreateDataFile(TOWNSTONE_DATAFILE, flags := DF_KEYTYPE_STRING);
-		df := OpenDataFile(TOWNSTONE_DATAFILE);
-	endif
-	return df;
-endfunction
-
-
-function GetTownBankGold(region_name)
-	if(!region_name)
-		return 0;
-	endif
-
-	var df := OpenTownstoneDataFile();
-	if(!df)
-		return 0;
-	endif
-
-	var elem := df.FindElement(region_name);
-	if(!elem)
-		UnloadDataFile(TOWNSTONE_DATAFILE);
-		return 0;
-	endif
-
-	var gold := CInt(elem.GetProp("gold"));
-	UnloadDataFile(TOWNSTONE_DATAFILE);
-	if(gold < 0)
-		gold := 0;
-	endif
-	return gold;
-endfunction
-
-
-function SetTownBankGold(region_name, new_amount)
-	if(!region_name)
-		return;
-	endif
-
-	if(new_amount < 0)
-		new_amount := 0;
-	endif
-
-	var df := OpenTownstoneDataFile();
-	if(!df)
-		return;
-	endif
-
-	var elem := df.FindElement(region_name);
-	if(!elem)
-		elem := df.CreateElement(region_name);
-	endif
-	if(!elem)
-		UnloadDataFile(TOWNSTONE_DATAFILE);
-		return;
-	endif
-
-	elem.SetProp("gold", CInt(new_amount));
-	UnloadDataFile(TOWNSTONE_DATAFILE);
-endfunction
+// OpenTownstoneDataFile / GetTownBankGold / SetTownBankGold moved to
+// tstone.inc (2026-09-01)
 
 
 function UpdateTownstoneRegionEntry(region_name, town_id, stone_serial)

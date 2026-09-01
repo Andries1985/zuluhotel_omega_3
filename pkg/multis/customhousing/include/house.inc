@@ -701,15 +701,95 @@ endfunction
 
 ///////////////////
 //  allows the character to lock down items
+//
+//  2026-09-01: previously routed through start_script(":housing:lockunlock",
+//  parms) -- same dead-package bug as ReleaseAll had (see its comment above):
+//  there is no ":housing:" package anywhere in this repo, so this always
+//  failed silently and lockdown/secure/unlock/unsecure never actually worked
+//  through the customhousing sign at all. Per direction: this should have
+//  been tied into the same House Management flow :house: (pkg/multis/house)
+//  already uses, not a standalone speech script. Rewritten inline using the
+//  IsInside()/GetLockdowns()/GetMaxLockdowns()/ReleaseLockedDownItem() helpers
+//  that already existed in this file but were never wired to anything, plus
+//  the shared sign.HasHousePermission() method-script call every :house:-
+//  family sign (including this package's, via the shared
+//  :house:multiSign/method MethodScript on objtype 0xFFF4) already supports.
+//  Raise/Lower/Display were part of the original (and never-working) design
+//  but aren't present in :house:'s own current House Management either, so
+//  they're left unwired below rather than guessed at.
 ///////////////////
 
 function LockdownItem (sign, owner)
-	var parms := array{};
-	parms[1] := sign;
-	parms[2] := owner;
-	parms[3] := 0;
-	parms[4] := HOUSE_LOCKDOWN_ITEM;
-	start_script (":housing:lockunlock", parms);
+	if (!sign.HasHousePermission (owner, "lockdown"))
+		SendSysMessage (owner, "You do not have lockdown permission.", color := 33);
+		return;
+	endif
+
+	SendSysMessage (owner, "Target the item you wish to lock down.", color := 88);
+	var item := Target (owner, TGTOPT_NOCHECK_LOS);
+	if (!item)
+		SendSysMessage (owner, "Never mind.", color := 33);
+		return;
+	endif
+
+	if (!IsInside (owner, sign, item))
+		return;
+	endif
+
+	if (!item.movable)
+		if (GetObjProperty (item, "lockeddown") == sign.serial)
+			SendSysMessage (owner, "That is already locked down.", color := 33);
+		elseif (GetObjProperty (item, "secured") == sign.serial)
+			SendSysMessage (owner, "That is already secured.", color := 33);
+		else
+			SendSysMessage (owner, "You cannot lock that down.", color := 33);
+		endif
+		return;
+	endif
+
+	if (GetObjProperty (sign, "RemainingLockdowns") <= 0)
+		SendSysMessage (owner, "This house has no more locked down items allowed.", color := 33);
+		return;
+	endif
+
+	item.movable := 0;
+	SetObjProperty (item, "lockeddown", sign.serial);
+	SetObjProperty (sign, "RemainingLockdowns", GetObjProperty (sign, "RemainingLockdowns") - 1);
+	SendSysMessage (owner, "This item is now locked down.", color := 66);
+endfunction
+
+
+
+
+///////////////////
+//  allows the character to release a previously locked-down item
+///////////////////
+
+function UnlockItem (sign, owner)
+	if (!sign.HasHousePermission (owner, "lockdown"))
+		SendSysMessage (owner, "You do not have lockdown permission.", color := 33);
+		return;
+	endif
+
+	SendSysMessage (owner, "Target the item you wish to release.", color := 88);
+	var item := Target (owner, TGTOPT_NOCHECK_LOS);
+	if (!item)
+		SendSysMessage (owner, "Never mind.", color := 33);
+		return;
+	endif
+
+	if (GetObjProperty (item, "lockeddown") != sign.serial)
+		SendSysMessage (owner, "That is not locked down to this house.", color := 33);
+		return;
+	endif
+
+	EraseObjProperty (item, "lockeddown");
+	ReleaseLockedDownItem (owner, item);
+	var remaining := GetObjProperty (sign, "RemainingLockdowns") + 1;
+	if (remaining > GetMaxLockdowns (sign))
+		remaining := GetMaxLockdowns (sign);
+	endif
+	SetObjProperty (sign, "RemainingLockdowns", remaining);
 endfunction
 
 
@@ -720,12 +800,94 @@ endfunction
 ///////////////////
 
 function SecureItem (sign, owner)
-	var parms := array{};
-	parms[1] := sign;
-	parms[2] := owner;
-	parms[3] := 0;
-	parms[4] := HOUSE_SECURE_CONTAINER;
-	start_script (":housing:lockunlock", parms);
+	if (!sign.HasHousePermission (owner, "secure"))
+		SendSysMessage (owner, "You do not have secure permission.", color := 33);
+		return;
+	endif
+
+	SendSysMessage (owner, "Target the container you wish to secure.", color := 88);
+	var item := Target (owner, TGTOPT_NOCHECK_LOS);
+	if (!item)
+		SendSysMessage (owner, "Never mind.", color := 33);
+		return;
+	endif
+
+	if (!IsInside (owner, sign, item))
+		return;
+	endif
+
+	if (!item.isA (POLCLASS_CONTAINER))
+		SendSysMessage (owner, "You can only secure a container.", color := 33);
+		return;
+	endif
+
+	if (!item.movable)
+		if (GetObjProperty (item, "secured") == sign.serial)
+			SendSysMessage (owner, "That is already secured.", color := 33);
+		elseif (GetObjProperty (item, "lockeddown") == sign.serial)
+			SendSysMessage (owner, "That is already locked down.", color := 33);
+		else
+			SendSysMessage (owner, "You cannot secure that.", color := 33);
+		endif
+		return;
+	endif
+
+	if (GetObjProperty (sign, "RemainingSecures") <= 0)
+		SendSysMessage (owner, "This house has no more secure containers allowed.", color := 33);
+		return;
+	endif
+
+	var house_serial := ResolveCustomHouseSerial (sign);
+	SetObjProperty (item, "oldscript", item.script);
+	item.usescript := ":house:secureCont";
+	SetObjProperty (item, "houseserial", house_serial);
+	SetObjProperty (item, "secured", sign.serial);
+	item.movable := 0;
+	SetObjProperty (sign, "RemainingSecures", GetObjProperty (sign, "RemainingSecures") - 1);
+	SendSysMessage (owner, "This container is now secure.", color := 66);
+endfunction
+
+
+
+
+///////////////////
+//  allows the player to release a previously secured container
+///////////////////
+
+function UnsecureItem (sign, owner)
+	if (!sign.HasHousePermission (owner, "secure"))
+		SendSysMessage (owner, "You do not have secure permission.", color := 33);
+		return;
+	endif
+
+	SendSysMessage (owner, "Target the secure container you wish to release.", color := 88);
+	var item := Target (owner, TGTOPT_NOCHECK_LOS);
+	if (!item)
+		SendSysMessage (owner, "Never mind.", color := 33);
+		return;
+	endif
+
+	if (GetObjProperty (item, "secured") != sign.serial)
+		SendSysMessage (owner, "That is not secured to this house.", color := 33);
+		return;
+	endif
+
+	var oldscript := GetObjProperty (item, "oldscript");
+	if (oldscript == error)
+		oldscript := "";
+	endif
+	item.usescript := oldscript;
+	item.movable := 1;
+	item.decayat := ReadGameClock() + 600;
+	EraseObjProperty (item, "secured");
+	EraseObjProperty (item, "oldscript");
+	EraseObjProperty (item, "houseserial");
+	var remaining := GetObjProperty (sign, "RemainingSecures") + 1;
+	if (remaining > GetMaxSecures (sign))
+		remaining := GetMaxSecures (sign);
+	endif
+	SetObjProperty (sign, "RemainingSecures", remaining);
+	SendSysMessage (owner, "Released!", color := 66);
 endfunction
 
 
@@ -733,15 +895,12 @@ endfunction
 
 ///////////////////
 //  allows the house owner to raise the z position of items in the house
+//  -- not currently offered from any UI, matching :house:'s own current
+//  House Management scope (see comment above LockdownItem).
 ///////////////////
 
 function RaiseItem (sign, owner)
-	var parms := array{};
-	parms[1] := sign;
-	parms[2] := owner;
-	parms[3] := 0;
-	parms[4] := HOUSE_RAISE_ITEM;
-	start_script (":housing:lockunlock", parms);
+	SendSysMessage (owner, "That feature is not currently available.", color := 33);
 endfunction
 
 
@@ -749,16 +908,12 @@ endfunction
 
 ///////////////////
 //  allows the house owner to lower the z position of items in the house
+//  -- not currently offered from any UI, matching :house:'s own current
+//  House Management scope (see comment above LockdownItem).
 ///////////////////
 
 function LowerItem (sign, owner)
-	var parms := array{};
-	parms[1] := sign;
-	parms[2] := owner;
-	parms[3] := 0;
-	parms[4] := HOUSE_LOWER_ITEM;
-	start_script (":housing:lockunlock", parms);
-
+	SendSysMessage (owner, "That feature is not currently available.", color := 33);
 endfunction
 
 
@@ -766,16 +921,12 @@ endfunction
 
 ///////////////////
 //  Puts a container on display
+//  -- not currently offered from any UI, matching :house:'s own current
+//  House Management scope (see comment above LockdownItem).
 ///////////////////
 
 function DisplayContainer (sign, owner)
-	var parms := array{};
-	parms[1] := sign;
-	parms[2] := owner;
-	parms[3] := 0;
-	parms[4] := HOUSE_DISPLAY_ITEM;
-	start_script (":housing:lockunlock", parms);
-
+	SendSysMessage (owner, "That feature is not currently available.", color := 33);
 endfunction
 
 

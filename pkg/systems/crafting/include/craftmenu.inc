@@ -65,7 +65,7 @@ use cfgfile;
 use basic;
 use basicio;
 
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include "include/client";
 include "include/random";
 include "include/objtype";
