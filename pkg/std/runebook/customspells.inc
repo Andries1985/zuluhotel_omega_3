@@ -220,7 +220,12 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
 endfunction
 
 
-function CustomGate( caster, x, y, z, realm )
+function CustomGate( caster, x, y, z, realm, guild_only := 0 )
+
+	if( guild_only and !caster.guild )
+		SendSysMessage( caster, "You must be in a guild to use Guild Travel." );
+		return 0;
+	endif
 
 	var shp	:= GetHP(caster);
 	var sx	:= caster.x;
@@ -425,6 +430,32 @@ function CustomGate( caster, x, y, z, realm )
 	SetObjProperty( gate2, "GateDestY", gate1.y );
 	SetObjProperty( gate2, "GateDestZ", gate1.z );
 	SetObjProperty( gate2, "GateDestRealm", gate1.realm );
+
+	if( guild_only )
+		SetObjProperty( gate1, "GuildOnly", CInt(caster.guild.guildid) );
+		SetObjProperty( gate2, "GuildOnly", CInt(caster.guild.guildid) );
+
+		// Same "GuildColour" property/unset-handling as guilds.inc's
+		// GuildPropInt, inlined here rather than pulling in that whole
+		// include chain (it drags in itemdesc/gumps/guildstone includes that
+		// risk duplicate-function collisions this file's many callers can't
+		// afford -- customspells.inc is included by every recall/gate script).
+		var guild_color := caster.guild.getprop( "GuildColour" );
+		if( guild_color == error )
+			guild_color := 0;
+		elseif( guild_color and guild_color.errortext )
+			guild_color := 0;
+		elseif( !guild_color )
+			guild_color := 0;
+		else
+			guild_color := CInt(guild_color);
+		endif
+
+		if( guild_color )
+			gate1.color := guild_color;
+			gate2.color := guild_color;
+		endif
+	endif
 
 	Detach();
 

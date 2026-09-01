@@ -6,11 +6,11 @@ use uo;
 use os;
 use math;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 include "include/constants";
-include ":gumps:requestgump";
-include ":gumps:selectiongump";
+include ":mdgumps:requestGump";
+include ":mdgumps:selectionGump";
 
 program createspawntrigger(who, input)
 	var spawnpoint;

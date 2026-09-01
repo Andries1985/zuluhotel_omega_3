@@ -1,8 +1,8 @@
 // Synopsis: Open the hair and beard style or color customization shop
 use uo;
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/areas";
 
 const CID_HUMAN_MALE := 0x190;

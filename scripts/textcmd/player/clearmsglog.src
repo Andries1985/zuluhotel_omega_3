@@ -3,8 +3,8 @@ use os;
 use uo;
 use datafile;
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/time";
 include ":msg:include/message";
 

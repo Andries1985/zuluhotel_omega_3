@@ -1,7 +1,7 @@
 use os;
 use uo;
 
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 
 
 Program walkon_racegate(who, gate)

@@ -14,8 +14,8 @@ use file;
 
 include "include/attributes";
 include "include/client";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 include "include/spelldata";
 include "include/math";
 

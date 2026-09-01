@@ -79,6 +79,12 @@ program go_go_gadget_map( who, blank )
 		return;
 	endif
 
+	// Dropped while porting to the ResourceRequest system -- without this,
+	// two scripts racing on the same targeted blank map (e.g. two quick
+	// double-clicks before SelectMenuItem2's gump even opens) can both
+	// proceed against it.
+	if(!ReserveItem(blank)) return; endif
+
 	var choice := SelectMenuItem2( who , "Cartography");
 
 	if(!choice)

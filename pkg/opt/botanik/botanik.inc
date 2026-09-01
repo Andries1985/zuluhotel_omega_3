@@ -1,7 +1,7 @@
 use uo;
 use cfgfile;
 use os;
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 function counttree(leaves)
 

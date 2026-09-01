@@ -12,8 +12,8 @@ use uo;
 use os;
 
 include ":staff:include/staff";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/privs";
 
 program gcmds(who)
@@ -146,7 +146,6 @@ function GetCommands()
 	counsCommands.append(".goxyz");
 	counsCommands.append(".goto");
 	counsCommands.append(".openpack");
-	counsCommands.append(".makegate");
 	counsCommands.append(".mazegate");
 	counsCommands.append("bomberman");
 	counsCommands.append("colorwars");
@@ -180,9 +179,6 @@ function grantCommands(who, data, commandList, me, time := 30)
 					sendMSG(who, me, wCommand, time);
 					break;
 				".openpack":
-					sendMSG(who, me, wCommand, time);
-					break;
-				".makegate":
 					sendMSG(who, me, wCommand, time);
 					break;
 				"bomberman":

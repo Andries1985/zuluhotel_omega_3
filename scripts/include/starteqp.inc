@@ -1883,7 +1883,7 @@ function ApplyDmgMod( item )
 			n := 4;
 
 		// 40% chance
-		elseif (power < 30000)
+		elseif (power < 60000)
 			n := 5;
 
 		// 40% chance
@@ -2200,7 +2200,7 @@ function ApplyHPMod( item )
 			n := 4;
 
 		// 40% chance
-		elseif (power < 30000)
+		elseif (power < 60000)
 			n := 5;
 
 		// 40% chance
@@ -2494,7 +2494,7 @@ function ApplyARMod( item )
 			n := 4;
 
 		// 40% chance
-		elseif (power < 30000)
+		elseif (power < 60000)
 			n := 5;
 
 		// 40% chance
@@ -2797,7 +2797,7 @@ function ApplyMiscArMod( item )
 			n := 4;
 
 		// 40% chance
-		elseif (power < 30000)
+		elseif (power < 60000)
 			n := 5;
 
 		// 40% chance

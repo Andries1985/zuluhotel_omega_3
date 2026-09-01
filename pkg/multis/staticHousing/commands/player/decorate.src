@@ -1,8 +1,9 @@
+// Synopsis: Open the static house decorator tool to move, rotate, lock, or secure items
 use uo;
 use os;
 use cfgfile;
 
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include "include/housing";
 include ":statichousing:include/staticHousing";
 include ":statichousing:include/settings";

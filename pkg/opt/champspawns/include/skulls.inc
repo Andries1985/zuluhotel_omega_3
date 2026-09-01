@@ -26,7 +26,7 @@ function createNextWhiteSkull(altar)
   endif
 
   var location := GetWhiteSkullLocation(altar, white_skull_level + 1);
-  var wskull := CreateItemAtLocation(location[1], location[2], location[3], 0x1854, 1);
+  var wskull := CreateItemAtLocation(location[1], location[2], location[3], 0x1854, 1, altar.realm);
 
   wskull.movable := 0;
 
@@ -37,7 +37,7 @@ function createNextWhiteSkull(altar)
   endif
 
   PlaySoundEffect(wskull, 0x29);
-  PlayStationaryEffect( wskull.x,wskull.y,wskull.z, 0x3728, 7, 0x10,0 );
+  PlayStationaryEffect( wskull.x,wskull.y,wskull.z, 0x3728, 7, 0x10,0, altar.realm );
 
   SetObjProperty(altar, "white_skull_level", white_skull_level + 1);
   SetObjProperty(altar, "wskulls", wskulls);
@@ -67,7 +67,7 @@ function createNextRedSkull(altar)
   endif
 
   var location := GetRedSkullLocation(altar, lskull+1);
-  var skull := CreateItemAtLocation(location[1], location[2], location[3], 0x1854, 1);
+  var skull := CreateItemAtLocation(location[1], location[2], location[3], 0x1854, 1, altar.realm);
 
   skull.color:=0x26;
   skull.movable := 0;
@@ -79,7 +79,7 @@ function createNextRedSkull(altar)
   endif
 
   PlaySoundEffect(skull, 0x29);
-  PlayStationaryEffect( skull.x,skull.y,skull.z, 0x3728, 7, 0x10,0 );
+  PlayStationaryEffect( skull.x,skull.y,skull.z, 0x3728, 7, 0x10,0, altar.realm );
 
   SetObjProperty(altar, "wave", lskull+1);
   SetObjProperty(altar, "rskulls", skulls);

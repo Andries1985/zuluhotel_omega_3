@@ -28,7 +28,7 @@ function GetSlayMultiplier(weapon, defender)
 	endif
 
 	if(slaytype == "WhoKnows")
-		case(RandomInt(16))
+		case(RandomInt(17))
 			0:	slaytype := "Slime";
 			1:	slaytype := "Ratkin";
 			2:	slaytype := "Plant";
@@ -45,6 +45,7 @@ function GetSlayMultiplier(weapon, defender)
 			13:	slaytype := "Undead";
 			14:	slaytype := "Daemon";
 			15:	slaytype := "Dragonkin";
+			16:	slaytype := "Human";
 		endcase
 	endif
 
@@ -457,7 +458,13 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 			if(DEBUG_MODE)
 				SendSysMessage( attacker, "Bladesinger reduction: "+basedamage, FONT_NORMAL, 2555 );
 			endif
-			elseif( GetObjProperty( attacker, CLASSEID_MAGE ) ) // Mage damage reduction.
+			endif
+
+			// Mage damage reduction -- independent of the defender's class above
+			// (was accidentally folded into that elseif chain, which meant Mage
+			// attackers stopped getting this penalty against Paladin/Warrior/
+			// Bladesinger defenders specifically).
+			if( GetObjProperty( attacker, CLASSEID_MAGE ) )
 				basedamage := basedamage / ClasseSmallBonusByLevel( level );
 				if(DEBUG_MODE)
 					SendSysMessage( attacker, "Mage reduction: "+basedamage, FONT_NORMAL, 2555 );

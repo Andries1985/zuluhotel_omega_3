@@ -1,7 +1,7 @@
 // Synopsis: Send a targeted player to jail
 use uo;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 //Include "include/gumputil";
 include ":staff:include/staff";
 include "include/constants/locations";

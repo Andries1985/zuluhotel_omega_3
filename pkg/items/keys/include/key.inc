@@ -149,7 +149,11 @@ function KP_DestroyOwnedKeysForLockIDs( owner, bank_region, byref lock_ids )
 	endif
 
 	var destroyed := KP_DestroyKeysForLockIDsInContainer( owner.backpack, lock_ids );
-	var bankbox := CP_GetStorageContainerForMobile( owner, bank_region, CP_CREATE );
+	// Destroy-only lookup -- never writes into the bankbox, so this should
+	// never create one for an owner who doesn't already have it (matches the
+	// CP_NOCREATE convention FindExistingKey() uses above, and this
+	// function's own default parameter value).
+	var bankbox := CP_GetStorageContainerForMobile( owner, bank_region, CP_NOCREATE );
 	if( bankbox )
 		destroyed := destroyed + KP_DestroyKeysForLockIDsInContainer( bankbox, lock_ids );
 	endif

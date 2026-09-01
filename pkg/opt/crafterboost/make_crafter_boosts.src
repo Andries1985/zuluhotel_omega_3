@@ -6,7 +6,7 @@ include "include/itemutil";
 include "include/difficulty";
 include "include/classes";
 include "include/autoloop";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/math";
 include ":karmafame:karmafame";
 

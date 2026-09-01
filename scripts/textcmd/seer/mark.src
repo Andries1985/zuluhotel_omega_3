@@ -3,6 +3,7 @@
 Use uo;
 
 include ":staff:include/staff";
+include "include/realmcolors";
 //include "util/bank";
 
 program mark( who )
@@ -35,7 +36,8 @@ var realm := who.realm;
 SetObjProperty(what, "x", x);
 SetObjProperty(what, "y", y);
 SetObjProperty(what, "z", z);
-SetObjProperty(what, "realm", realm); 
+SetObjProperty(what, "realm", realm);
+what.color := GetRealmRuneColor( realm );
 
 SendSysMessage(who, "Rune marked at your coordinates.");
 PlaySoundEffect(who, 0x1FB);

@@ -459,6 +459,9 @@ function QP_GetActiveQuestIds(who)
 	var ids := array;
 	foreach questid in (state.keys())
 		var qstate := state[questid];
+		if(!qstate)
+			continue;
+		endif
 		if(qstate["Started"] && !qstate["Completed"])
 			ids.Append(CInt(questid));
 		endif
@@ -473,6 +476,9 @@ function QP_GetCompletedQuestIds(who)
 	var ids := array;
 	foreach questid in (state.keys())
 		var qstate := state[questid];
+		if(!qstate)
+			continue;
+		endif
 		if(CInt(qstate["Completed"]) == 1)
 			ids.Append(CInt(questid));
 		endif

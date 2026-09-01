@@ -5,9 +5,9 @@ use cfgfile;
 
 include "include/client";
 include "include/objtype";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
-include ":gumps:yesno";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":mdgumps:yesNo";
 include "include/utility";
 //include "util/bank";
 include ":containers:storageAreas";

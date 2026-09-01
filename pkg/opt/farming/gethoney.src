@@ -6,7 +6,7 @@ use uo;
 use os;
 use attributes;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 
 Const ITEM_WAX			:= 0x1422;

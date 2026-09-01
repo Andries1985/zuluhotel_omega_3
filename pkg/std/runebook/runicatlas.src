@@ -1,0 +1,471 @@
+// Runic Atlas gump: the real OSI selection-based runebook interface (click a
+// name to select it, then act on the selection), used only by the 48-rune
+// Runic Atlas (0x9C16/0x9C17) — the standard 16-rune runebook keeps its own
+// per-row-button gump in runebook.src. Both share the same RuneDefs/charges
+// data model and the same action logic, via runebookactions.inc.
+//
+// Gump art 39923 and its pixel layout are carried over from POLMD's
+// pkg/items/runicAtlas/runicAtlas/use.src, which targets the same art asset;
+// coordinates may still need a round of in-game tuning.
+
+use uo;
+use os;
+use math;
+use cliloc;
+
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include "runebookactions";
+include "include/objtype";
+include "include/realmcolors";
+
+const ATLAS_GUMP_ART		:= 39923;
+const ATLAS_RUNES_PER_PAGE	:= 16;
+
+const ATLAS_RENAME_BOOK	:= 101;
+const ATLAS_SET_DEFAULT	:= 102;
+const ATLAS_DROP_RUNE		:= 103;
+const ATLAS_RECALL_SPELL	:= 104;
+const ATLAS_RECALL_CHARGE	:= 105;
+const ATLAS_GATE_TRAVEL	:= 106;
+const ATLAS_RENAME_RUNE	:= 107;
+const ATLAS_MOVE_UP		:= 108;
+const ATLAS_MOVE_DOWN		:= 109;
+const ATLAS_GUILD_TRAVEL	:= 110;
+
+const ATLAS_RUNE_NAME_MAXLEN	:= 14;
+
+const G_ATLAS_ARROW_UP		:= 0x1458;
+const G_ATLAS_ARROW_DOWN	:= 0x1459;
+
+
+program open_runicatlas( who, book )
+	SetScriptController(who);
+
+	if( !Accessible( who, book ) )
+		SendSysMessage( who, "You can't reach that." );
+		return 0;
+	endif
+
+	if( !ReserveItem( book ) )
+		return 0;
+	endif
+
+	if( who.hidden )
+		SendSysMessage( who, "You cannot recall while hidden" );
+		return;
+	endif
+
+	DisplayRunicAtlasGump( who, book );
+
+endprogram
+
+
+function DisplayRunicAtlasGump( who, book )
+
+	var charges := Cint( GetObjProperty( book, "charges" ) );
+
+	// Reopen on whichever page the currently-selected rune lives on, instead
+	// of always snapping back to page 1 -- otherwise selecting/editing/moving
+	// a rune on page 2+ would kick the player back to page 1 on every redraw.
+	var cur_sel := GetAtlasSelection( who, book );
+	var focus_index := cur_sel.selected;
+	if( !focus_index )
+		focus_index := 1;
+	endif
+
+	var input := GFSendGump( who, CreateRunicAtlasGump( who, book, focus_index ) );
+	if( !input or !input[0] )
+		EraseAtlasSelection( who );
+		return 0;
+	endif
+
+	var button := Cint( input[0] );
+
+	var runes_def := GetObjProperty( book, "RuneDefs" );
+	if( !runes_def )
+		runes_def := array;
+	endif
+
+	// Anything below the first named action is a click on a rune row (its
+	// value is that rune's position in RuneDefs) — just record the selection
+	// and redraw, no action performed yet.
+	if( button < ATLAS_RENAME_BOOK )
+		SetAtlasSelection( who, book, button );
+		return DisplayRunicAtlasGump( who, book );
+	endif
+
+	var sel := GetAtlasSelection( who, book );
+	var msg;
+	var reopen := 1;
+
+	case( button )
+		ATLAS_RENAME_BOOK:
+			if( RenameBook( who, book ) )
+				msg := "The runebook was successfuly renamed to " + CStr(GetObjProperty(book, "name"));
+			endif
+			break;
+
+		ATLAS_SET_DEFAULT:
+			if( sel.selected )
+				if( SetDefaultLocation( book, runes_def, sel.selected, FindDefaultRune(runes_def) ) )
+					msg := "Rune " + runes_def[sel.selected].name + " was successfuly set as default location.";
+				endif
+			endif
+			break;
+
+		ATLAS_DROP_RUNE:
+			if( sel.selected )
+				if( !DropRune( who, book, runes_def, sel.selected ) )
+					msg := "Couldn't drop the rune.";
+				endif
+				EraseAtlasSelection( who );
+			endif
+			break;
+
+		ATLAS_RENAME_RUNE:
+			if( sel.selected )
+				if( RenameRune( who, runes_def, sel.selected ) )
+					msg := "Rune renamed to " + runes_def[sel.selected].name + ".";
+				endif
+			endif
+			break;
+
+		ATLAS_RECALL_SPELL:
+			if( sel.selected )
+				reopen := 0;
+				if( !RecallWithoutCharges( who, book, runes_def, sel.selected ) )
+					SendSysMessage( who, "Recall Failed." );
+				endif
+				EraseAtlasSelection( who );
+			endif
+			break;
+
+		ATLAS_RECALL_CHARGE:
+			if( sel.selected )
+				reopen := 0;
+				if( !RecallWithCharges( who, book, charges, runes_def, sel.selected ) )
+					SendSysMessage( who, "Recall Failed." );
+				endif
+				EraseAtlasSelection( who );
+			endif
+			break;
+
+		ATLAS_GATE_TRAVEL:
+			if( sel.selected )
+				reopen := 0;
+				ReleaseItem( book );
+				if( !GateWithoutCharges( who, book, runes_def, sel.selected ) )
+					SendSysMessage( who, "Gate Failed." );
+				endif
+				EraseAtlasSelection( who );
+			endif
+			break;
+
+		ATLAS_GUILD_TRAVEL:
+			if( sel.selected )
+				reopen := 0;
+				ReleaseItem( book );
+				if( !GateWithoutCharges( who, book, runes_def, sel.selected, 1 ) )
+					SendSysMessage( who, "Gate Failed." );
+				endif
+				EraseAtlasSelection( who );
+			endif
+			break;
+
+		ATLAS_MOVE_UP:
+			if( sel.selected and sel.selected > 1 )
+				SwapRunes( runes_def, sel.selected, sel.selected-1 );
+				SetAtlasSelection( who, book, sel.selected-1 );
+			endif
+			break;
+
+		ATLAS_MOVE_DOWN:
+			if( sel.selected and sel.selected < runes_def.size() )
+				SwapRunes( runes_def, sel.selected, sel.selected+1 );
+				SetAtlasSelection( who, book, sel.selected+1 );
+			endif
+			break;
+	endcase
+
+	SetObjProperty( book, "RuneDefs", runes_def );
+
+	if( msg )
+		SendSysMessage( who, msg );
+	endif
+
+	UpdateName( book, charges );
+
+	// Gate/Recall (Spell or Charge) close the gump instead of reopening it --
+	// otherwise the atlas doesn't reappear until the whole cast delay (and,
+	// for Gate Travel, the gate's lifetime) has finished playing out.
+	if( !reopen )
+		return 1;
+	endif
+
+	return DisplayRunicAtlasGump( who, book );
+
+endfunction
+
+
+function CreateRunicAtlasGump( who, book, focus_index )
+
+	var runes_def := GetObjProperty( book, "RuneDefs" );
+	if( !runes_def )
+		runes_def := array;
+	endif
+
+	var charges := Cint( GetObjProperty( book, "charges" ) );
+	var maxcharges := Cint( GetObjProperty( book, "maxcharges" ) );
+	if( !maxcharges )
+		maxcharges := Cint( GetObjProperty( book, "MaxCharges" ) );
+		if( !maxcharges )
+			maxcharges := 5;
+		endif
+	endif
+
+	var sel := GetAtlasSelection( who, book );
+	var mapcolor;
+	var atlas := GFCreateGump( 150, 200 );
+
+	GFPage( atlas, 0 );
+	GFGumpPic( atlas, 0, 0, ATLAS_GUMP_ART, 0 );
+	GFHTMLArea( atlas, 60, 8, 180, 16, "Charges: "+charges+" / "+maxcharges );
+	GFAddHTMLLocalized( atlas, 265, 8, 130, 16, 1011299, 0, 0 ); // Rename book
+	GFAddButton( atlas, 250, 12, 2103, 2104, GF_CLOSE_BTN, ATLAS_RENAME_BOOK );
+
+	GFAddHTMLLocalized( atlas, 280, 230, 100, 16, 1077791, 0, 0 ); // Move Up:
+	GFAddButton( atlas, 265, 234, Cint(G_ATLAS_ARROW_UP), Cint(G_ATLAS_ARROW_UP), GF_CLOSE_BTN, ATLAS_MOVE_UP );
+	GFAddHTMLLocalized( atlas, 280, 250, 100, 16, 1077792, 0, 0 ); // Move Down:
+	GFAddButton( atlas, 265, 254, Cint(G_ATLAS_ARROW_DOWN), Cint(G_ATLAS_ARROW_DOWN), GF_CLOSE_BTN, ATLAS_MOVE_DOWN );
+
+	GFAddHTMLLocalized( atlas, 280, 286, 100, 16, 1077595, 0, 0 ); // Recall (Spell)
+	GFAddButton( atlas, 265, 290, 2103, 2104, GF_CLOSE_BTN, ATLAS_RECALL_SPELL );
+	GFAddHTMLLocalized( atlas, 280, 303, 100, 16, 1077594, 0, 0 ); // Recall (Charge)
+	GFAddButton( atlas, 265, 307, 2103, 2104, GF_CLOSE_BTN, ATLAS_RECALL_CHARGE );
+	GFAddHTMLLocalized( atlas, 280, 320, 100, 16, 1015214, 0, 0 ); // Gate Travel
+	GFAddButton( atlas, 265, 324, 2103, 2104, GF_CLOSE_BTN, ATLAS_GATE_TRAVEL );
+	GFHTMLArea( atlas, 280, 337, 100, 16, "Guild Travel" ); // custom feature, no OSI cliloc
+	GFAddButton( atlas, 265, 341, 2103, 2104, GF_CLOSE_BTN, ATLAS_GUILD_TRAVEL );
+
+	if( sel.selected and runes_def[sel.selected] )
+		var info := runes_def[sel.selected];
+		var coords := GetSextantLatitude(Cint(info.toy)) + ", " + GetSextantLongitude(Cint(info.tox));
+		GFTextCrop( atlas, 60, 250, 135, 16, 0x0, coords );
+		GFAddHTMLLocalized( atlas, 70, 291, 130, 16, 1011300, 0, 0 ); // Set default
+		GFAddButton( atlas, 45, 295, 2103, 2104, GF_CLOSE_BTN, ATLAS_SET_DEFAULT );
+		GFAddHTMLLocalized( atlas, 70, 311, 130, 16, 1011298, 0, 0 ); // Drop rune
+		GFAddButton( atlas, 45, 315, 2103, 2104, GF_CLOSE_BTN, ATLAS_DROP_RUNE );
+		GFHTMLArea( atlas, 70, 331, 130, 16, "Rename Rune" ); // no OSI cliloc found for this label, plain text
+		GFAddButton( atlas, 45, 335, 2103, 2104, GF_CLOSE_BTN, ATLAS_RENAME_RUNE );
+		GFHTMLArea( atlas, 25, 355, 180, 16, "<center>"+info.name+"</center>", 0, 0 );
+	endif
+
+	// Pages are pre-chunked and rotated so the page containing focus_index
+	// (the selected rune, or 1 on a fresh open) renders as gump-page 1 -- the
+	// client always opens a gump on page 1, and SendDialogGump has no way to
+	// request a different starting page.
+	var pages := BuildAtlasPages( runes_def.size(), focus_index );
+
+	var page_num;
+	var chunk;
+	var rune_i;
+	var index;
+	var name;
+	GFPage( atlas, 1 );
+	for( page_num := 1; page_num <= pages.size(); page_num := page_num + 1 )
+		if( page_num > 1 )
+			GFPage( atlas, page_num );
+		endif
+
+		if( pages.size() > 1 )
+			var next_page := page_num + 1;
+			if( next_page > pages.size() )
+				next_page := 1;
+			endif
+			var prev_page := page_num - 1;
+			if( prev_page < 1 )
+				prev_page := pages.size();
+			endif
+			GFAddButton( atlas, 374, 3, 2206, 2206, GF_PAGE_BTN, next_page );
+			GFAddButton( atlas, 23, 5, 2205, 2205, GF_PAGE_BTN, prev_page );
+		endif
+
+		index := 0;
+		chunk := pages[page_num];
+		foreach rune_i in chunk
+			// GetRealmRuneColor (scripts/include/realmcolors.inc) is the single
+			// source of truth for realm->hue, shared with DropRune/mark.src so a
+			// physical rune matches the color it showed as in the book.
+			mapcolor := GetRealmRuneColor( runes_def[rune_i].torealm );
+
+			name := runes_def[rune_i].name;
+			if( name["A recall rune for "] )
+				name := name - "A recall rune for ";
+			elseif( name["A recall rune for"] )
+				name := name - "A recall rune for";
+			endif
+			if( !name )
+				name := "a marked recall rune";
+			endif
+
+			var col := Cint( index/8 );
+			var row := Cint( index - (col*8) );
+			var btn_x := 45 + (col*205);
+			var btn_y := 54 + (row*20);
+			var txt_x := 60 + (col*205);
+			var txt_y := 50 + (row*20);
+
+			if( rune_i == sel.selected )
+				GFAddButton( atlas, btn_x, btn_y, 2104, 2103, GF_CLOSE_BTN, rune_i );
+				GFTextCrop( atlas, txt_x, txt_y, 115, 17, 0x90, name );
+			else
+				GFAddButton( atlas, btn_x, btn_y, 2103, 2104, GF_CLOSE_BTN, rune_i );
+				GFTextCrop( atlas, txt_x, txt_y, 115, 17, mapcolor, name );
+			endif
+
+			index := index + 1;
+			SleepMS(3);
+		endforeach
+	endfor
+
+	return atlas;
+
+endfunction
+
+
+function BuildAtlasPages( total, focus_index )
+
+	var total_pages := Cint( (total + ATLAS_RUNES_PER_PAGE - 1) / ATLAS_RUNES_PER_PAGE );
+	if( total_pages < 1 )
+		total_pages := 1;
+	endif
+
+	var focus_page := 1;
+	if( focus_index >= 1 )
+		focus_page := Cint( (focus_index-1) / ATLAS_RUNES_PER_PAGE ) + 1;
+		if( focus_page > total_pages )
+			focus_page := total_pages;
+		endif
+	endif
+
+	var true_order := array{};
+	var p;
+	for( p := focus_page; p <= total_pages; p := p + 1 )
+		true_order.append(p);
+	endfor
+	for( p := 1; p < focus_page; p := p + 1 )
+		true_order.append(p);
+	endfor
+
+	var pages := array{};
+	var s;
+	var e;
+	var k;
+	var one_chunk;
+	var page_p;
+	foreach page_p in true_order
+		s := (page_p-1)*ATLAS_RUNES_PER_PAGE + 1;
+		e := page_p*ATLAS_RUNES_PER_PAGE;
+		if( e > total )
+			e := total;
+		endif
+
+		one_chunk := array{};
+		for( k := s; k <= e; k := k + 1 )
+			one_chunk.append(k);
+		endfor
+
+		pages.append(one_chunk);
+	endforeach
+
+	return pages;
+
+endfunction
+
+
+function RenameRune( who, byref runes_def, index )
+
+	if( !runes_def[index] )
+		return 0;
+	endif
+
+	var name := SendTextEntryGump( who, "Enter the new name for this rune (max "+ATLAS_RUNE_NAME_MAXLEN+" characters). ", TE_CANCEL_ENABLE, TE_STYLE_NORMAL );
+	if( !name )
+		return 0;
+	endif
+
+	if( Len(name) > ATLAS_RUNE_NAME_MAXLEN )
+		name := name[1,ATLAS_RUNE_NAME_MAXLEN];
+	endif
+
+	runes_def[index].name := name;
+
+	return 1;
+
+endfunction
+
+
+function FindDefaultRune( runes_def )
+
+	var i;
+	for( i := 1; i <= runes_def.size(); i := i + 1 )
+		if( runes_def[i] and runes_def[i].defloc )
+			return i;
+		endif
+	endfor
+
+	return 0;
+
+endfunction
+
+
+function SwapRunes( byref runes_def, index_a, index_b )
+
+	var temp := runes_def[index_a];
+	runes_def[index_a] := runes_def[index_b];
+	runes_def[index_b] := temp;
+
+	return 1;
+
+endfunction
+
+
+function GetAtlasSelection( who, book )
+
+	var sel := GetObjProperty( who, "#AtlasSelection" );
+	if( TypeOf(sel) == "Struct" )
+		if( sel.serial == book.serial )
+			return sel;
+		endif
+	endif
+
+	var empty := struct;
+	empty.+serial := 0;
+	empty.+selected := 0;
+
+	return empty;
+
+endfunction
+
+
+function SetAtlasSelection( who, book, index )
+
+	var sel := struct;
+	sel.+serial := book.serial;
+	sel.+selected := Cint(index);
+
+	SetObjProperty( who, "#AtlasSelection", sel );
+
+	return 1;
+
+endfunction
+
+
+function EraseAtlasSelection( who )
+
+	EraseObjProperty( who, "#AtlasSelection" );
+
+	return 1;
+
+endfunction

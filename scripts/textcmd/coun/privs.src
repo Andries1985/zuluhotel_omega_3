@@ -12,8 +12,8 @@ use uo;
 use os;
 
 include ":staff:include/staff";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/privs";
 
 var privlist := {};

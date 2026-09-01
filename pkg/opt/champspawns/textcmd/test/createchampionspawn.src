@@ -3,9 +3,9 @@
 
 use uo;
 
-include ":Gumps:gumps";
-include ":Gumps:gumps_ex";
-include ":Gumps:requestgump";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":mdgumps:requestGump";
 include ":champspawns:settings";
 include ":champspawns:altar";
 

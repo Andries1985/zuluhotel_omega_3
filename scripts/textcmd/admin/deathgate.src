@@ -1,8 +1,8 @@
 // Synopsis: Attach a gate spawn to a targeted NPC that triggers on death
 use uo;
 include ":staff:include/staff";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/client";
 
 

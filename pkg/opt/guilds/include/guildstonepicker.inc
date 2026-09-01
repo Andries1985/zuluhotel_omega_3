@@ -4,14 +4,13 @@ use cfgfile;
 
 // Relies on the including script already having a working GF*/GFSendGump
 // gump framework in scope (guilds.src pulls it in transitively via
-// ":gumps:autoClose"), and DestroyGuildstoneCompanions()/
+// ":mdgumps:autoClose"), and DestroyGuildstoneCompanions()/
 // SpawnGuildstoneSetCompanions() in scope (guilds.src pulls those in via
 // ":guilds:include/guilds", which itself includes
 // ":guilds:items/guildstone/companions" for DisbandGuild()'s cleanup).
-// Deliberately does NOT re-include ":mdgumps:gumps", ":gumps:gumps", or
-// "companions" here -- any of those already being present via the
-// includer's own chain means a second copy would be a duplicate-function
-// compile error.
+// Deliberately does NOT re-include ":mdgumps:gumps" or "companions" here --
+// either already being present via the includer's own chain means a second
+// copy would be a duplicate-function compile error.
 
 const GS_CAT_SINGLES := 1;
 const GS_CAT_SETS := 2;

@@ -593,9 +593,10 @@ function BOD_IsComplete(byref deed)
 endfunction
 
 // A small local stand-in for omegacache.inc's GetItemDisplayName() -- not
-// reused directly because omegacache.inc drags in the OLD :gumps:gumps /
-// :gumps:gumps_ex library, which redefines the same GF* function names as
-// :mdgumps:gumps (the one the deed gump is built on) and would collide.
+// reused directly because omegacache.inc drags in :mdgumps:gumps /
+// :mdgumps:gumps_ex, already in scope here (the deed gump is built on the
+// same library), and a second include would be a duplicate-function
+// compile error.
 function BOD_ItemDisplayName(objtype)
 	var desc := GetItemDescriptor(objtype);
 	if( !desc )

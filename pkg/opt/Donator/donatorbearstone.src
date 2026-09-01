@@ -3,7 +3,7 @@ use os;
 use vitals;
 
 include "include/attributes";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/areas";
 include "include/constants/locations";
 

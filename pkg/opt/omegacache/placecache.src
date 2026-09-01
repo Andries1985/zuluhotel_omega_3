@@ -10,8 +10,8 @@ use os;
 include "include/client";
 include "include/omegacache_utils";
 include ":house:utility";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 //include ":omegacache:omegacache";
 include "../pkg/opt/omegacache/omegacache";
 
@@ -75,7 +75,7 @@ program place_omegacache(who, deed)
 
 	// Validate target is inside the house
 	// Create a temporary test item to check if it's within the house multi
-	var testitem := CreateItemAtLocation(where.x, where.y, where.z, 0x6200, 1);
+	var testitem := CreateItemAtLocation(where.x, where.y, where.z, 0x6200, 1, where.realm);
 	var inside_multi := testitem.multi;
 	DestroyItem(testitem);
 
@@ -101,7 +101,7 @@ program place_omegacache(who, deed)
 	var selected_graphic := CInt(choice.objtype);
 
 	// Create the Omega Cache item
-	var cache := CreateItemAtLocation(where.x, where.y, where.z, OMEGACACHE_OBJTYPE, 1);
+	var cache := CreateItemAtLocation(where.x, where.y, where.z, OMEGACACHE_OBJTYPE, 1, where.realm);
 	if(!cache)
 		SendSysMessage(who, "Failed to create the Omega Cache.");
 		return;

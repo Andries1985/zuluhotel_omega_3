@@ -14,7 +14,7 @@ use uo;
 use cfgfile;
 
 include ":staff:staff";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 include ":areas:include/areapolicy";
 include ":areas:include/areafunctions";
 include "include/areas";
@@ -362,7 +362,13 @@ function ApplyPageCheckboxesToArrays(data, page, perpage, byref guarded, byref n
 	return 1;
 endfunction
 
+// 2026-09-01: was calling SetPolicyMask() (open + read + write + close, one
+// full datafile round trip) once per area in the realm -- up to ~90 file
+// open/close cycles for one Commit click on a large realm. Now builds the
+// full area_key -> mask dictionary in memory first and writes it in a single
+// SaveRealmPolicies() call, which opens the datafile once for the whole batch.
 function SavePolicyArraysForRealm(who, realm, areas, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea)
+	var entries := dictionary;
 	foreach area in areas
 		var area_key := BuildAreaKey(area);
 		if (area_key == error)
@@ -370,11 +376,14 @@ function SavePolicyArraysForRealm(who, realm, areas, guarded, norecallto, noreca
 		endif
 
 		var mask := BuildPolicyMaskForArea(_area_iter, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
-		var set_result := SetPolicyMask(realm, area_key, mask, who.name);
-		if (set_result == error)
-			return set_result;
-		endif
+		entries.Insert(area_key, mask);
 	endforeach
+
+	var policy_struct := CreatePolicyStruct(realm, AREA_POLICY_SCHEMA_VERSION, ReadGameClock(), who.name, entries);
+	var save_result := SaveRealmPolicies(realm, policy_struct, who.name);
+	if (save_result == error)
+		return save_result;
+	endif
 
 	return 1;
 endfunction

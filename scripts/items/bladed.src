@@ -6,7 +6,7 @@ use attributes;
 
 include "util/repair";
 include "include/client";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/random";
 include "include/objtype";
 include "include/classes";

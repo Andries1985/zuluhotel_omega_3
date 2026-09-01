@@ -8,10 +8,10 @@ use util;
 
 include ":datafile:datafile";
 include ":email:email_const";
-include ":Gumps:gumps";
-include ":Gumps:gumps_ex";
-include ":Gumps:gumpprompt";
-include ":Gumps:playerselectiongump";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":mdgumps:gumpPrompt";
+include ":mdgumps:playerSelectionGump";
 
 var email_data_file := DFOpenDataFile( "Emails", DF_CREATE );
 var block_list_data_file := DFOpenDataFile( "BlockLists", DF_CREATE );

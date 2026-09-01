@@ -11,7 +11,7 @@ include ":staff:include/staff";
 include "include/namingbyenchant";
 include "include/spelldata";
 include "include/itemutil";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 var selecttype;
 var layout := array(

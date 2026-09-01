@@ -2,7 +2,7 @@ use os;
 use uo;
 use cfgfile;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/itemutil";
 include "alchemy";
 

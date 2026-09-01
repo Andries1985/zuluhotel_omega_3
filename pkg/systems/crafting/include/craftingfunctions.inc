@@ -1,12 +1,30 @@
 use uo;
 use cfgfile;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 include "include/classes";
 include "include/math";
 
 const GOLD_COLOR	:= 0x0033;
+
+// Shared exceptional-quality multiplier: ArmsLore + Crafter-class bonus on
+// top of a 100% base. Previously duplicated inline in both tinkering.src and
+// bowcraft.src (which had drifted to a 50% base instead of 100% -- a real
+// bug, not an intentional archery-specific balance choice, confirmed and
+// fixed 2026-09-01). Callers still own their own "is this exceptional"
+// roll and their own theitem.quality assignment; this only computes the
+// multiplier to apply.
+function CalcExceptionalQualityMultiplier(character, crafter)
+	var armslore := GetEffectiveSkill( character, SKILLID_ARMSLORE );
+	var multiplier := 5 + Cint( armslore / 10 );
+
+	if( crafter )
+		multiplier := Cint( multiplier * ClasseBonus( character, CLASSEID_CRAFTER ) );
+	endif
+
+	return 100 + multiplier;
+endfunction
 
 function ApplyMaterialProperties(byref product_desc, material, is_exceptional, character, skill_id)
 

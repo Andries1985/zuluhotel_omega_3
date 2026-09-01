@@ -29,11 +29,13 @@ program removefromshardlibrary(who)
 	if(shard_library.errortext)
 		LogToFile("::log/sysbook.log", "[removefromlibrary.ecl]: Datastore file error: " + shard_library.errortext, LOG_DATETIME);
 		Print("Sysbook error - check sysbook.log");
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 	var book_keys := shard_library.keys();
 	if(!book_keys.Size())
 		SendSysMessage(who, "There  are no books in the Shard Library to remove.", color := 53);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 
@@ -49,6 +51,7 @@ program removefromshardlibrary(who)
 
 	if(selected_books.errortext == "No option was selected.")
 		SendSysMessage(who, "No books were selected.", color := 33);
+		UnloadDataFile("shard_library");
 		return 0;
 	endif
 
@@ -70,5 +73,6 @@ program removefromshardlibrary(who)
 		Sleepms(5);
 	endforeach		// ...selected_title in selected_books
 	SendSysMessage(who, "Finished deleting the selected books from the Shard Library.", color := 66);
+	UnloadDataFile("shard_library");
 
 endprogram

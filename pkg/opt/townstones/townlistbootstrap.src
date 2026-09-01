@@ -5,6 +5,10 @@ use datafile;
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const TOWNSTONE_OBJTYPE := 0xa320;
 const TOWNSTONE_SEARCH_RANGE := 10000;
+// Player towns aren't confined to Britannia (playertowns.cfg configures
+// Zento, a Tokuno region) -- search every realm the shard defines instead
+// of hardcoding one, or a townstone placed anywhere else is invisible here.
+const TOWNSTONE_REALMS := {"britannia", "britannia_alt", "ilshenar", "malas", "termur", "tokuno"};
 
 program BootstrapTownList()
 	var existing := GetGlobalProperty("townlist");
@@ -60,8 +64,16 @@ endfunction
 
 function BuildTownListFromLiveStones()
 	var town_list := {};
-	var stones := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, "britannia");
-	if(!stones or !stones.size())
+	var stones := {};
+	foreach realm_name in TOWNSTONE_REALMS
+		var found := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, realm_name);
+		if(found and found.size())
+			foreach item in found
+				stones.append(item);
+			endforeach
+		endif
+	endforeach
+	if(!stones.size())
 		return town_list;
 	endif
 

@@ -12,7 +12,7 @@ use guilds;
 include ":guilds:include/guilds";
 include ":guilds:include/guildconstants";
 include "include/classes";
-include ":gumps:autoClose";
+include ":mdgumps:autoClose";
 include ":guilds:include/guildstonepicker";
 
 

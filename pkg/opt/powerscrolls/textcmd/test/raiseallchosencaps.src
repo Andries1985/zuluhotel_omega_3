@@ -2,7 +2,7 @@
 use uo;
 
 include "include/attributes";
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include "include/itemutil";
 include ":staff:include/staff";
 

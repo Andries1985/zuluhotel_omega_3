@@ -1,11 +1,10 @@
+// Synopsis: Removes a static house entry and all related linked objects.
 use uo;
 use os;
 use vitals;
 
-// Synopsis: Removes a static house entry and all related linked objects.
-
 include "include/housing";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include ":statichousing:include/staticHousing";
 
 function SHDebug(msg)

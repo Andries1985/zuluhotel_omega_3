@@ -43,7 +43,7 @@ use math;
 use basicio;
 
 include "util/repair";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 include "include/objtype";
 include "include/classes";

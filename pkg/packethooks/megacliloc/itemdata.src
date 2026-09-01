@@ -399,9 +399,15 @@ program itemdata(parms)
 			allprops.append(prop);
 		endif
 		if(xObject.isa(POLCLASS_CONTAINER) && !xObject.isa(POLCLASS_CORPSE) && !xObject.locked)
-			if(xObject.objtype == 0x7100)
-				var maxcharges := GetObjProperty(xObject, "maxcharges");
-				prop.clilocid := 1063516; //Max Charges: 
+			if(xObject.objtype == 0x7100 || xObject.objtype == 0x9c16 || xObject.objtype == 0x9c17)
+				var maxcharges := Cint(GetObjProperty(xObject, "maxcharges"));
+				if(!maxcharges)
+					maxcharges := Cint(GetObjProperty(xObject, "MaxCharges"));
+					if(!maxcharges)
+						maxcharges := 5;
+					endif
+				endif
+				prop.clilocid := 1063516; //Max Charges:
 				prop.values := array {maxcharges};
 				allprops.append(prop);
 			else

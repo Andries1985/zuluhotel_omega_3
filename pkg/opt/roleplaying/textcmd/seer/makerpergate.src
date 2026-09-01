@@ -4,7 +4,7 @@ use os;
 
 include "include/client";
 include ":staff:include/staff";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 program textcmd_makerpergate( who )
 

@@ -8,7 +8,7 @@ use uo;
 use os;
 use polsys;
 
-include ":gumps:requestgump";
+include ":mdgumps:requestGump";
 
 program command_RemoveDoors( who )
 

@@ -18,7 +18,7 @@ include ":house:utility";
 // uo.em check instead, needing no extra include.
 include ":itemutils:itemdesc";
 
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include "guildconstants";
 include ":guilds:items/guildstone/companions";
 

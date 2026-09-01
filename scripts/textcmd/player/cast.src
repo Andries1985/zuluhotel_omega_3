@@ -12,7 +12,7 @@ include "include/skillpoints";
 include "include/classes";
 include "include/string";
 include "include/random";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include ":versebook:include/verseinfo";
 include ":versebook:include/versefunctions";
 

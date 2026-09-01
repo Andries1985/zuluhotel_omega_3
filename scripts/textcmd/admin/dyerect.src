@@ -29,7 +29,7 @@ use math;
 include ":staff:include/staff";
 //include "util/key";
 include "include/objtype";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
 include "include/attributes";

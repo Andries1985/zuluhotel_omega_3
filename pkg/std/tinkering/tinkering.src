@@ -4,7 +4,7 @@ use os;
 use math;
 
 include "util/repair";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/client";
 include "include/objtype";
 include "include/dotempmods";
@@ -266,14 +266,9 @@ function TryToMakeComplex( character , use_on , to_be_done_objtype , needed_objt
 		if( element.Exceptional and (GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) and CheckSkill( character , SKILLID_TINKERING , skill , 0 ))) )
 			if( theitem.quality )
 				//Made something Exceptional
-				var armslore := GetEffectiveSkill( character , SKILLID_ARMSLORE );
-				var multiplier := 5 + Cint( armslore / 10 );
-
-				if( GetObjProperty( character , CLASSEID_CRAFTER ) )
-					multiplier := Cint( multiplier * ClasseBonus( character , CLASSEID_CRAFTER ) );
-				endif
-
-				multiplier	:= 100 + multiplier;
+				// 2026-09-01: now shares the same helper bowcraft.src uses instead
+				// of its own inline copy of this formula.
+				var multiplier := CalcExceptionalQualityMultiplier( character, GetObjProperty( character, CLASSEID_CRAFTER ) );
 				var newquality := Cint(theitem.quality * multiplier);
 				newquality := Cdbl(newquality);
 				newquality := newquality / 100;

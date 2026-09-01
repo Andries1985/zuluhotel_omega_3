@@ -3,7 +3,7 @@ use uo;
 use os;
 
 include ":staff:include/staff";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 program make_gate( who )
 

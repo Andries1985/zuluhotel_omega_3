@@ -5,7 +5,7 @@ use cfgfile;
 //include "util/key";
 include ":keys:key";
 include "include/objtype";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 //include ":housing:utility";
 include ":house:utility";
 include "include/attributes";

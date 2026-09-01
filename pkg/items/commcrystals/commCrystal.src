@@ -48,7 +48,15 @@ program use_commcrystal(who, crystal)
       endif
       SendSysMessage(who, "Linked.");
       SetObjProperty(TargetItem, "Master", CrystalId);
-      LinkString := Cstr(LinkString) + " " + Cstr(TargetItem.serial);
+      // itemdesc.cfg seeds a brand-new crystal's Links as the literal string
+      // "BLANK" -- appending onto that instead of replacing it means the
+      // placeholder rides along forever, and crystalControl.src's relay loop
+      // later tries to resolve it as a real receiver serial.
+      if (Cstr(LinkString) == "BLANK")
+        LinkString := Cstr(TargetItem.serial);
+      else
+        LinkString := Cstr(LinkString) + " " + Cstr(TargetItem.serial);
+      endif
       SetObjProperty(crystal, "Links", LinkString);
       return;
     endif

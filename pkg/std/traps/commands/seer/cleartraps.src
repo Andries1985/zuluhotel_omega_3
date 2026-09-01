@@ -6,10 +6,11 @@ program RemoveAllTraps(who)
 
 	SendSysMessage( who, "Remove all traps from which item?", color := 88);
 	var object := Target( who, TGTOPT_NOCHECK_LOS );
-	var traplist := GetTrapList(object);
-	foreach trap in traplist
-		RemoveTrap( object, _trap_iter );
-	endforeach
+	// RemoveTrap's default index:="all" clears the whole list in one call --
+	// looping with individual snapshot-array indices doesn't work here since
+	// RemoveTrap re-fetches and erases against the object's live (shrinking)
+	// TrapList each call, desyncing the loop's indices after the first removal.
+	RemoveTrap( object, "all" );
 	SendSysMessage( who, "All traps removed.", color := 66 );
 
 endprogram

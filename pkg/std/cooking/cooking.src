@@ -13,7 +13,7 @@ use attributes;
 include "include/attributes";
 include "include/random";
 include "include/client";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "food";
 include "include/autoloop";
 include "include/difficulty";
@@ -442,15 +442,18 @@ function can_be_cooked(character, current_recipe)
 
 	//else if it requires a fire, search nearby for a fire
 	elseif (current_recipe.cooking_method == 1)
-		return near_a_fire(character);
+		return near_a_fire(character, GetNearbyCookObjtypes(character));
 
 	//else if it requires an oven, search for an oven
 	elseif (current_recipe.cooking_method == 2)
-		return near_an_oven(character);
+		return near_an_oven(character, GetNearbyCookObjtypes(character));
 
 	//else if it can be made in either a fire or an oven, check for both
 	elseif (current_recipe.cooking_method == 3)
-		return near_a_fire(character) or near_an_oven(character);
+		// One shared scan instead of a separate one for near_a_fire and
+		// another for near_an_oven -- see GetNearbyCookObjtypes.
+		var nearby_objtypes := GetNearbyCookObjtypes(character);
+		return near_a_fire(character, nearby_objtypes) or near_an_oven(character, nearby_objtypes);
 
 	//else if for some reason it's none of the above, return failure
 	else
@@ -460,20 +463,48 @@ endfunction
 
 
 ///////////////////
+//  Scans the area around the character ONCE for every nearby item and static objtype, so
+//  near_a_fire/near_an_oven (and the cooking_method==3 fire-or-oven case, which checks both) don't
+//  each re-run their own ListItemsNearLocation + 3x3 ListStaticsAtLocation sweep per objtype range --
+//  up to 10 separate location scans per cooking attempt before this. Result is checked in memory
+//  against each range instead.
+///////////////////
+
+function GetNearbyCookObjtypes(character)
+	var found := {};
+
+	foreach item in ListItemsNearLocation(character.x, character.y, character.z, 1, character.realm)
+		found.append(item.objtype);
+	endforeach
+
+	var sx, sy;
+	for (sx := character.x - 1; sx <= character.x + 1; sx := sx + 1)
+		for (sy := character.y - 1; sy <= character.y + 1; sy := sy + 1)
+			foreach item in ListStaticsAtLocation(sx, sy, LIST_IGNORE_Z, 0, character.realm)
+				found.append(item.objtype);
+			endforeach
+		endfor
+	endfor
+
+	return found;
+endfunction
+
+
+///////////////////
 //  Checks the area around the character for a campfire/fireplace/hearth, either as a real item or
 //  (in the case of hearths/fireplaces built into a house's floor plan) as a static that was never
 //  spawned as a real item.
 ///////////////////
 
-function near_a_fire(character)
-	if (nearby_objtype_in_range(character, 0x045d, 0x0460)) return 1; endif
-	if (nearby_objtype_in_range(character, 0x0475, 0x048e)) return 1; endif
-	if (nearby_objtype_in_range(character, 0x0935, 0x096c)) return 1; endif
-	if (nearby_objtype_in_range(character, 0x0de3, 0x0de8)) return 1; endif
-	if (nearby_objtype_in_range(character, 0x2352, 0x2366)) return 1; endif // Hearth of Home fireplace
-	if (nearby_objtype_in_range(character, 0x2a04, 0x2a04)) return 1; endif // Fire pit
-	if (nearby_objtype_in_range(character, 0x2ddb, 0x2ddc)) return 1; endif // Elven stove
-	if (nearby_objtype_in_range(character, 0x3651, 0x3653)) return 1; endif // Shadow fire pit
+function near_a_fire(character, nearby_objtypes)
+	if (objtype_in_range_list(nearby_objtypes, 0x045d, 0x0460)) return 1; endif
+	if (objtype_in_range_list(nearby_objtypes, 0x0475, 0x048e)) return 1; endif
+	if (objtype_in_range_list(nearby_objtypes, 0x0935, 0x096c)) return 1; endif
+	if (objtype_in_range_list(nearby_objtypes, 0x0de3, 0x0de8)) return 1; endif
+	if (objtype_in_range_list(nearby_objtypes, 0x2352, 0x2366)) return 1; endif // Hearth of Home fireplace
+	if (objtype_in_range_list(nearby_objtypes, 0x2a04, 0x2a04)) return 1; endif // Fire pit
+	if (objtype_in_range_list(nearby_objtypes, 0x2ddb, 0x2ddc)) return 1; endif // Elven stove
+	if (objtype_in_range_list(nearby_objtypes, 0x3651, 0x3653)) return 1; endif // Shadow fire pit
 	return 0;
 endfunction
 
@@ -484,37 +515,24 @@ endfunction
 //  checked for separately from real items.
 ///////////////////
 
-function near_an_oven(character)
-	if (nearby_objtype_in_range(character, 0x0461, 0x046f)) return 1; endif
-	if (nearby_objtype_in_range(character, 0x092b, 0x0934)) return 1; endif
+function near_an_oven(character, nearby_objtypes)
+	if (objtype_in_range_list(nearby_objtypes, 0x0461, 0x046f)) return 1; endif
+	if (objtype_in_range_list(nearby_objtypes, 0x092b, 0x0934)) return 1; endif
 	return 0;
 endfunction
 
 
 ///////////////////
-//  Looks for a nearby item OR static (statics cover things like ovens/fireplaces that are baked
-//  into a house's floor plan and were never spawned as real items) whose objtype falls within the
-//  given range.
+//  Checks an already-fetched list of nearby objtypes (see GetNearbyCookObjtypes) against a range,
+//  with no further map/static lookups.
 ///////////////////
 
-function nearby_objtype_in_range(character, min_objtype, max_objtype)
-
-	foreach item in ListItemsNearLocation(character.x, character.y, character.z, 1, character.realm)
-		if ((item.objtype >= min_objtype) and (item.objtype <= max_objtype))
+function objtype_in_range_list(nearby_objtypes, min_objtype, max_objtype)
+	foreach objtype in nearby_objtypes
+		if ((objtype >= min_objtype) and (objtype <= max_objtype))
 			return 1;
 		endif
 	endforeach
-
-	var sx, sy;
-	for (sx := character.x - 1; sx <= character.x + 1; sx := sx + 1)
-		for (sy := character.y - 1; sy <= character.y + 1; sy := sy + 1)
-			foreach item in ListStaticsAtLocation(sx, sy, LIST_IGNORE_Z, 0, character.realm)
-				if ((item.objtype >= min_objtype) and (item.objtype <= max_objtype))
-					return 1;
-				endif
-			endforeach
-		endfor
-	endfor
 
 	return 0;
 endfunction

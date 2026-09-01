@@ -1,9 +1,10 @@
+// Synopsis: Configure loot lottery drop settings on a targeted mobile or spawnpoint
 use uo;
 use os;
 
 include "include/client";
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include ":lootlottery:include/lootlottery";
 
 program textcmd_cfglotto(who)

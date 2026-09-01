@@ -2,7 +2,7 @@
 use uo;
 
 include "../../karmafame";
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 
 program textcmd_karma( who )
 

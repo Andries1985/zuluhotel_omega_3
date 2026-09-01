@@ -19,9 +19,11 @@ program do_itemid( who )
 		return 0;
 	endif
 
-	var used_id := SelectItemToID( who , delay );
-	if( used_id )
-		SetObjProperty( who, "#LastID", ReadGameClock() );
-	endif
+	// Set unconditionally, matching the pre-patch behavior -- gating this on
+	// SelectItemToID's return value meant a failed identify skill check (which
+	// also returns 0, same as cancel) no longer started the cooldown, letting
+	// a player immediately re-target and re-roll the same item with no delay.
+	SelectItemToID( who , delay );
+	SetObjProperty( who, "#LastID", ReadGameClock() );
 
 endprogram

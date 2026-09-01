@@ -8,8 +8,9 @@ include "include/attributes";
 include "include/client";
 include "include/constants/gumpids";
 include "include/constants/locations";
- 
-include ":gumps:old-gumps";
+
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 function SelectCustomNPC( who, point )
 
@@ -39,22 +40,22 @@ endfunction
 
 function ConfirmCustomNPCSelection(who)
 
-GFInitGump(20, 20);
-GFNoClose();
-GFNoDispose();
-GFResizePic(20, 20, GUMPID_BKGND_STONESLAB , 470, 120);
-GFTextMid(20, 30, 490,53, "Are you ready to create a custom NPC spawnpoint?");
-GFTextLine(30, 60, CInt(COLOR_BLUE_LIGHT), "- Make sure you have already created the NPC you want to spawn here.");
-GFTextLine(30, 80, CInt(COLOR_BLUE_LIGHT), "- You will be prompted to target the specific npc.");
-GFTextMid(20, 110, 490, CInt(COLOR_BLUE_LIGHT), "CONTINUE?");
-var okay := GFButtonID( 100, 110, 2130, 2129, 1 );
-var cancel := GFButtonID( 350, 110, 2121, 2120, 1 );
+var gump := GFCreateGump(20, 20, 470, 120);
+GFClosable(gump, 0);
+GFDisposable(gump, 0);
+GFResizePic(gump, 20, 20, GUMPID_BKGND_STONESLAB , 470, 120);
+GFTextMid(gump, 20, 30, 490,53, "Are you ready to create a custom NPC spawnpoint?");
+GFTextLine(gump, 30, 60, CInt(COLOR_BLUE_LIGHT), "- Make sure you have already created the NPC you want to spawn here.");
+GFTextLine(gump, 30, 80, CInt(COLOR_BLUE_LIGHT), "- You will be prompted to target the specific npc.");
+GFTextMid(gump, 20, 110, 490, CInt(COLOR_BLUE_LIGHT), "CONTINUE?");
+var okay := GFAddButton( gump, 100, 110, 2130, 2129, GF_CLOSE_BTN, 1 );
+var cancel := GFAddButton( gump, 350, 110, 2121, 2120, GF_CLOSE_BTN, 2 );
 
-var data := GFSendGump(who);
+var data := GFSendGump(who, gump);
 
-if(data[okay.keyid])
+if(data[okay])
 	return 1;
-elseif(data[cancel.keyid])
+elseif(data[cancel])
 	return 0;
 endif
 

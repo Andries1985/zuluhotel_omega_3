@@ -82,7 +82,7 @@ if (IsFriend(who, sign, ADD_TO_SECURE))
 endif
 
 var remtime := GetObjProperty(item, "#SecureRemove");
-if (remtime && !remtime.errortext)
+if (remtime && !remtime.errortext && IsFriend(who, sign, 0))
 	if( (remtime[2] + 30) > ReadGameClock() && remtime[1] == container.serial )
 		return 1;
 	endif

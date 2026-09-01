@@ -12,7 +12,7 @@ include "include/anchors";
 include "ai/combat/fight";
 include "ai/combat/defaultcombatevent";
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "ai/main/npcinfo";
 include "include/attributes";
 

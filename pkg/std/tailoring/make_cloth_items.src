@@ -20,7 +20,7 @@ use math;
 use basicio;
 use polsys;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/objtype";
 include "include/client";
 include "include/string";

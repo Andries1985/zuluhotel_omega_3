@@ -18,7 +18,7 @@ include "include/objtype";
 include "include/utility";
 include "botanik";
 include "include/random";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/autoloop";
 
 const UACTION_CHOP:=0x0D;

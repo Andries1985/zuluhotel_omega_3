@@ -1,7 +1,7 @@
 use uo;
 
-include ":gumps:include/gumps";
-include ":gumps:include/gumps_ex";
+include ":mdgumps:include/gumps";
+include ":mdgumps:include/gumps_ex";
 include "include/NameChecker";
 
 program SendNameChangeGump(who, msg)

@@ -3,7 +3,7 @@ use uo;
 include "include/random";
 include "include/attributes";
 include "include/itemutil";
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 
 program powerscroll(who, scroll)
 

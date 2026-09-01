@@ -6,7 +6,7 @@ use os;
 use polsys;
 
 include ":staff:staff";
-include ":gumps:gumps";
+include ":mdgumps:gumps";
 
 program textcmd_gotomobtype( character , text )
 

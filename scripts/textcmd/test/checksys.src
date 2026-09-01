@@ -1,37 +1,38 @@
 // Synopsis: Display a script profile overview gump
 use uo;
 
-include ":gumps:old-gumps";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 
 program view_script_profiles(who)
-	
-	GFInitGump();
-	GFResizepic( 0, 40, 0x53, 800, 580 );
-	GFCheckerTrans( 0, 40, 800, 580 );
-	GFTextLine( 320,  70, 4, "- Script Profile -" );
-	GFTextLine(  50, 100, 63, "Script Name" );
-	GFTextLine( 350, 100, 63, "Instructions");
-	GFTextLine( 450, 100, 63, "Instruction%" );
-	GFTextLine( 550, 100, 63, "Invocations" );
-	GFTextLine( 650, 100, 63, "Instruc/Invoc" );
+
+	var gump := GFCreateGump(0, 0, 800, 620);
+	GFResizePic( gump, 0, 40, 0x53, 800, 580 );
+	GFAddAlphaRegion( gump, 0, 40, 800, 580 );
+	GFTextLine( gump, 320,  70, 4, "- Script Profile -" );
+	GFTextLine( gump,  50, 100, 63, "Script Name" );
+	GFTextLine( gump, 350, 100, 63, "Instructions");
+	GFTextLine( gump, 450, 100, 63, "Instruction%" );
+	GFTextLine( gump, 550, 100, 63, "Invocations" );
+	GFTextLine( gump, 650, 100, 63, "Instruc/Invoc" );
 
 	var cury := 120;
 
 	foreach script in scripts_sorted()
-		GFTextLine(  50, cury, 53, script.name );
-		GFTextLine( 350, cury, 53, script.instr );
-		GFTextLine( 450, cury, 53, script.instr_percent );
-		GFTextLine( 550, cury, 53, script.invocations  );
-		GFTextLine( 650, cury, 53, script.instr_per_invoc );
+		GFTextLine( gump,  50, cury, 53, script.name );
+		GFTextLine( gump, 350, cury, 53, script.instr );
+		GFTextLine( gump, 450, cury, 53, script.instr_percent );
+		GFTextLine( gump, 550, cury, 53, script.invocations  );
+		GFTextLine( gump, 650, cury, 53, script.instr_per_invoc );
 		cury := cury + 20;
 	endforeach
 
-	var reset := GFButtonID( 30, 60, 2117, 2118, 1 );
-	GFTextLine( 50, 62, 32, "Reset" );
+	var reset := GFAddButton( gump, 30, 60, 2117, 2118, GF_CLOSE_BTN );
+	GFTextLine( gump, 50, 62, 32, "Reset" );
 
-	var res := GFSendGump(who);
-	if(res[0]==reset.keyid)
+	var res := GFSendGump(who, gump);
+	if(res[0]==reset)
 		polcore().clear_script_profile_counters();
 	endif
 

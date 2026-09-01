@@ -7,7 +7,7 @@
 use uo;
 use os;
 
-include ":gumps:yesno";
+include ":mdgumps:yesNo";
 include "include/security";
 
 program textcmd_visit( who )

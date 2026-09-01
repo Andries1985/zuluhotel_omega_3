@@ -15,8 +15,8 @@ include "include/client";
 include "include/constants/usescriptids";
 include "include/omegacache_utils";
 include ":house:utility";
-include ":gumps:gumps";
-include ":gumps:gumps_ex";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
 
 // ============================================================
 // Constants

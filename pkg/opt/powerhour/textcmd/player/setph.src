@@ -68,6 +68,13 @@ program textcmd_setPH(who)
 			100:	activateph(who, "#PPHH");
 			200:	activateph(who, "#PPHC");
 			300:	activateph(who, "#PPHS");
+			default:
+				// No radio button was selected before OKAY was clicked -- without
+				// this, #SettingPH is left set forever (nothing else clears it),
+				// permanently locking the player out of .setph until a GM runs
+				// .resetph.
+				SendSysMessage( who, "You must select a powerhour option first.", FONT_NORMAL, 2595 );
+				EraseObjProperty(who, "#SettingPH");
 		endcase
 	else
 		SendSysMessage( who, "You have already started a Personal Powerhour this week. Try again next week!", FONT_NORMAL, 2595 );
@@ -127,6 +134,12 @@ function activateph(who, choice)
 	SetObjProperty(who, "pph_use_time", use_time);
 	SetObjProperty(who, "pph_use_weekday", use_weekday);
 	SetObjProperty(who, "#PPHPid", GetPid());		// Lets .resetph kill this sleeping instance directly
+	// Durable (non-"#") record of which type is active -- "#"-prefixed
+	// properties like "choice" itself aren't reliably persisted across a
+	// server restart in this repo, but logon.src's resume-after-reboot logic
+	// needs to know which of #PPHH/#PPHC/#PPHS to re-set. This is that
+	// durable source of truth; logon.src reads it instead of the "#" flags.
+	SetObjProperty(who, "pph_active_type", choice);
 
 	if(GetObjProperty(who, "#PPHH"))
 		SendSysMessage( who, "Your Hunting Powerhour has started!", FONT_BOLD, 2601 );
@@ -150,4 +163,5 @@ function activateph(who, choice)
 	EraseObjProperty(who, "#PPHS");
 	EraseObjProperty(who, "#SettingPH");
 	EraseObjProperty(who, "#PPHPid");
+	EraseObjProperty(who, "pph_active_type");
 endfunction

@@ -4,7 +4,7 @@ use os;           // For operating system-related functions like SplitWords
 use guilds;       // Assuming a guilds package exists for guild management
 
 include "include/client";
-include ":gumps:include/gumps";
+include ":mdgumps:include/gumps";
 include ":guilds:guildconstants";
 
 program switchguildleader(who)
