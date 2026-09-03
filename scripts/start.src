@@ -28,8 +28,8 @@ foreach name in ( CP_ListStorageAreas() )
     Print( "Initializing "+name+" Area." );
 endforeach
 
-Start_Script( "storageWipe" );
-Print( "Wiping merchant storage (NEEDS FIXING)" );
+//Start_Script( "storageWipe" ); // disabled 2026-09-03, see project_storagewipe_needs_fixing memory
+//Print( "Wiping merchant storage (NEEDS FIXING)" );
 
 SetGlobalProperty( "#NoNpcLooting" , 1 );
 
