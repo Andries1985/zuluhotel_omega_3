@@ -4,6 +4,7 @@ use cfgfile;
 
 include "include/random";
 include "include/skillpoints";
+include "fishing";
 
 const UOBJ_CRUSTACEANTRAP      := 0x3037E;
 const UOBJ_CRUSTACEANTRAP_BUOY := 0x3037F;
@@ -164,8 +165,10 @@ function CollectTrap(character, buoy)
 		var fishtier := GetObjProperty(caughtitem, "FishTier");
 		if (fishtier == "Rare Crustacean")
 			SendSysmessage(character, "You find a rare "+caughtitem.desc+"!", 3, 1731);
+			SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
 		elseif (fishtier == "Legendary Crustacean")
 			SendSysmessage(character, "You find a legendary "+caughtitem.desc+"!", 3, 1531);
+			SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
 		endif
 	endforeach
 

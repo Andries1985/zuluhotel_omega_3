@@ -2,6 +2,7 @@ use uo;
 use cfgfile;
 use os;
 use basicio;
+use polsys;
 
 include "include/client";
 include "include/random";
@@ -243,6 +244,72 @@ function ResolveFishCatch(character, fish_amount, equipped, deep_water, location
 			SendSysmessage(character, "You caught a legendary "+caughtitem.desc+"!", 3, 1531);
 		endif
 	endif
+
+	//Rare/Legendary catches are trophy-eligible (matches OSI's High Seas Taxidermy Kit rules -
+	//trophy eligibility is species rarity, not an independent "big fish" roll). caughtitem is 0
+	//if createfish() carved it into steaks instead (player opted into AutoCarveRareFish), in
+	//which case there's nothing left to tag.
+	if (caughtitem and caught_tier != "Regular")
+		SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
+	endif
+
+endfunction
+
+//OSI's historical fish-weight record range is 1-225 stones. Taking the min of two rolls skews
+//the result toward the low end, so a near-record weight stays rare.
+function RollTrophyWeight()
+	return Min(Random(225)+1, Random(225)+1);
+endfunction
+
+//Looks up trophyart.cfg for a graphic matching base_graphic - the caught item's own .graphic
+//(the shared body-shape art every species using that shape, east or south, is built from -
+//e.g. 0x337D/0x337E for the "Fish9"/"Fish10" shape pair). Each confirmed base_graphic maps to
+//exactly one matching trophy graphic, already facing-correct. Shapes without a confirmed
+//dedicated trophy fall back to the single "Generic" pool of plaque graphics.
+function PickTrophyGraphic(base_graphic)
+
+	var cfg := ReadConfigFile("trophyart");
+	var elem := FindConfigElem(cfg, base_graphic);
+	var graphic;
+
+	if (elem)
+		graphic := CInt(elem.Trophy);
+	else
+		var choices := GetConfigStringArray(FindConfigElem(cfg, "Generic"), "Graphics");
+		graphic := CInt(choices[Random(len(choices))+1]);
+	endif
+
+	UnloadConfigFile("trophyart");
+
+	return graphic;
+
+endfunction
+
+//Consumes a Rare/Legendary catch (fish or crustacean) tagged with TrophyWeight by
+//ResolveFishCatch()/CollectTrap() and creates a wall-mount trophy in its place, carrying the
+//weight, species, and angler's name for the tooltip block added to
+//pkg/packethooks/megacliloc/itemdata.src. The trophy is hued to match the specific fish caught.
+function CreateFishTrophy(character, caught_item)
+
+	var weight := GetObjProperty(caught_item, "TrophyWeight");
+	var species := caught_item.desc;
+	var graphic := PickTrophyGraphic(caught_item.graphic);
+
+	var trophy := CreateItemInBackpack(character, graphic, 1);
+	trophy.name := species + " Trophy";
+	trophy.desc := species + " Trophy";
+	trophy.color := caught_item.color;
+	SetObjProperty(trophy, "TrophyWeight", weight);
+	SetObjProperty(trophy, "TrophySpecies", species);
+	SetObjProperty(trophy, "TrophyAngler", character.name);
+
+	//Renaming/recoloring an item after creation doesn't push a fresh MegaCliloc tooltip on its
+	//own (see the "only sent if this value has changed" note in toolTips.src) - bump the
+	//revision so the client actually re-fetches the new name/weight/angler text.
+	IncRevision(trophy);
+
+	DestroyItem(caught_item);
+	SendSysmessage(character, "You mount the "+species+" as a trophy!");
 
 endfunction
 

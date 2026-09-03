@@ -189,7 +189,16 @@ function do_something(character)
 		4:
 			CreateItemInBackpack( Character, RandomShell(Character), 1 );
 			SendSysMessage(character,"You find something valuable!");
-			
+
+		7:
+			//Case 7 alone is a 1/15 chance (same as cases 1 and 4) - gating it down to
+			//3/20 here brings the overall odds to 1/15 * 3/20 = 1/100, without touching
+			//cases 1-4's odds.
+			if (Random(20)<3)
+				CreateItemInBackpack( character, 0x1EB7, 1 );
+				SendSysmessage(character, "You just found a taxidermy kit.");
+			endif
+
 		/*
 		5: 
 			if (Random(10)<3 and  checkcity(character)==0)

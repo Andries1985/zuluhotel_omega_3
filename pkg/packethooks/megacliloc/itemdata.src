@@ -50,6 +50,18 @@ program itemdata(parms)
 			allprops.append(prop);
 		endif
 	endif
+	var trophyweight := GetObjProperty(xObject, "TrophyWeight");
+	if(trophyweight)
+		prop.clilocid := 1070722; // Nothing - raw text
+		prop.values := array {"Weight: "+trophyweight+" stones"};
+		allprops.append(prop);
+		var trophyangler := GetObjProperty(xObject, "TrophyAngler");
+		if(trophyangler)
+			prop.clilocid := 1070722; // Nothing - raw text
+			prop.values := array {"Caught by: "+trophyangler};
+			allprops.append(prop);
+		endif
+	endif
 	var fishtier := GetObjProperty(xObject, "FishTier");
 	if(fishtier)
 		prop.clilocid := 1070722; // Nothing - raw text

@@ -11,8 +11,24 @@ include ":bulkorders:bulkorder";
 include ":bulkorders:bulkorder_ledger";
 include ":mdgumps:gumps";
 
-const BOD_REWARDS_BTN_EXIT        := 0;
 const BOD_REWARDS_BTN_REDEEM_BASE := 100;
+
+// Each row shows an icon + point cost (no inline name - the name is the tooltip instead), with
+// a redeem button when affordable, on a plain resizable background (GFResizePic) rather than
+// hand-placed OSI scroll-book art - that art (see pkg/opt/alryc/textcmd/test/osibulkrewardsgump.src
+// for the captured reference) needed multiple rounds of blind pixel-matching against screenshots
+// to line up and was abandoned in favor of something that just scales to fit. ROW_HEIGHT is
+// double a normal text line so larger trophy/mount icons in the catalog have room. Pagination
+// follows pkg/systems/crafting/include/craftmenu.inc's ShowCategoryGump pattern - every page is
+// built into one gump.layout up front (GFPage() markers), so flipping pages is a client-side-only
+// GF_PAGE_BTN and only Redeem round-trips to the server.
+const BOD_REWARDS_ITEMS_PER_PAGE := 6;
+const BOD_REWARDS_ROW_HEIGHT     := 70;
+const BOD_REWARDS_ROW_START_Y    := 90;
+const BOD_REWARDS_ICON_X         := 24;
+const BOD_REWARDS_COST_X         := 110;
+const BOD_REWARDS_BTN_X          := 350;
+const BOD_REWARDS_GUMP_WIDTH     := 420;
 
 program bulkorderrewards(who)
 	BOD_ShowRewardsGump(who);
@@ -22,41 +38,112 @@ function BOD_RewardsCfg()
 	return ReadConfigFile(":bulkorders:rewards");
 endfunction
 
+// Pulls "OmegaToken" (the Vanity Token) to the front of the catalog - GetConfigStringKeys()
+// doesn't preserve rewards.cfg's file order, so this is done explicitly rather than relying on
+// where the block happens to sit in the file.
+function BOD_OrderedRewardKeys(keys)
+	var ordered := array{};
+	var rest := array{};
+	foreach key in keys
+		if( key == "OmegaToken" )
+			ordered.append(key);
+		else
+			rest.append(key);
+		endif
+	endforeach
+	foreach key in rest
+		ordered.append(key);
+	endforeach
+	return ordered;
+endfunction
+
+// rewards.cfg's Objtype is often a real tile graphic (most of the fishing/aquarium catalog has
+// no separate itemdesc.cfg "Graphic" line, so objtype IS the art), but not always - the Vanity
+// Token (0x4000AA) is a synthetic objtype with its real art in its itemdesc.cfg "Graphic" field
+// (0x3679), and rendering the raw objtype as a tile produces garbage art. Looks the objtype up
+// across every package's itemdesc.cfg (same :*: lookup create.src uses) and prefers its real
+// Graphic field when one is set.
+function BOD_ResolveGraphic(objtype)
+	var item_cfg := ReadConfigFile(":*:itemdesc");
+	var item_elem := FindConfigElem(item_cfg, objtype);
+	var graphic := objtype;
+	if( item_elem )
+		var real_graphic := CInt(GetConfigInt(item_elem, "Graphic"));
+		if( real_graphic )
+			graphic := real_graphic;
+		endif
+	endif
+	return graphic;
+endfunction
+
 function BOD_ShowRewardsGump(byref who)
 	var balance := BOD_GetPoints(who);
 	var cfg := BOD_RewardsCfg();
-	var keys := GetConfigStringKeys(cfg);
+	var keys := BOD_OrderedRewardKeys(GetConfigStringKeys(cfg));
 	BOD_Debug("BOD_ShowRewardsGump: " + who.name + " has " + balance + " points, " + Len(keys) + " catalog entries loaded" );
 	if( !cfg )
 		BOD_Debug("BOD_ShowRewardsGump: rewards.cfg failed to load!");
 	endif
 
-	var gump := GFCreateGump(50, 50, 420, 400);
-	GFResizePic(gump, 0, 0, 5054, 420, 400);
+	var content_height := (BOD_REWARDS_ITEMS_PER_PAGE * BOD_REWARDS_ROW_HEIGHT);
+	var nav_y := BOD_REWARDS_ROW_START_Y + content_height + 15;
+	var gump_height := nav_y + 35;
+
+	var gump := GFCreateGump(50, 50, BOD_REWARDS_GUMP_WIDTH, gump_height);
+
+	// -- background (page 0, always visible) --
+	GFPage(gump, 0);
+	GFResizePic(gump, 0, 0, 5054, BOD_REWARDS_GUMP_WIDTH, gump_height);
 	GFTextLine(gump, 20, 15, 1153, "Bulk Order Rewards");
-	GFTextLine(gump, 20, 40, 900, "Points: " + balance);
+	GFTextLine(gump, 20, 38, 68, "Your Reward Points: " + balance);
+	GFTextLine(gump, 20, 55, 1153, "Please Choose a Reward:");
 
-	var y := 70;
-	var i;
-	for( i := 1; i <= Len(keys); i := i+1 )
-		var elem := cfg[keys[i]];
-		var name := GetConfigString(elem, "Name");
-		var cost := CInt(GetConfigInt(elem, "Cost"));
-		GFTextLine(gump, 20, y, 1153, name + " -- " + cost + " points");
-		if( balance >= cost )
-			GFAddButton(gump, 350, y, 4005, 4007, GF_CLOSE_BTN, BOD_REWARDS_BTN_REDEEM_BASE + i);
-		endif
-		y := y + 26;
-	endfor
-
-	if( !Len(keys) )
-		GFTextLine(gump, 20, y, 1153, "Nothing available yet.");
-		y := y + 26;
+	var total_items := Len(keys);
+	var page_count := 1;
+	if( total_items )
+		page_count := CInt(Ceil( Cdbl(total_items) / BOD_REWARDS_ITEMS_PER_PAGE ));
 	endif
 
-	y := y + 10;
-	GFAddButton(gump, 20, y, 4017, 4019, GF_CLOSE_BTN, BOD_REWARDS_BTN_EXIT);
-	GFTextLine(gump, 55, y+2, 1153, "EXIT");
+	if( !total_items )
+		GFPage(gump, 1);
+		GFTextLine(gump, 20, BOD_REWARDS_ROW_START_Y, 1153, "Nothing available yet.");
+	endif
+
+	var page;
+	for( page := 1; page <= page_count; page := page+1 )
+		GFPage(gump, page);
+
+		var start_idx := (page-1) * BOD_REWARDS_ITEMS_PER_PAGE;
+		var end_idx := Min(start_idx + BOD_REWARDS_ITEMS_PER_PAGE, total_items) - 1;
+		var y := BOD_REWARDS_ROW_START_Y;
+		var idx;
+		for( idx := start_idx; idx <= end_idx; idx := idx+1 )
+			var key := keys[idx+1];
+			var elem := cfg[key];
+			var name := GetConfigString(elem, "Name");
+			var cost := CInt(GetConfigInt(elem, "Cost"));
+			var objtype := CInt(GetConfigInt(elem, "Objtype"));
+
+			GFTilePic(gump, BOD_REWARDS_ICON_X, y, BOD_ResolveGraphic(objtype), 0);
+			GFTooltip(gump, 1070722, name);
+			GFTextLine(gump, BOD_REWARDS_COST_X, y+20, 33, CStr(cost));
+			// Always shown, even if unaffordable right now - BOD_RedeemReward() already
+			// re-checks the balance and reports "not enough points" rather than silently
+			// hiding the option, so players can see what's available without a moving target.
+			GFAddButton(gump, BOD_REWARDS_BTN_X, y+20, 4005, 4007, GF_CLOSE_BTN, BOD_REWARDS_BTN_REDEEM_BASE + idx);
+
+			y := y + BOD_REWARDS_ROW_HEIGHT;
+		endfor
+
+		if( page > 1 )
+			GFAddButton(gump, 20, nav_y, 4014, 4016, GF_PAGE_BTN, page-1);
+			GFTextLine(gump, 55, nav_y+2, 1153, "Previous Page");
+		endif
+		if( page < page_count )
+			GFAddButton(gump, BOD_REWARDS_GUMP_WIDTH-170, nav_y, 4005, 4007, GF_PAGE_BTN, page+1);
+			GFTextLine(gump, BOD_REWARDS_GUMP_WIDTH-140, nav_y+2, 1153, "Next Page");
+		endif
+	endfor
 
 	var response := GFSendGump(who, gump);
 	if( !response )
@@ -64,8 +151,8 @@ function BOD_ShowRewardsGump(byref who)
 	endif
 
 	var btn := CInt(response[0]);
-	if( btn > BOD_REWARDS_BTN_REDEEM_BASE and btn <= BOD_REWARDS_BTN_REDEEM_BASE + Len(keys) )
-		BOD_RedeemReward(who, keys[btn - BOD_REWARDS_BTN_REDEEM_BASE]);
+	if( btn >= BOD_REWARDS_BTN_REDEEM_BASE and btn < BOD_REWARDS_BTN_REDEEM_BASE + total_items )
+		BOD_RedeemReward(who, keys[(btn - BOD_REWARDS_BTN_REDEEM_BASE) + 1]);
 	endif
 endfunction
 
