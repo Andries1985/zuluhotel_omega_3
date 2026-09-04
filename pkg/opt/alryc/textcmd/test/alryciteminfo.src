@@ -1,0 +1,3588 @@
+// Synopsis: (Alryc test) Enchant/property editor for a targeted item, constrained to real loot-legal values
+use uo;
+use os;
+use math;
+use cfgfile;
+use basic;
+use polsys;
+use basicio;	//for Print() - debug console output, see DBG_ON below
+
+include ":staff:include/staff";
+//include "util/bank";
+include "include/namingbyenchant";
+include "include/spelldata";
+include "include/itemutil";
+include ":mdgumps:yesNo";
+
+//Set to 0 to silence all [alryciteminfo] console debug prints once this is verified working.
+const DBG_ON := 1;
+
+function Dbg( msg )
+
+	if( DBG_ON )
+		Print( "[alryciteminfo] " + msg );
+	endif
+
+endfunction
+
+function DebugRenameItem( item )
+//Thin logging wrapper around the shared SetNameByEnchant (namingbyenchant.inc) so every
+//naming-relevant edit prints a visible before/after - this is the direct check for
+//whether Bug 2 (item never showing what was done to it) is actually fixed.
+
+	var before := item.desc;
+	SetNameByEnchant( item );
+	Dbg( "SetNameByEnchant: \"" + before + "\" -> \"" + item.desc + "\"" );
+
+endfunction
+
+var selecttype;
+var layout := array(
+			"page 0",				//Array Index 1
+			
+			"resizepic 0   50  2620 525 325",	//Main Background
+			"resizepic 350 100 5054 150 225",	//Item graph windows
+			
+			"text 40  60 5  0",			//Place for the item name
+			"text 20  85 40 1",			//Place for General
+			"text 150 85 40 2",			//Place for Options
+			
+			"button 80  82 2640 2641 0 1",		//Button to Page 1 (General)
+			"button 210 82 2640 2641 0 3",		//Button to Page 3 (Options)
+			"button 20  63 2118 2117 1 1 40",	//Button for renaming
+			"",					//Image of the item
+			
+			
+			
+			"page 1",				//Array Index 11
+			
+			"text 20  120 40 3",			//"X"
+			"text 150 120 40 4",			//X value
+			"text 20  145 40 5",			//"Y"
+			"text 150 145 40 6",			//Y value
+			"text 20  170 40 7",			//"Z"
+			"text 150 170 40 8",			//Z value
+			"text 20  195 40 9",			//"Graphic"
+			"text 150 195 40 10",			//Graphic number
+			"text 20  220 40 11",			//"Color"
+			"text 150 220 40 12",			//Color number
+			"text 20  245 40 13",			//"Amount"
+			"text 150 245 40 14",			//Amount value
+			"text 20  270 40 15",			//"Hp/Mhp"
+			"text 150 270 40 16",			//Hp/Mhp value
+			"text 20  295 40 17",			//"Ar/Dmg"
+			"text 150 295 40 18",			//Ar/Dmg value
+			"text 20  320 40 19",			//"Quality"
+			"text 150 320 40 20",			//Quality value
+			
+			"button 260 120 2640 2641 1 1 1",	//Button to change the x value
+			"button 260 145 2640 2641 1 1 2",	//Button to change the y value
+			"button 260 170 2640 2641 1 1 3",	//Button to change the z value
+			"button 260 195 2640 2641 1 1 4",	//Button to change the graphic
+			"button 260 220 2644 2645 0 16",	//Button to Page 16 (color management)
+			"button 260 245 2644 2645 0 4",		//Button to Page 4 (Amount)
+			"button 260 270 2644 2645 0 5",		//Potential Button to Page 5 (Hp/Mhp mods) layout[36]
+			"",					//Potential Button to Page 6 (Ar/Dmg mods) layout[37]
+			"button 310 328 2648 2647 0 2",		//Button to Page 2 (Continuation to General)
+			"button 260 320 2640 2641 1 1 39",	//Potential Button to change the quality layout[39]
+
+
+
+			"page 2",				//Array Index 40
+			
+			"text 20  120 40 125",			//"NamingOptions"
+			"text 20  145 40 21",			//"Usescript"
+			"text 150 145 40 108",			//Usescript
+			"text 20  170 40 22",			//"Cursed/Casting Options"
+			"text 150 170 40 23",			//Curse level
+			"text 20  195 40 24",			//"Hitscript/Onhitscript"
+			"text 150 195 40 25",			//Hitscript/OnHitscript name
+			"text 20  220 40 26",			//"Skill mods"
+			"text 150 220 40 27",			//Skill name
+			"text 20  245 40 28",			//"Stats mods"
+			"text 20  270 40 29",			//"Regeneration mods"
+			"text 20  295 40 30",			//"Elemental Protections"
+			"text 20  320 40 31",			//"Special Protections"
+			
+			"button 300 120 2650 2651 0 1",		//Button to Page 1 (General)
+			"button 260 120 2644 2645 0 18",	//Button to Page 18 (Naming Options)
+			"button 260 145 2644 2645 0 14",	//Button to Page 14 (Usescript)
+			"",					//Potential Button to Page 7 (Cursing) / Page 17 (Casting Options) layout[57]
+			"",					//Potential Button to Page 8 (Hitscripts/OnhitScripts) layout[58]
+			"",					//Potential Button to Page 9 (Skills mods) layout[59]
+			"",					//Potential Button to Page 10 (Stats mods) layout[60]
+			"",					//Potential Button to Page 11 (Regeneration mods) layout[61]
+			"",					//Potential Button to Page 12 (Special Protections) layout[62]
+			"",					//Potential Button to Page 13 (Special Effects) layout[63]
+			
+			
+			
+			"page 3",				//Array Index 64
+			
+			"text 20 120 40 32",			//"Destroy Item"
+			"text 20 145 40 33",			//"Bounce"
+			"text 20 170 40 34",			//"Exceptional"
+			"text 20 195 40 35",			//"IDed"
+			"text 20 220 40 36",			//"Invisible"
+			"text 20 245 40 37",			//"Newbied"
+			"text 20 270 40 38",			//"Not in loot"
+			"text 20 295 40 39",			//"Owned"
+			"text 20 320 40 40",			//"Stay Equipped"
+			
+			"button 260 120 2640 2641 1 1 74",	//Button to destroy the item
+			"button 260 145 2640 2641 1 1 75",	//Button to bounce the item
+			"",					//Potential Button to set Exceptional layout[76]
+			"",					//Potential Button to set IDed layout[77]
+			"",					//Potential Button to set Invisible layout[78]
+			"",					//Potential Button to set Newbied layout[79]
+			"",					//Potential Button to set Not In Loot layout[80]
+			"",					//Potential Button to set Owner layout[81]
+			"",					//Potential Button to set Stay Equipped layout[82]
+
+
+
+			"page 4",				//Array Index 83
+			
+			"text 20  120 40 13", 			//"Amount"
+			"text 150 120 40 14",			//Amount value
+			"text 20  170 40 41", 			//"Create Stack In Backpack"
+			"text 20  195 40 42", 			//"Dupe Item In Backpack"
+
+			"button 260 120 2645 2644 0 1", 	//Button to Page 1 (General)
+			"button 260 170 2640 2641 1 1 43",	//Button to create stack in backpack
+			"button 260 195 2640 2641 1 1 44",	//Button to dupe the item
+			
+			
+			
+			"page 5",				//Array Index 91
+			
+			"text 20  120 40 15",			//"Hp/Mhp"
+			"text 150 120 40 16",			//Hp/Mhp value
+			"text 20  170 40 43",			//"Hp"
+			"text 150 170 40 44",			//Hp value
+			"text 20  195 40 45",			//"Mhp Mod"
+			"text 150 195 40 46",			//Mhp mod value
+			
+			"button 260 120 2645 2644 0 1",		//Button to Page 1 (General)
+			"button 260 170 2640 2641 1 1 5",	//Button to change the hp of the item
+			"button 260 195 2640 2641 1 1 6",	//Button to change the Mhp mod
+
+
+
+			"page 6",				//Array Index 101
+			
+			"text 20  120 40 17",			//"Ar/Dmg"
+			"text 150 120 40 18",			//Ar/Dmg value
+			"text 20  170 40 47",			//"Ar/Dmg mods"
+			"text 150 170 40 48",			//Ar/Dmg mod value
+			"text 20  195 40 49",			//"Ar bonus/Normal range"
+			"text 150 195 40 50",			//Ar bonus/Normal range value
+			
+			"button 260 120 2645 2644 0 1",		//Button to Page 1 (General)
+			"",					//Button to change Ar/Dmg mod layout[109]
+			"",					//Potential button to change Ar bonus/Normal range layout[110]
+			
+			
+			
+			"page 7",				//Array Index 111
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 22",			//"Curse Level"
+			"text 150 170 40 23",			//Curse Level
+			"text 20  195 40 52",			//"Banish the Curse"
+			"text 20  220 40 54",			//"Can be Uncursed"
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 34",	//Button to change the curse level
+			"",					//Potential Button to banish the curse layout[119]
+			"",					//Potential Button to set/reset can be uncursed layout[120]
+			
+			
+			
+			"page 8",				//Array Index 121
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 24",			//"Hitscript/OnHitScript"
+			"text 150 170 40 25",			//Hitscript/OnHitScript name
+			"text 20  195 40 56",			//"Cast/SlayType/ProtectedType/PoisonLvl/ChanceofEffect/PowerLvl"
+			"text 150 195 40 57",			//Cast/SlayType/ProtectedType/PoisonLvl/ChanceofEffect/PowerLvl value
+			"text 20  220 40 58",			//"ChanceOfEffect"
+			"text 150 220 40 59",			//ChanceOfEffect value
+			"text 20  245 40 60",			//"AsCircle"
+			"text 150 245 40 61",			//AsCircle value
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2644 2645 0 15",	//Button to Page 15 (Hitscripts/OnHitScripts list)
+			"",					//Potential button to change one of the props layout[133]
+			"",					//Potential button to change one of the props layout[134]
+			"",					//Potential button to change one of the props layout[135]
+			
+			
+			
+			"page 9",				//Array Index 136
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 26",			//"Skill Name"
+			"text 150 170 40 27",			//Skill Name
+			"text 20  195 40 62",			//"Skillid"
+			"text 150 195 40 63",			//Skillid
+			"text 20  220 40 64",			//"Skill Gain"
+			"text 150 220 40 65",			//Skill Gain
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 45",	//Button to change the skill from a list
+			"button 260 195 2640 2641 1 1 8",	//Button to change the skillid
+			"",					//Potential Button to change the skill gain layout[147]
+			
+			
+			
+			"page 10",				//Array Index 148
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 66",			//"Str mod"
+			"text 150 170 40 67",			//Strenght mod value
+			"text 20  195 40 68",			//"Int mod"
+			"text 150 195 40 69",			//Intelligence mod value
+			"text 20  220 40 70",			//"Dex Mod"
+			"text 150 220 40 71",			//Dexterity mod value
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 10",	//Button to set a strenght mod
+			"button 260 195 2640 2641 1 1 11",	//Button to set an intelligence mod
+			"button 260 220 2640 2641 1 1 12",	//Button to set a dexterity mod
+			
+			
+			
+			"page 11",				//Array Index 160
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 72",			//"Hp regen mod"
+			"text 150 170 40 73",			//Hp regeneration mod value
+			"text 20  195 40 74",			//"Mana regen mod"
+			"text 150 195 40 75",			//Mana regeneration mod value
+			"text 20  220 40 76",			//"Stam regen mod"
+			"text 150 220 40 77",			//Stamina regeneration mod value
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 13",	//Button to set an hp regeneration mod
+			"button 260 195 2640 2641 1 1 14",	//Button to set a mana regeneration mod
+			"button 260 220 2640 2641 1 1 15",	//Button to set a stamina regeneration mod
+			
+			
+			
+			"page 12",				//Array Index 172
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 78",			//"Air"
+			"text 180 170 40 79",			//Air Prot value
+			"text 20  195 40 80",			//"Earth"
+			"text 180 195 40 81",			//Earth Prot value
+			"text 20  220 40 82",			//"Fire"
+			"text 180 220 40 83",			//Fire Prot value
+			"text 20  245 40 84",			//"Water"
+			"text 180 245 40 85",			//Water Prot value
+			"text 20  270 40 86",			//"Holy"
+			"text 180 270 40 87",			//Holy Prot value
+			"text 20  295 40 88",			//"Necro"
+			"text 180 295 40 89",			//Necro Prot value
+			"text 20  320 40 90",			//"Physical"
+			"text 180 320 40 91",			//Physical Prot value
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 16",	//Button to change the air prot level
+			"button 260 195 2640 2641 1 1 17",	//Button to change the earth prot level
+			"button 260 220 2640 2641 1 1 18",	//Button to change the fire prot level
+			"button 260 245 2640 2641 1 1 19",	//Button to change the water prot level
+			"button 260 270 2640 2641 1 1 20",	//Button to change the holy prot level
+			"button 260 295 2640 2641 1 1 21",	//Button to change the necro prot level
+			"button 260 320 2640 2641 1 1 22",	//Button to change the physical prot level
+			
+			
+			
+			"page 13",				//Array Index 196
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  145 40 92",			//"HealingIncrease"
+			"text 210 145 40 93",			//Healing increase factor
+			"text 20  170 40 96",			//"MagicImmunity"
+			"text 210 170 40 97",			//Amount of charges
+			"text 20  195 40 98",			//"PoisonImmunity"
+			"text 210 195 40 99",			//Amount of charges
+			"text 20  220 40 100",			//"SpellReflect"
+			"text 210 220 40 101",			//Amount of charges
+			"text 20  245 40 102",			//"PermMagicImmunity"
+			"text 210 245 40 103",			//Max Circle
+			"text 20  270 40 104",			//"PermPoisonImmunity"
+			"text 210 270 40 105",			//Max Poison level
+			"text 20  295 40 106",			//"Permmr"
+			"text 210 295 40 107",			//Max Circle
+			"text 20  320 40 94",			//"FreeAction"
+			"text 210 320 40 95",			//unused
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 145 2640 2641 1 1 23",	//Button to change the healing increase factor
+			"button 260 170 2640 2641 1 1 25",	//Button to change the magic immunity charges amount
+			"button 260 195 2640 2641 1 1 26",	//Button to change the poison immunity charges amount
+			"button 260 220 2640 2641 1 1 27",	//Button to change the magic reflect charges amount
+			"button 260 245 2640 2641 1 1 28",	//Button to change the magic immunity max circle
+			"button 260 270 2640 2641 1 1 29",	//Button to change the poison immunity max level
+			"button 260 295 2640 2641 1 1 30",	//Button to change the magic reflection max circle
+			"",					//Potential Button to change the paralyze prot level layout[222]
+			
+			
+			
+			"page 14",				//Array Index 223
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 21",			//"OnUseScript"
+			"text 150 170 40 108",			//OnUsescript
+			"text 20  195 40 109",			//"Nb Charges"
+			"text 150 195 40 110",			//Amount of charges
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 46",	//Button to set a usescript from a list
+			"",					//Potential Button to change the amount of charges layout[231]
+			
+			
+			
+			"page 15",				//Array Index 232
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 111",			//"Reset the Hitscript/OnHitScripts
+			"text 20  195 40 112",			//"Set a Spells Hitscripts/OnHitScripts"
+			"text 20  220 40 113",			//"Set a Slayer/Protected Hitscripts/OnHitScripts"
+			"text 20  245 40 114",			//"Set an Effects Hitscripts/OnHitScripts"
+			"text 20  270 40 115",			//"Set a Greater Hitscripts/OnHitScripts"
+			"text 20  295 40 116",			//"Set a Special/Unique Hitscripts/OnHitScripts"
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 47",	//Button to reset the Hitscript/OnHitscript
+			"button 260 195 2640 2641 1 1 48",	//Button to set a spell hitscript/onhitscript
+			"button 260 220 2640 2641 1 1 49",	//Button to set a slayer/protected hitscript/onhitscript
+			"button 260 245 2640 2641 1 1 50",	//Button to set an effect hitscript/onhitscript
+			"button 260 270 2640 2641 1 1 51",	//Button to set a greater hitscript/onhitscript
+			"button 260 295 2640 2641 1 1 52",	//Button to set a special hitscript/onhitscript
+			
+			
+			
+			"page 16",				//Array Index 247
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 11",			//"Color"
+			"text 150 170 40 12",			//Color number
+			"text 20  195 40 117",			//"IDing Color"
+			"text 150 195 40 118",			//IDing Color number
+			
+			"button 260 120 2645 2644 0 1",		//Button to Page 1 (General)
+			"button 260 170 2640 2641 1 1 32",	//Button to change the present color
+			"button 260 195 2640 2641 1 1 33",	//Button to change the color set upon IDing
+			
+			
+			
+			"page 17",				//Array Index 256
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 119",			//"With any weapon"
+			"text 20  195 40 120",			//"No Power Words"
+			"text 20  220 40 121",			//"No Delay"
+			"text 20  245 40 122",			//"No Reagents"
+			"text 20  270 40 123",			//"No Mana"
+			"text 20  295 40 124",			//"No Skill Check"
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"",					//Potential Button to set/remove enabled casting with any weapon layout[265]
+			"",					//Potential Button to set/remove No Power Words layout[266]
+			"",					//Potential Button to set/remove No Delay layout[267]
+			"",					//Potential Button to set/remove No Reagents layout[268]
+			"",					//Potential Button to set/remove No Mana layout[269]
+			"",					//Potential Button to set/remove No Skill Check layout[270]
+			
+			
+			
+			"page 18",				//Array Index 271
+			
+			"text 20  120 40 51",			//"Previous"
+			"text 20  170 40 126",			//"Actual Name"
+			"text 150  170 40 127",			//Actual Name
+			"text 20  195 40 130",			//"Base Name"
+			"text 150  195 40 131",			//Base Name
+			"text 20  220 40 128",			//"Name on ID"
+			"text 150  220 40 53",			//Name on ID
+			"text 20  245 40 129",			//"CName on ID"
+			"text 150  245 40 55",			//CName on ID
+			"text 20  270 40 132",			//"Will be renamed on id"
+			
+			"button 260 120 2645 2644 0 2",		//Button to Page 2 (General continuation)
+			"button 260 170 2640 2641 1 1 40",	//Button to change the name
+			"button 260 195 2640 2641 1 1 79",	//Button to change the base name
+			"button 260 220 2640 2641 1 1 41",	//Button to change the name on ID
+			"",					//Potential Button to change the Cname on ID layout[286]
+			"",					//Variable button to either rename or not layout[287]
+
+
+
+			//--- Appended: a 3rd top-level tab ("Advanced") plus its page 19 content.
+			//--- Re-declaring "page 0" here is safe and standard POL gump practice (see
+			//--- ChangeFromSkillList etc. re-declaring "page N" multiple times to add more
+			//--- buttons to an already-built page) - it ADDS to page 0's existing persistent
+			//--- content (visible on every page, same as the General/Options tabs) without
+			//--- touching anything declared earlier. Nothing above this comment was moved
+			//--- or renumbered.
+			"page 0",
+			"text 280 85 40 144",			//"Advanced" tab label
+			"button 280 82 2640 2641 0 19",		//Button to Page 19 (Advanced/Crafting)
+
+			"page 19",				//Array Index 291
+			"text 20  120 40 133",			//"Enchanted Tier"
+			"text 150 120 40 134",			//Enchanted Tier value
+			"text 20  145 40 135",			//"Undyeable"
+			"text 20  170 40 136",			//"Elemental Damage"
+			"text 150 170 40 137",			//Elemental Damage value
+			"text 20  195 40 138",			//"Magic Penalty"
+			"text 150 195 40 139",			//Magic Penalty value
+			"text 20  220 40 140",			//"Default Dex"
+			"text 150 220 40 141",			//Default Dex value
+			"text 20  245 40 142",			//"Speed Mod"
+			"text 150 245 40 143",			//Speed Mod value
+
+			"button 260 120 2640 2641 1 1 81",	//Button to pick the Enchanted tier
+			"",					//Undyeable toggle button layout[304], set by FillInArrays
+			"button 260 170 2640 2641 1 1 83",	//Button to open the Elemental Damage editor
+			"button 260 195 2640 2641 1 1 84",	//Button to change Magic Penalty
+			"button 260 220 2640 2641 1 1 85",	//Button to change Default Dex
+			"button 260 245 2640 2641 1 1 86",	//Button to change Speed Mod
+
+			"text 20  270 40 145",			//"GM Counterpart"
+			"text 150 270 40 146",			//GM Counterpart status
+			"button 260 270 2640 2641 1 1 87"	//Button to change to a GM counterpart
+);
+
+var data := array(
+			"",					//0 Item Name
+			"General",				//1 "General"
+			"Options",				//2 "Options"
+			"X",					//3 "X"
+			"",					//4 val
+			"Y",					//5 "Y"
+			"",					//6 val
+			"Z",					//7 "Z"
+			"",					//8 val
+			"Graphic",				//9 "Graphic"
+			"",					//10 val
+			"Color",				//11 "Color"
+			"",					//12 val
+			"Amount",				//13 "Amount"
+			"",					//14 val
+			"Hp/Mhp",				//15 "Hp/Mhp"
+			"",					//16 val
+			"",					//17 "Ar/Dmg"
+			"",					//18 val
+			"Quality",				//19 "Quality"
+			"",					//20 val
+			"OnUseScript",				//21 "OnUseScripts"
+			"",					//22 "Curse Lvl / Casting Options"
+			"",				  	//23 val
+			"",					//24 "Hitscript/OnHitScript"
+			"",					//25 val
+			"",					//26 "Skills mods"
+			"",			  		//27 val
+			"",					//28 "Stats mods"
+			"",	 				//29 "Regeneration mods"
+			"",					//30 "Elemental Protections"
+			"",					//31 "Special Protections"
+			"Destroy",				//32 "Destroy Item"
+			"Bounce in Backpack",			//33 "Bounce Item"
+			"Exceptional",				//34 "Exceptional"
+			"IDed",  				//35 "IDed"
+			"Invisible",				//36 "Invisible"
+			"Newbied",				//37 "Newbied"
+			"Not in loot",				//38 "Not in loot"
+			"",					//39 "Owned"
+			"",					//40 "Stay Equipped"
+			"Create stack in backpack",		//41 "Create Stack In Backpack"
+			"Dupe item in backpack",		//42 "Dupe Item In Backpack"
+			"Hp",					//43 "Hp"
+			"",					//44 val
+			"MaxHp Mod",				//45 "MaxHp Mod"
+			"",					//46 val
+			"",					//47 "Ar/Dmg mod"
+			"",					//48 val
+			"",					//49 "ArBonus/NormalRange"
+			"",					//50 val
+			"Previous",				//51 "Previous"
+			"",					//52 "Banish the curse"
+			"",					//53 Name on ID val
+			"",					//54 "Can be Uncursed"
+			"",					//55 CName on ID val
+			"",					//56 "Cast/SlayType/ProtectedType/PoisonLvl/ChanceofEffect/PowerLvl"
+			"",					//57 val
+			"",					//58 "ChanceOfEffect"
+			"",					//59 val
+			"",					//60 "AsCircle"
+			"",					//61 val
+			"Skill Num",				//62 "Skillid"
+			"",					//63 val
+			"",					//64 "Skill Gain"
+			"",					//65 val
+			"Str mod",				//66 "Str mod"
+			"",					//67 val
+			"Int mod",				//68 "Int mod"
+			"",					//69 val
+			"Dex mod",				//70 "Dex mod"
+			"",					//71 val
+			"Life regen mod",			//72 "Hp regen mod"
+			"",					//73 val
+			"Mana regen mod",			//74 "Mana regen mod"
+			"",					//75 val
+			"Stam regen mod",			//76 "Stam regen mod"
+			"",					//77 val
+			"Air Protection",			//78 "Air prot"
+			"",					//79 val
+			"Earth Protection",			//80 "Earth prot"
+			"",					//81 val
+			"Fire Protection",			//82 "Fire prot"
+			"",					//83 val
+			"Water Protection",			//84 "Water prot"
+			"",					//85 val
+			"Holy Protection",			//86 "Holy prot"
+			"",					//87 val
+			"Necro Protection",			//88 "Necro prot"
+			"",					//89 val
+			"Physical Protection",			//90 "Physical"
+			"",					//91 val
+			"Healing Effects increase",		//92 "Healing Increase"
+			"",					//93 val
+			"Paralyze protection",			//94 "Paralyze protection
+			"",					//95 val
+			"MImmunity (nb charges)",		//96 "Magic immunity"
+			"",					//97 val
+			"PImmunity (nb charges)",		//98 "Poison immunity"
+			"",					//99 val
+			"Reflection (nb charges)",		//100 "Spell reflection"
+			"",					//101 val
+			"Permanent MImmunity",			//102 "Permanent magic immunity"
+			"",					//103 val
+			"Permanent PImmunity",			//104 "Permanent poison immunity"
+			"",					//105 val
+			"Permanent Reflection",			//106 "Permanent spell reflection"
+			"",					//107 val
+			"",					//108 OnUseScript name
+			"",					//109 "Nb Charges"
+			"",					//110 val
+			"",					//111 "Reset the Hitscript/OnHitscript"
+			"",					//112 "Set a Spell Hitscript/OnHitscript"
+			"",					//113 "Set a Slayer/Protected Hitscript/OnHitscript
+			"",					//114 "Set an Effect Hitscript/OnHitscript"
+			"",					//115 "Set a Greater Hitscript/OnHitscript"
+			"",					//116 "Set a Special Hitscript/OnHitscript"
+			"Color on ID",				//117 "Color upon Iding"
+			"",					//118 val
+			"Cast with any Equipment",		//119 "Cast with any equipment"
+			"Cast without PowerWords",		//120 "Cast without PowerWords"
+			"Cast without Delay",			//121 "Cast without Delay"
+			"Cast without Reagents",		//122 "Cast without Reagents"
+			"Cast without Mana",			//123 "Cast without Mana"
+			"Cast without Skill Check",		//124 "Cast without Skill Check"
+			"Naming Options",			//125 "Naming Options
+			"Actual Name",				//126 "Actual Name"
+			"",					//127 val
+			"Name on ID",				//128 "Name on ID"
+			"",					//129 "CName on ID"
+			"Base Name",				//130 "Base Name"
+			"",					//131 val
+			"Will be renamed on id",		//132 "Will be renamed on id"
+
+			//--- Appended for the Advanced/Crafting page (page 19) - new indices only,
+			//--- nothing above this point was renumbered.
+			"Enchanted Tier",			//133 "Enchanted Tier"
+			"",					//134 val (Swift/Mystical/Stygian/none)
+			"Undyeable",				//135 "Undyeable"
+			"Elemental Damage",			//136 "Elemental Damage"
+			"",					//137 val (composite "TYPE:pct TYPE:pct" string)
+			"Magic Penalty",			//138 "Magic Penalty"
+			"",					//139 val
+			"Default Dex",				//140 "Default Dex"
+			"",					//141 val
+			"Speed Mod",				//142 "Speed Mod"
+			"",					//143 val
+			"Advanced",				//144 tab label on page 0
+			"GM Counterpart",			//145 "GM Counterpart"
+			""					//146 val (status/name, or a pick-count prompt)
+);
+
+program alryciteminfo( who )
+
+	SendSysmessage( who , "Select an Item." );
+	var what :=  TargetCoordinates( who );
+	if( !what )
+		return;
+	endif
+
+	var item := what.item;
+	if( !item )
+		SendSysmessage( who , "Invalid selection." );
+		return;
+	endif
+
+	Dbg( "=== targeted item: objtype=" + Hex(item.objtype) + " graphic=" + Hex(item.graphic) +
+		" serial=" + item.serial + " desc=\"" + item.desc + "\" ===" );
+
+	var done := 0;
+	var safeexit := 0;
+
+	//Redisplay loop: keeps the gump open across edits instead of closing after every
+	//single click, so a GM can actually see what an edit did. Exits on the client's own
+	//X-close (result[0]==0), on the Destroy branch (done:=1), or the safeexit backstop.
+	while( !done and safeexit < 500 )
+		FillInArrays( item );
+
+		var result := SendDialogGump( who , layout , data );
+		safeexit := safeexit + 1;
+
+		if( !result[0] )
+			Dbg( "loop exit: gump closed by client (X), iter=" + safeexit );
+			break;
+		endif
+
+		Dbg( "iter=" + safeexit + " button=" + result[0] );
+
+	case( result[0] )
+		1:
+		2:
+		3:
+		4:
+		5:
+		6:
+		7:
+		8:
+		9:
+		10:
+		11:
+		12:
+		13:
+		14:
+		15:
+		16:
+		17:
+		18:
+		19:
+		20:
+		21:
+		22:
+		23:
+		24:
+		25:
+		26:
+		27:
+		28:
+		29:
+		30:
+		31:
+		32:
+		33:
+		34:
+		35:
+		36:
+		37:
+		38:	EditItemInt( who , item , result[0] );		break;
+
+		39:	EditQuality( who , item );			break;
+
+		40:
+		41:
+		42:	EditItemString( who , item , result[0] );	break;
+
+		43:	//Create Stack in Backpack
+			SendSysmessage( who , "How many do you wish to create?" );
+			var val := Cint(RequestInput( who , who.backpack , "Enter a value."));
+			if( !val )
+				break;
+			endif
+
+			var what := CreateItemInBackpack( who , item.objtype , val );
+			if( what )
+				DupeItem( item , what );
+				LogCommand(who, GetProcess(GetPid()).name, "Createstack: "+item.desc+"/"+item.serial, "Created : "+what.desc+"/"+what.serial);
+        			PrintTextAbovePrivate( who , "Created " + what.desc + " in my backpack." , who );
+    			else
+        			PrintTextAbovePrivate( who , "Couldn't create that: " + what.errortext , who );
+    			endif
+    			break;
+
+		44:	//Dupe in backpack
+			var newitem := CreateItemInBackpack( who , item.objtype , item.amount );
+			if( newitem )
+				DupeItem( item , newitem );
+        			PrintTextAbovePrivate( who , "Duped " + newitem.desc + " in my backpack." , who );
+				LogCommand(who, GetProcess(GetPid()).name, "Dupe: "+item.desc+"/"+item.serial, "Created : "+newitem.desc+"/"+newitem.serial);
+    			else
+        			PrintTextAbovePrivate( who , "Couldn't dupe that: " + newitem.errortext , who );
+    			endif
+    			break;
+
+		45:	//Change Skill mod from a list
+			ChangeFromSkillList( who , item );
+			DebugRenameItem( item );
+			break;
+
+		46:	//Change the usescript
+			SetUseScriptFromList( who , item );
+			break;
+
+		47:	//Reset the Hitscript/OnHitscript
+			if( item.ar )
+				EraseObjProperty( item , "OnHitScript" );
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Reset OnHitScript");
+			else
+				item.hitscript := ":combat:mainhit";
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Reset HitScript");
+			endif
+
+			ResetHitscriptPropsExcep( item );
+			DebugRenameItem( item );
+			break;
+
+		48:	//Set a Spell Hitscript/OnHitscript
+			if( SetSpellFromList( who , item ) )
+				if( item.ar )
+					SetObjProperty( item , "OnHitScript" , ":combat:spellonhit" );
+
+				else
+					item.hitscript := ":combat:spellstrikescript";
+				endif
+
+				ResetHitscriptPropsExcep( item , "HitWithSpell" );
+				var one := AskForIntPropVal( who , item , "ChanceOfEffect" , "What is the chance of effect? Hit Esc to cancel." , "Enter a value." );
+				var two := AskForIntPropVal( who , item , "EffectCircle" , "Use with which circle efficiency? Hit Esc to cancel." , "Enter a value." );
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Spell Hitscript: "+one+" "+two);
+			endif
+			break;
+
+		49:	//Set a Slayer/Protected Hitscript/OnHitscript
+			//NOTE: SetCreatureTypeFromList now does its own reset+HitscriptNumber/
+			//OnHitscriptNumber write internally (same fix as cases 50/51/52) - do NOT
+			//call ResetHitscriptPropsExcep again here, it would erase what it just set.
+			selecttype := SetCreatureTypeFromList( who , item );
+			if( selecttype )
+				if( item.ar )
+					SetObjProperty( item , "OnHitScript" , ":combat:raceresistonhit" );
+				else
+					item.hitscript := ":combat:slayerscript";
+				endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Slayer Hitscript: "+selecttype);
+			DebugRenameItem( item );
+			endif
+
+			break;
+
+		50:	//Set an Effect Hitscript/OnHitscript
+			selecttype := SetAnEffectScriptFromList( who , item );
+			if (selecttype)
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Effect Hitscript: "+selecttype[1]+" "+selecttype[2]);
+				DebugRenameItem( item );
+			endif
+			break;
+
+		51:	//Set a Greater Hitscript/OnHitscript
+			var selecttype := SetAGreaterScriptFromList( who , item );
+			if (selecttype)
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Greater Hitscript: "+selecttype[1]+" "+selecttype[2]);
+				DebugRenameItem( item );
+			endif
+			break;
+
+		52:	//Set a Special Hitscript/OnHitscript
+			var selecttype := SetASpecialScriptFromList( who , item );
+			if (selecttype)
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Special Hitscript: "+selecttype[1]+" "+selecttype[2]);
+				DebugRenameItem( item );
+			endif
+			break;
+			
+		53:	//Change the casted spell
+			selecttype := SetSpellFromList( who , item );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change Casted Spell: "+selecttype);
+			break;
+			
+		54:	//Change the Slay/Protected Type
+			selecttype := SetCreatureTypeFromList( who , item );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change Slayer Type: "+selecttype);
+			DebugRenameItem( item );
+			break;
+			
+		55:	//Set/Reset Exceptional
+			if( GetObjProperty( item , "IsExceptional" ) )
+				EraseObjProperty( item , "IsExceptional" );
+			else
+				SetObjProperty( item , "IsExceptional" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset Exceptional");
+			break;
+			
+		56:	//Set/Reset IDed
+			if( GetObjProperty( item , "IDed" ) )
+				EraseObjProperty( item , "IDed" );
+			else
+				SetObjProperty( item , "IDed" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset Ided");
+			break;
+			
+		57:	//Set Visible/Invisible
+			if( item.invisible )
+				item.invisible := 0;
+			else
+				item.invisible := 1;
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/unset Invisible");
+			break;
+			
+		58:	//Set/Reset Newbied
+			if( item.newbie )
+				item.newbie := 0;
+			else
+				item.newbie := 1;
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset Newbied");
+			break;
+				
+		59:	//Set In Loot/Not in Loot
+			if( GetObjProperty( item , "noloot" ) )
+				EraseObjProperty( item , "noloot" );
+			else
+				SetObjProperty( item , "noloot" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset Not in loot");
+			break;
+			
+		60:	//Set/Reset Owner
+			if( GetObjProperty( item , "ownerserial" ) )
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Reset Owner: Previous Owner- "+GetObjProperty(item, "ownername")+"/"+GetObjProperty(item, "ownerserial") );
+				EraseObjProperty( item , "ownerserial" );
+				EraseObjProperty( item , "ownername" );
+			else
+				SendSysMessage( who , "Select the owner. Hit Esc to cancel" );
+				var owner := Target( who );
+				if( !owner )
+					break;
+				endif
+
+				if( !owner.serial )
+					SendSysmessage( who , "Invalid Selection." );
+					break;
+				endif
+				
+				SetObjProperty( item , "ownerserial" , owner.serial );
+				SetObjProperty( item , "ownername" , owner.name );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Owner: "+owner.name+"/"+owner.serial);
+			endif
+			break;
+			
+		61:	//Set Stay/Don't Stay Equipped
+			if( GetObjProperty( item , "StayEquipped" ) )
+				EraseObjProperty( item , "StayEquipped" );
+			else
+				SetObjProperty( item , "StayEquipped" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Unset Stay Equipped");
+			break;
+			
+		62:	//Enable casting with any equipment
+			AddCastingOption( item , "ANYEQUIP" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With Any Equipment");
+			break;
+			
+		63:	//Enable casting with no power words
+			AddCastingOption( item , "NOWORDS" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With No Words");
+			break;
+			
+		64:	//Enable casting with no delay
+			AddCastingOption( item , "NODELAY" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With No Delay");
+			break;
+			
+		65:	//Enable casting with no reagents
+			AddCastingOption( item , "NOREGS" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With No Reags");
+			break;
+			
+		66:	//Enable casting with no mana
+			AddCastingOption( item , "NOMANA" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With No Mana");
+			break;
+			
+		67:	//Enable casting with no skill check
+			AddCastingOption( item , "NOSKILL" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Enable Casting With No Skill Check");
+			break;
+			
+		68:	//Disable casting with any equipment
+			RemoveCastingOption( item , "ANYEQUIP" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Disable Casting With Any Equipment");
+			break;
+			
+		69:	//Disable casting with no power words
+			RemoveCastingOption( item , "NOWORDS" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Dnable Casting With No Words");
+			break;
+			
+		70:	//Disable casting with no delay
+			RemoveCastingOption( item , "NODELAY" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Disable Casting With No Delay");
+			break;
+			
+		71:	//Disable casting with no reagents
+			RemoveCastingOption( item , "NOREGS" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Disable Casting With No Reags");
+			break;
+			
+		72:	//Disable casting with no mana
+			RemoveCastingOption( item , "NOMANA" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Disable Casting With No Mana");
+			break;
+			
+		73:	//Disable casting with no skill check
+			RemoveCastingOption( item , "NOSKILL" );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Disable Casting With No Skill Check");
+			break;
+			
+		74:	//Destroy the item
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Destroy Item");
+			DestroyItem( item );
+			done := 1;	//item no longer exists - the loop must not try to redraw it
+			break;
+			
+		75:	//Bounce the item in backpack
+			MoveItemToContainer( item , who.backpack );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Bounce!");
+			break;
+			
+		76:	//Banish the curse
+			BanishCurse( item );
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Banish Curse");
+			break;
+			
+		77:	//Set/Reset Can be Uncursed
+			if( GetObjProperty( item , "CannotBeUncursed" ) )
+				EraseObjProperty( item , "CannotBeUncursed" );
+			else
+				SetObjProperty( item , "CannotBeUncursed" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset can be uncursed");
+			break;
+			
+		78:	//Set/Reset Paralyze Protection
+			if( GetObjProperty( item , "FreeAction" ) )
+				EraseObjProperty( item , "FreeAction" );
+			else
+				SetObjProperty( item , "FreeAction" , 1 );
+				ClearOtherElementalGroup( item , "FreeAction" );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Add/Remove Free Action");
+			DebugRenameItem( item );
+			break;
+			
+		79:	//Change the base name
+			var oldname := item.desc;
+			EditItemString( who , item , result[0] );
+			LogCommand(who, GetProcess(GetPid()).name, oldname+"/"+item.serial, "Change Name: "+item.desc);
+			break;
+			
+		80:	if( GetObjProperty( item , "UnIDedMagicalItem" ) or 
+			    GetObjProperty( item , "Enchanted" ) or 
+			    GetObjProperty( item , "IsGMItem" ) or 
+			    GetObjProperty( item , "EnchantColor" ) or
+			    GetObjProperty( item , "StaticName" ) )
+			    EraseObjProperty( item , "UnIDedMagicalItem" ); 
+				EraseObjProperty( item , "Enchanted" );
+				EraseObjProperty( item , "IsGMItem" );
+				EraseObjProperty( item , "EnchantColor" );
+				EraseObjProperty( item , "StaticName" );
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set item as Ided?");
+			else
+				SetObjProperty( item , "UnIDedMagicalItem" , 1 );
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Item as Unided");
+			endif
+			break;
+
+		81:	//Enchanted Tier (Swift/Mystical/Stygian) - each has one fixed canonical
+			//EnchantColor across every itemdesc template that uses it (confirmed by
+			//grepping every instance: Swift=621, Mystical=6, Stygian=2752), so set both
+			//together rather than making the GM look up the color separately.
+			var tierpick := PickStringChoice( who , {"Swift","Mystical","Stygian"} , "Select the Enchanted tier:" );
+			if( tierpick == "Swift" )
+				SetObjProperty( item , "Enchanted" , "Swift" );
+				SetObjProperty( item , "EnchantColor" , 621 );
+			elseif( tierpick == "Mystical" )
+				SetObjProperty( item , "Enchanted" , "Mystical" );
+				SetObjProperty( item , "EnchantColor" , 6 );
+			elseif( tierpick == "Stygian" )
+				SetObjProperty( item , "Enchanted" , "Stygian" );
+				SetObjProperty( item , "EnchantColor" , 2752 );
+			elseif( tierpick == "CLEAR" )
+				EraseObjProperty( item , "Enchanted" );
+			endif
+			if( tierpick != "" )
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Enchanted Tier: "+tierpick);
+				DebugRenameItem( item );
+			endif
+			break;
+
+		82:	//Undyeable toggle
+			if( GetObjProperty( item , "Undyeable" ) )
+				EraseObjProperty( item , "Undyeable" );
+			else
+				SetObjProperty( item , "Undyeable" , 1 );
+			endif
+			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set/Reset Undyeable");
+			break;
+
+		83:	//Elemental Damage editor
+			EditElementalDamage( who , item );
+			break;
+
+		84:
+		85:
+		86:	EditItemInt( who , item , result[0] );		break;
+
+		87:	//Change to GM Counterpart - destroys and recreates the item (objtype is
+			//read-only on an existing item), so "item" must be reassigned to the
+			//replacement for the rest of this loop to keep working on it.
+			var gmresult := ChangeToGMCounterpart( who , item );
+			if( gmresult )
+				item := gmresult;
+			endif
+			break;
+	endcase
+
+		if( done )
+			Dbg( "loop exit: done flag set (item destroyed), iter=" + safeexit );
+			break;
+		endif
+
+		IncRevision( item );
+		Dbg( "post-edit state: desc=\"" + item.desc + "\" color=" + item.color );
+
+		if( safeexit >= 500 )
+			Dbg( "loop exit: safeexit backstop hit - this should not normally happen" );
+		endif
+	endwhile
+endprogram
+
+function FillInArrays( item )
+
+	//Create the item graphic in the windows
+	layout[10] := "tilepic 400 200 " + item.graphic;
+	
+	
+	//Set the item name
+	data[1] := "Info On: " + item.desc;
+	data[128] := item.desc;
+	
+	
+	//Set the coordinates of the item
+	data[5] := item.x;
+	data[7] := item.y;
+	data[9] := item.z;
+	
+	
+	//Set the graphic number - show both decimal and hex
+	data[11] := item.graphic + " (" + Hex(item.graphic) + ")";
+	
+	
+	//Set the color
+	data[13] := item.color;
+	if( GetObjProperty( item , "EnchantColor" ) )
+		data[119] := GetObjProperty( item , "EnchantColor" );
+	else
+		data[119] := "none";
+	endif
+	
+	
+	//Set the Hp/Mhp
+	if( item.hp )
+		data[17] := item.hp + "/" + item.maxhp;
+		data[45] := item.hp;
+		if( item.maxhp_mod )
+			data[47] := item.maxhp_mod;
+		else
+			data[47] := "0";
+		endif
+		
+	else
+		data[16] := "";	
+		layout[36] := "";
+	endif
+	
+	
+	//Set the amount
+	data[15] := item.amount;
+	
+	
+	//Set the quality
+	if( item.quality )
+		data[21] := item.quality;
+	else
+		data[20] := "";
+		layout[39] := 0;
+	endif
+
+
+	//Set the Options
+
+	//Exceptional
+	if( GetObjProperty( item , "IsExceptional" ) )
+		layout[76] := "button 150 170 211 210 1 1 55";
+	else
+		layout[76] := "button 150 170 210 211 1 1 55";
+	endif
+	
+	//IDed
+	if( GetObjProperty( item , "IDed" ) )
+		layout[77] := "button 150 195 211 210 1 1 56";
+	else
+		layout[77] := "button 150 195 210 211 1 1 56";
+	endif
+	
+	//Invisible
+	if( item.invisible )
+		layout[78] := "button 150 220 211 210 1 1 57";
+	else
+		layout[78] := "button 150 220 210 211 1 1 57";
+	endif
+	
+	//Newbied
+	if( item.newbie )
+		layout[79] := "button 150 245 211 210 1 1 58";
+	else
+		layout[79] := "button 150 245 210 211 1 1 58";
+	endif
+
+	//Not In Loot
+	if( GetObjProperty( item , "noloot" ) )
+		layout[80] := "button 150 270 211 210 1 1 59";
+	else
+		layout[80] := "button 150 270 210 211 1 1 59";
+	endif
+	
+	//Static Name
+	if( GetObjProperty( item , "StaticName" ) )
+		data[54] := GetObjProperty( item , "StaticName" );
+	else
+		data[54] := "same";
+	endif
+	
+	//Base Name
+	if( GetObjProperty( item , "BaseName" ) )
+		data[132] := GetObjProperty( item , "BaseName" );
+	else
+		data[132] := "same";
+	endif
+	
+	//Rename on id
+	if( GetObjProperty( item , "UnIDedMagicalItem" ) or 
+	    GetObjProperty( item , "Enchanted" ) or 
+	    GetObjProperty( item , "IsGMItem" ) or 
+	    GetObjProperty( item , "EnchantColor" ) or
+	    GetObjProperty( item , "StaticName" ) )
+	    	layout[287] := "button 260 270 211 210 1 1 80";
+	else
+		layout[287] := "button 260 270 210 211 1 1 80";
+	endif
+	
+	//OnUseScript
+	if( item.usescript )
+		var usecfg := ReadConfigFile( ":magic:usescriptdesc" );
+		var usescripts := GetConfigStringKeys( usecfg );
+		
+		foreach usescript in usescripts
+			if( item.usescript == usescript )
+				data[109] := usecfg[usescript].Name;
+				if( usecfg[usescript].RequireCharges )
+					data[110] := "Nb Charges";
+					layout[231] := "button 260 170 2640 2641 1 1 31";
+					var charges := GetObjProperty( item , "charges" );
+					if( charges )
+						data[111] := charges;
+					else
+						data[111] := "0";
+					endif
+				endif
+				
+				break;
+			endif
+		endforeach
+	else
+		data[109] := "none";
+	endif
+				
+			
+	//Set all the equippable items features
+	if( item.equipscript or item.unequipscript )
+		
+		//Enable cursing
+		var clvl := GetObjProperty( item , "Cursed" );
+		layout[57] := "button 260 170 2644 2645 0 7";
+		data[23] := "Curse Level";
+		
+		if( clvl )
+			data[24] := clvl;
+			if( clvl == 2 or clvl == 3 )
+				layout[119] := "button 260 195 2640 2641 1 1 76";
+				data[53] := "Banish the Curse";
+			endif
+			
+			data[55] := "Can be Uncursed";
+			if( GetObjProperty( item , "CannotBeUncursed" ) )
+				layout[120] := "button 150 220 210 211 1 1 77";
+			else
+				layout[120] := "button 150 220 211 210 1 1 77";
+			endif
+		else
+			data[24] := "0";
+		endif
+		
+		
+		//Enabled CName on ID
+		layout[286] := "button 260 220 2640 2641 1 1 42";
+		data[130] := "CName on ID";
+		if( GetObjProperty( item , "StaticCursedName" ) )
+			data[56] := GetObjProperty( item , "StaticCursedName" );
+		else
+			data[56] := "same";
+		endif		
+		
+		
+		//Set Owner
+		data[40] := "Owned";
+		if( GetObjProperty( item , "ownerserial" ) )
+			layout[81] := "button 150 295 211 210 1 1 60";
+		else
+			layout[81] := "button 150 295 210 211 1 1 60";
+		endif
+		
+		
+		//Stay Equipped
+		data[41] := "Stay Equipped";
+		if( GetObjProperty( item , "StayEquipped" ) )
+			layout[82] := "button 150 320 211 210 1 1 61";
+		else
+			layout[82] := "button 150 320 210 211 1 1 61";
+		endif
+		
+		
+		//Set the Skill mods features
+		data[27] := "Skill Mod";
+		var skillid := GetObjProperty( item , "skilladv" );
+		if( skillid or skillid == 0 )
+			data[28] := GetSkillName( skillid );
+			data[64] := skillid;
+			data[65] := "Skill Gain";
+			layout[147] := "button 260 220 2640 2641 1 1 9";
+			var amount := GetObjProperty( item , "skilladvamount" );
+			if( amount )
+				data[66] := amount;
+			else
+				data[66] := "0";
+			endif
+			
+		else
+			data[28] := "none";
+			data[64] := "nil";
+		endif
+		
+		
+		//Set the mods features
+		//NOTE: Regeneration Mods (old page 11) is deliberately retired - HpRegen/ManaRegen/
+		//StamRegen are never granted by starteqp.inc, so no real drop can carry them. The
+		//label (data[30]) and its nav button (layout[61]) are left unset, which hides the
+		//row entirely and makes the old page 11 unreachable.
+		data[29] := "Stats Mods";
+		data[31] := "Elemental Protections";
+		data[32] := "Special Protections";
+		layout[37] := "button 260 295 2644 2645 0 6";
+		layout[59] := "button 260 220 2644 2645 0 9";
+		layout[60] := "button 260 245 2644 2645 0 10";
+		layout[62] := "button 260 295 2644 2645 0 12";
+		layout[63] := "button 260 320 2644 2645 0 13";
+
+		//Stats mods
+		if( GetObjProperty( item , "str" ) )
+			data[68] := GetObjProperty( item , "str" );
+		else
+			data[68] := "0";
+		endif
+		
+		if( GetObjProperty( item , "int" ) )
+			data[70] := GetObjProperty( item , "int" );
+		else
+			data[70] := "0";
+		endif
+		
+		if( GetObjProperty( item , "dex" ) )
+			data[72] := GetObjProperty( item , "dex" );
+		else
+			data[72] := "0";
+		endif
+
+
+		//Elemental Protections
+		if( GetObjProperty( item , "AirProtection" ) )
+			data[80] := GetObjProperty( item , "AirProtection" );
+		else
+			data[80] := "0";
+		endif
+		
+		if( GetObjProperty( item , "EarthProtection" ) )
+			data[82] := GetObjProperty( item , "EarthProtection" );
+		else
+			data[82] := "0";
+		endif
+		
+		if( GetObjProperty( item , "FireProtection" ) )
+			data[84] := GetObjProperty( item , "FireProtection" );
+		else
+			data[84] := "0";
+		endif
+		
+		if( GetObjProperty( item , "WaterProtection" ) )
+			data[86] := GetObjProperty( item , "WaterProtection" );
+		else
+			data[86] := "0";
+		endif
+		
+		if( GetObjProperty( item , "HolyProtection" ) )
+			data[88] := GetObjProperty( item , "HolyProtection" );
+		else
+			data[88] := "0";
+		endif
+		
+		if( GetObjProperty( item , "NecroProtection" ) )
+			data[90] := GetObjProperty( item , "NecroProtection" );
+		else
+			data[90] := "0";
+		endif
+		
+		if( GetObjProperty( item , "PhysicalProtection" ) )
+			data[92] := GetObjProperty( item , "PhysicalProtection" );
+		else
+			data[92] := "0";
+		endif
+
+
+		//Special Protections
+		if( GetObjProperty( item , "HealingIncrease" ) )
+			data[94] := GetObjProperty( item , "HealingIncrease" );
+		else
+			data[94] := "0";
+		endif
+		
+		if( GetObjProperty( item , "MagicImmunity" ) )
+			data[98] := GetObjProperty( item , "MagicImmunity" );
+		else
+			data[98] := "0";
+		endif
+		
+		if( GetObjProperty( item , "PoisonImmunity" ) )
+			data[100] := GetObjProperty( item , "PoisonImmunity" );
+		else
+			data[100] := "0";
+		endif
+		
+		if( GetObjProperty( item , "SpellReflect" ) )
+			data[102] := GetObjProperty( item , "SpellReflect" );
+		else
+			data[102] := "0";
+		endif
+		
+		if( GetObjProperty( item , "PermMagicImmunity" ) )
+			data[104] := GetObjProperty( item , "PermMagicImmunity" );
+		else
+			data[104] := "0";
+		endif
+		
+		if( GetObjProperty( item , "PermPoisonImmunity" ) )
+			data[106] := GetObjProperty( item , "PermPoisonImmunity" );
+		else
+			data[106] := "0";
+		endif
+		
+		if( GetObjProperty( item , "Permmr" ) )
+			data[108] := GetObjProperty( item , "Permmr" );
+		else
+			data[108] := "0";
+		endif
+		
+		if( GetObjProperty( item , "FreeAction" ) )
+			layout[222] := "button 210 320 211 210 1 1 78";
+		else
+			layout[222] := "button 210 320 210 211 1 1 78";
+		endif
+	
+		
+		//Set all the weapons specific features
+		if( item.Attribute )
+			var item_cfg := ReadConfigFile( ":*:itemdesc" );
+			data[18]  := "Dmg";
+			data[19]  := item_cfg[item.objtype].Damage;
+			data[25]  := "Hitscript";
+			if( item.hitscript )
+				data[26]  := TruncPkgName( item.hitscript );
+			else
+				data[26]  := TruncPkgName( item_cfg[item.objtype].Hitscript );
+			endif
+
+			data[48]  := "Dmg modifier";
+			data[49]  := item.dmg_mod;
+			data[112] := "Reset the Hitscript";
+			data[113] := "Set a Spell Hitscript";
+			data[114] := "Set a Slayer Hitscript";
+			data[115] := "Set an Effect Hitscript";
+			data[116] := "Set a Greater Hitscript";
+			data[117] := "Set a Special Hitscript";
+			layout[58] := "button 260 195 2644 2645 0 8";
+			layout[109] := "button 260 170 2640 2641 1 1 7";
+
+			if( item.hitscript != ":combat:mainhit" )
+				if( item.hitscript == ":combat:spellstrikescript" )
+					var spellcfg := ReadConfigFile( "::spells" );
+					data[57] := "Cast";
+					data[58] := spellcfg[GetObjProperty( item , "HitWithSpell" )].Name;
+					data[59] := "Chance %";
+					data[60] := GetObjProperty( item , "ChanceOfEffect" );
+					data[61] := "As Circle";
+					data[62] := GetObjProperty( item , "EffectCircle" );
+					layout[133] := "button 260 195 2640 2641 1 1 53";
+					layout[134] := "button 260 220 2640 2641 1 1 36";
+					layout[135] := "button 260 245 2640 2641 1 1 37";
+					
+				elseif( item.hitscript == ":combat:slayerscript" )
+					data[57] := "Slay";
+					data[58] := GetObjProperty( item , "SlayType" );
+					layout[133] := "button 260 195 2640 2641 1 1 54";
+					
+				else
+					var hitcfg := ReadConfigFile( ":combat:hitscriptdesc" );
+					var scriptnum := GetObjProperty( item , "HitscriptNumber" );
+					var CProp := hitcfg[scriptnum].CProp;
+					Dbg( "FillInArrays (weapon): HitscriptNumber=" + scriptnum + " CProp=" + CProp );
+					if( CProp )
+						data[57] := CProp;
+						data[58] := GetObjProperty( item , CProp );
+						layout[133] := "button 260 195 2640 2641 1 1 38";
+					endif
+				endif
+			endif
+
+			
+			if( item.attribute == SKILLID_ARCHERY )
+				data[50] := "Normal Range";
+				data[51] := GetObjProperty( item , "NormalRange" );
+				layout[110] := "button 260 195 2640 2641 1 1 35";
+			endif
+		
+		//Set the armors specific features	
+		elseif( item.ar )
+			data[18]  := "Ar";
+			data[19]  := item.ar;
+			data[25]  := "OnHitscript";
+			layout[109] := "button 260 170 2640 2641 1 1 7";
+			var onhitscript := GetObjProperty( item , "OnHitScript" );
+			if( onhitscript )
+				data[26]  := TruncPkgName( onhitscript );
+				if( onhitscript == ":combat:spellonhit" )
+					var spellcfg := ReadConfigFile( "::spells" );
+					data[57] := "Cast";
+					data[58] := spellcfg[GetObjProperty( item , "HitWithSpell" )].Name;
+					data[59] := "Chance %";
+					data[60] := GetObjProperty( item , "ChanceOfEffect" );
+					data[61] := "As Circle";
+					data[62] := GetObjProperty( item , "EffectCircle" );
+					layout[133] := "button 260 195 2640 2641 1 1 53";
+					layout[134] := "button 260 220 2640 2641 1 1 36";
+					layout[135] := "button 260 245 2640 2641 1 1 37";
+					
+				elseif( onhitscript == ":combat:raceresistonhit" )
+					data[57] := "Protected vs";
+					data[58] := GetObjProperty( item , "ProtectedType" );
+					layout[133] := "button 260 195 2640 2641 1 1 54";
+					
+				else
+					var hitcfg := ReadConfigFile( ":combat:onhitscriptdesc" );
+					var scriptnum := GetObjProperty( item , "OnHitscriptNumber" );
+					var CProp := hitcfg[scriptnum].CProp;
+					Dbg( "FillInArrays (armor): OnHitscriptNumber=" + scriptnum + " CProp=" + CProp );
+					data[57] := CProp;
+					data[58] := GetObjProperty( item , CProp );
+					layout[133] := "button 260 195 2640 2641 1 1 38";
+				endif
+
+			else
+				data[26]  := "none";
+			endif
+			
+			data[48]  := "Ar Modifier";
+			data[49]  := item.ar_mod;
+			data[50]  := "Ar Bonus";
+			layout[110] := "button 260 195 2640 2641 1 1 35";
+			var arbonus := GetObjProperty( item , "ArBonus" );
+			if( arbonus )
+				data[51] := arbonus;
+			else
+				data[51] := "0";
+			endif
+			
+			data[112] := "Remove the OnHitscript";
+			data[113] := "Set a Spell OnHitscript";
+			data[114] := "Set a Protected OnHitscript";
+			data[115] := "Set an Effect OnHitscript";
+			data[116] := "Set a Greater OnHitscript";
+			data[117] := "Set a Special OnHitscript";
+			layout[58] := "button 260 195 2644 2645 0 8";
+		
+		//Set the non-armor, non-weapon equippable items features
+		else
+			data[18]  := "Ar";
+			data[19]  := "n/a";
+			data[50]  := "Ar Bonus";
+			layout[110] := "button 260 195 2640 2641 1 1 35";
+			var arbonus := GetObjProperty( item , "ArBonus" );
+			if( arbonus )
+				data[51] := arbonus;
+			else
+				data[51] := "0";
+			endif
+		endif
+	
+	//Set the non-equipable items features	
+	elseif( item.objtype == 0xa100 or item.objtype == 0xb100 )
+		data[23] := "Casting Options";
+		layout[57] := "button 260 170 2644 2645 0 17";
+		var castingopts := GetObjProperty( item , "CastingOpts" );
+		if( !castingopts )
+			layout[265] := "button 260 170 210 211 1 1 62";
+			layout[266] := "button 260 195 210 211 1 1 63";
+			layout[267] := "button 260 220 210 211 1 1 64";
+			layout[268] := "button 260 245 210 211 1 1 65";
+			layout[269] := "button 260 270 210 211 1 1 66";
+			layout[270] := "button 260 295 210 211 1 1 67";
+			
+		else
+			var options := SplitWords( castingopts );
+			if( FindOption( options , "ANYEQUIP" ) )
+				layout[265] := "button 260 170 211 210 1 1 68";
+			else
+				layout[265] := "button 260 170 210 211 1 1 62";
+			endif
+			
+			if( FindOption( options , "NOWORDS" ) )
+				layout[266] := "button 260 195 211 210 1 1 69";
+			else
+				layout[266] := "button 260 195 210 211 1 1 63";
+			endif
+			
+			if( FindOption( options , "NODELAY" ) )
+				layout[267] := "button 260 220 211 210 1 1 70";
+			else
+				layout[267] := "button 260 220 210 211 1 1 64";
+			endif
+			
+			if( FindOption( options , "NOREGS" ) )
+				layout[268] := "button 260 245 211 210 1 1 71";
+			else
+				layout[268] := "button 260 245 210 211 1 1 65";
+			endif
+			
+			if( FindOption( options , "NOMANA" ) )
+				layout[269] := "button 260 270 211 210 1 1 72";
+			else
+				layout[269] := "button 260 270 210 211 1 1 66";
+			endif
+			
+			if( FindOption( options , "NOSKILL" ) )
+				layout[270] := "button 260 295 211 210 1 1 73";
+			else
+				layout[270] := "button 260 295 210 211 1 1 67";
+			endif
+		endif
+	endif
+
+	//--- Advanced/Crafting page (page 19) - applies to any item, not gated behind
+	//--- equipscript like the enchant-family fields above.
+
+	//Enchanted tier (Swift/Mystical/Stygian)
+	var enchtier := GetObjProperty( item , "Enchanted" );
+	if( enchtier )
+		data[134] := enchtier;
+	else
+		data[134] := "none";
+	endif
+
+	//Undyeable
+	if( GetObjProperty( item , "Undyeable" ) )
+		layout[304] := "button 260 145 211 210 1 1 82";
+	else
+		layout[304] := "button 260 145 210 211 1 1 82";
+	endif
+
+	//Elemental Damage (composite "TYPE:pct TYPE:pct ..." string)
+	var elemdmg := GetObjProperty( item , "ElementalDamage" );
+	if( elemdmg )
+		data[137] := CStr( elemdmg );
+	else
+		data[137] := "none";
+	endif
+
+	//Magic Penalty
+	if( GetObjProperty( item , "MagicPenalty" ) )
+		data[139] := GetObjProperty( item , "MagicPenalty" );
+	else
+		data[139] := "0";
+	endif
+
+	//Default Dex
+	if( GetObjProperty( item , "DefaultDex" ) )
+		data[141] := GetObjProperty( item , "DefaultDex" );
+	else
+		data[141] := "0";
+	endif
+
+	//Speed Mod (native field, not a CProp)
+	if( item.speed_mod )
+		data[143] := item.speed_mod;
+	else
+		data[143] := "0";
+	endif
+
+	//GM Counterpart - deliberately NOT scanned here (this runs every redraw; scanning the
+	//whole itemdesc config on every click would be slow). The button itself does the scan
+	//on demand, see ChangeToGMCounterpart.
+	data[146] := "click to search by graphic";
+
+endfunction
+
+const NOVAL := -999999;
+
+function PromptInt( who , msg )
+//Reproduces the file's existing convention: cancel and literal 0 are indistinguishable
+//(same as the original single shared prompt); 9999 explicitly resets/clears to 0.
+
+	SendSysmessage( who , msg + " Enter 9999 to reset. Hit Esc to cancel." );
+	var val := Cint(RequestInput( who , who.backpack , "Enter a value." ));
+
+	if( !val )
+		Dbg( "PromptInt(\"" + msg + "\"): cancelled/blank" );
+		return NOVAL;
+	endif
+
+	if( val == 9999 )
+		Dbg( "PromptInt(\"" + msg + "\"): reset to 0" );
+		return 0;
+	endif
+
+	Dbg( "PromptInt(\"" + msg + "\"): entered " + val );
+	return val;
+
+endfunction
+
+function ClampInt( who , val , lo , hi )
+
+	if( val < lo or val > hi )
+		SendSysmessage( who , "Value must be between " + lo + " and " + hi + ". Not applied." );
+		Dbg( "ClampInt: rejected " + val + " (range " + lo + "-" + hi + ")" );
+		return NOVAL;
+	endif
+
+	return val;
+
+endfunction
+
+function PickTierValue( who , choices , title )
+//Small button-list gump offering only the legal tier values for a property, plus a
+//Clear/Remove option. Returns the picked value, 0 for Clear, or NOVAL if cancelled.
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 " + (65 + (len(choices)+1)*22)
+							);
+
+	var data2 := array( title );
+
+	layout2.append( "text 75 20 5 0" );
+
+	var y := 50;
+	var i;
+	for( i := 1 ; i <= len(choices) ; i := i + 1 )
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		data2.append( CStr(choices[i]) );
+		layout2.append( "button 250 " + (y+5) + " 2118 2117 1 0 " + i );
+		y := y + 22;
+	endfor
+
+	layout2.append( "text 85 " + y + " 0 " + len(data2) );
+	data2.append( "Clear / Remove" );
+	layout2.append( "button 250 " + (y+5) + " 2118 2117 1 0 " + (len(choices)+1) );
+
+	var result := SendDialogGump( who , layout2 , data2 );
+
+	if( !result[0] )
+		Dbg( "PickTierValue(\"" + title + "\"): cancelled" );
+		return NOVAL;
+	elseif( result[0] == (len(choices)+1) )
+		Dbg( "PickTierValue(\"" + title + "\"): Clear/Remove picked" );
+		return 0;
+	else
+		Dbg( "PickTierValue(\"" + title + "\"): picked " + choices[result[0]] );
+		return choices[result[0]];
+	endif
+
+endfunction
+
+function PickStringChoice( who , choices , title )
+//Same idea as PickTierValue but for a small set of named string choices (e.g. the
+//Enchanted tier). Returns the picked string, "CLEAR" if Clear/Remove was picked, or ""
+//if cancelled.
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 " + (65 + (len(choices)+1)*22)
+							);
+
+	var data2 := array( title );
+
+	layout2.append( "text 75 20 5 0" );
+
+	var y := 50;
+	var i;
+	for( i := 1 ; i <= len(choices) ; i := i + 1 )
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		data2.append( CStr(choices[i]) );
+		layout2.append( "button 250 " + (y+5) + " 2118 2117 1 0 " + i );
+		y := y + 22;
+	endfor
+
+	layout2.append( "text 85 " + y + " 0 " + len(data2) );
+	data2.append( "Clear / Remove" );
+	layout2.append( "button 250 " + (y+5) + " 2118 2117 1 0 " + (len(choices)+1) );
+
+	var result := SendDialogGump( who , layout2 , data2 );
+
+	if( !result[0] )
+		Dbg( "PickStringChoice(\"" + title + "\"): cancelled" );
+		return "";
+	elseif( result[0] == (len(choices)+1) )
+		Dbg( "PickStringChoice(\"" + title + "\"): Clear/Remove picked" );
+		return "CLEAR";
+	else
+		Dbg( "PickStringChoice(\"" + title + "\"): picked " + choices[result[0]] );
+		return choices[result[0]];
+	endif
+
+endfunction
+
+function SetSkillAdvCategoryFlag( item )
+//RenameBySkill (namingbyenchant.inc) divides skilladvamount by 5 ONLY if WeapAdv is set -
+//without it, a weapon skill mod (stored on the raw 5-30 scale) looks up "Name30" instead
+//of "Name6" in modenchantdesc.cfg, which doesn't exist, so it silently gets NO naming
+//adjective. starteqp.inc's ApplyWeapSkillMod/ShieldApplyArSkillMod set WeapAdv/ShieldAdv
+//for exactly this reason - mirror that here whenever a skill mod is (re)applied, so the
+//category always matches whatever scale GetSkillTierChoicesForItem just used.
+
+	var shieldgfx := GetShieldGraphics();
+	if( item.graphic in shieldgfx )
+		EraseObjProperty( item , "WeapAdv" );
+		SetObjProperty( item , "ShieldAdv" , 1 );
+	elseif( item.Attribute )
+		SetObjProperty( item , "WeapAdv" , 1 );
+		EraseObjProperty( item , "ShieldAdv" );
+	else
+		EraseObjProperty( item , "WeapAdv" );
+		EraseObjProperty( item , "ShieldAdv" );
+	endif
+
+endfunction
+
+function EditElementalDamage( who , item )
+//Composite CProp editor for "ElementalDamage" ("FIRE:25 AIR:25 ..." - space-separated
+//TYPE:pct tokens, read directly by the general damage pipeline in
+//pkg/systems/combat/include/hitscriptinc.inc regardless of item.hitscript/OnHitScript).
+//Confirmed NOT mutually exclusive with SlayType/hitscripts - ElementalDamage is applied
+//on every hit independent of whatever hitscript is set, so a slayer weapon can also carry
+//elemental damage with no conflict. Loops on its own (like the main tool) so a GM can set
+//several elements in one session.
+
+	var elements := { "FIRE","AIR","EARTH","WATER","NECRO","HOLY","POISON","ACID","PHYSICAL","MAGIC","ASTRAL","NO_RESIST" };
+	var pcts := {20,25,50,65,75,85,95,100,115};
+
+	var done := 0;
+	var safeexit := 0;
+	while( !done and safeexit < 100 )
+		safeexit := safeexit + 1;
+
+		var pkeys := array;
+		var pvals := array;
+		var current := GetObjProperty( item , "ElementalDamage" );
+		if( current )
+			foreach token in SplitWords( CStr(current) , " " )
+				var kv := SplitWords( token , ":" );
+				if( len(kv) == 2 )
+					pkeys.append( kv[1] );
+					pvals.append( kv[2] );
+				endif
+			endforeach
+		endif
+
+		var layout2 := array(
+					"page 0",
+					"resizepic 50  0   2600 260 " + (65 + (len(elements)+1)*22)
+								);
+		var data2 := array( "Elemental Damage - pick an element to set/clear:" );
+		layout2.append( "text 75 20 5 0" );
+
+		var y := 50;
+		var i, j;
+		for( i := 1 ; i <= len(elements) ; i := i + 1 )
+			var label := elements[i];
+			for( j := 1 ; j <= len(pkeys) ; j := j + 1 )
+				if( pkeys[j] == elements[i] )
+					label := elements[i] + " (" + pvals[j] + "%)";
+				endif
+			endfor
+			layout2.append( "text 85 " + y + " 0 " + len(data2) );
+			data2.append( label );
+			layout2.append( "button 260 " + (y+5) + " 2118 2117 1 0 " + i );
+			y := y + 22;
+		endfor
+
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		data2.append( "Done / Close" );
+		layout2.append( "button 260 " + (y+5) + " 2118 2117 1 0 " + (len(elements)+1) );
+
+		var result := SendDialogGump( who , layout2 , data2 );
+		if( !result[0] or result[0] == (len(elements)+1) )
+			done := 1;
+			break;
+		endif
+
+		var chosen := elements[result[0]];
+		var pctval := PickTierValue( who , pcts , "Select " + chosen + " damage % (Clear to remove):" );
+		if( pctval != NOVAL )
+			var newkeys := array;
+			var newvals := array;
+			for( j := 1 ; j <= len(pkeys) ; j := j + 1 )
+				if( pkeys[j] != chosen )
+					newkeys.append( pkeys[j] );
+					newvals.append( pvals[j] );
+				endif
+			endfor
+			if( pctval )
+				newkeys.append( chosen );
+				newvals.append( CStr(pctval) );
+			endif
+
+			var rebuilt := "";
+			for( j := 1 ; j <= len(newkeys) ; j := j + 1 )
+				if( rebuilt != "" )
+					rebuilt := rebuilt + " ";
+				endif
+				rebuilt := rebuilt + newkeys[j] + ":" + newvals[j];
+			endfor
+
+			if( rebuilt != "" )
+				SetObjProperty( item , "ElementalDamage" , rebuilt );
+			else
+				EraseObjProperty( item , "ElementalDamage" );
+			endif
+			Dbg( "ElementalDamage now: " + rebuilt );
+		endif
+	endwhile
+
+endfunction
+
+function ChangeToGMCounterpart( who , item )
+//Scans the full itemdesc config for every entry that (a) shares this item's graphic and
+//(b) carries an IsGMItem CProp - i.e. every unique/GM weapon or armor piece that LOOKS
+//like the targeted item (same base shape, e.g. every katana-shaped GM item for a katana,
+//every plate-breastplate-shaped GM item for a breastplate). objtype is read-only on an
+//existing item (confirmed - no setter exists anywhere in this codebase or the uo.em
+//module), so this destroys the old item and creates a fresh instance of the chosen GM
+//objtype in its place, re-equipping it if the old one was worn.
+
+	SendSysmessage( who , "Scanning itemdesc for GM counterparts of graphic " + Hex(item.graphic) + "..." );
+
+	//Scoped to :combat:itemdesc rather than the full merged ":*:itemdesc" - every IsGMItem
+	//weapon/armor entry found while researching this tool lived in that one package
+	//(pkg/systems/combat/config/itemdesc.cfg), and scanning the whole shard's merged
+	//catalog (every reagent/food/deco item included) would be far slower for no benefit
+	//if GM items really are confined to combat. Widen this back to ":*:itemdesc" if a GM
+	//counterpart is ever added somewhere else and this stops finding it.
+	var itemcfg := ReadConfigFile( ":combat:itemdesc" );
+	var keys := GetConfigStringKeys( itemcfg );
+
+	var names := array;
+	var objtypes := array;
+
+	foreach key in keys
+		var elem := itemcfg[key];
+		if( elem.Graphic and CInt(elem.Graphic) == item.graphic )
+			var cprops := GetConfigStringArray( elem , "CProp" );
+			foreach cprop in cprops
+				var parts := SplitWords( cprop );
+				if( len(parts) >= 2 and parts[1] == "IsGMItem" )
+					var gmname := "";
+					var p;
+					for( p := 2 ; p <= len(parts) ; p := p + 1 )
+						if( gmname != "" )
+							gmname := gmname + " ";
+						endif
+						gmname := gmname + parts[p];
+					endfor
+					names.append( gmname );
+					objtypes.append( CInt(key) );
+					break;
+				endif
+			endforeach
+		endif
+	endforeach
+
+	Dbg( "ChangeToGMCounterpart: found " + len(names) + " candidate(s) for graphic " + Hex(item.graphic) );
+
+	if( !len(names) )
+		SendSysmessage( who , "No GM counterpart found for graphic " + Hex(item.graphic) + "." );
+		return 0;
+	endif
+
+	var pick;
+	if( len(names) == 1 )
+		if( !YesNo( who , "Convert this item to \"" + names[1] + "\"? This destroys the current item." ) )
+			return 0;
+		endif
+		pick := 1;
+	else
+		var layout2 := array(
+					"page 0",
+					"resizepic 50  0   2600 300 " + (65 + (len(names)+1)*22)
+								);
+		var data2 := array( "Select the GM counterpart to convert to:" );
+		layout2.append( "text 75 20 5 0" );
+
+		var y := 50;
+		var i;
+		for( i := 1 ; i <= len(names) ; i := i + 1 )
+			layout2.append( "text 85 " + y + " 0 " + len(data2) );
+			data2.append( names[i] );
+			layout2.append( "button 280 " + (y+5) + " 2118 2117 1 0 " + i );
+			y := y + 22;
+		endfor
+
+		var result := SendDialogGump( who , layout2 , data2 );
+		if( !result[0] )
+			return 0;
+		endif
+		pick := result[0];
+	endif
+
+	//Figure out where the replacement belongs: re-equip on the same mobile if the old
+	//item was worn, otherwise drop it in the same container, otherwise the same spot.
+	var oldcontainer := item.container;
+	var wearer := 0;
+	if( oldcontainer and oldcontainer.isa( POLCLASS_CHARACTER ) )
+		wearer := oldcontainer;
+	endif
+
+	var oldx := item.x;
+	var oldy := item.y;
+	var oldz := item.z;
+	var oldrealm := item.realm;
+	var oldobjtype := item.objtype;
+	var oldgraphic := item.graphic;
+
+	LogCommand(who, GetProcess(GetPid()).name, "objtype "+Hex(oldobjtype)+"/"+item.serial, "Converting to GM counterpart: "+names[pick]);
+	DestroyItem( item );
+
+	var newitem;
+	if( wearer )
+		newitem := CreateItemInBackpack( wearer , objtypes[pick] );
+		if( newitem )
+			EquipItem( wearer , newitem );
+		endif
+	elseif( oldcontainer )
+		newitem := CreateItemInContainer( oldcontainer , objtypes[pick] );
+	else
+		newitem := CreateItemAtLocation( oldx , oldy , oldz , objtypes[pick] , 1 , oldrealm );
+	endif
+
+	if( !newitem )
+		SendSysmessage( who , "Failed to create the GM counterpart - the original item is gone." );
+		Dbg( "ChangeToGMCounterpart: create FAILED for objtype " + Hex(objtypes[pick]) );
+		return 0;
+	endif
+
+	Dbg( "ChangeToGMCounterpart: " + Hex(oldgraphic) + "/" + Hex(oldobjtype) + " -> " + Hex(newitem.objtype) + " (\"" + names[pick] + "\") desc=\"" + newitem.desc + "\"" );
+	SendSysmessage( who , "Converted to " + newitem.desc + "." );
+
+	return newitem;
+
+endfunction
+
+function ClearOtherStatMods( item , keep )
+//str/int/dex are mutually exclusive on a real drop - never more than one.
+
+	if( keep != "str" and GetObjProperty( item , "str" ) )
+		Dbg( "ClearOtherStatMods: erasing str (keeping " + keep + ")" );
+		EraseObjProperty( item , "str" );
+	endif
+	if( keep != "int" and GetObjProperty( item , "int" ) )
+		Dbg( "ClearOtherStatMods: erasing int (keeping " + keep + ")" );
+		EraseObjProperty( item , "int" );
+	endif
+	if( keep != "dex" and GetObjProperty( item , "dex" ) )
+		Dbg( "ClearOtherStatMods: erasing dex (keeping " + keep + ")" );
+		EraseObjProperty( item , "dex" );
+	endif
+
+endfunction
+
+function ClearOtherElementalGroup( item , keep )
+//The nine-way ApplyEnchant "elemental" pick - exactly one of these ever appears together.
+
+	var props := {	"AirProtection", "EarthProtection", "FireProtection",
+			"WaterProtection", "HolyProtection", "NecroProtection",
+			"FreeAction", "HealingIncrease", "PhysicalProtection"	};
+
+	foreach prop in props
+		if( prop != keep and GetObjProperty( item , prop ) )
+			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
+			EraseObjProperty( item , prop );
+		endif
+	endforeach
+
+endfunction
+
+function ClearOtherChargeImmunity( item , keep )
+//ApplyEnchant's charge-immunity pick - exactly one of these three.
+
+	var props := { "MagicImmunity", "PoisonImmunity", "SpellReflect" };
+
+	foreach prop in props
+		if( prop != keep and GetObjProperty( item , prop ) )
+			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
+			EraseObjProperty( item , prop );
+		endif
+	endforeach
+
+endfunction
+
+function ClearOtherPermanentImmunity( item , keep )
+//ApplyEnchant's permanent-immunity pick - exactly one of these three.
+
+	var props := { "PermMagicImmunity", "PermPoisonImmunity", "Permmr" };
+
+	foreach prop in props
+		if( prop != keep and GetObjProperty( item , prop ) )
+			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
+			EraseObjProperty( item , prop );
+		endif
+	endforeach
+
+endfunction
+
+function ResetHitscriptPropsExcep( item , excep := "" )
+//Local replacement for itemutil.inc's ResetAllHitscriptPropsExcep, kept separate on
+//purpose so this parallel tool never touches the shared include. Also clears
+//HitscriptNumber/OnHitscriptNumber, which the shared version does not - their absence
+//is what breaks the CProp display/edit path after picking an Effect/Greater/Special
+//hitscript (see SetAnEffectScriptFromList and friends below, which now write them).
+
+	var cprops := {	"ChanceOfEffect",
+				"EffectCircle"	,
+				"HitWithSpell"	,
+				"Poisonlvl"	,
+				"Powerlevel"	,
+				"ProtectedType"	,
+				"SlayType"	,
+				"HitscriptNumber"	,
+				"OnHitscriptNumber"	};
+
+	foreach cprop in cprops
+		if( cprop != excep )
+			EraseObjProperty( item , cprop );
+		endif
+	endforeach
+
+endfunction
+
+function EditItemInt( who , item , result )
+
+	var val;
+
+	case( result )
+		1:	//x value
+			val := PromptInt( who , "X coordinate." );
+			if( val != NOVAL )
+				MoveObjectToLocation( item , val , item.y , item.z , item.realm, MOVEOBJECT_FORCELOCATION );
+			endif
+			break;
+
+		2:	//y value
+			val := PromptInt( who , "Y coordinate." );
+			if( val != NOVAL )
+				MoveObjectToLocation( item , item.x , val , item.z , item.realm, MOVEOBJECT_FORCELOCATION );
+			endif
+			break;
+
+		3:	//z value
+			val := PromptInt( who , "Z coordinate." );
+			if( val != NOVAL )
+				MoveObjectToLocation( item , item.x , item.y , val , item.realm, MOVEOBJECT_FORCELOCATION );
+			endif
+			break;
+
+		4:	//graphic number
+			val := PromptInt( who , "New graphic (decimal). You may also type a 0x... hex value." );
+			if( val != NOVAL )
+				item.graphic := val;
+			endif
+			break;
+
+		5:	//Hp
+			val := PromptInt( who , "New current HP." );
+			if( val != NOVAL )
+				item.hp := val;
+			endif
+			break;
+
+		6:	//Mhp mod - HP/AR/Dmg mod tier, legal range per starteqp.inc's ApplyHPMod
+			val := PickTierValue( who , {5,10,15,20,25,30} , "Select the HP bonus:" );
+			if( val != NOVAL )
+				item.maxhp_mod := val;
+				if( val )
+					DebugRenameItem( item );
+				endif
+			endif
+			break;
+
+		7:	//Ar/Dmg mod - same tier family as case 6, applies to whichever stat this item uses
+			val := PickTierValue( who , {5,10,15,20,25,30} , "Select the Ar/Dmg bonus:" );
+			if( val != NOVAL )
+				if( item.ar )
+					item.ar_mod := val;
+				else
+					item.dmg_mod := val;
+				endif
+				if( val )
+					DebugRenameItem( item );
+				endif
+			endif
+			break;
+
+		8:	//Skillid - raw fallback; use the "Change Skill from list" button for a validated pick.
+			//Note: like the rest of this file's shared-prompt convention, a literal "0" is
+			//indistinguishable from cancel, so skill id 0 (Alchemy) can't be typed directly
+			//here - use "Change Skill from list" (case 45) for that skill specifically.
+			val := PromptInt( who , "Skill id (0-" + SKILLID__HIGHEST + "). Use \"Change Skill\" for a validated pick." );
+			if( val != NOVAL )
+				val := ClampInt( who , val , 0 , SKILLID__HIGHEST );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "skilladv" , val );
+					SetSkillAdvCategoryFlag( item );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "skilladv" );
+				endif
+			endif
+			break;
+
+		9:	//Skill Gain - now category-aware, same tier set the skill picker (case 45) uses
+			val := PickTierValue( who , GetSkillTierChoicesForItem( item ) , "Select the skill gain amount:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "skilladvamount" , val );
+					SetSkillAdvCategoryFlag( item );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "skilladvamount" );
+				endif
+			endif
+			break;
+
+		10:	//Strength mod - one of str/int/dex only, tier per starteqp.inc's ApplyStatMod
+			val := PickTierValue( who , {2,4,6,8,10,12} , "Select the Strength bonus:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "str" , val );
+					ClearOtherStatMods( item , "str" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "str" );
+				endif
+			endif
+			break;
+
+		11:	//Intelligence mod
+			val := PickTierValue( who , {2,4,6,8,10,12} , "Select the Intelligence bonus:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "int" , val );
+					ClearOtherStatMods( item , "int" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "int" );
+				endif
+			endif
+			break;
+
+		12:	//Dexterity mod
+			val := PickTierValue( who , {2,4,6,8,10,12} , "Select the Dexterity bonus:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "dex" , val );
+					ClearOtherStatMods( item , "dex" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "dex" );
+				endif
+			endif
+			break;
+
+		16:	//Air Protection - elemental group, %-tier per starteqp.inc's ApplyElementalImmunity
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Air Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "AirProtection" , val );
+					ClearOtherElementalGroup( item , "AirProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "AirProtection" );
+				endif
+			endif
+			break;
+
+		17:	//Earth Protection
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Earth Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "EarthProtection" , val );
+					ClearOtherElementalGroup( item , "EarthProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "EarthProtection" );
+				endif
+			endif
+			break;
+
+		18:	//Fire Protection
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Fire Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "FireProtection" , val );
+					ClearOtherElementalGroup( item , "FireProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "FireProtection" );
+				endif
+			endif
+			break;
+
+		19:	//Water Protection
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Water Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "WaterProtection" , val );
+					ClearOtherElementalGroup( item , "WaterProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "WaterProtection" );
+				endif
+			endif
+			break;
+
+		20:	//Holy Protection
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Holy Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "HolyProtection" , val );
+					ClearOtherElementalGroup( item , "HolyProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "HolyProtection" );
+				endif
+			endif
+			break;
+
+		21:	//Necro Protection
+			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Necro Protection %:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "NecroProtection" , val );
+					ClearOtherElementalGroup( item , "NecroProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "NecroProtection" );
+				endif
+			endif
+			break;
+
+		22:	//Physical Protection - elemental group, but keeps the generator's raw 1-6 tier (not %)
+			val := PromptInt( who , "Physical Protection tier (1-6)." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 6 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "PhysicalProtection" , val );
+					ClearOtherElementalGroup( item , "PhysicalProtection" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "PhysicalProtection" );
+				endif
+			endif
+			break;
+
+		23:	//Healing Increase - elemental group, also keeps the generator's raw 1-6 tier
+			val := PromptInt( who , "Healing Increase tier (1-6)." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 6 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "HealingIncrease" , val );
+					ClearOtherElementalGroup( item , "HealingIncrease" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "HealingIncrease" );
+				endif
+			endif
+			break;
+
+		24:	//FreeAction - a binary flag on real drops, elemental group
+			if( GetObjProperty( item , "FreeAction" ) )
+				EraseObjProperty( item , "FreeAction" );
+			else
+				SetObjProperty( item , "FreeAction" , 1 );
+				ClearOtherElementalGroup( item , "FreeAction" );
+			endif
+			DebugRenameItem( item );
+			break;
+
+		25:	//Magic immunity charges - charge-immunity group, tier per ApplyProtection
+			val := PickTierValue( who , {15,20,25,30,35,40} , "Select Magic Immunity charges:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "MagicImmunity" , val );
+					ClearOtherChargeImmunity( item , "MagicImmunity" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "MagicImmunity" );
+				endif
+			endif
+			break;
+
+		26:	//Poison immunity charges
+			val := PickTierValue( who , {15,20,25,30,35,40} , "Select Poison Immunity charges:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "PoisonImmunity" , val );
+					ClearOtherChargeImmunity( item , "PoisonImmunity" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "PoisonImmunity" );
+				endif
+			endif
+			break;
+
+		27:	//Spell reflect charges
+			val := PickTierValue( who , {15,20,25,30,35,40} , "Select Spell Reflection charges:" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "SpellReflect" , val );
+					ClearOtherChargeImmunity( item , "SpellReflect" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "SpellReflect" );
+				endif
+			endif
+			break;
+
+		28:	//Permanent magic immunity circle - permanent-immunity group, raw 1-6 tier
+			val := PromptInt( who , "Permanent Magic Immunity circle (1-6)." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 6 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "PermMagicImmunity" , val );
+					ClearOtherPermanentImmunity( item , "PermMagicImmunity" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "PermMagicImmunity" );
+				endif
+			endif
+			break;
+
+		29:	//Permanent poison immunity level
+			val := PromptInt( who , "Permanent Poison Immunity level (1-6)." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 6 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "PermPoisonImmunity" , val );
+					ClearOtherPermanentImmunity( item , "PermPoisonImmunity" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "PermPoisonImmunity" );
+				endif
+			endif
+			break;
+
+		30:	//Permanent magic reflect circle
+			val := PromptInt( who , "Permanent Magic Reflection circle (1-6)." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 6 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "Permmr" , val );
+					ClearOtherPermanentImmunity( item , "Permmr" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "Permmr" );
+				endif
+			endif
+			break;
+
+		31:	//Charges amount - usescript charges, not part of the enchant vocabulary; left free
+			val := PromptInt( who , "Number of charges." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "charges" , val );
+				else
+					EraseObjProperty( item , "charges" );
+				endif
+			endif
+			break;
+
+		32:	//Present color - manual override, deliberately not renamed/reconciled
+			val := PromptInt( who , "New color." );
+			if( val != NOVAL )
+				item.color := val;
+			endif
+			break;
+
+		33:	//Color on IDing
+			val := PromptInt( who , "New EnchantColor (shown once identified)." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "EnchantColor" , val );
+				else
+					EraseObjProperty( item , "EnchantColor" );
+				endif
+				DebugRenameItem( item );
+			endif
+			break;
+
+		34:	//Curse level - admin concept, no drop-legal range to enforce
+			val := PromptInt( who , "New curse level." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "Cursed" , val );
+				else
+					EraseObjProperty( item , "Cursed" );
+				endif
+			endif
+			break;
+
+		35:	//Ar Bonus/Normal Range
+			if( item.attribute == SKILLID_ARCHERY )
+				//NormalRange - no confirmed generator source, left unconstrained
+				val := PromptInt( who , "New Normal Range." );
+				if( val != NOVAL )
+					if( val )
+						SetObjProperty( item , "NormalRange" , val );
+					else
+						EraseObjProperty( item , "NormalRange" );
+					endif
+				endif
+			else
+				val := PickTierValue( who , {1,2,3,4,5,6} , "Select the Ar Bonus:" );
+				if( val != NOVAL )
+					if( val )
+						SetObjProperty( item , "ArBonus" , val );
+						DebugRenameItem( item );
+					else
+						EraseObjProperty( item , "ArBonus" );
+					endif
+				endif
+			endif
+			break;
+
+		36:	//Chance of effect - dynamic per-hitscript value, left unconstrained
+			val := PromptInt( who , "Chance of effect." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "ChanceOfEffect" , val );
+				else
+					EraseObjProperty( item , "ChanceOfEffect" );
+				endif
+			endif
+			break;
+
+		37:	//As Circle
+			val := PromptInt( who , "Effect circle." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "EffectCircle" , val );
+				else
+					EraseObjProperty( item , "EffectCircle" );
+				endif
+			endif
+			break;
+
+		38:	//Hitscript/OnHitscript CProp - dynamic property name/value, left unconstrained
+			val := PromptInt( who , "New value for " + data[57] + "." );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , data[57] , val );
+				else
+					EraseObjProperty( item , data[57] );
+				endif
+			endif
+			break;
+
+		84:	//Magic Penalty - crafting-material CProp, real items only ever carry -1 to -3
+			val := PromptInt( who , "Magic Penalty (enter as -1 to -3, or the positive magnitude)." );
+			if( val != NOVAL and val != 0 )
+				if( val > 0 )
+					val := 0 - val;
+				endif
+				val := ClampInt( who , val , -3 , -1 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "MagicPenalty" , val );
+				else
+					EraseObjProperty( item , "MagicPenalty" );
+				endif
+			endif
+			break;
+
+		85:	//Default Dex - crafting CProp; on a real item this only ever offsets an existing
+			//negative base-template penalty, so it never nets positive
+			val := PromptInt( who , "DefaultDex offset (enter as <= 0, or the positive magnitude)." );
+			if( val != NOVAL and val != 0 )
+				if( val > 0 )
+					val := 0 - val;
+				endif
+				val := ClampInt( who , val , -20 , 0 );
+			endif
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "DefaultDex" , val );
+				else
+					EraseObjProperty( item , "DefaultDex" );
+				endif
+			endif
+			break;
+
+		86:	//Speed Mod - native field (not a CProp), the exceptional-crafting weapon speed buff
+			val := PromptInt( who , "Weapon speed_mod bonus." );
+			if( val != NOVAL and val != 0 )
+				val := ClampInt( who , val , 1 , 20 );
+			endif
+			if( val != NOVAL )
+				item.speed_mod := val;
+			endif
+			break;
+	endcase
+
+endfunction
+
+function EditItemString( who , item , result )
+
+	SendSysmessage( who, "Enter a new name. Enter 9999 to reset. Hit Esc to cancel." );
+	var newname := RequestInput( who , who.backpack , "Enter a new name." );
+	
+	if( !newname )
+		return;
+	endif
+	
+	case( result )
+	
+		40:	SetName( item , newname );
+			break;
+			
+		41:	if( newname == "9999" )
+				EraseObjProperty( item , "StaticName" );
+			else
+				SetObjProperty( item , "StaticName" , newname );
+			endif
+			break;
+			
+		42:	if( newname == "9999" )
+				EraseObjProperty( item , "StaticCursedName" );
+			else
+				SetObjProperty( item , "StaticCursedName" , newname );
+			endif
+			break;
+			
+		79:	if( newname == "9999" )
+				EraseObjProperty( item , "BaseName" );
+			else
+				SetObjProperty( item , "BaseName" , newname );
+			endif
+			break;
+			
+	endcase
+
+endfunction
+
+function EditQuality( who , item )
+
+	SendSysmessage( who, "Changes are made immediately, double values supported. Hit Esc to cancel." );
+	var val := CDbl(RequestInput( who, who.backpack, "Enter a new value."));
+
+	if( !val )
+		return;
+	endif
+
+	item.quality := val;
+
+	//Quality has NO effect on its own - confirmed against the engine source. Real combat
+	//damage/AR come from hp_/maxhp() (an internal, non-quality-scaled ratio), while
+	//EScript's own item.maxhp getter IS quality-scaled (maxhp() * quality()). Crafting
+	//captures that boost by setting hp:=maxhp right after creation (see
+	//pkg/std/blacksmithy/make_blacksmith_items.src); mirror that here so a GM-set quality
+	//actually behaves like a freshly crafted item instead of being cosmetic.
+	var oldhp := item.hp;
+	item.hp := item.maxhp;
+	Dbg( "EditQuality: quality=" + val + " hp refreshed " + oldhp + " -> " + item.hp + " (maxhp=" + item.maxhp + ")" );
+
+endfunction
+
+function GetSkillTierChoicesForItem( item )
+//The legal skilladvamount scale isn't one number - it depends on what kind of item this
+//is, per starteqp.inc: weapons roll a raw 5-30 (x5) tier, shields roll that same tier
+//then halve it (n/2, truncated), armor and misc/jewelry both keep a raw 1-6 tier, and
+//misc/jewelry alone can also hit the "Legendary" tier of 10.
+
+	var shieldgfx := GetShieldGraphics();
+	if( item.graphic in shieldgfx )
+		return {2,5,7,10,12,15};
+	elseif( item.Attribute )
+		return {5,10,15,20,25,30};
+	elseif( item.ar )
+		return {1,2,3,4,5,6};
+	else
+		return {1,2,3,4,5,6,10};
+	endif
+
+endfunction
+
+function ChangeFromSkillList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 450",
+				"resizepic 100 405 5100 150 25",
+				"text 125 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select a skill"
+							);
+							
+	var cfg := ReadConfigFile( ":combat:modenchantdesc" );
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 17;
+	var y 	:= 55;
+	var i;
+
+	layout2.append( "page " + page );
+	if( SKILLID__HIGHEST > perpage )
+		layout2.append( "button 200 406 5540 5541 0 " + (page + 1) );
+	endif
+	
+	for( i := 1 ; i <= SKILLID__HIGHEST+1 ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 55;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 130 406 5537 5538 0 " + (page - 1) );
+			if( SKILLID__HIGHEST > (count + perpage) )
+				layout2.append( "button 200 406 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 75 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( cfg[i-1].Skill );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+
+	
+	SendSysmessage( who , "Select a skill." );
+	var res := SendDialogGump( who , layout2 , data2 );
+	//print( res[0] );
+	if( !res[0] )
+		SendSysmessage( who , "Canceled" );
+		return;
+	endif
+	
+	var choices := GetSkillTierChoicesForItem( item );
+	var val := PickTierValue( who , choices , "Increase " + cfg[res[0]-1].Skill + " by:" );
+	Dbg( "ChangeFromSkillList: skill=" + cfg[res[0]-1].Skill + " picked=" + val );
+	if( val == NOVAL or !val )
+		SendSysmessage( who , "Canceled" );
+		return;
+	endif
+
+	SetObjProperty( item , "skilladv" , res[0]-1 );
+	SetObjProperty( item , "skilladvamount" , val );
+	SetSkillAdvCategoryFlag( item );
+
+endfunction
+
+function SetUseScriptFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 420",
+				"resizepic 100 375 5100 150 25",
+				"text 105 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select an usescript"
+							);
+							
+	var usecfg 	:= ReadConfigFile( ":shilitems:usescriptdesc" );
+	var usescripts := GetConfigStringKeys( usecfg );
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var buttonret	:= 1;
+	var perpage	:= 15;
+	var y 	:= 50;
+
+	layout2.append( "page " + page );
+	if( len(usescripts) > perpage )
+		layout2.append( "button 200 376 5540 5541 0 " + (page + 1) );
+	endif
+	
+	foreach usescript in usescripts
+
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 50;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 130 376 5537 5538 0 " + (page - 1) );
+			if( len(usescripts) > (count + perpage) )
+				layout2.append( "button 200 376 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 75 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 1 " + buttonret );
+		data2.append( usecfg[usescript].Desc );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+		
+	endforeach
+			
+	
+	SendSysmessage( who , "Select an usescript." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return;
+	endif
+	
+	var script := usescripts[result[0]];
+	item.usescript := script.Script;
+	
+	if( usecfg[script].RequireCharges )
+		if( YesNo( who , "Use Charges?" ) )
+			AskForIntPropVal( who , item , "charges" , "How many charges do you want to put in it? Interger only. Hit Esc to cancel" , "Enter a value." );
+		else
+			SetObjProperty( item , "RequireNoCharges" , 1 );
+			EraseObjProperty( item , "charges" );
+		endif
+	endif
+	
+	if( usecfg[script].CastSpell )
+		var previous := GetObjProperty( item , "HitWithSpell" );
+		if( SetSpellFromList( who , item ) )
+			var current := GetObjProperty( item , "HitWithSpell" );
+			SetObjProperty( item , "SpellId" , current );
+			if( previous )
+				SetObjProperty( item , "HitWithSpell" , previous );
+			endif
+		endif
+	endif
+		
+	if( usecfg[script].HaveAnim )
+		if( YesNo( who , "Play Anim?" ) )
+			ChooseAnimFromList( who , item );
+		endif
+	endif
+	
+	if( usecfg[script].HaveDelay )
+		if( YesNo( who , "Have Delay?" ) )
+			AskForIntPropVal( who , item , "SpellDelayMs" , "Enter the delay in ms. Hit Esc to cancel." , "Enter a value." );
+		endif
+	endif
+
+	var misc := usecfg[script].MiscProp;
+	if( misc )
+		if( YesNo( who , "Have " + misc + "?" ) )
+			AskForIntPropVal( who , item , misc , "Enter a value for " + misc + ". Hit Esc to cancel." , "Enter a value." );
+		else
+			EraseObjProperty( item , misc );
+		endif
+	endif
+
+endfunction
+
+function SetSpellFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 125 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select a spell"
+							);
+							
+	var spellcfg 	:= ReadConfigFile( "::spells" );
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 8;
+	var y 	:= 80;
+	var i;
+
+	layout2.append( "page " + page );
+	layout2.append( "text 140 50 5 " + len(data2) );
+	data2.append( "1st Circle" );
+	
+	if( SPELLID_HIGHEST > perpage )
+		layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+	endif
+
+	for( i := 1 ; i <= SPELLID_HIGHEST ; i := i + 1 )
+
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 80;
+			
+			layout2.append( "page " + page );
+			
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			
+			case( page )
+			
+				2:	layout2.append( "text 135 50 5 " + len(data2) );
+					data2.append( "2nd Circle" );
+					
+				3:	layout2.append( "text 135 50 5 " + len(data2) );
+					data2.append( "3rd Circle" );
+					
+				4:
+				5:
+				6:
+				7:
+				8:	layout2.append( "text 135 50 5 " + len(data2) );
+					data2.append( page + "th Circle" );
+					
+				9:	layout2.append( "text 122 50 5 " + len(data2) );
+					data2.append( "Lesser Chants" );
+					
+				10:	layout2.append( "text 120 50 5 " + len(data2) );
+					data2.append( "Greater Chants" );
+					
+				11:	layout2.append( "text 116 50 5 " + len(data2) );
+					data2.append( "1st Earth Circle" );
+					
+				12:	layout2.append( "text 114 50 5 " + len(data2) );
+					data2.append( "2nd Earth Circle" );
+					
+			endcase
+
+			if( SPELLID_HIGHEST > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		data2.append( spellcfg[i].Name );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+
+	endfor
+			
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return 0;
+	endif
+	
+	SetObjProperty( item , "HitWithSpell" , result[0] );
+	return result[0];
+
+endfunction
+
+function AskForIntPropVal( who , item , prop , msg1 , msg2 )
+
+	SendSysmessage( who , msg1 );
+	var val := Cint(RequestInput( who , who.backpack , msg2 ));
+	if( val )
+		SetObjProperty( item , prop , val );
+	else
+		SetObjProperty( item , prop , 0 );
+	endif
+	return val;
+endfunction
+
+function SetCreatureTypeFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 99 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select a creature type"
+							);
+							
+	var cfg;
+	if( item.ar )
+		cfg := ReadConfigFile( ":combat:onhitscriptdesc" );
+	else
+		cfg := ReadConfigFile( ":combat:hitscriptdesc" );
+	endif
+
+	var amount	:= cfg["data"].NbSlayer;
+	var start	:= cfg["data"].NbSpell + 1;
+	var last	:= start + amount;
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 9;
+	var y 	:= 60;
+	var i;
+
+	layout2[len(layout2)+1] := "page " + page;
+	if( amount > perpage )
+		layout2[len(layout2)+1] := "button 190 256 5540 5541 0 " + (page + 1);
+	endif
+	
+	for( i := start ; i < last ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 60;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			if( amount > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( cfg[i].Type );
+		
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+			
+	SendSysmessage( who , "Select a creature type." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		SendSysmessage( who , "Canceled" );
+		return 0;
+	endif
+
+	//Reset stale CProps from whatever hitscript was here before, THEN record which
+	//config row this one is - same fix as the Effect/Greater/Special pickers below.
+	//Without this, SetNameByEnchant (namingbyenchant.inc) has no HitscriptNumber/
+	//OnHitscriptNumber to look up, so a slayer/protected item never gets its naming
+	//adjective even though SlayType/ProtectedType is set correctly.
+	ResetHitscriptPropsExcep( item );
+	if( item.ar )
+		SetObjProperty( item , "OnHitscriptNumber" , result[0] );
+		SetObjProperty( item , "ProtectedType" , cfg[result[0]].Type );
+		Dbg( "SetCreatureTypeFromList: OnHitscriptNumber=" + result[0] + " ProtectedType=" + cfg[result[0]].Type );
+	else
+		SetObjProperty( item , "HitscriptNumber" , result[0] );
+		SetObjProperty( item , "SlayType" , cfg[result[0]].Type );
+		Dbg( "SetCreatureTypeFromList: HitscriptNumber=" + result[0] + " SlayType=" + cfg[result[0]].Type );
+	endif
+
+	return cfg[result[0]].Type;
+
+endfunction
+
+function SetAnEffectScriptFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 115 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select an effect"
+							);
+							
+	var cfg;
+	if( item.ar )
+		cfg	:= ReadConfigFile( ":combat:onhitscriptdesc" );
+	else
+		cfg	:= ReadConfigFile( ":combat:hitscriptdesc" );
+	endif
+	
+	var amount	:= cfg["data"].NbEffect;
+	var start	:= cfg["data"].NbSpell + cfg["data"].NbSlayer + 1;
+	var last	:= start + amount;
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 9;
+	var y 	:= 60;
+	var i;
+	var CProp, CPropVal;
+
+	layout2[len(layout2)+1] := "page " + page;
+	if( amount > perpage )
+		layout2[len(layout2)+1] := "button 190 256 5540 5541 0 " + (page + 1);
+	endif
+	
+	for( i := start ; i < last ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 60;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			if( amount > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( cfg[i].Name );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+			
+	
+	SendSysmessage( who , "Select an effect." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return 0;
+	endif
+
+	if( item.ar )
+		SetObjProperty( item , "OnHitScript" , cfg[result[0]].OnHitscript );
+	else
+		item.hitscript := cfg[result[0]].Hitscript;
+	endif
+
+	//Reset stale CProps from whatever hitscript was here before, THEN record which
+	//config row this one is - without this, the gump can never show or re-edit the
+	//CProp value it's about to set below (see ResetHitscriptPropsExcep).
+	ResetHitscriptPropsExcep( item );
+	if( item.ar )
+		SetObjProperty( item , "OnHitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: OnHitscriptNumber := " + result[0] );
+	else
+		SetObjProperty( item , "HitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: HitscriptNumber := " + result[0] );
+	endif
+
+	CProp := cfg[result[0]].CProp;
+	if( CProp )
+		CPropVal := cfg[result[0]].CPropVal;
+		if( !CPropVal )
+			SendSysmessage( who, "What is the value of " + CProp + "? Integer only. Hit Esc to cancel." );
+        		CPropVal := Cint(RequestInput( who, who.backpack, "Enter the value."));
+			if( !CPropVal )
+				CPropVal := 0;
+			endif
+		endif
+		SetObjProperty( item , CProp , CPropVal );
+	endif
+	
+	return {CProp, CPropVal};
+	
+endfunction
+
+function SetAGreaterScriptFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 115 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select an effect"
+							);
+							
+	var cfg;
+	if( item.ar )
+		cfg	:= ReadConfigFile( ":combat:onhitscriptdesc" );
+	else
+		cfg	:= ReadConfigFile( ":combat:hitscriptdesc" );
+	endif
+	
+	var amount	:= cfg["data"].NbGreater;
+	var start	:= cfg["data"].NbSpell + cfg["data"].NbSlayer + cfg["data"].NbEffect + 1;
+	var last	:= start + amount;
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 9;
+	var y 	:= 60;
+	var i;
+	var CProp, CPropVal;
+
+	layout2[len(layout2)+1] := "page " + page;
+	if( amount > perpage )
+		layout2[len(layout2)+1] := "button 190 256 5540 5541 0 " + (page + 1);
+	endif
+	
+	for( i := start ; i < last ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 60;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			if( amount > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( cfg[i].Name );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+			
+	
+	SendSysmessage( who , "Select an effect." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return 0;
+	endif
+
+	if( item.ar )
+		SetObjProperty( item , "OnHitScript" , cfg[result[0]].OnHitscript );
+	else
+		item.hitscript := cfg[result[0]].Hitscript;
+	endif
+
+	//Reset stale CProps from whatever hitscript was here before, THEN record which
+	//config row this one is - without this, the gump can never show or re-edit the
+	//CProp value it's about to set below (see ResetHitscriptPropsExcep).
+	ResetHitscriptPropsExcep( item );
+	if( item.ar )
+		SetObjProperty( item , "OnHitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: OnHitscriptNumber := " + result[0] );
+	else
+		SetObjProperty( item , "HitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: HitscriptNumber := " + result[0] );
+	endif
+
+	CProp := cfg[result[0]].CProp;
+	if( CProp )
+		CPropVal := cfg[result[0]].CPropVal;
+		if( !CPropVal )
+			SendSysmessage( who, "What is the value of " + CProp + "? Integer only. Hit Esc to cancel." );
+        		CPropVal := Cint(RequestInput( who, who.backpack, "Enter the value."));
+			if( !CPropVal )
+				CPropVal := 0;
+			endif
+		endif
+		SetObjProperty( item , CProp , CPropVal );
+	endif
+	
+	return {CProp, CPropVal};
+	
+endfunction
+
+function SetASpecialScriptFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 115 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select an effect"
+							);
+							
+	var cfg;
+	if( item.ar )
+		cfg	:= ReadConfigFile( ":combat:onhitscriptdesc" );
+	else
+		cfg	:= ReadConfigFile( ":combat:hitscriptdesc" );
+	endif
+	
+	var amount	:= cfg["data"].NbSpecial;
+	var start	:= cfg["data"].NbSpell + cfg["data"].NbSlayer + cfg["data"].NbEffect + cfg["data"].NbGreater + 1;
+	var last	:= start + amount;
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 9;
+	var y 	:= 60;
+	var i;
+	var CProp, CPropVal;
+	layout2[len(layout2)+1] := "page " + page;
+	if( amount > perpage )
+		layout2[len(layout2)+1] := "button 190 256 5540 5541 0 " + (page + 1);
+	endif
+	
+	for( i := start ; i < last ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 60;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			if( amount > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( cfg[i].Name );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+			
+	
+	SendSysmessage( who , "Select an effect." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return 0;
+	endif
+
+	if( item.ar )
+		SetObjProperty( item , "OnHitScript" , cfg[result[0]].OnHitscript );
+	else
+		item.hitscript := cfg[result[0]].Hitscript;
+	endif
+
+	//Reset stale CProps from whatever hitscript was here before, THEN record which
+	//config row this one is - without this, the gump can never show or re-edit the
+	//CProp value it's about to set below (see ResetHitscriptPropsExcep).
+	ResetHitscriptPropsExcep( item );
+	if( item.ar )
+		SetObjProperty( item , "OnHitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: OnHitscriptNumber := " + result[0] );
+	else
+		SetObjProperty( item , "HitscriptNumber" , result[0] );
+		Dbg( "hitscript picker: HitscriptNumber := " + result[0] );
+	endif
+
+	CProp := cfg[result[0]].CProp;
+	if( CProp )
+		CPropVal := cfg[result[0]].CPropVal;
+		if( !CPropVal )
+			SendSysmessage( who, "What is the value of " + CProp + "? Integer only. Hit Esc to cancel." );
+        		CPropVal := Cint(RequestInput( who, who.backpack, "Enter the value."));
+			if( !CPropVal )
+				CPropVal := 0;
+			endif
+		endif
+		SetObjProperty( item , CProp , CPropVal );
+	endif
+	
+	return {CProp, CPropVal};
+	
+endfunction
+
+function AddCastingOption( item , option )
+
+	var prevopts := GetObjProperty( item , "CastingOpts" );
+	if( prevopts )
+		SetObjProperty( item , "CastingOpts" , prevopts + " " + option );
+	else
+		SetObjProperty( item , "CastingOpts" , option );
+	endif
+	
+endfunction
+
+function RemoveCastingOption( item , option )
+
+	var opts := GetObjProperty( item , "CastingOpts" );
+	if( !opts )
+		return;
+	endif
+	
+	CStr( opts );
+	var last	:= len(opts);
+	
+	if( last == 1 )
+		EraseObjProperty( item , "CastingOpts" );
+		return;
+	endif
+	
+	opts := SplitWords( opts );
+	
+	var i;
+	var newopts := "";
+	for( i := 1 ; i <= len(opts) ; i := i + 1 )
+		if( opts[i] != option )
+			if( newopts != "" )
+				newopts := newopts + " " + opts[i];
+			else
+				newopts := opts[i];
+			endif
+		endif
+	endfor
+	
+	SetObjProperty( item , "CastingOpts" , newopts );
+	
+endfunction
+
+function GetSkillName( skillid )
+
+	var cfg := ReadConfigFile( ":combat:modenchantdesc" );
+	return cfg[skillid].Skill;
+	
+endfunction
+
+function GetMiscPropForUseScript( item )
+
+	var usecfg := ReadConfigFile( ":usescripts:usescriptdesc" );
+	var elem := FindConfigElem( usecfg , TruncPkgName( item.usescript ) );
+	if( elem )
+		return elem.MiscProp;
+	else
+		return 0;
+	endif
+		
+endfunction
+
+function ChooseAnimFromList( who , item )
+
+	var layout2 := array(
+				"page 0",
+				"resizepic 50  0   2600 250 300",
+				"resizepic 100 255 5100 150 25",
+				"text 110 30 5 0"
+							);
+				
+	var data2 := array(
+				"Select an animation"
+							);
+							
+	var list := {	"Attack 1H Down"	,
+			"Attack 1H Jab"		,
+			"Attack 1H Wide"	,
+			"Attack 2H Down"	,
+			"Attack 2H Jab"		,
+			"Attack 2H Wide"	,
+			"Attack Bow"		,
+			"Attack XBow"		,
+			"Bow"			,
+			"Casting Area"		,
+			"Casting Direction"	,
+			"Die Backward"		,
+			"Die Forward"		,
+			"Eat"			,
+			"Get Hit"		,
+			"Look Around"		,
+			"Look Down"		,
+			"Run Armed"		,
+			"Run Unarmed"		,
+			"Salute"		,
+			"Stand"			,
+			"Stand with 1H Weap"	,
+			"Stand with 2H Weap"	,
+			"Walk Armed"		,
+			"Walk Unarmed"		,
+			"Walk War Mode"		};
+			
+				
+
+	var amount	:= 26;
+	var start	:= 1;
+	var last	:= start + amount;
+	var count	:= 0;
+	var done	:= 0;
+	var page	:= 1;
+	var perpage	:= 9;
+	var y 	:= 60;
+	var i;
+
+	layout2[len(layout2)+1] := "page " + page;
+	if( amount > perpage )
+		layout2[len(layout2)+1] := "button 190 256 5540 5541 0 " + (page + 1);
+	endif
+	
+	for( i := start ; i < last ; i := i + 1 )
+		if( done == perpage )
+			done 	:= 0;
+			page 	:= page + 1;
+			y 	:= 60;
+			
+			layout2.append( "page " + page );
+			layout2.append( "button 125 256 5537 5538 0 " + (page - 1) );
+			if( amount > (count + perpage) )
+				layout2.append( "button 200 256 5540 5541 0 " + (page + 1) );
+			endif
+		endif
+		
+		layout2.append( "text 85 " + y + " 0 " + len(data2) );
+		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 0 " + i );
+		data2.append( list[i] );
+
+		y 	:= y + 20;
+		done 	:= done + 1;
+		count 	:= count + 1;
+	endfor
+			
+	
+	SendSysmessage( who , "Select an animation." );
+	var result := SendDialogGump( who , layout2 , data2 );
+	if( !result[0] )
+		return 0;
+	endif
+
+	var anim;
+	
+	case( result[0] )
+	
+		1:	anim := 0x000b;
+			break;
+
+		2:	anim := 0x000a;
+			break;
+
+		3:	anim := 0x0009;
+			break;
+
+		4:	anim := 0x000c;
+			break;
+
+		5:	anim := 0x000e;
+			break;
+
+		6:	anim := 0x000d;
+			break;
+
+		7:	anim := 0x0012;
+			break;
+
+		8:	anim := 0x0013;
+			break;
+
+		9:	anim := 0x0020;
+			break;
+
+		10:	anim := 0x0011;
+			break;
+
+		11:	anim := 0x0010;
+			break;
+
+		12:	anim := 0x0015;
+			break;
+
+		13:	anim := 0x0016;
+			break;
+
+		14:	anim := 0x0022;
+			break;
+
+		15:	anim := 0x0014;
+			break;
+
+		16:	anim := 0x0005;
+			break;
+
+		17:	anim := 0x0006;
+			break;
+
+		18:	anim := 0x0003;
+			break;
+
+		19:	anim := 0x0002;
+			break;
+
+		20:	anim := 0x0021;
+			break;
+
+		21:	anim := 0x0004;
+			break;
+
+		22:	anim := 0x0007;
+			break;
+
+		23:	anim := 0x0008;
+			break;
+
+		24:	anim := 0x0001;
+			break;
+
+		25:	anim := 0x0000;
+			break;
+
+		26:	anim := 0x000f;
+			break;
+
+	endcase
+
+	if( anim )
+		SetObjProperty( item , "PlayAnim" , anim );
+	else
+		SendSysMessage( who , "Error in the process, no animation was set!" );
+	endif
+	
+endfunction
