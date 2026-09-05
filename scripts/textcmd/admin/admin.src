@@ -13,6 +13,7 @@ include "include/findcity";
 include ":mdgumps:gumps_ex";
 include ":mdgumps:yesNo";
 include "include/constants/locations";
+include ":admin:include/adminpanel";
 
 var layout := {
 "page 0",
@@ -337,6 +338,7 @@ program textcmd_testgump( who )
 		endfor
 
 		acc.setprop( "Notes" , note );
+		RecordAccountNote( acc, note, ADMINPANEL_INITIATOR_STAFF );
 
 		return;
 
@@ -494,6 +496,7 @@ function fixnameguild(who)
 
 	result:=result-1;
 	name:=name[1,result];
+	RecordCharacterNameChange(who,name,ADMINPANEL_INITIATOR_STAFF);
 	who.name:=name;
 endfunction
 

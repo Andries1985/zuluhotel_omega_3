@@ -31,6 +31,10 @@ program use_securecont(who, item)
   endif
   //Print("Secure access: " + secure);
   if(!secure)
+    if(sign && sign.IsBanned(who))
+      sign.BootBannedFromHouse(who);
+      return;
+    endif
     SendSysMessageCL( who, 500294 ); // You cannot use that.
     return;
   else

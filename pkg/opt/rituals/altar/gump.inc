@@ -36,6 +36,18 @@ function RitualAltar_ReagentName(objtype)
 	case(CInt(objtype))
 		UOBJ_BLOOD_MOSS: return "Bloodmoss";
 		UOBJ_PIG_IRON: return "Pig Iron";
+		UOBJ_BLACK_PEARL: return "Black Pearl";
+		UOBJ_GINSENG: return "Ginseng";
+		UOBJ_NIGHTSHADE: return "Nightshade";
+		UOBJ_SPIDER_SILK: return "Spider Silk";
+		UOBJ_GARLIC: return "Garlic";
+		UOBJ_SULPHUROUS_ASH: return "Sulphurous Ash";
+		UOBJ_MANDRAKE_ROOT: return "Mandrake Root";
+		UOBJ_BATWING: return "Batwing";
+		UOBJ_EYE_OF_NEWT: return "Eye of Newt";
+		UOBJ_OBSIDIAN: return "Obsidian";
+		UOBJ_PUMICE: return "Pumice";
+		UOBJ_FERTILE_DIRT: return "Fertile Dirt";
 		default: return "Hex 0x"+Hex(CInt(objtype));
 	endcase
 
@@ -178,7 +190,10 @@ function ShowRitualAltarGump(who, config_item, questid)
 			GFAddButton(gump, 98, y, 4005, 4007, GF_CLOSE_BTN, RA_BTN_SUMMON);
 			GFTextLine(gump, 133, y+2, 1152, "Summon");
 		else
-			GFTextLine(gump, 98, y, 999, "Bring the required offerings, then use Offer to give them.");
+			foreach line in (GFWordWrap("Bring the required offerings, then use Offer to give them.", RA_GUMP_WRAP_WIDTH))
+				GFTextLine(gump, 98, y, 999, line);
+				y := y + 18;
+			endforeach
 		endif
 
 		GFAddButton(gump, 310, 70, 12012, 12014, GF_CLOSE_BTN, RA_BTN_CLOSE);

@@ -1,0 +1,42 @@
+// Synopsis: Nystul the Enchanter, the third ritual quest-giver. Say "quest"
+// to open the quest-giver gump (lists whatever quests.cfg entries have
+// "Giver nystul" -- Quests 9-11: Advanced Theurgy, Protective Aura, Free
+// Movement). Also periodically shouts a reminder at nearby players who
+// haven't completed his quest(s) yet. Scaffolded directly from
+// valthor.src -- only the idle shout line differs.
+use npc;
+use os;
+use uo;
+
+include "include/eventid";
+include ":questpkg:questnpcgump";
+include ":questpkg:queststate";
+include "ai/setup/modsetup";
+
+const NYSTUL_SHOUT_RANGE := 10;
+
+var me := Self();
+
+EnableEvents(SYSEVENT_SPEECH, 2);
+
+while(1)
+	var event := os::wait_for_event(15);
+	if(event)
+		case(event.type)
+			SYSEVENT_SPEECH:
+				HandleQuestGiverSpeech(me, event);
+		endcase
+	else
+		var should_shout := 0;
+		foreach mobile in ListMobilesNearLocation(me.x, me.y, me.z, NYSTUL_SHOUT_RANGE, me.realm)
+			if(!mobile.npctemplate && QP_GiverHasUndoneQuest(me, mobile))
+				SendSysMessage(mobile, me.name+": I have a task for you, traveler!", 3, 73);
+				should_shout := 1;
+			endif
+		endforeach
+
+		if(should_shout)
+			Say("The islands off Arcanus hold shadows older than the city itself, traveler.");
+		endif
+	endif
+endwhile

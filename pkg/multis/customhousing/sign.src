@@ -23,25 +23,22 @@ include ":containers:storageAreas";
 // it). Included directly here, matching customhousedeed.src's package choice.
 include ":mdgumps:yesNo";
 
-// 2026-08-13: sign.objtype == 0x17060 ("static" custom house, see DisownHouse
-// below and GetHouseValueOfSign's commented-out branch in include/house.inc)
-// appears to be unreachable in practice. The only deed script in this
-// package, scripts/customhousedeed.src's usehousedeed, is the sole place
-// that ever creates a house sign here, and it only ever creates one with
-// objtype 0xFFF4 (both of its deed types -- housetype 0x113ec/0x1147b --
-// go through the same branch). Nothing in this package places a 0x17060
-// sign, so unless one was hand-spawned by staff, this branch (and
-// DisownHouse, and the 0x17060 cases in include/house.inc's
-// FindHouseSign()/FindHouseSignAtLocation(), which are themselves unused
-// elsewhere) is dead code. Left in place rather than removed since that
-// hasn't been confirmed with certainty.
+// 2026-09-03: removed the sign.objtype == 0x17060 ("static" custom house)
+// dead-code branch that used to live here (DisownHouse, and this program's
+// dispatch to it) -- this script's itemdesc.cfg entry (0xFFF4 only) means
+// `sign` can never actually be anything else; real static-housing signs
+// (0xBD0/0xBD1/0xBD2/0xBCF/etc.) are routed by their own itemdesc.cfg
+// entries straight to :statichousing:sign/use, a separate, already-complete
+// system, and never reach this file at all. include/house.inc's
+// GetHouseValueOfSign's matching commented-out 0x17060 case was removed the
+// same way. FindHouseSign()/FindHouseSignAtLocation() (same file) are a
+// different, unrelated case -- fixed 2026-09-03 to recognize real
+// static-housing signs via :statichousing:'s own FindStaticHouseForLocation.
 program use_house_sign (character, sign)
 	//If its a deeded house, make sure its house exists...
-	if (sign.objtype != 0x17060)
-		var hserial := ResolveCustomHouseSerial (sign);
-		if (!hserial)
-			return;
-		endif
+	var hserial := ResolveCustomHouseSerial (sign);
+	if (!hserial)
+		return;
 	endif
 
 	MigrateCustomHouseSignOwnership (sign, character);
@@ -102,12 +99,8 @@ program use_house_sign (character, sign)
 			ChangeOwner (character, sign);
 			set_critical (0);
 		14:
-			//disown or demolish the house, depending on if its static or deeded
-			if (sign.objtype == 0x17060)
-				DisownHouse (character, sign);
-			else
-				var hserial := ResolveCustomHouseSerial (sign);
-				var house := SystemFindObjectBySerial (hserial);
+			var hserial := ResolveCustomHouseSerial (sign);
+			var house := SystemFindObjectBySerial (hserial);
 
 				// 2026-08-21: mirrors :house:'s own demolish() guards, which
 				// this redeed path never had. Without this, redeeding a
@@ -299,7 +292,6 @@ program use_house_sign (character, sign)
 					IncRevision (character);
 					MoveObjectToLocation (character, character.x, character.y, character.z, character.realm, MOVEOBJECT_FORCELOCATION);
 				endif
-			endif
 		15:	HouseManagementGump (character, sign);
 		16:	ChangeHouseLocks (character, sign);
 		20:
@@ -495,74 +487,6 @@ endfunction
 
 
 
-
-///////////////////
-//  When the character disowns a static house, this function refunds their money
-///////////////////
-
-function DisownHouse (character, sign)
-	var housevalue := GetHouseValueOfSign (sign);
-	var price := GetObjProperty (sign, "houseprice");
-	if (!price)
-		price := GetDefaultHousePrice (housevalue);
-	endif
-
-	var discount := CINT (price/10);
-	if (discount > 10000)
-		discount := 10000;
-	endif
-	var theprice := price - discount;
-
-	SendSysMessage (character, "The value of this house is " + theprice + " gold.");
-	if (!YesNo (character, "Sell it?"))
-		SendSysMessage (character, "Canceled.");
-		return;
-	endif
-
-	//make a new forsale sign
-	var newsign := CreateItemAtLocation (sign.x, sign.y, sign.z, 0x1708a, 1, sign.realm);
-	if (!newsign)
-		return;
-	endif
-	newsign.movable := 0;
-
-	SetObjProperty (newsign, "houseprice", price);
-	newsign.name := "For Sale " + price + " gold";
-	while (theprice > 60000)
-		if (CreateItemInContainer (character.backpack, UOBJ_GOLD_COIN, 60000))
-			theprice := theprice - 60000;
-		else
-			SendSysMessage (character, "Error creating gold!  You'll have to page a GM...");
-			SetObjProperty (character, "OWEDGOLD", theprice);
-			theprice := 0;
-		endif
-	endwhile
-	CreateItemInContainer (character.backpack, UOBJ_GOLD_COIN, theprice);
-
-	SetObjProperty (newsign, "housevalue", housevalue);
-	if (GetObjProperty (sign, "originalgraphic"))
-		newsign.graphic := GetObjProperty (sign, "originalgraphic");
-		SetObjProperty (newsign, "originalgraphic", newsign.graphic);
-	endif
-
-	var homeinfo := GetObjProperty (sign, "homeinfo");
-	homeinfo[1] := 0;
-	SetObjProperty (newsign, "homeinfo", homeinfo);
-
-	foreach item in ListItemsNearLocation (sign.x, sign.y, sign.z, 32, sign.realm)
-		if(Item.Isa (POLCLASS_DOOR))
-			if ((item.x >= homeinfo[2] and item.x <= homeinfo[4]) and
-					(item.y >= homeinfo[3] and item.y <= homeinfo[5]) )
-				item.locked := 0;
-				EraseObjProperty (item, "lockid");
-				PrintTextAbove (item, "*UNLOCKED*");
-			endif
-		endif
-	endforeach
-
-	ReleaseAll (character, sign);
-	DestroyItem (sign);
-endfunction
 
 
 

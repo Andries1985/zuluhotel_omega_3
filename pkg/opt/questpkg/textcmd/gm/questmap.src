@@ -1,0 +1,12 @@
+// Synopsis: GM tool -- list every quest with its approximate world location and a Go button to teleport straight there, for setting up quest content
+use uo;
+use os;
+
+include ":questpkg:questmapgump";
+
+program questmap(who, text)
+
+	ShowQuestMapGump(who);
+
+	return 1;
+endprogram

@@ -1,0 +1,1685 @@
+// Synopsis: Browse households/accounts and view each character's recorded name/death/poison history and account notes
+// command .testadminpanel
+//
+// Ported from the sibling POL2.5 repo, 2026-09-03, with the top-level
+// browsing redesigned around this shard's household/Discord-linked-account
+// model (max accounts per household enforced via HouseholdCap, multiple
+// characters can be online at once per household) instead of POL2.5's flat
+// alphabetical account list -- see [[project_house...]]/accounts.inc for
+// that system. The character-detail history rendering (names/deaths/
+// poisonings/notes/IPs) and the recording layer (:admin:include/adminpanel)
+// are otherwise a direct port.
+//
+// 2026-09-03: Multis "goto" locator added, split into three separate buttons
+// (House / Static House / Custom House) instead of POL2.5's single unified
+// button, since this repo's three housing packages store ownership
+// differently -- house and staticHousing are both native POLCLASS_HOUSE
+// multis (distinguished from each other by their linked sign's objtype),
+// while customhousing has no native multi at all (its sign, objtype 0xFFF4,
+// scanned directly by objtype like a corpse search). All three now share the
+// same :house:multiSign/method methodscript for ownership checks
+// (sign.IsOwner()/IsACoOwner()/IsAFriend()), confirmed via
+// customhousing/include/housefriends.inc's own migration note, so one
+// ResolveSignAccessLevel() covers all three -- only the *enumeration*
+// (how to find the signs in the first place) differs per package.
+//
+// 2026-09-03: Boats/Corpses goto locators added too.
+// Corpses: this repo's corpse ownership is the "whose" cprop
+// (PROPID_CORPSE_CORPSE_OF, set by chrdeath.src), not a native .ownerserial
+// dot-property like POL2.5 assumed -- otherwise a direct port, since the
+// "Killer"/"KillerSerial" cprops ResolveCorpseKillerName reads are the same
+// ones chrdeath.src already sets here.
+// Boats: this repo's boat ownership is GetObjProperty(controller, "Owner")
+// (a struct, via :boat:tiller/methods.src's exported GetOwner/IsOwner) on
+// whichever item is currently the boat's controller -- found through
+// :boat:include/boatHelpers's GetBoatController(), which handles the
+// era-dependent tillerman (classic boats) vs Tiller/Wheel-component-scan
+// (newer boats, since boat.tiller/boat.wheel dot-properties are confirmed
+// broken here) split. Not POL2.5's simple multi.tillerman + GetObjProperty(
+// multi.hold, "owner") -- reused GetBoatController()/controller.IsOwner()
+// rather than reimplementing that resolution.
+use uo;
+use os;
+use cfgfile;
+use polsys;
+use basic;
+
+include ":admin:include/adminpanel";
+include ":accounts:accounts";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":boat:include/boatHelpers";
+include "include/constants/propids";
+include "include/client";
+
+const BTN_BACK               := 9000;
+const BTN_BROWSE_HOUSEHOLDS  := 1;
+const BTN_BROWSE_ACCOUNTS    := 2;
+const BTN_BROWSE_DISCORD     := 3;
+
+// Household-picker row buttons are just 1..households.size() per page (see
+// ShowHouseholdPicker) -- no offset needed since that screen has no other
+// buttons in the same id range.
+
+// Character-detail action buttons - list houses (per housing package) tied
+// to the character being viewed (owner/co-owner/friend on the sign). Well
+// clear of BTN_BACK/BTN_BROWSE_HOUSEHOLDS/BTN_BROWSE_ACCOUNTS.
+const BTN_LIST_HOUSE_MULTIS  := 9001;
+const BTN_LIST_STATIC_MULTIS := 9002;
+const BTN_LIST_CUSTOM_HOUSES := 9003;
+const BTN_LIST_BOATS         := 9004;
+const BTN_LIST_CORPSES       := 9005;
+
+// Sign objtypes per housing package (see the port-notes comment above) --
+// house and staticHousing both place real POLCLASS_HOUSE multis, told apart
+// by which of these sets their linked sign's objtype falls in; customhousing
+// has no native multi and is scanned by its own sign objtype directly.
+var HOUSE_SIGN_OBJTYPES   := { 0xBCF, 0xBD0, 0xBD1, 0xBD2 };
+var STATIC_SIGN_OBJTYPES  := { 0x20BCF, 0x20BD0, 0x20BD1, 0x20BD2, 0x260FA };
+const CUSTOM_SIGN_OBJTYPE := 0xFFF4;
+
+var house_itemdesc_cfg := ReadConfigFile(":house:itemdesc");
+
+// Button ids for the per-IP "search other accounts" buttons on the account
+// panel - offset well clear of BTN_BACK and of the character-list buttons
+// (which are just 1..characters.size()), so a click can be told apart by id
+// range alone.
+const BTN_IP_SEARCH_BASE := 5000;
+
+const ACCOUNTS_PER_PAGE    := 8;
+const IP_RESULTS_PER_PAGE  := 15;
+const HOUSEHOLDS_PER_PAGE  := 20;
+
+program textcmd_testadminpanel(who)
+	var state := "main";
+	var selected_household := "";
+	var selected_discord := "";
+	var selected_account := "";
+	var selected_char := 0;
+	// Which state "characters"'s Back button returns to -- there are now
+	// three separate ways to arrive at a character list (household member,
+	// Discord ID member, plain account browse), so this is tracked
+	// explicitly rather than inferred from which selected_* var is set.
+	var characters_back_state := "main";
+
+	while(1)
+		if(state == "main")
+			var choice := ShowMainPanel(who);
+			if(choice == BTN_BROWSE_HOUSEHOLDS)
+				state := "households";
+			elseif(choice == BTN_BROWSE_DISCORD)
+				state := "discords";
+			elseif(choice == BTN_BROWSE_ACCOUNTS)
+				state := "browse_accounts";
+			else
+				return;
+			endif
+
+		elseif(state == "households")
+			var household_result := ShowHouseholdPicker(who);
+			if(!household_result)
+				return;
+			elseif(household_result == BTN_BACK)
+				state := "main";
+			else
+				selected_household := household_result;
+				state := "household_detail";
+			endif
+
+		elseif(state == "household_detail")
+			var member_result := ShowHouseholdDetail(who, selected_household);
+			if(!member_result)
+				return;
+			elseif(member_result == BTN_BACK)
+				state := "households";
+			else
+				selected_account := member_result;
+				characters_back_state := "household_detail";
+				state := "characters";
+			endif
+
+		elseif(state == "discords")
+			var discord_result := ShowDiscordIdPicker(who);
+			if(!discord_result)
+				return;
+			elseif(discord_result == BTN_BACK)
+				state := "main";
+			else
+				selected_discord := discord_result;
+				state := "discord_detail";
+			endif
+
+		elseif(state == "discord_detail")
+			var discord_member_result := ShowDiscordIdDetail(who, selected_discord);
+			if(!discord_member_result)
+				return;
+			elseif(discord_member_result == BTN_BACK)
+				state := "discords";
+			else
+				selected_account := discord_member_result;
+				characters_back_state := "discord_detail";
+				state := "characters";
+			endif
+
+		elseif(state == "browse_accounts")
+			var picked_account := ShowAllAccountsList(who);
+			if(!picked_account)
+				state := "main";
+			elseif(picked_account == BTN_BACK)
+				state := "main";
+			else
+				selected_account := picked_account;
+				characters_back_state := "browse_accounts";
+				state := "characters";
+			endif
+
+		elseif(state == "characters")
+			var char_result := ShowCharacterList(who, selected_account);
+			if(!char_result)
+				return;
+			elseif(char_result == BTN_BACK)
+				state := characters_back_state;
+			else
+				selected_char := char_result;
+				state := "detail";
+			endif
+
+		elseif(state == "detail")
+			var detail_result := ShowCharacterDetail(who, selected_account, selected_char);
+			if(detail_result == BTN_BACK)
+				state := "characters";
+			else
+				return;
+			endif
+		endif
+	endwhile
+endprogram
+
+
+function ShowMainPanel(who)
+	var gump := GFCreateGump(50, 50, 320, 215);
+	GFResizePic(gump, 0, 0, 9250, 320, 215);
+	GFResizePic(gump, 10, 10, 9350, 300, 195);
+	GFTextLine(gump, 20, 20, 43, "Admin Data Panel");
+
+	GFAddButton(gump, 20, 55, 2117, 2118, GF_CLOSE_BTN, BTN_BROWSE_HOUSEHOLDS);
+	GFTextLine(gump, 50, 55, 67, "Browse by Household");
+
+	GFAddButton(gump, 20, 90, 2117, 2118, GF_CLOSE_BTN, BTN_BROWSE_ACCOUNTS);
+	GFTextLine(gump, 50, 90, 67, "Browse by Account");
+
+	GFAddButton(gump, 20, 125, 2117, 2118, GF_CLOSE_BTN, BTN_BROWSE_DISCORD);
+	GFTextLine(gump, 50, 125, 67, "Browse by Discord ID");
+
+	GFAddButton(gump, 20, 170, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, 170, 33, "Close");
+
+	var result := GFSendGump(who, gump);
+	return result[0];
+endfunction
+
+
+// Every account, alphabetical, paginated -- click straight into one. No
+// search/typing gate; that's what BTN_BROWSE_HOUSEHOLDS/the household flow
+// is for when you know the player, this is for browsing everything.
+function ShowAllAccountsList(who)
+	var accounts := {};
+	foreach acctname in (ListAccounts())
+		var name := CStr(acctname);
+		if(name)
+			accounts.append(name);
+		endif
+	endforeach
+	accounts.sort();
+
+	var total := accounts.size();
+	if(!total)
+		SendSysMessage(who, "No accounts exist.");
+		return 0;
+	endif
+
+	var perpage := ACCOUNTS_PER_PAGE;
+	var total_pages := CInt((total - 1) / perpage) + 1;
+
+	var gump := GFCreateGump(50, 50, 580, 460);
+	GFResizePic(gump, 0, 0, 9250, 580, 460);
+	GFResizePic(gump, 10, 10, 9350, 560, 440);
+	GFTextLine(gump, 20, 20, 43, "Browse by Account ("+total+")");
+
+	GFAddButton(gump, 20, 420, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, 420, 33, "Back");
+
+	var i;
+	var page := 0;
+	var y := 0;
+	for(i := 1; i <= total; i := i + 1)
+		var slot := (i - 1) % perpage;
+		if(slot == 0)
+			page := page + 1;
+			GFPage(gump, page);
+			y := 55;
+
+			if(page > 1)
+				GFAddButton(gump, 20, 390, 4014, 4015, GF_PAGE_BTN, page - 1);
+				GFTextLine(gump, 55, 390, 67, "Prev Page");
+			endif
+			if(page < total_pages)
+				GFAddButton(gump, 280, 390, 4005, 4006, GF_PAGE_BTN, page + 1);
+				GFTextLine(gump, 315, 390, 67, "Next Page");
+			endif
+		endif
+
+		var account_name := accounts[i];
+		var account := FindAccount(account_name);
+		var ip := "";
+		var last_login := "";
+		var discord_id := "";
+		if(account and !account.errortext)
+			var raw_ip := account.GetProp("IP");
+			if(raw_ip != error)
+				ip := CStr(raw_ip);
+			endif
+			last_login := FormatEpochTimestamp(ACCT_GetLastLogin(account));
+			var info := ACCT_GetAccountDiscordInfo(account);
+			if(info and !info.errortext)
+				discord_id := CStr(info["DiscordIDNorm"]);
+			endif
+		endif
+		if(!ip)
+			ip := "(unknown)";
+		endif
+		if(!last_login)
+			last_login := "(never)";
+		endif
+		if(!discord_id)
+			discord_id := "(none)";
+		endif
+
+		GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+		GFTextLine(gump, 50, y, 0, account_name);
+		GFTextLine(gump, 60, y + 18, 900, "IP: "+ip+"   Discord: "+discord_id+"   Last Login: "+last_login);
+		y := y + 40;
+	endfor
+
+	var result := GFSendGump(who, gump);
+	if(!result[0])
+		return 0;
+	endif
+	if(result[0] == BTN_BACK)
+		return BTN_BACK;
+	endif
+
+	return accounts[result[0]];
+endfunction
+
+
+// Paginated list of every HouseholdId that has ever been assigned an account
+// (AccountsHouseholds datafile, via the shared accounts.inc household store)
+// -- mirrors householdmanager.src's proven pagination pattern.
+// 2026-09-03: originally enumerated via ACCT_GetHouseholdStore(0).Keys(),
+// mirroring householdmanager.src's pattern -- but that call fails at runtime
+// here ("Method id '56' [keys] not found"), so .Keys() isn't actually
+// available on whatever object DFOpenDataFile's wrapper returns in this
+// engine build (householdmanager.src's identical call is presumably equally
+// broken, just never exercised/noticed). Rebuilt to avoid it entirely:
+// derives the household list from every account's own Discord info
+// (ACCT_GetAccountDiscordInfo, proven working via householdinfo.src) instead
+// of enumerating the household datafile directly.
+function CollectHouseholdIds()
+	var ids := {};
+	foreach acctname in (ListAccounts())
+		var name := CStr(acctname);
+		if(!name)
+			continue;
+		endif
+		var account := FindAccount(name);
+		if(!account or account.errortext)
+			continue;
+		endif
+		var info := ACCT_GetAccountDiscordInfo(account);
+		if(!info or info.errortext)
+			continue;
+		endif
+		var hid := ACCT_TrimDiscordID(info["HouseholdId"]);
+		if(!hid)
+			continue;
+		endif
+		if(!(hid in ids))
+			ids.append(hid);
+		endif
+	endforeach
+	ids.sort();
+	return ids;
+endfunction
+
+function ShowHouseholdPicker(who)
+	var keys := CollectHouseholdIds();
+	if(!keys.size())
+		SendSysMessage(who, "No households exist yet.");
+		return BTN_BACK;
+	endif
+
+	var gump := GFCreateGump(50, 50, 500, 620);
+	GFDisposable(gump, 0);
+	GFResizePic(gump, 0, 0, 9250, 500, 620);
+	GFResizePic(gump, 10, 10, 9350, 480, 600);
+	GFTextLine(gump, 20, 20, 43, "Browse by Household ("+keys.size()+")");
+	GFTextLine(gump, 20, 44, 900, "HouseholdId");
+	GFTextLine(gump, 300, 44, 900, "Members");
+	GFTextLine(gump, 380, 44, 900, "Cap");
+
+	var perpage := HOUSEHOLDS_PER_PAGE;
+	var total := keys.size();
+	var total_pages := CInt((total - 1) / perpage) + 1;
+
+	GFAddButton(gump, 20, 580, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, 580, 33, "Back");
+
+	var i;
+	var page := 0;
+	var y := 0;
+	for(i := 1; i <= total; i := i + 1)
+		var slot := (i - 1) % perpage;
+		if(slot == 0)
+			page := page + 1;
+			GFPage(gump, page);
+			y := 70;
+
+			if(page > 1)
+				GFAddButton(gump, 20, 545, 4014, 4015, GF_PAGE_BTN, page - 1);
+				GFTextLine(gump, 55, 545, 67, "Prev Page");
+			endif
+			if(page < total_pages)
+				GFAddButton(gump, 280, 545, 4005, 4006, GF_PAGE_BTN, page + 1);
+				GFTextLine(gump, 315, 545, 67, "Next Page");
+			endif
+		endif
+
+		var key := CStr(keys[i]);
+		var household := ACCT_GetHouseholdById(key, 0);
+		var cap := 0;
+		var member_count := 0;
+		if(!household.errortext)
+			cap := CInt(household.GetProp("HouseholdCap"));
+			var members := household.GetProp("Members");
+			if(TypeOf(members) == "Array")
+				member_count := members.size();
+			endif
+		endif
+
+		GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+		GFTextLine(gump, 50, y, 0, key);
+		GFTextLine(gump, 300, y, 0, CStr(member_count));
+		GFTextLine(gump, 380, y, 0, CStr(cap));
+
+		y := y + 24;
+	endfor
+
+	var result := GFSendGump(who, gump);
+
+	if(!result[0])
+		return 0;
+	endif
+	if(result[0] == BTN_BACK)
+		return BTN_BACK;
+	endif
+	if(result[0] < 1 or result[0] > keys.size())
+		return 0;
+	endif
+
+	return CStr(keys[result[0]]);
+endfunction
+
+
+// 2026-09-03: a household's own "Members" datafile prop turned out to hold
+// normalized Discord IDs, not account names (confirmed in accounts.inc's
+// ACCT_AssignAccountToHousehold -- it does members.append(discord_norm),
+// account.SetProp("HouseholdId", household_id) separately). Displaying that
+// array as clickable account buttons would have tried FindAccount() on a
+// Discord ID string and failed as soon as a real household existed. Derives
+// the actual member ACCOUNT list the same reliable way as
+// CollectHouseholdIds -- scan every account, filter on its own HouseholdId.
+function CollectHouseholdMemberAccounts(household_id)
+	var accounts := {};
+	foreach acctname in (ListAccounts())
+		var name := CStr(acctname);
+		if(!name)
+			continue;
+		endif
+		var account := FindAccount(name);
+		if(!account or account.errortext)
+			continue;
+		endif
+		if(CStr(account.GetProp("HouseholdId")) == household_id)
+			accounts.append(name);
+		endif
+	endforeach
+	accounts.sort();
+	return accounts;
+endfunction
+
+// One household's HouseholdCap/KnownIPs, member accounts as buttons.
+function ShowHouseholdDetail(who, household_id)
+	var household := ACCT_GetHouseholdById(household_id, 0);
+	if(household.errortext)
+		SendSysMessage(who, "Household record not found.");
+		return BTN_BACK;
+	endif
+
+	var cap := CInt(household.GetProp("HouseholdCap"));
+	var members := CollectHouseholdMemberAccounts(household_id);
+	var known_ips := household.GetProp("KnownIPs");
+	if(TypeOf(known_ips) != "Array")
+		known_ips := array;
+	endif
+
+	var ip_line := "(none recorded)";
+	if(known_ips.size())
+		ip_line := "";
+		var i;
+		for(i := 1; i <= known_ips.size(); i := i + 1)
+			if(i > 1)
+				ip_line := ip_line+", ";
+			endif
+			ip_line := ip_line+CStr(known_ips[i]);
+		endfor
+	endif
+	var ip_lines := GFWordWrap(ip_line, 360);
+
+	var top_offset := 44;
+	var cap_y := top_offset + 24;
+	var ips_y := cap_y + 24;
+	var members_title_y := ips_y + (ip_lines.size() * 20) + 20;
+	var members_y := members_title_y + 24;
+	var height := members_y + (members.size() * 26) + 60;
+	if(height < 220)
+		height := 220;
+	endif
+
+	var gump := GFCreateGump(50, 50, 420, height);
+	GFResizePic(gump, 0, 0, 9250, 420, height);
+	GFResizePic(gump, 10, 10, 9350, 400, height - 20);
+	GFTextLine(gump, 20, 20, 43, "Household: "+household_id);
+
+	GFTextLine(gump, 20, cap_y, 900, "HouseholdCap: "+CStr(cap)+"  ("+CStr(members.size())+" member account(s))");
+
+	GFTextLine(gump, 20, ips_y, 67, "Known IPs");
+	var y := ips_y + 22;
+	var j;
+	for(j := 1; j <= ip_lines.size(); j := j + 1)
+		GFTextLine(gump, 25, y, 0, ip_lines[j]);
+		y := y + 20;
+	endfor
+
+	GFTextLine(gump, 20, members_title_y, 67, "Member Accounts");
+	y := members_y;
+	var i;
+	if(!members.size())
+		GFTextLine(gump, 25, y, 900, "(no member accounts)");
+	else
+		for(i := 1; i <= members.size(); i := i + 1)
+			GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+			GFTextLine(gump, 50, y, 0, CStr(members[i]));
+			y := y + 26;
+		endfor
+	endif
+
+	GFAddButton(gump, 20, y + 10, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, y + 10, 33, "Back to Households");
+
+	var result := GFSendGump(who, gump);
+	if(!result[0])
+		return 0;
+	endif
+	if(result[0] == BTN_BACK)
+		return BTN_BACK;
+	endif
+	if(result[0] < 1 or result[0] > members.size())
+		return 0;
+	endif
+
+	return CStr(members[result[0]]);
+endfunction
+
+
+///////////////////////////////////////////////////////////////////////////
+// Browse by Discord ID - every account grouped by its own raw DiscordIDNorm,
+// independent of household assignment. A household only exists once
+// something explicitly assigns one (see the 2026-09-03 comment on
+// CollectHouseholdIds); an account's DiscordID is set at creation
+// (.mkaccount) regardless, so this catches accounts a household browse
+// would miss entirely.
+///////////////////////////////////////////////////////////////////////////
+
+function CollectDiscordIds()
+	var ids := {};
+	foreach acctname in (ListAccounts())
+		var name := CStr(acctname);
+		if(!name)
+			continue;
+		endif
+		var account := FindAccount(name);
+		if(!account or account.errortext)
+			continue;
+		endif
+		var info := ACCT_GetAccountDiscordInfo(account);
+		if(!info or info.errortext)
+			continue;
+		endif
+		var did := CStr(info["DiscordIDNorm"]);
+		if(!did)
+			continue;
+		endif
+		if(!(did in ids))
+			ids.append(did);
+		endif
+	endforeach
+	ids.sort();
+	return ids;
+endfunction
+
+function ShowDiscordIdPicker(who)
+	var keys := CollectDiscordIds();
+	if(!keys.size())
+		SendSysMessage(who, "No accounts have a DiscordID set.");
+		return BTN_BACK;
+	endif
+
+	var gump := GFCreateGump(50, 50, 460, 620);
+	GFDisposable(gump, 0);
+	GFResizePic(gump, 0, 0, 9250, 460, 620);
+	GFResizePic(gump, 10, 10, 9350, 440, 600);
+	GFTextLine(gump, 20, 20, 43, "Browse by Discord ID ("+keys.size()+")");
+	GFTextLine(gump, 20, 44, 900, "DiscordIDNorm");
+	GFTextLine(gump, 320, 44, 900, "Accounts");
+
+	var perpage := HOUSEHOLDS_PER_PAGE;
+	var total := keys.size();
+	var total_pages := CInt((total - 1) / perpage) + 1;
+
+	GFAddButton(gump, 20, 580, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, 580, 33, "Back");
+
+	var i;
+	var page := 0;
+	var y := 0;
+	for(i := 1; i <= total; i := i + 1)
+		var slot := (i - 1) % perpage;
+		if(slot == 0)
+			page := page + 1;
+			GFPage(gump, page);
+			y := 70;
+
+			if(page > 1)
+				GFAddButton(gump, 20, 545, 4014, 4015, GF_PAGE_BTN, page - 1);
+				GFTextLine(gump, 55, 545, 67, "Prev Page");
+			endif
+			if(page < total_pages)
+				GFAddButton(gump, 280, 545, 4005, 4006, GF_PAGE_BTN, page + 1);
+				GFTextLine(gump, 315, 545, 67, "Next Page");
+			endif
+		endif
+
+		var key := CStr(keys[i]);
+		var account_count := CollectAccountsForDiscordId(key).size();
+
+		GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+		GFTextLine(gump, 50, y, 0, key);
+		GFTextLine(gump, 320, y, 0, CStr(account_count));
+
+		y := y + 24;
+	endfor
+
+	var result := GFSendGump(who, gump);
+
+	if(!result[0])
+		return 0;
+	endif
+	if(result[0] == BTN_BACK)
+		return BTN_BACK;
+	endif
+	if(result[0] < 1 or result[0] > keys.size())
+		return 0;
+	endif
+
+	return CStr(keys[result[0]]);
+endfunction
+
+function CollectAccountsForDiscordId(discord_id)
+	var accounts := {};
+	foreach acctname in (ListAccounts())
+		var name := CStr(acctname);
+		if(!name)
+			continue;
+		endif
+		var account := FindAccount(name);
+		if(!account or account.errortext)
+			continue;
+		endif
+		var info := ACCT_GetAccountDiscordInfo(account);
+		if(!info or info.errortext)
+			continue;
+		endif
+		if(CStr(info["DiscordIDNorm"]) == discord_id)
+			accounts.append(name);
+		endif
+	endforeach
+	accounts.sort();
+	return accounts;
+endfunction
+
+// Every account sharing this DiscordIDNorm, as buttons -- also shows each
+// account's own HouseholdId (blank if never assigned) so staff can see at a
+// glance whether the Discord-linked accounts have actually been grouped
+// into a household yet.
+function ShowDiscordIdDetail(who, discord_id)
+	var accounts := CollectAccountsForDiscordId(discord_id);
+
+	var top_offset := 44;
+	var height := top_offset + (accounts.size() * 26) + 60;
+	if(height < 160)
+		height := 160;
+	endif
+
+	var gump := GFCreateGump(50, 50, 460, height);
+	GFResizePic(gump, 0, 0, 9250, 460, height);
+	GFResizePic(gump, 10, 10, 9350, 440, height - 20);
+	GFTextLine(gump, 20, 20, 43, "Discord ID: "+discord_id);
+	GFTextLine(gump, 20, top_offset, 900, CStr(accounts.size())+" account(s) linked to this Discord ID");
+
+	var y := top_offset + 24;
+	var i;
+	if(!accounts.size())
+		GFTextLine(gump, 25, y, 900, "(no accounts)");
+	else
+		for(i := 1; i <= accounts.size(); i := i + 1)
+			var account := FindAccount(accounts[i]);
+			var household_id := "";
+			if(account and !account.errortext)
+				household_id := CStr(account.GetProp("HouseholdId"));
+			endif
+			var label := accounts[i];
+			if(household_id)
+				label := label + "  (Household: "+household_id+")";
+			endif
+
+			GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+			GFTextLine(gump, 50, y, 0, label);
+			y := y + 26;
+		endfor
+	endif
+
+	GFAddButton(gump, 20, y + 10, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, y + 10, 33, "Back to Discord IDs");
+
+	var result := GFSendGump(who, gump);
+	if(!result[0])
+		return 0;
+	endif
+	if(result[0] == BTN_BACK)
+		return BTN_BACK;
+	endif
+	if(result[0] < 1 or result[0] > accounts.size())
+		return 0;
+	endif
+
+	return CStr(accounts[result[0]]);
+endfunction
+
+
+// Builds the {ip, lines} entries the "Unique IPs" section renders: each
+// entry pairs the raw ip (needed by the search button) with its formatted,
+// word-wrapped display lines (needed by the gump layout).
+function BuildIPDisplayEntries(acctname, limit, wrap_pixels)
+	var history := GetStoredIPHistory(acctname);
+	var entries := {};
+
+	var i;
+	for(i := history.size(); i >= 1; i := i - 1)
+		if(entries.size() >= limit)
+			break;
+		endif
+
+		var entry := struct;
+		entry.+ip := CStr(history[i].ip);
+		entry.+lines := GFWordWrap(FormatIPHistoryLine(history[i]), wrap_pixels);
+		entries.append(entry);
+	endfor
+
+	return entries;
+endfunction
+
+
+function ShowCharacterList(who, acctname)
+	var account := FindAccount(acctname);
+	if(!account or account.errortext)
+		SendSysMessage(who, "Could not find account '" + acctname + "'.");
+		return BTN_BACK;
+	endif
+
+	var characters := ACCT_GetCharacters(account);
+	if(!characters.size())
+		SendSysMessage(who, "No characters found on '" + acctname + "'.");
+		return BTN_BACK;
+	endif
+
+	while(1)
+		var note_info := GetLatestNoteInfo(account);
+		var latest_note := note_info.note;
+		if(!latest_note)
+			latest_note := "(no notes)";
+		endif
+		var note_lines := GFWordWrap(latest_note, 350);
+		var notes_total := GetStoredNoteHistory(acctname).size();
+
+		var attribution := "- ";
+		if(note_info.initiator)
+			attribution := attribution + note_info.initiator;
+		else
+			attribution := attribution + "Unknown";
+		endif
+		if(note_info.timestamp)
+			attribution := attribution + ", " + note_info.timestamp;
+		endif
+
+		var ip_wrap_pixels := 360;
+		var ip_entries := BuildIPDisplayEntries(acctname, 5, ip_wrap_pixels);
+		var ip_line_count := 0;
+		var j;
+		for(j := 1; j <= ip_entries.size(); j := j + 1)
+			ip_line_count := ip_line_count + ip_entries[j].lines.size();
+		endfor
+		if(!ip_entries.size())
+			ip_line_count := 1;
+		endif
+		var ips_total := GetStoredIPHistory(acctname).size();
+
+		var notes_y0 := 66;
+		var note_line_h := 20;
+		var ips_y0 := notes_y0 + (note_lines.size() * note_line_h) + (note_line_h * 2) + 14;
+		var chars_title_y0 := ips_y0 + 24 + (ip_line_count * 22) + 20 + 14;
+		var chars_y0 := chars_title_y0 + 24;
+		var height := chars_y0 + (characters.size() * 24) + 40;
+
+		var gump := GFCreateGump(50, 50, 460, height);
+		GFResizePic(gump, 0, 0, 9250, 460, height);
+		GFResizePic(gump, 10, 10, 9350, 440, height - 20);
+		GFTextLine(gump, 20, 20, 43, "Account: "+acctname);
+		GFTextLine(gump, 20, 44, 67, "Notes");
+
+		var y := notes_y0;
+		var i;
+		for(i := 1; i <= note_lines.size(); i := i + 1)
+			GFTextLine(gump, 25, y, 0, note_lines[i]);
+			y := y + note_line_h;
+		endfor
+		GFTextLine(gump, 25, y, 900, attribution);
+		y := y + note_line_h;
+		GFTextLine(gump, 25, y, 900, "("+notes_total+" note record(s) in datafile)");
+
+		y := ips_y0;
+		GFTextLine(gump, 20, y, 67, "Unique IPs");
+		y := y + 24;
+		if(!ip_entries.size())
+			GFTextLine(gump, 25, y, 0, "(no logins recorded)");
+			y := y + 22;
+		else
+			for(i := 1; i <= ip_entries.size(); i := i + 1)
+				GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, BTN_IP_SEARCH_BASE + i);
+				var ip_lines := ip_entries[i].lines;
+				for(j := 1; j <= ip_lines.size(); j := j + 1)
+					GFTextLine(gump, 50, y, 0, ip_lines[j]);
+					y := y + 22;
+				endfor
+			endfor
+		endif
+		y := y + 10;
+		GFTextLine(gump, 25, y, 900, "("+ips_total+" unique IP(s) recorded)");
+
+		GFTextLine(gump, 20, chars_title_y0, 67, "Characters");
+		y := chars_y0;
+		for(i := 1; i <= characters.size(); i := i + 1)
+			GFAddButton(gump, 20, y, 2117, 2118, GF_CLOSE_BTN, i);
+			GFTextLine(gump, 50, y, 0, CStr(characters[i].name));
+			y := y + 24;
+		endfor
+
+		GFAddButton(gump, 20, y + 5, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+		GFTextLine(gump, 50, y + 5, 33, "Back");
+
+		var result := GFSendGump(who, gump);
+		if(!result[0])
+			return 0;
+		endif
+		if(result[0] == BTN_BACK)
+			return BTN_BACK;
+		endif
+
+		if(result[0] >= BTN_IP_SEARCH_BASE and result[0] < BTN_IP_SEARCH_BASE + 1000)
+			var ip_index := result[0] - BTN_IP_SEARCH_BASE;
+			if(ip_index >= 1 and ip_index <= ip_entries.size())
+				ShowAccountsForIP(who, ip_entries[ip_index].ip, acctname);
+			endif
+			continue;
+		endif
+
+		return characters[result[0]];
+	endwhile
+endfunction
+
+
+// Lists every other account that has ever logged in from `ip` (excluding
+// exclude_acctname, the account the lookup was launched from). Read-only
+// report gump, paginated so a busy IP (NAT/proxy/shared connection) never
+// gets truncated - Back is the only closing action.
+function ShowAccountsForIP(who, ip, exclude_acctname)
+	var matches := FindAccountsByIP(ip);
+	var others := {};
+	foreach name in (matches)
+		if(name != exclude_acctname)
+			others.append(name);
+		endif
+	endforeach
+
+	var total := others.size();
+	var perpage := IP_RESULTS_PER_PAGE;
+	var line_h := 20;
+	var body_y0 := 66;
+	var nav_y := body_y0 + (perpage * line_h) + 10;
+	var back_y := nav_y + 25;
+	var height := back_y + 40;
+
+	var gump := GFCreateGump(50, 50, 380, height);
+	GFResizePic(gump, 0, 0, 9250, 380, height);
+	GFResizePic(gump, 10, 10, 9350, 360, height - 20);
+	GFTextLine(gump, 20, 20, 43, "Accounts using IP: "+ip);
+	GFTextLine(gump, 20, 44, 67, total+" other account(s) found");
+
+	GFAddButton(gump, 20, back_y, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+	GFTextLine(gump, 50, back_y, 33, "Back");
+
+	if(!total)
+		GFTextLine(gump, 25, body_y0, 0, "(no other accounts found)");
+	else
+		var total_pages := CInt((total - 1) / perpage) + 1;
+		var i;
+		var page := 0;
+		var y := body_y0;
+		for(i := 1; i <= total; i := i + 1)
+			var slot := (i - 1) % perpage;
+			if(slot == 0)
+				page := page + 1;
+				GFPage(gump, page);
+				y := body_y0;
+
+				if(page > 1)
+					GFAddButton(gump, 20, nav_y, 4014, 4015, GF_PAGE_BTN, page - 1);
+					GFTextLine(gump, 55, nav_y, 67, "Prev Page");
+				endif
+				if(page < total_pages)
+					GFAddButton(gump, 200, nav_y, 4005, 4006, GF_PAGE_BTN, page + 1);
+					GFTextLine(gump, 235, nav_y, 67, "Next Page");
+				endif
+			endif
+
+			GFTextLine(gump, 25, y, 0, others[i]);
+			y := y + line_h;
+		endfor
+	endif
+
+	GFSendGump(who, gump);
+endfunction
+
+
+// Renders a titled block of lines into `gump`, advancing `y` past it -
+// shared by every section on the character-detail screen so adding another
+// subtitle later is a one-line addition, not a layout rewrite.
+function RenderHistorySection(byref gump, title, lines, byref y)
+	GFTextLine(gump, 20, y, 67, title);
+	y := y + 24;
+	var i;
+	for(i := 1; i <= lines.size(); i := i + 1)
+		GFTextLine(gump, 25, y, 0, lines[i]);
+		y := y + 22;
+	endfor
+	y := y + 10;
+endfunction
+
+
+function ShowCharacterDetail(who, acctname, mobile)
+	while(1)
+		var names := BuildNameHistorySummary(mobile, 10);
+		var deaths := BuildDeathHistorySummary(mobile, 5);
+		var poisons := BuildPoisonHistorySummary(mobile, 5);
+
+		if(!deaths.lines.size())
+			deaths.lines.append("(no deaths recorded)");
+		endif
+		if(!poisons.lines.size())
+			poisons.lines.append("(no poisonings recorded)");
+		endif
+
+		var top_offset := 126;
+		var section_heights := (34 + (names.lines.size() * 22))
+			+ (34 + (deaths.lines.size() * 22))
+			+ (34 + (poisons.lines.size() * 22));
+		var footer_h := 22;
+		var button_h := 35;
+
+		var height := top_offset + section_heights + footer_h + button_h;
+
+		var gump := GFCreateGump(50, 50, 480, height);
+		GFResizePic(gump, 0, 0, 9250, 480, height);
+		GFResizePic(gump, 10, 10, 9350, 460, height - 20);
+		GFTextLine(gump, 20, 20, 43, "Character Information");
+		GFTextLine(gump, 20, 44, 67, acctname);
+
+		GFAddButton(gump, 20, 66, 2117, 2118, GF_CLOSE_BTN, BTN_LIST_HOUSE_MULTIS);
+		GFTextLine(gump, 50, 66, 67, "House Multis");
+		GFAddButton(gump, 220, 66, 2117, 2118, GF_CLOSE_BTN, BTN_LIST_STATIC_MULTIS);
+		GFTextLine(gump, 250, 66, 67, "Static Houses");
+		GFAddButton(gump, 380, 66, 2117, 2118, GF_CLOSE_BTN, BTN_LIST_CUSTOM_HOUSES);
+		GFTextLine(gump, 410, 66, 67, "Custom Houses");
+
+		GFAddButton(gump, 20, 96, 2117, 2118, GF_CLOSE_BTN, BTN_LIST_BOATS);
+		GFTextLine(gump, 50, 96, 67, "Boats");
+		GFAddButton(gump, 220, 96, 2117, 2118, GF_CLOSE_BTN, BTN_LIST_CORPSES);
+		GFTextLine(gump, 250, 96, 67, "Corpses");
+
+		var y := top_offset;
+		RenderHistorySection(gump, "Names", names.lines, y);
+		RenderHistorySection(gump, "Killed By", deaths.lines, y);
+		RenderHistorySection(gump, "Poisoned By", poisons.lines, y);
+
+		var footer := "More in datafile: "+names.remaining+" name record(s), "+deaths.remaining+" death record(s), "+poisons.remaining+" poison record(s)";
+		GFTextLine(gump, 20, y, 900, footer);
+		y := y + footer_h;
+
+		GFAddButton(gump, 20, y, 4017, 4019, GF_CLOSE_BTN, BTN_BACK);
+		GFTextLine(gump, 50, y, 33, "Back to Characters");
+
+		var result := GFSendGump(who, gump);
+		if(!result[0])
+			return 0;
+		endif
+
+		if(result[0] == BTN_LIST_HOUSE_MULTIS)
+			ShowHouseMultisForCharacter(who, mobile);
+			continue;
+		elseif(result[0] == BTN_LIST_STATIC_MULTIS)
+			ShowStaticHousesForCharacter(who, mobile);
+			continue;
+		elseif(result[0] == BTN_LIST_CUSTOM_HOUSES)
+			ShowCustomHousesForCharacter(who, mobile);
+			continue;
+		elseif(result[0] == BTN_LIST_BOATS)
+			ShowBoatsForCharacter(who, mobile);
+			continue;
+		elseif(result[0] == BTN_LIST_CORPSES)
+			ShowCorpsesForCharacter(who, mobile);
+			continue;
+		endif
+
+		return result[0];
+	endwhile
+endfunction
+
+
+///////////////////////////////////////////////////////////////////////////
+// Houses (multis) - owner/co-owner/friend lookup, split per housing package
+///////////////////////////////////////////////////////////////////////////
+
+function GetRealmNameFromMapId(mapid)
+	if (mapid == 0)
+		return "britannia";
+	elseif (mapid == 1)
+		return "britannia_alt";
+	elseif (mapid == 2)
+		return "ilshenar";
+	elseif (mapid == 3)
+		return "malas";
+	elseif (mapid == 4)
+		return "tokuno";
+	elseif (mapid == 5)
+		return "termur";
+	endif
+
+	return 0;
+endfunction
+
+function ResolveStandableZ(x, y, z, realm)
+	var stand := GetStandingHeight(CInt(x), CInt(y), CInt(z), CStr(realm));
+	if (stand and !stand.errortext)
+		return CInt(stand.z);
+	endif
+
+	// Retry nearby seed Z values in case stored Z is stale or clipped to multi components.
+	stand := GetStandingHeight(CInt(x), CInt(y), CInt(z + 20), CStr(realm));
+	if (stand and !stand.errortext)
+		return CInt(stand.z);
+	endif
+
+	stand := GetStandingHeight(CInt(x), CInt(y), CInt(z - 20), CStr(realm));
+	if (stand and !stand.errortext)
+		return CInt(stand.z);
+	endif
+
+	return CInt(z);
+endfunction
+
+function GetHouseTypeDisplayName(objtype)
+	if (!objtype)
+		return "Unknown";
+	endif
+
+	if (house_itemdesc_cfg)
+		var house_elem := house_itemdesc_cfg[objtype];
+		if (house_elem and !house_elem.errortext)
+			var house_desc := GetConfigString(house_elem, "Desc");
+			if (house_desc and !house_desc.errortext and house_desc != "")
+				return house_desc;
+			endif
+		endif
+	endif
+
+	return CStr(Hex(objtype));
+endfunction
+
+// "Owner"/"Co-Owner"/"Friend" if `mobile` holds that access level on `sign`,
+// "" otherwise. All three housing packages' signs share the same
+// :house:multiSign/method methodscript (confirmed via customhousing/include/
+// housefriends.inc's migration note), so this one function covers all three.
+function ResolveSignAccessLevel(sign, mobile)
+	if (sign.IsOwner(mobile))
+		return "Owner";
+	endif
+	if (sign.IsACoOwner(mobile))
+		return "Co-Owner";
+	endif
+	if (sign.IsAFriend(mobile))
+		return "Friend";
+	endif
+	return "";
+endfunction
+
+// Every native POLCLASS_HOUSE multi across every realm whose linked sign's
+// objtype is in `sign_objtypes` (i.e. belongs to one specific housing
+// package -- house or staticHousing, never both) where `mobile` is owner,
+// co-owner, or friend. Full-map scan, same approach as gotomulti.src's
+// CollectHouseMultis(), filtered to one serial and one package's sign set.
+function FindNativeHouseMultisForCharacter(mobile, sign_objtypes)
+	var results := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GetRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListMultisInBox(0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found or !found.size())
+			continue;
+		endif
+
+		foreach multi in found
+			if (!multi or !multi.isa(POLCLASS_HOUSE))
+				continue;
+			endif
+
+			var sign_serial := CInt(GetObjProperty(multi, "signserial"));
+			if (!sign_serial)
+				continue;
+			endif
+			var sign := SystemFindObjectBySerial(sign_serial);
+			if (!sign or !(sign.objtype in sign_objtypes))
+				continue;
+			endif
+
+			var level := ResolveSignAccessLevel(sign, mobile);
+			if (!level)
+				continue;
+			endif
+
+			var region_name := GetRegionNameAtLocation(sign.x, sign.y, realm_name);
+			if (!region_name)
+				region_name := "Unknown";
+			endif
+
+			var row := struct;
+			row.+level := level;
+			row.+house_type := GetHouseTypeDisplayName(multi.objtype);
+			row.+region := region_name;
+			row.+realm := realm_name;
+			row.+coord_text := CStr(sign.x) + "," + CStr(sign.y) + "," + CStr(sign.z);
+			row.+x := sign.x;
+			row.+y := sign.y;
+			row.+z := sign.z;
+			results.append(row);
+			SleepMS(1);
+		endforeach
+	endforeach
+
+	return results;
+endfunction
+
+// Every customhousing sign (objtype 0xFFF4 -- no native multi to scan, so
+// this searches by item objtype directly, same approach as the corpse
+// search below) across every realm where `mobile` is owner, co-owner, or
+// friend.
+function FindCustomHousesForCharacter(mobile)
+	var results := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GetRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListItemsInBoxOfObjType(CUSTOM_SIGN_OBJTYPE, 0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found or !found.size())
+			continue;
+		endif
+
+		foreach sign in found
+			if (!sign)
+				continue;
+			endif
+
+			var level := ResolveSignAccessLevel(sign, mobile);
+			if (!level)
+				continue;
+			endif
+
+			var region_name := GetRegionNameAtLocation(sign.x, sign.y, realm_name);
+			if (!region_name)
+				region_name := "Unknown";
+			endif
+
+			var row := struct;
+			row.+level := level;
+			row.+house_type := "Custom House";
+			row.+region := region_name;
+			row.+realm := realm_name;
+			row.+coord_text := CStr(sign.x) + "," + CStr(sign.y) + "," + CStr(sign.z);
+			row.+x := sign.x;
+			row.+y := sign.y;
+			row.+z := sign.z;
+			results.append(row);
+			SleepMS(1);
+		endforeach
+	endforeach
+
+	return results;
+endfunction
+
+function ShowHouseMultisForCharacter(who, mobile)
+	var rows := FindNativeHouseMultisForCharacter(mobile, HOUSE_SIGN_OBJTYPES);
+	ShowHouseRowsGoto(who, mobile, rows, "House Multis", "is not an owner, co-owner, or friend of any house multi.");
+endfunction
+
+function ShowStaticHousesForCharacter(who, mobile)
+	var rows := FindNativeHouseMultisForCharacter(mobile, STATIC_SIGN_OBJTYPES);
+	ShowHouseRowsGoto(who, mobile, rows, "Static Houses", "is not an owner, co-owner, or friend of any static house.");
+endfunction
+
+function ShowCustomHousesForCharacter(who, mobile)
+	var rows := FindCustomHousesForCharacter(mobile);
+	ShowHouseRowsGoto(who, mobile, rows, "Custom Houses", "is not an owner, co-owner, or friend of any custom house.");
+endfunction
+
+// Shared by all three Show*ForCharacter wrappers above - resolves the
+// selected row and teleports `who` there.
+function ShowHouseRowsGoto(who, mobile, rows, title, none_found_msg)
+	if (!rows.size())
+		SendSysMessage(who, CStr(mobile.name) + " " + none_found_msg);
+		return;
+	endif
+
+	var selected := ShowMultiGotoListGump(who, mobile, rows, title);
+	if (!selected)
+		return;
+	endif
+
+	var row := rows[selected];
+	if (!row)
+		return;
+	endif
+
+	var safe_z := ResolveStandableZ(row.x, row.y, row.z, row.realm);
+	MoveObjectToLocation(who, row.x, row.y, safe_z, row.realm, MOVEOBJECT_FORCELOCATION);
+	SendSysMessage(who, "Teleported to " + row.house_type + " (" + row.level + ") at " + row.coord_text + ".");
+endfunction
+
+// Shared paged goto-list gump for all three house types - `title` names the
+// screen ("House Multis"/"Static Houses"/"Custom Houses").
+function ShowMultiGotoListGump(who, mobile, rows, title)
+	var per_page := 15;
+	var total_pages := CInt((rows.size() + per_page - 1) / per_page);
+	if (total_pages < 1)
+		total_pages := 1;
+	endif
+
+	var current_page := 1;
+	while (1)
+		var gump := GFCreateGump(0, 0, 760, 620);
+		GFDisposable(gump, 0);
+		GFResizePic(gump, 0, 0, 3500, 760, 620);
+		GFTextMid(gump, 15, 20, 730, 1153, CStr(mobile.name) + "'s " + title + " (Page " + current_page + "/" + total_pages + ")");
+		GFTextLine(gump, 20, 52, 1153, "Level");
+		GFTextLine(gump, 110, 52, 1153, "House Type");
+		GFTextLine(gump, 270, 52, 1153, "Region");
+		GFTextLine(gump, 400, 52, 1153, "Realm");
+		GFTextLine(gump, 495, 52, 1153, "Coords");
+		GFTextLine(gump, 615, 52, 1153, "Goto");
+		GFAddButton(gump, 350, 565, 2119, 2120, GF_CLOSE_BTN, 999999);
+
+		var start_index := ((current_page - 1) * per_page) + 1;
+		var end_index := start_index + per_page - 1;
+		if (end_index > rows.size())
+			end_index := rows.size();
+		endif
+
+		var y_pos := 75;
+		var index := start_index;
+		while (index <= end_index)
+			var row := rows[index];
+			GFTextCrop(gump, 20, y_pos, 85, 18, 0, row.level);
+			GFTextCrop(gump, 110, y_pos, 155, 18, 0, row.house_type);
+			GFTextCrop(gump, 270, y_pos, 125, 18, 0, row.region);
+			GFTextCrop(gump, 400, y_pos, 90, 18, 0, row.realm);
+			GFTextCrop(gump, 495, y_pos, 115, 18, 0, row.coord_text);
+			GFAddButton(gump, 620, y_pos - 1, 2117, 2118, GF_CLOSE_BTN, index);
+			y_pos := y_pos + 32;
+			index := index + 1;
+			SleepMS(2);
+		endwhile
+
+		if (current_page > 1)
+			GFAddButton(gump, 550, 565, 4014, 4015, GF_CLOSE_BTN, 1000001);
+			GFTextLine(gump, 580, 565, 67, "Prev");
+		endif
+		if (current_page < total_pages)
+			GFAddButton(gump, 650, 565, 4005, 4006, GF_CLOSE_BTN, 1000002);
+			GFTextLine(gump, 680, 565, 67, "Next");
+		endif
+
+		var input := GFSendGump(who, gump);
+		if (!input)
+			return 0;
+		endif
+
+		var choice := CInt(input[0]);
+		if (choice == 1000001)
+			if (current_page > 1)
+				current_page := current_page - 1;
+			endif
+			continue;
+		elseif (choice == 1000002)
+			if (current_page < total_pages)
+				current_page := current_page + 1;
+			endif
+			continue;
+		elseif (choice == 999999 || choice < 1 || choice > rows.size())
+			return 0;
+		endif
+
+		return choice;
+	endwhile
+endfunction
+
+
+///////////////////////////////////////////////////////////////////////////
+// Boats - ownership via the controller item (tillerman/tiller/wheel), not a
+// hold-container cprop like POL2.5
+///////////////////////////////////////////////////////////////////////////
+
+function GetBoatTypeDisplayName(objtype)
+	if (!objtype)
+		return "Unknown";
+	endif
+
+	var desc := GetItemDescriptor(CInt(objtype));
+	if (desc and desc.desc)
+		return CStr(desc.desc);
+	endif
+
+	return CStr(Hex(objtype));
+endfunction
+
+// Every boat across every realm where `mobile` is the controller's owner
+// (GetBoatController() resolves the right item regardless of boat era -
+// classic .tillerman, or a newer Tiller/Wheel found by component scan -
+// then controller.IsOwner(mobile) does the actual comparison).
+function FindBoatsForCharacter(mobile)
+	var results := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GetRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListMultisInBox(0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found or !found.size())
+			continue;
+		endif
+
+		foreach multi in found
+			if (!multi or !multi.isa(POLCLASS_BOAT))
+				continue;
+			endif
+
+			var controller := GetBoatController(multi);
+			if (!controller)
+				continue;
+			endif
+			if (!controller.IsOwner(mobile))
+				continue;
+			endif
+
+			var region_name := GetRegionNameAtLocation(controller.x, controller.y, realm_name);
+			if (!region_name)
+				region_name := "Unknown";
+			endif
+
+			var row := struct;
+			row.+boat_type := GetBoatTypeDisplayName(multi.objtype);
+			row.+region := region_name;
+			row.+realm := realm_name;
+			row.+coord_text := CStr(controller.x) + "," + CStr(controller.y) + "," + CStr(controller.z);
+			row.+x := controller.x;
+			row.+y := controller.y;
+			row.+z := controller.z;
+			results.append(row);
+			SleepMS(1);
+		endforeach
+	endforeach
+
+	return results;
+endfunction
+
+function ShowBoatsForCharacter(who, mobile)
+	var rows := FindBoatsForCharacter(mobile);
+	if (!rows.size())
+		SendSysMessage(who, CStr(mobile.name) + " does not own any boats.");
+		return;
+	endif
+
+	var selected := ShowBoatGotoListGump(who, mobile, rows);
+	if (!selected)
+		return;
+	endif
+
+	var row := rows[selected];
+	if (!row)
+		return;
+	endif
+
+	var safe_z := ResolveStandableZ(row.x, row.y, row.z, row.realm);
+	MoveObjectToLocation(who, row.x, row.y, safe_z, row.realm, MOVEOBJECT_FORCELOCATION);
+	SendSysMessage(who, "Teleported to controller of " + row.boat_type + " at " + row.coord_text + ".");
+endfunction
+
+function ShowBoatGotoListGump(who, mobile, rows)
+	var per_page := 15;
+	var total_pages := CInt((rows.size() + per_page - 1) / per_page);
+	if (total_pages < 1)
+		total_pages := 1;
+	endif
+
+	var current_page := 1;
+	while (1)
+		var gump := GFCreateGump(0, 0, 760, 620);
+		GFDisposable(gump, 0);
+		GFResizePic(gump, 0, 0, 3500, 760, 620);
+		GFTextMid(gump, 15, 20, 730, 1153, CStr(mobile.name) + "'s Boats (Page " + current_page + "/" + total_pages + ")");
+		GFTextLine(gump, 20, 52, 1153, "Boat Type");
+		GFTextLine(gump, 200, 52, 1153, "Region");
+		GFTextLine(gump, 360, 52, 1153, "Realm");
+		GFTextLine(gump, 460, 52, 1153, "Coords");
+		GFTextLine(gump, 615, 52, 1153, "Goto");
+		GFAddButton(gump, 350, 565, 2119, 2120, GF_CLOSE_BTN, 999999);
+
+		var start_index := ((current_page - 1) * per_page) + 1;
+		var end_index := start_index + per_page - 1;
+		if (end_index > rows.size())
+			end_index := rows.size();
+		endif
+
+		var y_pos := 75;
+		var index := start_index;
+		while (index <= end_index)
+			var row := rows[index];
+			GFTextCrop(gump, 20, y_pos, 175, 18, 0, row.boat_type);
+			GFTextCrop(gump, 200, y_pos, 155, 18, 0, row.region);
+			GFTextCrop(gump, 360, y_pos, 95, 18, 0, row.realm);
+			GFTextCrop(gump, 460, y_pos, 150, 18, 0, row.coord_text);
+			GFAddButton(gump, 620, y_pos - 1, 2117, 2118, GF_CLOSE_BTN, index);
+			y_pos := y_pos + 32;
+			index := index + 1;
+			SleepMS(2);
+		endwhile
+
+		if (current_page > 1)
+			GFAddButton(gump, 550, 565, 4014, 4015, GF_CLOSE_BTN, 1000001);
+			GFTextLine(gump, 580, 565, 67, "Prev");
+		endif
+		if (current_page < total_pages)
+			GFAddButton(gump, 650, 565, 4005, 4006, GF_CLOSE_BTN, 1000002);
+			GFTextLine(gump, 680, 565, 67, "Next");
+		endif
+
+		var input := GFSendGump(who, gump);
+		if (!input)
+			return 0;
+		endif
+
+		var choice := CInt(input[0]);
+		if (choice == 1000001)
+			if (current_page > 1)
+				current_page := current_page - 1;
+			endif
+			continue;
+		elseif (choice == 1000002)
+			if (current_page < total_pages)
+				current_page := current_page + 1;
+			endif
+			continue;
+		elseif (choice == 999999 || choice < 1 || choice > rows.size())
+			return 0;
+		endif
+
+		return choice;
+	endwhile
+endfunction
+
+
+///////////////////////////////////////////////////////////////////////////
+// Corpses - ownership via the "whose" cprop (PROPID_CORPSE_CORPSE_OF), not a
+// native .ownerserial dot-property like POL2.5 assumed
+///////////////////////////////////////////////////////////////////////////
+
+// Best-effort killer name for a corpse - reads the "Killer" cprop chrdeath.src
+// stamps on every player corpse, guarding against both a missing value and an
+// unresolved GetObjProperty() error struct (older corpses predating that
+// guard, or corpses set some other way). Appends "(Suicide)" when the corpse's
+// "KillerSerial" cprop (only set when the killer was online at time of death)
+// matches the corpse's own owner.
+function ResolveCorpseKillerName(corpse, owner_serial)
+	var killer_name := GetObjProperty(corpse, "Killer");
+	if (killer_name == error or !killer_name)
+		killer_name := "Unknown";
+	else
+		killer_name := CStr(killer_name);
+		if (!killer_name or Find(killer_name, "errortext", 1))
+			killer_name := "Unknown";
+		endif
+	endif
+
+	var killer_serial_raw := GetObjProperty(corpse, "KillerSerial");
+	if (killer_serial_raw != error)
+		var killer_serial := CInt(killer_serial_raw);
+		if (killer_serial and killer_serial == owner_serial)
+			killer_name := killer_name + " (Suicide)";
+		endif
+	endif
+
+	return killer_name;
+endfunction
+
+// Every corpse across every realm whose PROPID_CORPSE_CORPSE_OF ("whose")
+// cprop matches `mobile` - covers the character's own corpses whether they're
+// a player or a killed NPC-template character.
+function FindCorpsesForCharacter(mobile)
+	var serial := CInt(mobile.serial);
+	var results := array;
+	var realmslist := Realms();
+
+	foreach realm in realmslist
+		var realm_name := GetRealmNameFromMapId(CInt(realm.mapid));
+		if (!realm_name)
+			continue;
+		endif
+		var realm_width := CInt(realm.width) - 1;
+		var realm_height := CInt(realm.height) - 1;
+
+		var found := ListItemsInBoxOfObjType(CORPSE_OBJTYPE, 0, 0, -128, realm_width, realm_height, 127, realm_name);
+		if (!found or !found.size())
+			continue;
+		endif
+
+		foreach corpse in found
+			if (!corpse or !corpse.isa(POLCLASS_CORPSE))
+				continue;
+			endif
+			if (CInt(GetObjProperty(corpse, PROPID_CORPSE_CORPSE_OF)) != serial)
+				continue;
+			endif
+
+			var region_name := GetRegionNameAtLocation(corpse.x, corpse.y, realm_name);
+			if (!region_name)
+				region_name := "Unknown";
+			endif
+
+			var row := struct;
+			row.+desc := CStr(corpse.name);
+			row.+killer := ResolveCorpseKillerName(corpse, serial);
+			row.+region := region_name;
+			row.+realm := realm_name;
+			row.+coord_text := CStr(corpse.x) + "," + CStr(corpse.y) + "," + CStr(corpse.z);
+			row.+x := corpse.x;
+			row.+y := corpse.y;
+			row.+z := corpse.z;
+			results.append(row);
+			SleepMS(1);
+		endforeach
+	endforeach
+
+	return results;
+endfunction
+
+function ShowCorpsesForCharacter(who, mobile)
+	var rows := FindCorpsesForCharacter(mobile);
+	if (!rows.size())
+		SendSysMessage(who, "No corpses found for " + CStr(mobile.name) + ".");
+		return;
+	endif
+
+	var selected := ShowCorpseGotoListGump(who, mobile, rows);
+	if (!selected)
+		return;
+	endif
+
+	var row := rows[selected];
+	if (!row)
+		return;
+	endif
+
+	var safe_z := ResolveStandableZ(row.x, row.y, row.z, row.realm);
+	MoveObjectToLocation(who, row.x, row.y, safe_z, row.realm, MOVEOBJECT_FORCELOCATION);
+	SendSysMessage(who, "Teleported to " + row.desc + " at " + row.coord_text + ".");
+endfunction
+
+function ShowCorpseGotoListGump(who, mobile, rows)
+	var per_page := 15;
+	var total_pages := CInt((rows.size() + per_page - 1) / per_page);
+	if (total_pages < 1)
+		total_pages := 1;
+	endif
+
+	var current_page := 1;
+	while (1)
+		var gump := GFCreateGump(0, 0, 860, 620);
+		GFDisposable(gump, 0);
+		GFResizePic(gump, 0, 0, 3500, 860, 620);
+		GFTextMid(gump, 15, 20, 830, 1153, CStr(mobile.name) + "'s Corpses (Page " + current_page + "/" + total_pages + ")");
+		GFTextLine(gump, 20, 52, 1153, "Corpse");
+		GFTextLine(gump, 170, 52, 1153, "Killer");
+		GFTextLine(gump, 320, 52, 1153, "Region");
+		GFTextLine(gump, 460, 52, 1153, "Realm");
+		GFTextLine(gump, 550, 52, 1153, "Coords");
+		GFTextLine(gump, 785, 52, 1153, "Goto");
+		GFAddButton(gump, 415, 565, 2119, 2120, GF_CLOSE_BTN, 999999);
+
+		var start_index := ((current_page - 1) * per_page) + 1;
+		var end_index := start_index + per_page - 1;
+		if (end_index > rows.size())
+			end_index := rows.size();
+		endif
+
+		var y_pos := 75;
+		var index := start_index;
+		while (index <= end_index)
+			var row := rows[index];
+			GFTextCrop(gump, 20, y_pos, 145, 18, 0, row.desc);
+			GFTextCrop(gump, 170, y_pos, 145, 18, 0, row.killer);
+			GFTextCrop(gump, 320, y_pos, 135, 18, 0, row.region);
+			GFTextCrop(gump, 460, y_pos, 85, 18, 0, row.realm);
+			GFTextCrop(gump, 550, y_pos, 130, 18, 0, row.coord_text);
+			GFAddButton(gump, 790, y_pos - 1, 2117, 2118, GF_CLOSE_BTN, index);
+			y_pos := y_pos + 32;
+			index := index + 1;
+			SleepMS(2);
+		endwhile
+
+		if (current_page > 1)
+			GFAddButton(gump, 620, 565, 4014, 4015, GF_CLOSE_BTN, 1000001);
+			GFTextLine(gump, 650, 565, 67, "Prev");
+		endif
+		if (current_page < total_pages)
+			GFAddButton(gump, 700, 565, 4005, 4006, GF_CLOSE_BTN, 1000002);
+			GFTextLine(gump, 730, 565, 67, "Next");
+		endif
+
+		var input := GFSendGump(who, gump);
+		if (!input)
+			return 0;
+		endif
+
+		var choice := CInt(input[0]);
+		if (choice == 1000001)
+			if (current_page > 1)
+				current_page := current_page - 1;
+			endif
+			continue;
+		elseif (choice == 1000002)
+			if (current_page < total_pages)
+				current_page := current_page + 1;
+			endif
+			continue;
+		elseif (choice == 999999 || choice < 1 || choice > rows.size())
+			return 0;
+		endif
+
+		return choice;
+	endwhile
+endfunction

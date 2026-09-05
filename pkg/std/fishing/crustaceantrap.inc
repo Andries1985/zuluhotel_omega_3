@@ -5,6 +5,7 @@ use cfgfile;
 include "include/random";
 include "include/skillpoints";
 include "fishing";
+include ":questpkg:questfishing";
 
 const UOBJ_CRUSTACEANTRAP      := 0x3037E;
 const UOBJ_CRUSTACEANTRAP_BUOY := 0x3037F;
@@ -26,6 +27,13 @@ const PROP_TRAP_PLACED_AT := "TrapPlacedAt";
 const PROP_TRAP_LAST_BOB  := "TrapLastBob";
 const PROP_TRAP_BOB_COUNT := "TrapBobCount";
 const PROP_TRAP_CATCHES   := "TrapCatches";
+//Parallel array to PROP_TRAP_CATCHES (same index per catch) - 1 where the Big lure was still
+//active on the buoy at the exact bob that produced this catch, 0 otherwise. Lure charges are
+//spent every bob regardless of catch outcome (crustaceansweeper.src's RollBob), so by the
+//time a later bob catches something the lure may already be gone - this tag is what lets
+//CollectTrap apply the weight-skew only to catches that actually happened while it was live,
+//instead of re-deciding off whatever's left on the buoy (or nothing, if it's since expired).
+const PROP_TRAP_BIGBOOST  := "TrapBigBoost";
 
 //Global registry of every buoy currently deployed, mirroring :donationbox:include/
 //donationbox.inc's DonationBoxList()/Register()/Unregister() pattern - lets the sweeper
@@ -120,17 +128,22 @@ function PickCrustaceanFromTier(tier, location, realm, skill)
 endfunction
 
 //Same roll order/odds as fishing.inc's PickCaughtFish() - Legendary first, then Rare, else
-//Regular, using the same divisors as the pole/net's production values. Falls back a tier at
-//a time if nothing's eligible at this location/realm/skill. Returns {objtype, tier}.
-function PickCaughtCrustacean(character, location)
+//Regular, using the same divisors as the pole/net's production values by default. Falls
+//back a tier at a time if nothing's eligible at this location/realm/skill. Returns
+//{objtype, tier}.
+//
+//rare_divisor/legendary_divisor default to the trap's normal constants - the caller
+//(crustaceansweeper.src) pre-adjusts them when the deployed buoy has a charged Rare/
+//Legendary lure, same pattern fishing.src uses for the pole.
+function PickCaughtCrustacean(character, location, rare_divisor := TRAP_RARE_DIVISOR, legendary_divisor := TRAP_LEGENDARY_DIVISOR)
 
 	var skill := GetEffectiveSkill(character, SKILLID_FISHING);
 	var realm := character.realm;
 
 	var tier := "Regular";
-	if (Random(TRAP_LEGENDARY_DIVISOR) == 0)
+	if (Random(legendary_divisor) == 0)
 		tier := "Legendary";
-	elseif (Random(TRAP_RARE_DIVISOR) == 0)
+	elseif (Random(rare_divisor) == 0)
 		tier := "Rare";
 	endif
 
@@ -160,17 +173,47 @@ function CollectTrap(character, buoy)
 		catches := array{};
 	endif
 
-	foreach objtype in catches
+	//Whether each catch gets the Big lure's weight-skew was already decided (and its charge
+	//already spent) at the bob that caught it - see crustaceansweeper.src's RollBob - not
+	//re-decided here, so a trap that's lost before collection can't leave the lure unspent.
+	//Same index as catches; missing/wrong-length just means no boost (buoys deployed before
+	//this property existed).
+	var bigboosts := GetObjProperty(buoy, PROP_TRAP_BIGBOOST);
+	if (TypeOf(bigboosts) != "Array")
+		bigboosts := array{};
+	endif
+
+	var i;
+	for (i := 1; i <= len(catches); i := i + 1)
+		var objtype := catches[i];
+		var big_boost := (i <= len(bigboosts) and CInt(bigboosts[i]) == 1);
+
 		var caughtitem := CreateItemInBackpack(character, CInt(objtype), 1);
 		var fishtier := GetObjProperty(caughtitem, "FishTier");
+		var tier := "Regular";
+		var weight := 0;
+
 		if (fishtier == "Rare Crustacean")
+			tier := "Rare";
+			weight := RollTrophyWeight();
+			if (big_boost)
+				weight := Max(weight, RollTrophyWeight());
+			endif
 			SendSysmessage(character, "You find a rare "+caughtitem.desc+"!", 3, 1731);
-			SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
+			SetObjProperty(caughtitem, "TrophyWeight", weight);
 		elseif (fishtier == "Legendary Crustacean")
+			tier := "Legendary";
+			weight := RollTrophyWeight();
+			if (big_boost)
+				weight := Max(weight, RollTrophyWeight());
+			endif
 			SendSysmessage(character, "You find a legendary "+caughtitem.desc+"!", 3, 1531);
-			SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
+			SetObjProperty(caughtitem, "TrophyWeight", weight);
 		endif
-	endforeach
+
+		Print("[Fishing] "+character.name+" collected trap catch tier="+tier+" weight="+CStr(weight)+" big_boost="+CStr(big_boost));
+		QP_ProcessFishCatch(character, "CatchCrustacean", tier, weight);
+	endfor
 
 	CreateItemInBackpack(character, UOBJ_CRUSTACEANTRAP, 1);
 

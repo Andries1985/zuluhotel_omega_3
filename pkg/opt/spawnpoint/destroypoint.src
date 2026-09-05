@@ -42,15 +42,26 @@ program DestroySpawnPoint(point)
 						WarnManagerOfNpcDeath( spawned_object );
 						RevokePrivilege(spawned_object,"invul");
 						SetObjProperty(spawned_object, "guardkill", 1);
-						ApplyRawDamage(spawned_object, GetMaxHP(spawned_object)+3);
+						spawned_object.kill();
 					"Group":
 						WarnManagerOfNpcDeath( spawned_object );
 						RevokePrivilege(spawned_object,"invul");
 						SetObjProperty(spawned_object, "guardkill", 1);
-						ApplyRawDamage(spawned_object, GetMaxHP(spawned_object)+3);
+						spawned_object.kill();
+					"Quest NPC":
+						WarnManagerOfNpcDeath( spawned_object );
+						RevokePrivilege(spawned_object,"invul");
+						SetObjProperty(spawned_object, "guardkill", 1);
+						spawned_object.kill();
 					"Container":
 						DestroyItem(spawned_object);
-					"Item":		
+					"Item":
+						if( spawned_object )
+							if( !spawned_object.container )
+								DestroyItem(spawned_object);
+							endif
+						endif
+					"Quest Item":
 						if( spawned_object )
 							if( !spawned_object.container )
 								DestroyItem(spawned_object);

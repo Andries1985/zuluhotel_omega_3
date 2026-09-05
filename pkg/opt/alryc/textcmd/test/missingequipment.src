@@ -1,9 +1,40 @@
-// Synopsis: Drop one sort chest per equipment layer at your feet, each pre-loaded with every layer objtype that has no existing script usage, plus WORKING/DOESN'T RENDER/OTHER bags to sort them into
+// Synopsis: Drop one sort chest per equipment layer at your feet, each pre-loaded with every layer objtype that has no existing script usage, plus 5 bags (NON-RENDERING/PAPERDOLL ONLY/IN-WORLD ONLY/WRONG GRAPHIC/CORRECT) to sort them into after in-game testing
 use uo;
+use cfgfile;
 include ":staff:include/staff";
 
 const SORT_CHEST_GRAPHIC := 0x0E40;
 const SORT_BAG_GRAPHIC := 0x9B2;
+
+function ComboTag(combo, layer_num)
+	if (combo == "fully_dead")
+		return "predicted NON-RENDERING (dead everywhere)";
+	elseif (combo == "paperdoll_only")
+		return "predicted PAPERDOLL ONLY (dead in-world)";
+	elseif (combo == "inworld_only")
+		return "predicted IN-WORLD ONLY (dead on paperdoll)";
+	elseif (combo == "both_have_data")
+		return "predicted HAS DATA both places - verify correct/wrong";
+	elseif (combo == "untested")
+		if (layer_num == 1 or layer_num == 2)
+			return "UNTESTED - weapons use the wearer's own action/stance, not a per-item body - no prediction possible";
+		endif
+		return "UNTESTED - AnimID 0";
+	endif
+	return combo;
+endfunction
+
+function JoinFrom(words, startidx)
+	var result := "";
+	var i;
+	for (i := startidx; i <= len(words); i := i + 1)
+		if (i > startidx)
+			result := result + " ";
+		endif
+		result := result + words[i];
+	endfor
+	return result;
+endfunction
 
 function AddPiece(chest, objtype, label)
 	var item := CreateItemInContainer(chest, objtype, 1);
@@ -13,7 +44,7 @@ function AddPiece(chest, objtype, label)
 	return item;
 endfunction
 
-function MakeLayerChest(who, layerhex, layername, objtypes, labels)
+function MakeLayerChest(who, layer_num, layerhex, layername, itemlines)
 	var chest := CreateItemAtLocation(who.x, who.y, who.z, SORT_CHEST_GRAPHIC, 1, who.realm);
 	if (!chest)
 		return 0;
@@ -21,132 +52,69 @@ function MakeLayerChest(who, layerhex, layername, objtypes, labels)
 	chest.name := "Layer " + layerhex + " (" + layername + ") Sort Chest";
 	chest.color := 1153;
 
-	var workingBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
-	var deadBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
-	var otherBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
-	if (!workingBag or !deadBag or !otherBag)
+	var nonRenderBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
+	var paperdollOnlyBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
+	var inworldOnlyBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
+	var wrongGraphicBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
+	var correctBag := CreateItemInContainer(chest, SORT_BAG_GRAPHIC, 1);
+	if (!nonRenderBag or !paperdollOnlyBag or !inworldOnlyBag or !wrongGraphicBag or !correctBag)
 		return 0;
 	endif
-	workingBag.name := "WORKING (" + layerhex + ")";
-	workingBag.color := 0x044;
-	deadBag.name := "DOESN'T RENDER (" + layerhex + ")";
-	deadBag.color := 0x020;
-	otherBag.name := "OTHER (" + layerhex + ")";
-	otherBag.color := 0x481;
+	nonRenderBag.name := "NON-RENDERING (" + layerhex + ")";
+	nonRenderBag.color := 0x020;
+	paperdollOnlyBag.name := "PAPERDOLL ONLY (" + layerhex + ")";
+	paperdollOnlyBag.color := 0x489;
+	inworldOnlyBag.name := "IN-WORLD ONLY (" + layerhex + ")";
+	inworldOnlyBag.color := 0x059;
+	wrongGraphicBag.name := "WRONG GRAPHIC (" + layerhex + ")";
+	wrongGraphicBag.color := 0x481;
+	correctBag.name := "CORRECT (" + layerhex + ")";
+	correctBag.color := 0x044;
 
 	var i;
-	for (i := 1; i <= len(objtypes); i := i + 1)
-		AddPiece(chest, objtypes[i], labels[i]);
+	for (i := 1; i <= len(itemlines); i := i + 1)
+		var words := SplitWords(itemlines[i]);
+		if (len(words) < 2)
+			continue;
+		endif
+		var objtype := CInt(words[1]);
+		if (!objtype)
+			continue;
+		endif
+		var combo := words[2];
+		var desc := JoinFrom(words, 3);
+		var label := desc + " - " + words[1] + " [" + ComboTag(combo, layer_num) + "]";
+		AddPiece(chest, objtype, label);
 	endfor
 	return 1;
 endfunction
 
 program missingequipment(who)
-	var objtypes;
-	var labels;
+	var cfg := ReadConfigFile(":alryc:missingequipment");
+	if (!cfg)
+		SendSysMessage(who, "missingequipment.cfg could not be loaded from :alryc:config.");
+		return 0;
+	endif
+
 	var madeCount := 0;
+	var totalItems := 0;
+	var layer_num;
+	foreach layer_num in GetConfigIntKeys(cfg)
+		var elem := FindConfigElem(cfg, layer_num);
+		if (!elem)
+			continue;
+		endif
+		var layername := GetConfigString(elem, "Name");
+		var itemlines := GetConfigStringArray(elem, "Item");
+		if (!itemlines)
+			continue;
+		endif
+		var layerhex := Hex(layer_num);
+		madeCount := madeCount + MakeLayerChest(who, layer_num, layerhex, layername, itemlines);
+		totalItems := totalItems + len(itemlines);
+	endforeach
 
-	// --- Layer 0x1 (Hand1 (1H weapon)): 95 missing items ---
-	objtypes := { 0x8FE, 0x902, 0xF48, 0xF5F, 0x13B6, 0x13B8, 0x13FF, 0x1441, 0x19BC, 0x19BD, 0x225A, 0x238C, 0x23A0, 0x2557, 0x255D, 0x255F, 0x2560, 0x2563, 0x256F, 0x2573, 0x2574, 0x2575, 0x2576, 0x2579, 0x257C, 0x257D, 0x257E, 0x257F, 0x26BB, 0x26BC, 0x26C0, 0x26C5, 0x26C6, 0x26CA, 0x2D21, 0x2D22, 0x2D23, 0x2D27, 0x2D2D, 0x2D2E, 0x2D2F, 0x2D33, 0x2D50, 0x48AF, 0x48B6, 0x48BB, 0x48BC, 0x48BD, 0x48BE, 0x48BF, 0x48C0, 0x48C1, 0x48C2, 0x48C3, 0x48C6, 0x48C7, 0x48CA, 0x48CB, 0xA289, 0xA28A, 0xA28B, 0xA291, 0xA292, 0xA293, 0xA341, 0xA342, 0xA345, 0xA346, 0xAEA4, 0xAEA5, 0xAEB3, 0xAEB4, 0xAEC2, 0xAEC3, 0xAED1, 0xAED2, 0xB4BF, 0xB4C0, 0xB4C1, 0xB4C2, 0xB4C7, 0xB4C8, 0xB4C9, 0xB4CA, 0xB4CB, 0xB4CC, 0xB4CD, 0xB4CE, 0xB4D4, 0xB4D5, 0xB4DA, 0xB4DB, 0xB4DD, 0xB4E0, 0xB4E1 };
-	labels := { "Bloodblade - 0x8FE", "Gargish Dagger - 0x902", "battle axe - 0xF48", "broadsword - 0xF5F", "scimitar - 0x13B6", "long sword - 0x13B8", "katana - 0x13FF", "cutlass - 0x1441", "Halloween Mask - 0x19BC", "Halloween Mask - 0x19BD", "Bard Spell Book - 0x225A", "book of bushido - 0x238C", "book of ninjitsu - 0x23A0", "lizardman's mace - 0x2557", "ratman axe - 0x255D", "skeleton axe - 0x255F", "skeleton scimitar - 0x2560", "terathan mace - 0x2563", "smyth hammer - 0x256F", "magic sword - 0x2573", "magic sword - 0x2574", "magic sword - 0x2575", "magic sword - 0x2576", "pick - 0x2579", "sword - 0x257C", "longsword - 0x257D", "shortsword - 0x257E", "war mace - 0x257F", "bone harvester - 0x26BB", "scepter - 0x26BC", "lance - 0x26C0", "bone harvester - 0x26C5", "scepter - 0x26C6", "lance - 0x26CA", "Assassin Spike - 0x2D21", "Leafblade - 0x2D22", "War Cleaver - 0x2D23", "Radiant Scimitar - 0x2D27", "Assassin Spike - 0x2D2D", "Leafblade - 0x2D2E", "War Cleaver - 0x2D2F", "Radiant Scimitar - 0x2D33", "Spell weaving book - 0x2D50", "Gargoyle Cleaver SO - 0x48AF", "Gargoyle ButchersKn - 0x48B6", "Gargoyle Katana SOU - 0x48BB", "Gargoyle KrissKnife - 0x48BC", "Gargoyle KrissKnife - 0x48BD", "Gargoyle WarFork EA - 0x48BE", "Gargoyle WarFork EA - 0x48BF", "Gargoyle WarHammer - 0x48C0", "Gargoyle WarHammer - 0x48C1", "Gargoyle Maul EAST - 0x48C2", "Gargoyle Maul SOUTH - 0x48C3", "Gargoyle Scythe SOU - 0x48C6", "Gargoyle BoneHarves - 0x48C7", "Gargoyle Pike SOUTH - 0x48CA", "Gargoyle Lance SOUT - 0x48CB", "Barbed Whip - 0xA289", "Barbed Whip - 0xA28A", "Barbed Whip - 0xA28B", "Barbed Whip - 0xA291", "Spiked Whip - 0xA292", "Bladed Whip - 0xA293", "skull_sword_south - 0xA341", "skull_sword_east - 0xA342", "gargoyle_skull_swor - 0xA345", "gargoyle_skull_swor - 0xA346", "Paladin Hammer - 0xAEA4", "Paladin Fork - 0xAEA5", "Paladin Hammer - 0xAEB3", "Paladin Fork - 0xAEB4", "Paladin Hammer - 0xAEC2", "Paladin Fork - 0xAEC3", "Paladin Hammer - 0xAED1", "Paladin Fork - 0xAED2", "Tachi - 0xB4BF", "Tachi - 0xB4C0", "Escrima - 0xB4C1", "Escrima - 0xB4C2", "Tanto - 0xB4C7", "Tanto - 0xB4C8", "Gargish Tanto - 0xB4C9", "Gargish Tanto - 0xB4CA", "Gargish Otsuchi - 0xB4CB", "Gargish Otsuchi - 0xB4CC", "Gargish Bokuto - 0xB4CD", "Gargish Bokuto - 0xB4CE", "Skull_Blade - 0xB4D4", "Skull_Blade - 0xB4D5", "Skull_Mace - 0xB4DA", "Skull_Mace - 0xB4DB", "Skull_Crossbow - 0xB4DD", "Skull_Glaive_G - 0xB4E0", "Skull_Glaive_G - 0xB4E1" };
-	madeCount := madeCount + MakeLayerChest(who, "0x1", "Hand1 (1H weapon)", objtypes, labels);
-
-	// --- Layer 0x2 (Hand2 (2H weapon/shield)): 107 missing items ---
-	objtypes := { 0x908, 0xF44, 0xF46, 0xF4A, 0xF4C, 0xF4D, 0xF6B, 0x1647, 0x1BC7, 0x2554, 0x2555, 0x2556, 0x2558, 0x2559, 0x255A, 0x255B, 0x255C, 0x2561, 0x2562, 0x2564, 0x2565, 0x2566, 0x2567, 0x2568, 0x2569, 0x256A, 0x256B, 0x256C, 0x256D, 0x256E, 0x2570, 0x2571, 0x2572, 0x2577, 0x2578, 0x257A, 0x257B, 0x26BE, 0x26C7, 0x26C8, 0x26C9, 0x27A3, 0x27EE, 0x2D28, 0x2D34, 0x406D, 0x4075, 0x4201, 0x4202, 0x4203, 0x4204, 0x4206, 0x4207, 0x4208, 0x4209, 0x420A, 0x4229, 0x422A, 0x48B0, 0x48B1, 0x48B2, 0x48B3, 0x48B4, 0x48B5, 0x48C4, 0x48C5, 0x48C8, 0x48C9, 0x48CC, 0x48CD, 0x48CE, 0x48CF, 0x48D0, 0x7817, 0x7818, 0xA343, 0xA344, 0xA347, 0xA348, 0xA40B, 0xA649, 0xA64A, 0xA767, 0xA768, 0xA769, 0xA76A, 0xA772, 0xA7C3, 0xA7C4, 0xA831, 0xA832, 0xA916, 0xAEA6, 0xAEB5, 0xAEC4, 0xAED3, 0xAF2D, 0xB1DF, 0xB1E0, 0xB4C3, 0xB4C4, 0xB4C5, 0xB4C6, 0xB4D6, 0xB4D7, 0xB4DE, 0xB4DF };
-	labels := { "Gargish Talwar - 0x908", "hatchet - 0xF44", "executioner's axe - 0xF46", "axe - 0xF4A", "double axe - 0xF4C", "bardiche - 0xF4D", "torch%es% - 0xF6B", "light source - 0x1647", "scale shield - 0x1BC7", "daemon sword - 0x2554", "ettin hammer - 0x2555", "liche's staff - 0x2556", "lizardman's spear - 0x2558", "ogre's club - 0x2559", "ophidian staff - 0x255A", "ophidian bardiche - 0x255B", "orc club - 0x255C", "terathan staff - 0x2561", "terathan spear - 0x2562", "troll axe - 0x2564", "troll maul - 0x2565", "frost troll club - 0x2566", "orc lord battleaxe - 0x2567", "orc mage staff - 0x2568", "bone mage staff - 0x2569", "scale shield - 0x256A", "magic staff - 0x256B", "magic staff - 0x256C", "magic staff - 0x256D", "magic staff - 0x256E", "hatchet - 0x2570", "horseman's bow - 0x2571", "javelin - 0x2572", "naginata - 0x2577", "no-dachi - 0x2578", "spear - 0x257A", "spear - 0x257B", "pike - 0x26BE", "bladed staff - 0x26C7", "pike - 0x26C8", "double bladed staff - 0x26C9", "Tessen - 0x27A3", "Tessen - 0x27EE", "Ornate Axe - 0x2D28", "Ornate Axe - 0x2D34", "Dual Pointed Spear - 0x406D", "Gargish Talwar - 0x4075", "Gargish Kite Shield - 0x4201", "Small Plate Shield - 0x4202", "Medium Plate Shield - 0x4203", "Large Plate Shield - 0x4204", "Gargish Kite Shield - 0x4206", "Gargish Wooden Shie - 0x4207", "Large Plate Shield - 0x4208", "Medium Plate Shield - 0x4209", "Small Plate Shield - 0x420A", "Gargish Chaos Shiel - 0x4229", "Gargish Order Shiel - 0x422A", "Gargoyle BattleAxe - 0x48B0", "Gargoyle BattleAxe - 0x48B1", "GargoyleAxe East - 0x48B2", "GargoyleAxe South - 0x48B3", "Gargoyle Bardich EA - 0x48B4", "Gargoyle Bardich SO - 0x48B5", "Gargoyle Scythe EAS - 0x48C4", "Gargoyle Scythe EAS - 0x48C5", "Gargoyle Pike EAST - 0x48C8", "Gargoyle Pike EAST - 0x48C9", "Gargoyle Tessen EAS - 0x48CC", "Gargoyle Tessen SOU - 0x48CD", "Gargoyle Tekagi EAS - 0x48CE", "Gargoyle Tekagi SOU - 0x48CF", "Gargoyle Daisho EAS - 0x48D0", "Shield_Vice - 0x7817", "Shield_Virtue - 0x7818", "skull_staff_south - 0xA343", "skull_staff_east - 0xA344", "gargoyle_skull_staf - 0xA347", "gargoyle_skull_staf - 0xA348", "Weapon_Bottle - 0xA40B", "Shield_Pirate - 0xA649", "Shield_Pirate - 0xA64A", "wand - 0xA767", "wand - 0xA768", "Lantern_on - 0xA769", "Lantern_off - 0xA76A", "Orb - 0xA772", "candycane_staff - 0xA7C3", "candycane_staff - 0xA7C4", "Shield_Hildebrandt - 0xA831", "Shield_Hildebrandt - 0xA832", "Shortbow - 0xA916", "Kite_Shield_Air - 0xAEA6", "Kite_Shield_Water - 0xAEB5", "Kite_Shield_Earth - 0xAEC4", "Kite_Shield_Fire - 0xAED3", "Weapon_Bottle - 0xAF2D", "victor blackthorn s - 0xB1DF", "victor blackthorn s - 0xB1E0", "Bo Staff - 0xB4C3", "Bo Staff - 0xB4C4", "Yari - 0xB4C5", "Yari - 0xB4C6", "Skull_Spear - 0xB4D6", "Skull_Spear - 0xB4D7", "Skull_Axe - 0xB4DE", "Skull_Axe - 0xB4DF" };
-	madeCount := madeCount + MakeLayerChest(who, "0x2", "Hand2 (2H weapon/shield)", objtypes, labels);
-
-	// --- Layer 0x3 (Shoes): 17 missing items ---
-	objtypes := { 0x170C, 0x170E, 0x1710, 0x2653, 0x2654, 0x2655, 0x2656, 0x26AF, 0x2795, 0x27E0, 0x2B12, 0x2B13, 0x7819, 0xA28D, 0xA28E, 0xA294, 0xA296 };
-	labels := { "boots - 0x170C", "sandals - 0x170E", "shoes - 0x1710", "waraji - 0x2653", "waraji - 0x2654", "jester shoes - 0x2655", "jester shoes - 0x2656", "Arcane Thigh Boots - 0x26AF", "Tabi Boots (tall) - 0x2795", "Tabi Boots (tall) - 0x27E0", "Solaretes of Sacri - 0x2B12", "Solaretes of Sacri - 0x2B13", "Shoes_Jester - 0x7819", "Holiday_Boots_South - 0xA28D", "Holiday_Boots_East - 0xA28E", "Holiday_Gargoyle_Ta - 0xA294", "Holiday_Gargoyle_Ta - 0xA296" };
-	madeCount := madeCount + MakeLayerChest(who, "0x3", "Shoes", objtypes, labels);
-
-	// --- Layer 0x4 (Pants): 37 missing items ---
-	objtypes := { 0x152F, 0x25E4, 0x25E5, 0x2649, 0x264A, 0x264D, 0x264E, 0x264F, 0x2650, 0x2651, 0x2652, 0x278A, 0x2791, 0x27D5, 0x27D7, 0x27DC, 0x2B78, 0x2FC9, 0x2FCA, 0x316F, 0x317F, 0x3180, 0x404D, 0x4055, 0x405D, 0x5074, 0x5075, 0x5086, 0x5087, 0x7824, 0x7825, 0x7826, 0x7827, 0x782C, 0x9EF7, 0x9EF8, 0xA7DB };
-	labels := { "short pants - 0x152F", "spiked shorts - 0x25E4", "spiked shorts - 0x25E5", "jester pants - 0x2649", "jester pants - 0x264A", "haidate - 0x264D", "haidate - 0x264E", "kobakama - 0x264F", "kobakama - 0x2650", "ninja pants - 0x2651", "ninja pants - 0x2652", "Leather Haidate - 0x278A", "Leather Ninja Pants - 0x2791", "Leather Haidate - 0x27D5", "Mail Haidate - 0x27D7", "Leather Ninja Pants - 0x27DC", "Hide Pants - 0x2B78", "leaf tonlet pants - 0x2FC9", "leaf tonlet kilt - 0x2FCA", "Hide Pants - 0x316F", "leaf tonlet pants - 0x317F", "leaf tonlet kilt - 0x3180", "Gargoyle Armor Leat - 0x404D", "Gargoyle Armor Plat - 0x4055", "Gargoyle Armor Ston - 0x405D", "gargoyle_leather_le - 0x5074", "gargoyle_leather_le - 0x5075", "gargoyle_clothing_l - 0x5086", "gargoyle_clothing_l - 0x5087", "Pants_Long_Tiger_H - 0x7824", "Pants_Short_Tiger_H - 0x7825", "Skirt_Long_Tiger_H - 0x7826", "Skirt_Short_Tiger_H - 0x7827", "Pants_Long_Turtle_H - 0x782C", "Pants_Wedding_south - 0x9EF7", "Pants_Wedding_east - 0x9EF8", "Legs_Leather_Arcane - 0xA7DB" };
-	madeCount := madeCount + MakeLayerChest(who, "0x4", "Pants", objtypes, labels);
-
-	// --- Layer 0x5 (Shirt): 30 missing items ---
-	objtypes := { 0x1533, 0x1EFE, 0x25E6, 0x25E7, 0x25E8, 0x25E9, 0x25EA, 0x25EB, 0x2659, 0x265A, 0x265B, 0x265C, 0x265D, 0x265E, 0x265F, 0x2660, 0x2661, 0x2662, 0x2663, 0x2664, 0x2665, 0x2666, 0x2667, 0x2668, 0x2FBB, 0x2FBC, 0x2FBD, 0x2FBE, 0x9EFB, 0x9EFC };
-	labels := { "elven tunic - 0x1533", "fancy shirt - 0x1EFE", "amazon harness - 0x25E6", "amazon  harness - 0x25E7", "elite harness - 0x25E8", "elite harness - 0x25E9", "checkered shirt - 0x25EA", "checkered shirt - 0x25EB", "amazon armor - 0x2659", "amazon armor - 0x265A", "amazon armor - 0x265B", "amazon armor - 0x265C", "amazon armor - 0x265D", "amazon armor - 0x265E", "shirt - 0x265F", "shirt - 0x2660", "shirt - 0x2661", "shirt - 0x2662", "shirt - 0x2663", "shirt - 0x2664", "shirt - 0x2665", "shirt - 0x2666", "ninja shirt - 0x2667", "ninja shirt - 0x2668", "elven shirt Male - 0x2FBB", "elven shirt Male - 0x2FBC", "elven shirt - 0x2FBD", "elven shirt - 0x2FBE", "Shirt_Tux_south - 0x9EFB", "Shirt_Tux_east - 0x9EFC" };
-	madeCount := madeCount + MakeLayerChest(who, "0x5", "Shirt", objtypes, labels);
-
-	// --- Layer 0x6 (Helm): 58 missing items ---
-	objtypes := { 0x1529, 0x155A, 0x1670, 0x1692, 0x16B8, 0x172E, 0x2306, 0x236C, 0x236D, 0x2645, 0x2646, 0x268B, 0x268C, 0x268D, 0x268E, 0x268F, 0x2690, 0x2691, 0x2692, 0x269D, 0x269E, 0x26A1, 0x26A2, 0x26A3, 0x26A4, 0x2B10, 0x2B11, 0x2B72, 0x3169, 0x3172, 0x4B9E, 0x4B9F, 0x4BA0, 0x781A, 0x7828, 0x782D, 0x9EF9, 0x9EFA, 0x9F3F, 0x9F40, 0x9F47, 0x9F48, 0xA1C7, 0xA1C8, 0xA28F, 0xA290, 0xA410, 0xA411, 0xA42B, 0xA42C, 0xA7DE, 0xA7DF, 0xAE9D, 0xAEAC, 0xAEBB, 0xAECA, 0xB2C7, 0xB40A };
-	labels := { "horned helmet - 0x1529", "horned helmet - 0x155A", "plate helmet - 0x1670", "helmet - 0x1692", "winged helmet - 0x16B8", "jester's cap - 0x172E", "flower garland - 0x2306", "kabuto - 0x236C", "kabuto - 0x236D", "dragon helm - 0x2645", "dragon helm - 0x2646", "hachimaki - 0x268B", "hachimaki - 0x268C", "kabuto - 0x268D", "kabuto - 0x268E", "kabuto mempo - 0x268F", "kabuto mempo - 0x2690", "leather cap - 0x2691", "leather cap - 0x2692", "robin hood cap - 0x269D", "robin hood cap - 0x269E", "feathered mask - 0x26A1", "feathered mask - 0x26A2", "ninja mask - 0x26A3", "ninja mask - 0x26A4", "Helm of Spiritualit - 0x2B10", "Helm of Spiritualit - 0x2B11", "Vulture Helm - 0x2B72", "Vulture Helm - 0x3169", "M_Elven_Glasses - 0x3172", "15AnnRobe EAST - 0x4B9E", "15AnnRobeGargoyle S - 0x4B9F", "15AnnRobeGargoyle E - 0x4BA0", "Hat_Chef - 0x781A", "Helm_Tiger_H - 0x7828", "Helm_Turtle_H - 0x782D", "Hat_Wedding_TopHat_ - 0x9EF9", "Hat_Wedding_TopHat_ - 0x9EFA", "Vale_Haunted_South - 0x9F3F", "Vale_Haunted_East - 0x9F40", "Hat_Wedding_Haunted - 0x9F47", "Hat_Wedding_Haunted - 0x9F48", "Khal_Ankur_Mask_eas - 0xA1C7", "Khal_Ankur_Mask_sou - 0xA1C8", "Holiday_Hat_south - 0xA28F", "Holiday_Hat_east - 0xA290", "Hood_Assassin - 0xA410", "Hood_Mage - 0xA411", "Hat_Bake Kitsune_So - 0xA42B", "Hat_Bake Kitsune_Ea - 0xA42C", "Helmet_Ringmail - 0xA7DE", "Helmet_Leather_Stud - 0xA7DF", "Close_Helmet_Air - 0xAE9D", "Close_Helmet_Water - 0xAEAC", "Close_Helmet_Earth - 0xAEBB", "Close_Helmet_Fire - 0xAECA", "Dragon_Helm_H - 0xB2C7", "Mushroom_Hat - 0xB40A" };
-	madeCount := madeCount + MakeLayerChest(who, "0x6", "Helm", objtypes, labels);
-
-	// --- Layer 0x7 (Gloves): 42 missing items ---
-	objtypes := { 0x144C, 0x1534, 0x2643, 0x2644, 0x2677, 0x2678, 0x2679, 0x267A, 0x26B0, 0x2792, 0x27DD, 0x2B0C, 0x2B0D, 0x2B6A, 0x2B75, 0x2FC6, 0x3161, 0x316C, 0x317C, 0x404B, 0x404C, 0x4053, 0x4054, 0x405B, 0x405C, 0x507A, 0x507B, 0x507E, 0x507F, 0x5084, 0x5085, 0xA7D9, 0xA7E0, 0xAEA0, 0xAEAA, 0xAEAF, 0xAEB9, 0xAEBE, 0xAEC8, 0xAECD, 0xAED7, 0xB2CB };
-	labels := { "chainmail gloves - 0x144C", "elven gloves - 0x1534", "dragon gloves - 0x2643", "dragon gloves - 0x2644", "kote gloves - 0x2677", "kote gloves - 0x2678", "kote gloves - 0x2679", "kote gloves - 0x267A", "Arcane Gloves - 0x26B0", "Leather Ninja Mitts - 0x2792", "Leather Ninja Mitts - 0x27DD", "Gauntlets of Valor - 0x2B0C", "Gauntlets of Valor - 0x2B0D", "Elven Plate Gloves - 0x2B6A", "Hide Gloves - 0x2B75", "leaf tonlet gloves - 0x2FC6", "Elven Plate Gloves - 0x3161", "Hide Gloves - 0x316C", "leaf tonlet gloves - 0x317C", "Gargoyle Armor Leat - 0x404B", "Gargoyle Armor Leat - 0x404C", "Gargoyle Armor Plat - 0x4053", "Gargoyle Armor Plat - 0x4054", "Gargoyle Armor Ston - 0x405B", "Gargoyle Armor Ston - 0x405C", "gargoyle_plate_kilt - 0x507A", "gargoyle_plate_kilt - 0x507B", "gargoyle_leather_ki - 0x507E", "gargoyle_leather_ki - 0x507F", "gargoyle_clothing_k - 0x5084", "gargoyle_clothing_k - 0x5085", "Gloves_Leather_Arca - 0xA7D9", "Gloves_Chainmail - 0xA7E0", "Platemail_Gloves_Ai - 0xAEA0", "Kilt_G_Air - 0xAEAA", "Platemail_Gloves_Wa - 0xAEAF", "Kilt_G_Water - 0xAEB9", "Platemail_Gloves_Ea - 0xAEBE", "Kilt_G_Earth - 0xAEC8", "Platemail_Gloves_Fi - 0xAECD", "Kilt_G_Fire - 0xAED7", "Dragon_Hands_H - 0xB2CB" };
-	madeCount := madeCount + MakeLayerChest(who, "0x7", "Gloves", objtypes, labels);
-
-	// --- Layer 0x8 (Ring): 1 missing items ---
-	objtypes := { 0x4212 };
-	labels := { "Gargish Ring - 0x4212" };
-	madeCount := madeCount + MakeLayerChest(who, "0x8", "Ring", objtypes, labels);
-
-	// --- Layer 0x9 (Talisman): 13 missing items ---
-	objtypes := { 0x1096, 0x2F58, 0x2F59, 0x2F5A, 0x2F5B, 0x9E25, 0x9E26, 0x9E27, 0x9E28, 0x9E29, 0x9E2A, 0x9E2B, 0x9E2C };
-	labels := { "Talisman - 0x1096", "Talisman - 0x2F58", "Talisman - 0x2F59", "Talisman - 0x2F5A", "Talisman - 0x2F5B", "talisman_tailoring - 0x9E25", "talisman_alchemy - 0x9E26", "talisman_cooking - 0x9E27", "talisman_inscriptio - 0x9E28", "talisman_fletching - 0x9E29", "talisman_blacksmith - 0x9E2A", "talisman_tinkering - 0x9E2B", "talisman_carpentry - 0x9E2C" };
-	madeCount := madeCount + MakeLayerChest(who, "0x9", "Talisman", objtypes, labels);
-
-	// --- Layer 0xA (Neck): 35 missing items ---
-	objtypes := { 0x2B0E, 0x2B0F, 0x2B69, 0x2B76, 0x2FC7, 0x316D, 0x317D, 0x4D0A, 0x4D0B, 0x7829, 0xA1C9, 0xA1CA, 0xA349, 0xA34A, 0xA40F, 0xA42A, 0xAE9E, 0xAEA7, 0xAEAD, 0xAEB6, 0xAEBC, 0xAEC5, 0xAECB, 0xAED4, 0xB297, 0xB2CC, 0xB4BA, 0xB4BB, 0xB4BC, 0xB4BD, 0xB4BE, 0xB4D2, 0xB4D3, 0xB4D8, 0xB4D9 };
-	labels := { "Gorget of Truth - 0x2B0E", "Gorget of Truth - 0x2B0F", "Elven Plate Gorget - 0x2B69", "Hide Gorget - 0x2B76", "leaf tonlet gorget - 0x2FC7", "Hide Gorget - 0x316D", "leaf tonlet gorget - 0x317D", "Gargish Necklace - 0x4D0A", "Gargish Necklace - 0x4D0B", "Collar_Tiger_H - 0x7829", "Khal Ankur Gargish - 0xA1C9", "Khal Ankur Gargish - 0xA1CA", "octopus_necklace_hu - 0xA349", "octopus_necklace_ga - 0xA34A", "Neck_Mempo - 0xA40F", "fellowship_medallio - 0xA42A", "Platemail_Gorget_Ai - 0xAE9E", "Gargish_Necklace_Ai - 0xAEA7", "Platemail_Gorget_Wa - 0xAEAD", "Gargish_Necklace_Wa - 0xAEB6", "Platemail_Gorget_Ea - 0xAEBC", "Gargish_Necklace_Ea - 0xAEC5", "Platemail_Gorget_Fi - 0xAECB", "Gargish_Necklace_Fi - 0xAED4", "Shamrock Medallion - 0xB297", "Dragon_Neck_H - 0xB2CC", "Raptor Claw Necklac - 0xB4BA", "Animal Teeth Neckla - 0xB4BB", "Seashell Necklace - 0xB4BC", "Skull Necklace - 0xB4BD", "Anchor Necklace - 0xB4BE", "Crossed Swords Neck - 0xB4D2", "Garlic Necklace - 0xB4D3", "Giant Gem Necklace - 0xB4D8", "Tribal Necklace - 0xB4D9" };
-	madeCount := madeCount + MakeLayerChest(who, "0xA", "Neck", objtypes, labels);
-
-	// --- Layer 0xC (Waist): 7 missing items ---
-	objtypes := { 0x153C, 0x2B68, 0xA40C, 0xA40D, 0xA40E, 0xA7E2, 0xAF05 };
-	labels := { "half apron - 0x153C", "Elven Plate Belt - 0x2B68", "Belt_Mace - 0xA40C", "Belt_Sword - 0xA40D", "Belt_Dagger - 0xA40E", "Demon_Belt - 0xA7E2", "Leather_Reagent_Bel - 0xAF05" };
-	madeCount := madeCount + MakeLayerChest(who, "0xC", "Waist", objtypes, labels);
-
-	// --- Layer 0xD (Chest): 47 missing items ---
-	objtypes := { 0x144D, 0x1519, 0x1528, 0x1532, 0x155B, 0x1644, 0x1671, 0x1691, 0x1693, 0x16B5, 0x16B6, 0x16B7, 0x2642, 0x2671, 0x2672, 0x2673, 0x277B, 0x27C6, 0x2B08, 0x2B09, 0x4049, 0x404A, 0x4051, 0x4052, 0x4059, 0x405A, 0x5072, 0x5073, 0x5078, 0x5079, 0x5082, 0x5083, 0x7822, 0x7823, 0x782A, 0x782B, 0xA7DC, 0xA7DD, 0xAEA1, 0xAEA8, 0xAEB0, 0xAEB7, 0xAEBF, 0xAEC6, 0xAECE, 0xAED5, 0xB2C8 };
-	labels := { "platemail - 0x144D", "elven scalemail - 0x1519", "elven platemail - 0x1528", "elven leather tunic - 0x1532", "platemail - 0x155B", "elven tunic - 0x1644", "platemail - 0x1671", "chainmail tunic - 0x1691", "elven platemail - 0x1693", "bone tunic - 0x16B5", "platemail - 0x16B6", "studded tunic - 0x16B7", "dragon breastplate - 0x2642", "do-maru - 0x2671", "do-maru - 0x2672", "haramaki-do - 0x2673", "Leather Do - 0x277B", "Leather Do - 0x27C6", "Breastplate of Jus - 0x2B08", "Breastplate of Jus - 0x2B09", "Gargoyle Armor Leat - 0x4049", "Gargoyle Armor Leat - 0x404A", "Gargoyle Armor Plat - 0x4051", "Gargoyle Armor Plat - 0x4052", "Gargoyle Armor Ston - 0x4059", "Gargoyle Armor Ston - 0x405A", "gargoyle_leather_ch - 0x5072", "gargoyle_leather_ch - 0x5073", "gargoyle_plate_ches - 0x5078", "gargoyle_plate_ches - 0x5079", "gargoyle_clothing_c - 0x5082", "gargoyle_clothing_c - 0x5083", "Chest_Tiger_H_M - 0x7822", "Chest_Tiger_H_F - 0x7823", "Chest_Turtle_H_M - 0x782A", "Chest_Turtle_H_F - 0x782B", "Jacket_Leather_Arca - 0xA7DC", "Jacket_Leather_Arca - 0xA7DD", "Platemail_Chest_Air - 0xAEA1", "Chest_G_Air - 0xAEA8", "Platemail_Chest_Wat - 0xAEB0", "Chest_G_Water - 0xAEB7", "Platemail_Chest_Ear - 0xAEBF", "Chest_G_Earth - 0xAEC6", "Platemail_Chest_Fir - 0xAECE", "Chest_G_Fire - 0xAED5", "Dragon_Chest_H - 0xB2C8" };
-	madeCount := madeCount + MakeLayerChest(who, "0xD", "Chest", objtypes, labels);
-
-	// --- Layer 0xE (Wrist): 2 missing items ---
-	objtypes := { 0x4211, 0xB1C0 };
-	labels := { "Gargish Bracelet - 0x4211", "Corsage - 0xB1C0" };
-	madeCount := madeCount + MakeLayerChest(who, "0xE", "Wrist", objtypes, labels);
-
-	// --- Layer 0x11 (Tunic): 12 missing items ---
-	objtypes := { 0x1542, 0x230F, 0xA700, 0xA701, 0xA702, 0xA703, 0xB298, 0xB299, 0xB29A, 0xB29B, 0xB29C, 0xB29D };
-	labels := { "body sash - 0x1542", "formal shirt - 0x230F", "Sash_Award_Empty - 0xA700", "Sash_Award_1thirdfu - 0xA701", "Sash_Award_2thirdfu - 0xA702", "Sash_Award_Full - 0xA703", "holiday santa sash - 0xB298", "holiday santa sash - 0xB299", "holiday body sash - 0xB29A", "holiday body sash - 0xB29B", "holiday body sash - 0xB29C", "holiday body sash - 0xB29D" };
-	madeCount := madeCount + MakeLayerChest(who, "0x11", "Tunic", objtypes, labels);
-
-	// --- Layer 0x12 (Ears): 2 missing items ---
-	objtypes := { 0xA295, 0xB448 };
-	labels := { "Holiday_Gargoyle_ea - 0xA295", "Mushroom_Earrings - 0xB448" };
-	madeCount := madeCount + MakeLayerChest(who, "0x12", "Ears", objtypes, labels);
-
-	// --- Layer 0x13 (Arms): 34 missing items ---
-	objtypes := { 0x152A, 0x266C, 0x266D, 0x266E, 0x2674, 0x2B0A, 0x2B0B, 0x2B6C, 0x2B77, 0x2FC8, 0x3163, 0x316E, 0x317E, 0x4048, 0x4050, 0x4058, 0x5070, 0x5071, 0x5076, 0x5077, 0x5080, 0x5081, 0x782E, 0xA7DA, 0xA7E1, 0xAE9F, 0xAEAB, 0xAEAE, 0xAEBA, 0xAEBD, 0xAEC9, 0xAECC, 0xAED8, 0xB2C9 };
-	labels := { "elven platemail arm - 0x152A", "kote sleeves - 0x266C", "kote sleeves - 0x266D", "kote sleeves - 0x266E", "haramaki-do - 0x2674", "Arms of Compassion - 0x2B0A", "Arms of Compassion - 0x2B0B", "Elven Arm Plate - 0x2B6C", "Hide Paldrons - 0x2B77", "leaf tonlet paldron - 0x2FC8", "Elven Arm Plate - 0x3163", "Hide Paldrons - 0x316E", "leaf tonlet paldron - 0x317E", "Gargoyle Armor Male - 0x4048", "Gargoyle Armor Plat - 0x4050", "Gargoyle Armor Ston - 0x4058", "gargoyle_leather_ar - 0x5070", "gargoyle_leather_ar - 0x5071", "gargoyle_plate_arms - 0x5076", "gargoyle_plate_arms - 0x5077", "gargoyle_clothing_a - 0x5080", "gargoyle_clothing_a - 0x5081", "Bracers_Turtle_H - 0x782E", "Arms_Leather_Arcane - 0xA7DA", "Arms_Chainmail - 0xA7E1", "Platemail_Arms_Air - 0xAE9F", "Arms_G_Air - 0xAEAB", "Platemail_Arms_Wate - 0xAEAE", "Arms_G_Water - 0xAEBA", "Platemail_Arms_Eart - 0xAEBD", "Arms_G_Earth - 0xAEC9", "Platemail_Arms_Fire - 0xAECC", "Arms_G_Fire - 0xAED8", "Dragon_Arms_H - 0xB2C9" };
-	madeCount := madeCount + MakeLayerChest(who, "0x13", "Arms", objtypes, labels);
-
-	// --- Layer 0x14 (Cape): 11 missing items ---
-	objtypes := { 0x2309, 0x230A, 0x26AD, 0x2B03, 0x2B05, 0xA413, 0xAEA3, 0xAEB2, 0xAEC1, 0xAED0, 0xAF9E };
-	labels := { "fur cape - 0x2309", "fur cape - 0x230A", "Arcane Cloak - 0x26AD", "Quiver of Infinity - 0x2B03", "Cloak of Humility - 0x2B05", "elegant quarter clo - 0xA413", "Cloak_Air - 0xAEA3", "Cloak_Water - 0xAEB2", "Cloak_Earth - 0xAEC1", "Cloak_Fire - 0xAED0", "Backpack - 0xAF9E" };
-	madeCount := madeCount + MakeLayerChest(who, "0x14", "Cape", objtypes, labels);
-
-	// --- Layer 0x16 (Robe): 49 missing items ---
-	objtypes := { 0x1F00, 0x230D, 0x230E, 0x25EC, 0x25ED, 0x25EE, 0x25EF, 0x25F0, 0x25F1, 0x267B, 0x267C, 0x267D, 0x267E, 0x267F, 0x2680, 0x2681, 0x2682, 0x2684, 0x2685, 0x2686, 0x2687, 0x26AE, 0x279E, 0x279F, 0x27E9, 0x27EA, 0x4B9D, 0x7816, 0x781E, 0x7821, 0x9985, 0x9986, 0x9EEF, 0x9EF0, 0xA0AB, 0xA0AC, 0xA0AD, 0xA0AE, 0xA0AF, 0xA2CA, 0xA2CB, 0xA412, 0xB1DE, 0xB2B7, 0xB2B8, 0xB2B9, 0xB2BA, 0xB4E2, 0xB4E3 };
-	labels := { "fancy dress - 0x1F00", "gilded dress - 0x230D", "gilded dress - 0x230E", "robe - 0x25EC", "robe - 0x25ED", "robe - 0x25EE", "robe - 0x25EF", "death shroud - 0x25F0", "death shroud - 0x25F1", "fancy dress - 0x267B", "fancy dress - 0x267C", "fancy dress - 0x267D", "fancy dress - 0x267E", "long dress - 0x267F", "long dress - 0x2680", "kimono - 0x2681", "kimono - 0x2682", "hooded shroud - 0x2684", "death shroud - 0x2685", "death shroud - 0x2686", "hooded shroud - 0x2687", "Arcane Robe - 0x26AE", "Kimono Male Dress - 0x279E", "Kimono Female Dres - 0x279F", "Kimono Male Dress - 0x27E9", "Kimono Female Dres - 0x27EA", "15AnnRobe SOUTH - 0x4B9D", "Robe_BG SOUTH - 0x7816", "Dress_Red_Human_Fem - 0x781E", "Dress_Wed_Human_Fem - 0x7821", "Epaulets Human SOUT - 0x9985", "Epaulets Gargoyle S - 0x9986", "Dress_Wedding_Human - 0x9EEF", "Dress_Wedding_Human - 0x9EF0", "Robe_Store_01 - 0xA0AB", "Robe_Store_02 - 0xA0AC", "Robe_Store_03 - 0xA0AD", "Robe_Store_04 - 0xA0AE", "Robe_Store_05 - 0xA0AF", "Parrot_Epaulets_Sou - 0xA2CA", "Parrot_Epaulets_Eas - 0xA2CB", "tabard - 0xA412", "victor blackthorn t - 0xB1DE", "Robe_Dragon_H - 0xB2B7", "Robe_Dragon_G - 0xB2B8", "Dress_Dragon_H - 0xB2B9", "Dress_Dragon_G - 0xB2BA", "Epaulets Human - 0xB4E2", "Epaulets Gargoyle - 0xB4E3" };
-	madeCount := madeCount + MakeLayerChest(who, "0x16", "Robe", objtypes, labels);
-
-	// --- Layer 0x17 (Skirt): 8 missing items ---
-	objtypes := { 0x1538, 0x230B, 0x230C, 0x25F2, 0x25F3, 0x781B, 0x781C, 0x781D };
-	labels := { "kilt - 0x1538", "fur surong - 0x230B", "fur surong - 0x230C", "knee skirt - 0x25F2", "knee skirt - 0x25F3", "Kilt01 - 0x781B", "Kilt02 - 0x781C", "Kilt03 - 0x781D" };
-	madeCount := madeCount + MakeLayerChest(who, "0x17", "Skirt", objtypes, labels);
-
-	// --- Layer 0x18 (Legs): 16 missing items ---
-	objtypes := { 0x2647, 0x2B06, 0x2B07, 0x2B6B, 0x3162, 0x507C, 0x507D, 0xAEA2, 0xAEA9, 0xAEB1, 0xAEB8, 0xAEC0, 0xAEC7, 0xAECF, 0xAED6, 0xB2CA };
-	labels := { "dragon leggings - 0x2647", "Legs of Honor - 0x2B06", "Legs of Honor - 0x2B07", "Elven Plate Legs - 0x2B6B", "Elven Plate Legs - 0x3162", "gargoyle_plate_legs - 0x507C", "gargoyle_plate_legs - 0x507D", "Platemail_Legs_Air - 0xAEA2", "Legs_G_Air - 0xAEA9", "Platemail_Legs_Wate - 0xAEB1", "Legs_G_Water - 0xAEB8", "Platemail_Legs_Eart - 0xAEC0", "Legs_G_Earth - 0xAEC7", "Platemail_Legs_Fire - 0xAECF", "Legs_G_Fire - 0xAED6", "Dragon_Legs_H - 0xB2CA" };
-	madeCount := madeCount + MakeLayerChest(who, "0x18", "Legs", objtypes, labels);
-
-	SendSysMessage(who, "Dropped " + madeCount + " layer sort chests at your feet -- 623 total unsorted items across all layers. Equip each, sort into WORKING/DOESN'T RENDER/OTHER, then save.");
+	SendSysMessage(who, "Dropped " + madeCount + " layer sort chests at your feet -- " + totalItems + " total unsorted items across all layers. Equip each, sort into NON-RENDERING/PAPERDOLL ONLY/IN-WORLD ONLY/WRONG GRAPHIC/CORRECT, then save.");
 	LogCommand(who, GetProcess(GetPid()).name);
 	return 1;
 endprogram

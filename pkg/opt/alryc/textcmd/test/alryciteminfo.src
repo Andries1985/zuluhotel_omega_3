@@ -1987,7 +1987,7 @@ function ChangeToGMCounterpart( who , item )
 	//item was worn, otherwise drop it in the same container, otherwise the same spot.
 	var oldcontainer := item.container;
 	var wearer := 0;
-	if( oldcontainer and oldcontainer.isa( POLCLASS_CHARACTER ) )
+	if( oldcontainer and oldcontainer.isa( POLCLASS_MOBILE ) )
 		wearer := oldcontainer;
 	endif
 

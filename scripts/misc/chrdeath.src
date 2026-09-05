@@ -16,6 +16,7 @@ include "include/camouflage";
 include "include/constants/propids";
 include "include/packets";
 include ":areas:include/areafunctions";
+include ":admin:include/adminpanel";
 
 program chrdeath(corpse,ghost) 
 
@@ -33,6 +34,14 @@ program chrdeath(corpse,ghost)
 
 	var plyr := 0;
 	var killer:=getobjproperty(ghost,"KilledBy");
+	// Guard against the unresolved error{errortext=...} struct GetObjProperty
+	// returns for deaths never routed through code that sets "KilledBy" (raw
+	// ApplyRawDamage() kills, environmental/staff kills, etc.) -- otherwise
+	// that error struct gets stored as-is into "Killer" below and into the
+	// admin panel's death history.
+	if(killer == error)
+		killer := "";
+	endif
 	foreach character in EnumerateOnlineCharacters()
 		if (character.name == killer)
 			plyr := character;
@@ -59,6 +68,12 @@ program chrdeath(corpse,ghost)
 	SetObjProperty( ghost, "deathx", dx);
 	SetObjProperty( ghost, "deathy", dy);
 	SetObjProperty( ghost, "deathz", dz);
+
+	var killer_serial := GetObjProperty(ghost, "KilledBySerial");
+	if(killer_serial == error)
+		killer_serial := 0;
+	endif
+	RecordCharacterDeath( ghost, killer, killer_serial, dx, dy, dz );
 
 	if( GetObjProperty( ghost, PROPID_MOBILE_GUARD_KILLED ) )
 		SetObjProperty( ghost, "Killer", "Guards");

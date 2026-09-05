@@ -3,6 +3,7 @@ use uo;
 use polsys;
 include ":staff:include/staff";
 include "include/NameChecker";
+include ":admin:include/adminpanel";
 
 program setobjectname(who, text)
 
@@ -30,6 +31,7 @@ endif
 
 LogCommand(who, GetProcess(GetPid()).name, what.name+"/"+what.serial, "Renamed To: "+text);
 SendSysMessage(who, "Old Name: "+what.name, 3, 40);
+RecordCharacterNameChange(what, text, ADMINPANEL_INITIATOR_STAFF);
 SetName(what, text);
 SendSysMessage(who, "New Name: "+what.name, 3, 53);
 IncRevision(what);

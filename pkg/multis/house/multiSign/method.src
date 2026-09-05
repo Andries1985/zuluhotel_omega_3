@@ -3,8 +3,10 @@
 
 use uo;
 use os;
+use math;
 use guilds;
 use datafile;
+use cliloc;
 
 include "include/housing";
 //include ":multistatichousing:settings";
@@ -1437,7 +1439,18 @@ function GuildRankHasHousePermission(sign, byref mobile, perm_key)
 	return granted;
 endfunction
 
+// 2026-09-03: a ban used to only ever be consulted by AddBan() (to stop
+// re-banning the same person) and the bantile walk-on trigger (which only
+// fires if the player physically steps on a placed bantile item) -- nothing
+// gated the actual permission-bearing actions (secure, teleporter, lockdown,
+// house_manager) on it, so a banned player who got inside some other way
+// (a missing bantile, a house teleporter, etc.) still had full friend/rank
+// access to everything HasHousePermission() gates. Checked first and
+// short-circuits to 0 so a ban overrides every other grant.
 exported function HasHousePermission(sign, byref mobile, perm_key)
+	if(IsBanned(sign, mobile))
+		return 0;
+	endif
 	if(IsFullHouseManager(sign, mobile))
 		return 1;
 	endif
@@ -1448,6 +1461,111 @@ exported function HasHousePermission(sign, byref mobile, perm_key)
 		return 1;
 	endif
 	return 0;
+endfunction
+
+// Items that mark a ban tile -- if a candidate drop spot has one of these on
+// it, dropping a banned player there could immediately re-trigger a ban and
+// loop. Keep in sync with the bantile Item blocks in config/itemdesc.cfg.
+var BANTILE_OBJTYPES		:= { 0x18889, 0x260FC };
+Const BANTILE_DROP_SEARCH_RADIUS	:= 6;
+
+// 2026-09-03: moved here from house/walkOn.src and staticHousing/bantile/
+// walkOn.src (which had byte-for-byte duplicate copies of this and its two
+// helpers) so BootBannedFromHouse() below -- and any future ban-enforcement
+// call site -- can reuse the same safe-drop-spot search instead of a third
+// copy. Both walkOn.src files now call sign.GetBanTileDropSpot() instead of
+// their own private version.
+exported function GetBanTileDropSpot(sign)
+	var footage := GetObjProperty(sign, "footage");
+
+	var xmin;
+	var xmax;
+	var ymax;
+	foreach box in footage
+		if(!xmin || box[1] < xmin)
+			xmin := box[1];
+		endif
+		if(!xmax || box[4] > xmax)
+			xmax := box[4];
+		endif
+		if(!ymax || box[5] > ymax)
+			ymax := box[5];
+		endif
+	endforeach
+
+	if(xmax && ymax)
+		var sespot := FindBanTileDropNear(xmax + 1, ymax + 1, sign.realm);
+		if(sespot)
+			return sespot;
+		endif
+	endif
+
+	// South-east corner had nothing walkable within the search radius --
+	// try the south-west corner with the same pattern before giving up.
+	if(xmin && ymax)
+		var swspot := FindBanTileDropNear(xmin - 1, ymax + 1, sign.realm);
+		if(swspot)
+			return swspot;
+		endif
+	endif
+
+	// Neither corner turned up a walkable, non-bantile spot -- fall back to
+	// the south-west corner's raw coordinates rather than the sign (which
+	// can sit inside the envelope or under another ban tile).
+	var fallbackx := sign.x;
+	var fallbacky := sign.y;
+	if(xmin && ymax)
+		fallbackx := xmin - 1;
+		fallbacky := ymax + 1;
+	endif
+	var fallback := GetStandingHeight(fallbackx, fallbacky, -128, sign.realm);
+	if(fallback.errortext)
+		return struct{ x := fallbackx, y := fallbacky, z := sign.z };
+	endif
+	return struct{ x := fallbackx, y := fallbacky, z := fallback.z };
+endfunction
+
+function FindBanTileDropNear(dropx, dropy, realm)
+	var radius := 0;
+	while(radius <= BANTILE_DROP_SEARCH_RADIUS)
+		var best;
+		var bestdist := -1;
+		foreach spot in GetStandingCoordinates(dropx, dropy, radius, -128, 127, realm)
+			if(IsBanTileSpot(spot.x, spot.y, spot.z, realm))
+				continue;
+			endif
+			var dist := Abs(spot.x - dropx) + Abs(spot.y - dropy);
+			if(bestdist == -1 || dist < bestdist)
+				best := spot;
+				bestdist := dist;
+			endif
+		endforeach
+		if(best)
+			return best;
+		endif
+		radius := radius + 1;
+	endwhile
+	return 0;
+endfunction
+
+function IsBanTileSpot(x, y, z, realm)
+	foreach thing in ListItemsAtLocation(x, y, z, realm)
+		if(thing.objtype in BANTILE_OBJTYPES)
+			return 1;
+		endif
+	endforeach
+	return 0;
+endfunction
+
+// 2026-09-03: used by ban-enforcement call sites outside the bantile walk-on
+// trigger (secure containers, lockdown/release, ...) -- anywhere a banned
+// player manages to interact with something gated by HasHousePermission()
+// despite being physically inside the house, this boots them the same way
+// stepping on a bantile would.
+exported function BootBannedFromHouse(sign, byref mobile)
+	var dropspot := GetBanTileDropSpot(sign);
+	MoveObjectToLocation( mobile, dropspot.x, dropspot.y, dropspot.z, sign.realm, MOVEOBJECT_FORCELOCATION );
+	SendSysMessageCL(mobile, 501340, color := 33); // You have been banned from this house.
 endfunction
 
 // The following commented out functions need to be modified to work with the Distro house pricing system.

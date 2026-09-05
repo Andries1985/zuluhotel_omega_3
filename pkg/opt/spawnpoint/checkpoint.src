@@ -109,6 +109,8 @@ program CheckPoint( point )
 			"Item Group":	ret := CreateSpawnPointItemFromGroup( point, pt_data );
 			"Container":	ret := CreateSpawnPointContainer( point, pt_data );
 			"Custom NPC":   ret := CreateSpawnPointNpc( point, pt_data[2], pt_data );
+			"Quest Item":	ret := CreateSpawnPointItem( point, pt_data );
+			"Quest NPC":	ret := CreateSpawnPointNpc( point, pt_data[2], pt_data );
 		endcase
 		
 		if( ret == error )
@@ -759,6 +761,7 @@ function ValidatePointSpawns( byref point, byref pt_data )
 				case( pt_data[1] )
 					"Item":
 					"Item Group":
+					"Quest Item":
 						if( !obj.container )
 							new.append(serial);
 						endif

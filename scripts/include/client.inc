@@ -17,7 +17,11 @@
 
 
 // DEBUG MODE
-const DEBUG_MODE	:= 0;
+// Temporarily flipped 2026-09-04 for a local single-player combat-damage test (quality
+// mechanic verification). This is a shard-wide flag included by many packages, not just
+// combat - flip back to 0 and recompile once testing is done, before this is anywhere
+// near a populated shard.
+const DEBUG_MODE	:= 1;
 
 
 ////

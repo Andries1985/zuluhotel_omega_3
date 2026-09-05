@@ -11,6 +11,7 @@ include "include/omegacache_utils";
 include ":guilds:include/guildconstants";
 include ":guilds:items/guildstone/companions";
 include ":houseExtras:settings";
+include ":statichousing:include/staticHousing";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;
@@ -336,14 +337,6 @@ endfunction
 ///////////////////
 
 function GetHouseValueOfSign (sign)
-	//static houses:
-	// if (sign.objtype == 0x17060)
-	// 	if (GetObjProperty (sign, "housevalue"))
-	// 		return CINT (GetObjProperty (sign, "housevalue"));
-	// 	endif
-	// 	return 1;
-	// endif
-
 	// if (GetObjProperty (sign, "housevalue"))
 	// 	return CINT (GetObjProperty (sign, "housevalue"));
 	// endif
@@ -951,17 +944,29 @@ endfunction
 ///////////////////
 
 function FindHouseSign (character)
+	// Recognizes both this package's own sign (0xFFF4, bounded via the
+	// "homeinfo" cprop below) and real static-housing signs, delegated to
+	// :statichousing:'s own FindStaticHouseForLocation/IsLocationWithinStaticHouseSign
+	// -- the live implementation for that package's actual sign objtypes and its
+	// "footage" cprop. Previously this case-matched a nonexistent 0x17060 "static"
+	// sign objtype plus only two of static housing's real sign graphics, checked
+	// against this package's "homeinfo" property, which static housing signs never
+	// have -- so it could never actually match a static house.
+	var staticsign := FindStaticHouseForLocation(character.x, character.y, character.z, character.realm);
+	if (staticsign)
+		if (staticsign.IsAFriend (character) or character.cmdlevel)
+			return staticsign;
+		endif
+	endif
+
 	foreach item in ListObjectsInBox (character.x-32, character.y-32, -128, character.x+32, character.y+32, +127, character.realm)
-		case (item.objtype)
-			0x17060:
-			0x0bd2:
-			0x0bd0:
-				if (item.IsAFriend (character) or character.cmdlevel)
-					if (IsInsideTheHouse (character, item) )
-						return item;
-					endif
+		if (item.objtype == 0xFFF4)
+			if (item.IsAFriend (character) or character.cmdlevel)
+				if (IsInsideTheHouse (character, item) )
+					return item;
 				endif
-		endcase
+			endif
+		endif
 	endforeach
 	return 0;
 endfunction
@@ -995,16 +1000,20 @@ endfunction
 //  tries to find a house sign that covers the given location
 ///////////////////
 
-function FindHouseSignAtLocation (x, y, realm)
+// Signature gained a `z` param (previously (x, y, realm)) since static-housing
+// detection needs it; had zero callers repo-wide as of 2026-09-03 so this was safe.
+function FindHouseSignAtLocation (x, y, z, realm)
+	var staticsign := FindStaticHouseForLocation(x, y, z, realm);
+	if (staticsign)
+		return staticsign;
+	endif
+
 	foreach item in ListObjectsInBox (x-32, y-32, -128, x+32, y+32, +127, realm)
-		case (item.objtype)
-			0x17060:
-			0x0bd2:
-			0x0bd0:
-				if (IsLocationWithinHouseSign (item, x, y, realm))
-					return item;
-				endif
-		endcase
+		if (item.objtype == 0xFFF4)
+			if (IsLocationWithinHouseSign (item, x, y, realm))
+				return item;
+			endif
+		endif
 	endforeach
 	return 0;
 endfunction

@@ -9,6 +9,7 @@ include "include/random";
 include "include/itemutil";
 include "include/attributes";
 include "include/skillpoints";
+include ":questpkg:questfishing";
 
 //Dead code - superseded by PickCaughtFish()/ResolveFishCatch() below.
 //function RandomFish(character)
@@ -196,7 +197,14 @@ endfunction
 //
 //location is pre-computed by the caller (see PickCaughtFish); deep_water is passed separately
 //since createfish()'s carve-into-steaks math cares specifically about deep water.
-function ResolveFishCatch(character, fish_amount, equipped, deep_water, location, tool_bon, rare_divisor, legendary_divisor, thepoints)
+//
+//big_lure: when set, a Big lure is charged on the catching gear -- rolls the trophy weight
+//twice and keeps the higher result instead of replacing RollTrophyWeight()'s own Min() with
+//a Max() (which tested too easy at 37% for the 180-stone quest threshold; best-of-two lands
+//closer to 8%). Callers pre-adjust rare_divisor/legendary_divisor themselves for a charged
+//Rare/Legendary lure (see fishing.src) rather than this function reading gear directly, so
+//it stays usable by the net (fishingnet.src), which never carries a lure.
+function ResolveFishCatch(character, fish_amount, equipped, deep_water, location, tool_bon, rare_divisor, legendary_divisor, thepoints, big_lure := 0)
 
 	var currentskill := GetEffectiveSkill(character, SKILLID_FISHING);
 	if (Random(currentskill) + 1 >= 100)
@@ -249,9 +257,21 @@ function ResolveFishCatch(character, fish_amount, equipped, deep_water, location
 	//trophy eligibility is species rarity, not an independent "big fish" roll). caughtitem is 0
 	//if createfish() carved it into steaks instead (player opted into AutoCarveRareFish), in
 	//which case there's nothing left to tag.
+	var trophy_weight := 0;
 	if (caughtitem and caught_tier != "Regular")
-		SetObjProperty(caughtitem, "TrophyWeight", RollTrophyWeight());
+		trophy_weight := RollTrophyWeight();
+		if (big_lure)
+			trophy_weight := Max(trophy_weight, RollTrophyWeight());
+		endif
+		SetObjProperty(caughtitem, "TrophyWeight", trophy_weight);
 	endif
+
+	Print("[Fishing] "+character.name+" caught tier="+caught_tier+" objtype="+CStr(caught_objtype)+" weight="+CStr(trophy_weight)+" big_lure="+CStr(big_lure));
+
+	//Counts toward any active "catch fish" quest objective regardless of tier/carve choice -
+	//trophy_weight stays 0 (so weight-gated objectives correctly don't fire) unless a Rare/
+	//Legendary catch was actually kept as an item above.
+	QP_ProcessFishCatch(character, "CatchFish", caught_tier, trophy_weight);
 
 endfunction
 

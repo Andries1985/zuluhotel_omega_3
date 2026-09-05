@@ -19,6 +19,7 @@ include "include/constants";
 include "include/mobileutil";
 include "include/managers";
 include ":spawnpoint:customnpc";
+include ":questpkg:questspawncheck";
 
 const MIN_CMD_LEVEL			:= 4;    //CMDLEVEL_ADMIN;
 const REF_X				:= 0;
@@ -34,6 +35,8 @@ const KEYRETURN_TYPECHANGE_CONTAINER	:= 8;
 const KEYRETURN_TYPECHANGE_CUSTOMNPC	:= 9;
 const CHECKBOXINDEX_TILES				:= 10;
 const KEYRETURN_TYPECHANGE_ITEMGROUP	:= 11;
+const KEYRETURN_TYPECHANGE_QUESTITEM	:= 12;
+const KEYRETURN_TYPECHANGE_QUESTNPC	:= 13;
 var data;
 var layout;
 var pt_data;
@@ -110,19 +113,23 @@ program SpawnPoint( who, point )
 			  "",		// Trigger Tile checkbox	layout[57]
 
 			  "page 2",
-			  "resizepic "	+ (REF_X+241) + " " + (REF_Y+0)   + " " + GUMPID_BKGND_STONESLAB + " 100 140",
+			  "resizepic "	+ (REF_X+241) + " " + (REF_Y+0)   + " " + GUMPID_BKGND_STONESLAB + " 100 180",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+10)  + " " + Cint(COLOR_GREEN) + " 22",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+30)  + " " + Cint(COLOR_GREEN) + " 23",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+50)  + " " + Cint(COLOR_GREEN) + " 24",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+70)  + " " + Cint(COLOR_GREEN) + " 25",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+90)  + " " + CInt(COLOR_GREEN) + " 39",
 			  "text "	+ (REF_X+265) + " " + (REF_Y+110) + " " + CInt(COLOR_GREEN) + " 42",
+			  "text "	+ (REF_X+265) + " " + (REF_Y+130) + " " + CInt(COLOR_GREEN) + " 44",
+			  "text "	+ (REF_X+265) + " " + (REF_Y+150) + " " + CInt(COLOR_GREEN) + " 45",
 			  "button "	+ (REF_X+245) + " " + (REF_Y+10)  + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_NPC,
 			  "button "	+ (REF_X+245) + " " + (REF_Y+30)  + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_GROUP,
 			  "button "	+ (REF_X+245) + " " + (REF_Y+50)  + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_ITEM,
 			  "button "	+ (REF_X+245) + " " + (REF_Y+70)  + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_CONTAINER,
 		      "button "	+ (REF_X+245) + " " + (REF_Y+90)  + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_CUSTOMNPC,
-		      "button "	+ (REF_X+245) + " " + (REF_Y+110) + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_ITEMGROUP
+		      "button "	+ (REF_X+245) + " " + (REF_Y+110) + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_ITEMGROUP,
+		      "button "	+ (REF_X+245) + " " + (REF_Y+130) + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_QUESTITEM,
+		      "button "	+ (REF_X+245) + " " + (REF_Y+150) + " " + GUMPID_BUTTON_CIRCLE_GRAY_0 + " " + GUMPID_BUTTON_CIRCLE_GRAY_1 + " 1 0 " + KEYRETURN_TYPECHANGE_QUESTNPC
 		};
 		
 	data := {	"Spawn Point Config",
@@ -168,6 +175,8 @@ program SpawnPoint( who, point )
 			""};
 
 	data[43] := "Item Group";
+	data[44] := "Quest Item";
+	data[45] := "Quest NPC";
 
 	while( !ShowPointGump( who, point ) )
 		SleepMs(2);
@@ -251,6 +260,20 @@ function ShowPointGump( byref who, byref point )
 				data[12] := "(data)";
 				temp1	 := "container";
 				temp2	 := "Destroy";
+				break;
+
+		"Quest Item":	data[6]  := "Objtype:";
+				data[11] := "Appear Amt:";
+				data[12] := "(dice roll)";
+				temp1	 := "item";
+				temp2	 := "Destroy";
+				break;
+
+		"Quest NPC":	data[6]  := "Template:";
+				data[11] := "Wander Range:";
+				data[12] := "(sqrs)";
+				temp1	 := "npc";
+				temp2	 := "Kill";
 				break;
 	endcase
 		
@@ -423,7 +446,26 @@ function ShowPointGump( byref who, byref point )
 		endif
 		SetObjProperty( point, PROPID_SPAWNPOINT_SETTING, pt_data );
 		return 0;
-			
+
+	elseif( keyret[KEYRETURN_TYPECHANGE_QUESTITEM] )
+	    EraseCustomPropsandItems(who, point);
+		pt_data[1] := "Quest Item";
+		if( !IsValidTemplate( who, pt_data[1], pt_data[2] ) )
+			pt_data[2] := "nil";
+		endif
+		SetObjProperty( point, PROPID_SPAWNPOINT_SETTING, pt_data );
+		return 0;
+
+	elseif( keyret[KEYRETURN_TYPECHANGE_QUESTNPC] )
+	    EraseCustomPropsandItems(who, point);
+		pt_data[1] := "Quest NPC";
+		if( !IsValidTemplate( who, pt_data[1], pt_data[2] ) )
+			pt_data[2] := "nil";
+		endif
+		pt_data[5] := Cint(pt_data[5]);
+		SetObjProperty( point, PROPID_SPAWNPOINT_SETTING, pt_data );
+		return 0;
+
 	else
 		if( !IsValidTemplate( who, pt_data[1], pt_data[2] ) )
 			pt_data[2] := "nil";
@@ -462,7 +504,24 @@ function IsValidTemplate( who, type, template )
 	if( !type || template == "nil")
 		return 1;
 	endif
-	
+
+	// Quest content (ritual altars/quest-givers, self-identified by their
+	// own RitualAltarQuestId/QuestGiverTag CProps -- see
+	// pkg/opt/questpkg/include/questspawncheck.inc) is only allowed on the
+	// dedicated Quest Item/Quest NPC types below, so .questmap's live scan
+	// can always find it there. Checked up front for every OTHER type so a
+	// GM can't accidentally place a quest altar/giver as a plain
+	// Item/NPC/Container/Custom NPC and have it go untracked.
+	if( type != "Quest Item" && type != "Quest NPC" )
+		if( (type == "Item" || type == "Container") && QuestAltarQuestIdForTemplate( template ) )
+			SendSysMessage( who, "That's quest content -- use the Quest Item type instead." );
+			return 0;
+		elseif( (type == "NPC" || type == "Custom NPC" || type == "Group") && QuestGiverTagForTemplate( template ) )
+			SendSysMessage( who, "That's a quest-giver template -- use the Quest NPC type instead." );
+			return 0;
+		endif
+	endif
+
 	var cfg;
 	var key;
 	case( type )
@@ -488,26 +547,40 @@ function IsValidTemplate( who, type, template )
 				endif
 				break;
 
+		"Quest Item":
+			if( !QuestAltarQuestIdForTemplate( template ) )
+				SendSysMessage( who, "That isn't a recognized quest altar template." );
+				return 0;
+			endif
+			return 1;
+
+		"Quest NPC":
+			if( !QuestGiverTagForTemplate( template ) )
+				SendSysMessage( who, "That isn't a recognized quest-giver template." );
+				return 0;
+			endif
+			return 1;
+
 		default:	return 1;
-		
+
 	endcase
-	
+
 	if( !key )
 		SendSysMessage( who, "Invalid template." );
 		return 0;
 	endif
-	
+
 	if( !cfg )
 		return 1;
 	endif
-	
+
 	if( !cfg[key] )
 		SendSysMessage( who, "Invalid template." );
 		return 0;
 	else
 		return 1;
 	endif
-	
+
 endfunction
 
 /*

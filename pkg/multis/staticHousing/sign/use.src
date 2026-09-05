@@ -1358,6 +1358,9 @@ function addenemy( sign, who )
 	elseif(targetchr == who)
 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
 		return 0;
+	elseif(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+		return 0;
 	elseif(!targetchr.acct)
 		SendSysMessageCL(who, 1062040, color := 33); // You cannot ban that.
 		return 0;

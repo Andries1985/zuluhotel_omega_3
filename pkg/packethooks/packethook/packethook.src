@@ -233,7 +233,12 @@ exported Function OnTarget( who, byref Packet )
 		newpacket.SendPacket(who);
 		SendSysMessage(who, "You can't target players in a NO-PK zone!", FONT_NORMAL, 2595 );
 		EraseObjProperty( who , "#Casting" );
-		return CORE_IGNORE;
+		// Neutering the target serial (rather than CORE_IGNORE-dropping the packet)
+		// still lets core resolve any script blocked in a Target() call, just with
+		// nothing selected -- returning CORE_IGNORE here silently drops the packet
+		// entirely, which never wakes that blocked Target() call and hangs it forever.
+		packet.SetInt32(7, 0);
+		return CORE_OK;
 	endif
 	if((!who.cmdlevel && obj.isa(POLCLASS_MOBILE) && !obj.isa(POLCLASS_NPC) && obj != who) && (ATKisRPer != DEFisRPer))
 		var newpacket := CreatePacket(0x6C, 0x13);
@@ -243,7 +248,8 @@ exported Function OnTarget( who, byref Packet )
 		newpacket.SendPacket(who);
 		SendSysMessage(who, "Only players with the [RPer] tag can attack each other!", FONT_NORMAL, 2595 );
 		EraseObjProperty( who , "#Casting" );
-		return CORE_IGNORE;
+		packet.SetInt32(7, 0);
+		return CORE_OK;
 	endif
 	
 	return CORE_OK;

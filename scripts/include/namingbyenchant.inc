@@ -162,6 +162,21 @@ function SetNameByEnchant( item , cursed := 5 )
 		RenameBySkill( item , skillid , cursed );
 	endif
 	
+	//Swift/Mystical/Stygian is a signature tier color, but every RenameBy* call above
+	//(hitscript/onhitscript/dmg/ar/ArBonus/immunity/regen/stat/skill) can silently
+	//overwrite item.color via its own Color/CColor field if that mod happens to define
+	//one - so a Swift/Mystical/Stygian item that also picks up e.g. a slayer type loses
+	//its tier color to the slayer's color. Reapply EnchantColor here, after everything
+	//else, so the tier color always wins. StaticColor below is a deliberate GM/admin
+	//lock and still takes priority over this.
+	var enchanted_tier := GetObjProperty( item , "Enchanted" );
+	if( enchanted_tier == "Swift" or enchanted_tier == "Mystical" or enchanted_tier == "Stygian" )
+		var tier_color := Cint( GetObjProperty( item , "EnchantColor" ) );
+		if( tier_color )
+			item.color := tier_color;
+		endif
+	endif
+
 	var static_color := Cint( GetObjProperty( item , "StaticColor" ) );
 	if( static_color )
 		item.color := static_color;

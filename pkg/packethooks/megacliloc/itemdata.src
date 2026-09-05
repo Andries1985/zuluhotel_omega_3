@@ -62,6 +62,23 @@ program itemdata(parms)
 			allprops.append(prop);
 		endif
 	endif
+	var luretier := GetObjProperty(xObject, "LureTier");
+	if(luretier)
+		var lurecharges := CInt(GetObjProperty(xObject, "LureCharges"));
+		prop.clilocid := 1070722; // Nothing - raw text
+		//Colors match the FishTier convention below - yellow Rare, orange Legendary; Big
+		//isn't a catch tier so it gets its own cyan rather than reusing either.
+		if (luretier == "Rare")
+			prop.values := array {"<basefont color=#FFFF00>Rare Lure ("+lurecharges+" charges left)</basefont>"};
+		elseif (luretier == "Legendary")
+			prop.values := array {"<basefont color=#FFA500>Legendary Lure ("+lurecharges+" charges left)</basefont>"};
+		elseif (luretier == "Big")
+			prop.values := array {"<basefont color=#00FFFF>Big Lure ("+lurecharges+" charges left)</basefont>"};
+		else
+			prop.values := array {luretier+" Lure ("+lurecharges+" charges left)"};
+		endif
+		allprops.append(prop);
+	endif
 	var fishtier := GetObjProperty(xObject, "FishTier");
 	if(fishtier)
 		prop.clilocid := 1070722; // Nothing - raw text

@@ -6,6 +6,7 @@ use uo;
 use cfgfile;
 use os;
 use basicio;
+use polsys;
 
 include "include/random";
 include "include/client";
@@ -91,6 +92,37 @@ program use_fishpole( character , pole )
 	//blade mid-session takes effect on the very next catch instead of requiring a restart.
 	var equipped	:= whatequipped(character, pole);
 
+	//Lure state is likewise re-read every cast, same reasoning as tool_bon above - applying
+	//a lure mid-session (or running one out) takes effect on the very next catch.
+	var lure_tier	:= GetObjProperty( pole , "LureTier" );
+	var rare_div	:= 500;
+	var legendary_div := 5000;
+	var big_lure	:= 0;
+	if (lure_tier == "Rare")
+		rare_div := 50;
+	elseif (lure_tier == "Legendary")
+		legendary_div := 500;
+	elseif (lure_tier == "Big")
+		big_lure := 1;
+	endif
+
+	//Charge is spent on every cast, whether or not it lands a fish - matches OSI's Hook
+	//convention (50 uses of the effect, not 50 successful catches).
+	if (lure_tier)
+		var lure_charges := CInt(GetObjProperty(pole, "LureCharges")) - 1;
+		if (lure_charges > 0)
+			SetObjProperty(pole, "LureCharges", lure_charges);
+		else
+			EraseObjProperty(pole, "LureTier");
+			EraseObjProperty(pole, "LureCharges");
+			SendSysmessage(character, "Your lure is spent.");
+		endif
+		//Keeps the pole's tooltip (charges remaining, or the lure line disappearing entirely
+		//once spent) in sync - see the IncRevision note in lure/use.src.
+		IncRevision(pole);
+		Print("[Lure] "+character.name+" cast pole with "+lure_tier+" lure, "+CStr(Max(lure_charges,0))+" charges left (rare_div="+CStr(rare_div)+" legendary_div="+CStr(legendary_div)+" big_lure="+CStr(big_lure)+")");
+	endif
+
 	Performaction(character, UACTION_FISHING);
 	PlaySoundEffect(character, SFX_SKILL_FISHING);
 
@@ -153,7 +185,7 @@ program use_fishpole( character , pole )
 			endif
 
 			SendSysmessage(character, "You catch a fish!");
-			ResolveFishCatch(character, fish_amount, equipped, deep_water, fishing_location, tool_bon, 500, 5000, thepoints);
+			ResolveFishCatch(character, fish_amount, equipped, deep_water, fishing_location, tool_bon, rare_div, legendary_div, thepoints, big_lure);
 		endif
 	else
 		SendSysMessage(character, "They don't seem to be biting.");

@@ -68,6 +68,7 @@ program use_trap( character, trap )
 	SetObjProperty(buoy, PROP_TRAP_LAST_BOB, now);
 	SetObjProperty(buoy, PROP_TRAP_BOB_COUNT, 0);
 	SetObjProperty(buoy, PROP_TRAP_CATCHES, array{});
+	SetObjProperty(buoy, PROP_TRAP_BIGBOOST, array{});
 
 	TrapBuoyRegister(buoy.serial);
 
