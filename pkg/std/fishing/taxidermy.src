@@ -1,0 +1,38 @@
+use uo;
+use os;
+
+include "fishing";
+
+program use_taxidermykit(character, kit)
+
+	if (!ReserveItem(kit))
+		return;
+	endif
+
+	SendSysmessage(character, "Target the fish or crustacean you wish to mount.");
+	var targetted := Target(character);
+
+	if (!targetted)
+		SendSysmessage(character, "Canceled.");
+		return;
+	endif
+
+	if (!targetted.isa(POLCLASS_ITEM))
+		SendSysmessage(character, "You can't mount that.");
+		return;
+	endif
+
+	if (targetted.container != character.backpack)
+		SendSysmessage(character, "That has to be in your backpack.");
+		return;
+	endif
+
+	if (!GetObjProperty(targetted, "TrophyWeight"))
+		SendSysmessage(character, "That's not a trophy-worthy catch.");
+		return;
+	endif
+
+	DestroyItem(kit);
+	CreateFishTrophy(character, targetted);
+
+endprogram

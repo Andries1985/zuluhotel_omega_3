@@ -7,6 +7,7 @@ use uo;
 use os;
 
 include ":containers:storageAreas";
+include ":house:utility";
 
 program textcmd_redeed( mobile )
 
@@ -48,6 +49,19 @@ program textcmd_redeed( mobile )
 	elseif( !targ.IsA( POLCLASS_ITEM ))
 		SendSysMessage( mobile, "You must select an item!" );
 		return 0;
+	endif
+
+	// Trash Can Redeed -- unrelated to the deed mechanism itself, folded in
+	// here from the retired carpentry .redeed command.
+	if( targ.objtype == 0x7007 )
+		if( !IsCowner( mobile, house ))
+			SendSysMessage( mobile, "You need to be the owner or co-owner to do that!" );
+			return 0;
+		else
+			DestroyItem( targ );
+			CreateItemInBackpack( mobile, 0x7009 );
+			return 1;
+		endif
 	endif
 
 	var owner_serial := GetObjProperty( targ, "DeedOwnerSerial" );

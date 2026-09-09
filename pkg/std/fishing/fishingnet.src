@@ -155,7 +155,7 @@ case (Random(6))
    	return 0x1451;
    endif
 5: if (GetEffectiveSkill(Character,SKILLID_FISHING)>149)
-	if(Random(10000==666))
+	if(Random(10000)==666)
 		return 0xcdbf;
 	endif
 	if (Random(16)==2)

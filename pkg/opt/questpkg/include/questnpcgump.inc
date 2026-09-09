@@ -57,6 +57,10 @@ function ShowQuestGiverGump(npc, who)
 
 			if(QP_IsQuestCompleted(who, questid) && !CInt(GetConfigString(elem, "Repeatable")))
 				GFTextLine(gump, 95, y, 999, GetConfigString(elem, "Name")+" (completed)");
+			elseif(!QP_IsQuestActive(who, questid) && !QP_IsQuestReadyToTurnIn(who, questid) && !QP_MeetsSkillGate(who, elem))
+				GFTextLine(gump, 95, y, 999, GetConfigString(elem, "Name")+" (requires "+CStr(CInt(GetConfigString(elem, "MinSkill")))+" skill)");
+			elseif(!QP_IsQuestActive(who, questid) && !QP_IsQuestReadyToTurnIn(who, questid) && QP_IsQuestOnCooldown(who, questid))
+				GFTextLine(gump, 95, y, 999, GetConfigString(elem, "Name")+" (ready again in "+QP_FormatCooldown(QP_CooldownRemaining(who, questid))+")");
 			else
 				var retval := QNPC_SELECT_OFFSET + CInt(questid);
 				GFAddButton(gump, 95, y, 4005, 4007, GF_CLOSE_BTN, retval);

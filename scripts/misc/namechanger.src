@@ -3,6 +3,7 @@ use uo;
 include ":mdgumps:include/gumps";
 include ":mdgumps:include/gumps_ex";
 include "include/NameChecker";
+include ":admin:include/adminpanel";
 
 program SendNameChangeGump(who, msg)
 
@@ -67,6 +68,7 @@ who.concealed := 0;
 if (newname == who.name);
 	SendSysMessage(who, "Your name is unchanged.", 3, 67);
 else
+	RecordCharacterNameChange(who, newname, ADMINPANEL_INITIATOR_PLAYER);
 	who.name := newname;
 	SendSysMessage(who, "Your name has been changed to "+who.name+".", 3, 67);
 endif

@@ -4,6 +4,7 @@ use uo;
 use os;
 use util;
 use cfgfile;
+use basicio;
 
 include "include/classes";
 include ":combat:hitscriptinc";
@@ -17,6 +18,8 @@ function OmegaAttack(attacker, defender)
 	var weapfile := ReadConfigFile( ":combat:itemdesc" );
 	var attackerweaponType := weapfile[attacker.weapon.objtype];
 
+	Print("[OmegaAttack] " + attacker.name + " weapon objtype=" + Hex(attacker.weapon.objtype) + " attribute=" + attacker.weapon.attribute + " attackerweaponType.Projectile=" + attackerweaponType.Projectile);
+
 //	var listofanim	:=	GetConfigIntArray( attackerweaponType, "Anim" );
 
 //	Print($"listofanim " +listofanim);
@@ -24,24 +27,34 @@ function OmegaAttack(attacker, defender)
 //	var Anim := listofanim[(Random(3)+1)];
 //	Print($"animation " +Anim);
 
-	if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY)
-		if (!checkForAndDecrementAmmunition( attacker, attackerweaponType))	
+	if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY || attackerweaponType.Projectile)
+		Print("[OmegaAttack] took RANGED branch");
+		if (!checkForAndDecrementAmmunition( attacker, attackerweaponType))
+			Print("[OmegaAttack] checkForAndDecrementAmmunition FAILED, aborting");
 			return;
 		endif
 		if (!ValidArcheryWeapon(attackerweaponType))
+			Print("[OmegaAttack] ValidArcheryWeapon FAILED, aborting -- ProjectileAnim=" + attackerweaponType.ProjectileAnim + " Anim=" + attackerweaponType.Anim + " hitSound=" + attackerweaponType.hitSound + " projectileSound=" + attackerweaponType.projectileSound + " hitscript=" + attackerweaponType.hitscript + " damage=" + attackerweaponType.damage + " Projectile=" + attackerweaponType.Projectile + " ProjectileType=" + attackerweaponType.ProjectileType);
 			return;
 		endif
 		PerformAction( attacker, attackerweaponType.Anim);
 		PlayArcheryAnimation(attacker, defender, attackerweaponType);
-		if(CheckHitChance(attacker, defender))
+		var hitResult := CheckHitChance(attacker, defender);
+		Print("[OmegaAttack] ranged CheckHitChance=" + hitResult);
+		if(hitResult)
 			if(attackerweaponType.HitSound)
 				PlaySoundEffect( attacker, attackerweaponType.ProjectileSound );
 				PlaySoundEffect( defender, attackerweaponType.ProjectileSound );
 			endif
 		else
+			if(attackerweaponType.MissSound)
+				PlaySoundEffect( attacker, attackerweaponType.MissSound );
+				PlaySoundEffect( defender, attackerweaponType.MissSound );
+			endif
 			return;
 		endif
 	else
+		Print("[OmegaAttack] took MELEE branch");
 		PerformAction( attacker, attackerweaponType.Anim);
 		if(CheckHitChance(attacker, defender))
 			if(attackerweaponType.HitSound)
@@ -164,6 +177,11 @@ endfunction
 
 
 function checkForAndDecrementAmmunition( who, weaponType )
+
+	Print("[checkForAndDecrementAmmunition] NonConsumingProjectile=" + GetObjProperty(who.weapon, "NonConsumingProjectile"));
+	if (GetObjProperty(who.weapon, "NonConsumingProjectile"))
+		return 1;
+	endif
 
 	var mypack := EnumerateItemsInContainer( who.backpack );
 	var expotions := {0xdc08, 0xdc09, 0xdc07, 0xff2f, 0xff30, 0xff31, 0xff32, 0xff33, 0xff34, 0xff35, 0xff36};

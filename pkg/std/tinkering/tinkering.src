@@ -499,7 +499,6 @@ function TryToMakeItem( character , resourceRequest , item )
 
 		itemname := element.Name;
 		deedname := element.Name;
-		//Print("Making Item: " + itemname );
 		give_deed := element.MakeDeed;
 
 		if( item in { 0x1085 , 0x1086 , 0x1087 , 0x1088 , 0x1089 , 0x108a , 0x1535 } )
@@ -535,15 +534,12 @@ function TryToMakeItem( character , resourceRequest , item )
 
 			var theitem;
 			var cprops := GetConfigStringArray( tinker_cfg[resourceRequest.objtype], "CProp" );
-			//var randomchance := Random(150);
-			var randomchance := Random(10);
-			Print("Random Chance Roll: " + randomchance + " while Excep Chance is: " + excep_ch);
+			var randomchance := Random(150);
 
 			if( GetObjProperty(character, "ForceExceptional") or (( randomchance < excep_ch ) && CheckSkill( character, SKILLID_TINKERING, excep_diff, 0 )) )
 
 				//Made something Exceptional
 				if( give_deed )
-					Print("Creating exceptional deed item: ");
 					var product_desc := GetItemDescriptor(CInt(give_deed));
 					ApplyMaterialPropertiesDeed(product_desc, namingResource, 1, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
@@ -552,7 +548,6 @@ function TryToMakeItem( character , resourceRequest , item )
 					IncRevision(theitem);
 				else
 					//Non Deed Item
-					Print("Creating exceptional Non Deed Item");
 					var product_desc := GetItemDescriptor(CInt(item));
 					ApplyMaterialProperties(product_desc, namingResource, 1, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );
@@ -568,9 +563,7 @@ function TryToMakeItem( character , resourceRequest , item )
 				endif
 			else
 				//Failed to make Exceptional, make normal item
-				Print("Creating normal deed item after failing exceptional");
 				if( give_deed )
-					Print("Creating normal deed item: " + give_deed );
 					var product_desc := GetItemDescriptor(CInt(give_deed));
 					ApplyMaterialPropertiesDeed(product_desc, namingResource, 0, character, SKILLID_TINKERING, deedname);
 					theitem := CreateItemInBackpack( character , product_desc );
@@ -579,7 +572,6 @@ function TryToMakeItem( character , resourceRequest , item )
 					IncRevision(theitem);
 				else
 					//Non Deed Item
-					Print("Creating Non Deed Normal Item");
 					var product_desc := GetItemDescriptor(CInt(item));
 					ApplyMaterialProperties(product_desc, namingResource, 0, character, SKILLID_TINKERING);
 					theitem := CreateItemInBackpack( character , product_desc );

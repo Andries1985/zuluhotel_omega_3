@@ -2,8 +2,6 @@ use uo;
 use os;
 use cfgfile;
 use cliloc;
-use basic;
-use basicio;
 
 include ":itemutils:itemUtil";
 include "include/string";
@@ -24,18 +22,14 @@ program Place_Deeded_Item ( who, deed )
 
 	var is_gm := CInt( who.cmdlevel ) > 0;
 
-	Print( "[deed/use] Place_Deeded_Item: objtype=" + Hex(deed.objtype) + " who=" + who.serial + " is_gm=" + is_gm );
-
 	var hsign := GetHouseSign(who);
 	//Sign stuff
 	if ( !hsign && !is_gm )
-		Print( "[deed/use] BLOCKED: not in a house" );
 		SendSysMessageCL(who, 500275, color := 33); // You can only build this in a house.
 		return 0;
 	endif
 
 	if ( hsign && !hsign.IsCoOwnerOrOwner( who ) && !is_gm )
-		Print( "[deed/use] BLOCKED: not owner/co-owner of house" );
 		SendSysMessageCL(who, 1152907, color := 33); // You must be owner or co-owner of a house to place addons in it.
 		return 0;
 	endif
@@ -91,24 +85,19 @@ function BuildandSendOrientGump ( who, deed, sign, targ )
 	//var element := FindConfigElem ( item_cfg, deed.objtype ),
 	//	buildCFG := GetConfigString ( element, "BuildCFG" );
 
-	Print( "[deed/use] objtype=" + Hex(deed.objtype) + " BuildCFG=" + buildCFG + " RetainColor=" + RetainColor );
-
 	if(!BuildCFG)
-		Print( "[deed/use] ERROR: no BuildCFG on itemdesc for objtype " + Hex(deed.objtype) );
 		SendSysMessageCL ( who, 500273, color := 33); // This add-on deed is blank.
 	return 0;
 	endif
 
 	var cfg	:= ReadConfigFile ( buildCFG );
     if ( cfg.errortext )
-        Print( "[deed/use] ERROR reading BuildCFG " + buildCFG + " -->" + cfg.errortext );
         SendSysMessage ( who, "Error reading config Build CFG -->"+cfg.errortext );
     return 0;
     endif
 
 	var cfg_elem := GetConfigIntKeys ( cfg );
 	var num_elem := CInt ( cfg_elem.Size() );
-	Print( "[deed/use] " + buildCFG + " has " + num_elem + " facing(s)" );
 	if ( num_elem == 1 )
 		BuildItem(who, deed, sign, targ, buildCFG, RetainColor, 1);
 	return 1;
@@ -166,7 +155,6 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
     endif
 	var cfg_elem := FindConfigElem ( cfg, direction );
 	var component := GetConfigStringArray ( cfg_elem, "Component" );
-	Print( "[deed/use] BuildItem direction=" + direction + " componentCount=" + len(component) );
 	var zed;
 	if(!targ.multi)
 		zed := GetHouseZoneBaseZLevel ( targ, sign );
@@ -206,8 +194,6 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 			endforeach
 		endif
 	endforeach
-
-	Print( "[deed/use] BuildItem gate check: outside=" + outside + " founddoor=" + founddoor + " founditem=" + founditem + " is_gm=" + is_gm );
 
 	var the_item, failed := 0;
 	if (outside == 0 && founddoor == 0 && founditem == 0 )
@@ -284,10 +270,8 @@ function BuildItem ( who, deed, sign, targ, buildCFG, RetainColor, direction )
 		// This corrects the lockdowns removed per part by the call to SetLockdownInfo.
         //SetObjProperty(sign, "RemainingLockdowns", GetObjProperty(sign, "RemainingLockdowns") + created_size);
 
-		Print( "[deed/use] BuildItem SUCCESS: placed " + created_size + " part(s), serials=" + the_serials );
 		DestroyItem ( deed );
 	else
-		Print( "[deed/use] BuildItem: player rejected placement (PlacedWell=No), destroying " + len(created) + " part(s)" );
 		destroy_parts ( created );
 		SendSysMessageCL ( who, 1042021, color := 33 ); // Cancelled
 	endif

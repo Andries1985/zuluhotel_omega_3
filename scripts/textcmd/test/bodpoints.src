@@ -1,0 +1,35 @@
+// Synopsis: Add bulk order reward points to a targeted player, for testing the rewards gump
+use uo;
+
+include ":bulkorders:bulkorder_ledger";
+
+program textcmd_bodpoints( who, amount_text )
+
+	if( !amount_text )
+		SendSysMessage( who, "Usage: .bodpoints <amount>" );
+		return 0;
+	endif
+
+	var amount := CInt( amount_text );
+	if( amount <= 0 )
+		SendSysMessage( who, "Amount must be a positive number." );
+		return 0;
+	endif
+
+	SendSysMessage( who, "Target who to give BOD reward points to." );
+	var targetted := Target( who );
+	if( !targetted )
+		SendSysMessage( who, "Canceled." );
+		return 0;
+	endif
+
+	if( !targetted.isa(POLCLASS_MOBILE) )
+		SendSysMessage( who, "That's not a valid target." );
+		return 0;
+	endif
+
+	BOD_AddPoints( targetted, amount );
+	SendSysMessage( who, "Added " + amount + " BOD reward points to " + targetted.name + ". New balance: " + BOD_GetPoints( targetted ) + ".", 3, 66 );
+	return 1;
+
+endprogram

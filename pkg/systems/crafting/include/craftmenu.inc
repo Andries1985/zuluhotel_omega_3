@@ -91,7 +91,7 @@ const CRAFTMENU_BTN_CATEGORY_BASE  := 910000; // + index into the categories lis
 // toggle (set 1 to get build-time timing in the server console).
 const CRAFTMENU_BACKDROP  := 5054;
 const CRAFTMENU_PANEL_BG  := 2624;
-const CRAFTMENU_DEBUG_ON  := 1;
+const CRAFTMENU_DEBUG_ON  := 0;
 
 const CRAFTMENU_SIDEBAR_BANK_SIZE  := 10; // categories per sidebar page (row 11 reserved for << >> nav)
 const CRAFTMENU_CATEGORY_PAGE_SIZE := 10; // recipes per selections-panel page (row 11 reserved for Prev/Next nav)

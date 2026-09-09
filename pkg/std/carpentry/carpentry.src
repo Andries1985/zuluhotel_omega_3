@@ -464,8 +464,7 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 			skill := 90;
 		endif
 
-		//Testing exceptional chance for deeds
-		var randomchance := Random(20);
+		var randomchance := Random(150);
 
 		var theitem;
 		var item_cfg := ReadConfigFile( ":*:itemdesc" );

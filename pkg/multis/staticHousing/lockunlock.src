@@ -98,6 +98,9 @@ program lockunlockitem (parms)
 
 	if (!house_sign.HasHousePermission(character, required_perm))
 		if (!character.cmdlevel)
+			if (house_sign.IsBanned(character))
+				house_sign.BootBannedFromHouse(character);
+			endif
 			return;
 		else
 			SendSysMessage(character, "Command level override");

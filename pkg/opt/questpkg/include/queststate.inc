@@ -73,6 +73,11 @@ function QP_SaveState(who, state)
 	return 1;
 endfunction
 
+// Quest id ranges (all quests share this one file/namespace, keep these in sync as new
+// batches get added -- a repeated integer key silently shadows the earlier one):
+//   1-99    existing/core (ritual quests currently occupy 2-5)
+//   100-199 fishing (100-103 fish line, 104-107 crustacean line)
+//   200+    reserved for whatever's next
 function QP_GetQuestsCfg()
 
 	var cfg := ReadConfigFile(":questpkg:quests");
@@ -81,6 +86,66 @@ function QP_GetQuestsCfg()
 	endif
 
 	return cfg;
+endfunction
+
+// Optional per-quest skill gate: SkillId (a SKILLID_* constant's numeric value) + MinSkill.
+// A quest with neither field set always passes. Used to decide whether a giver OFFERS a
+// fresh (not yet started) quest -- an already-active or ready-to-turn-in quest ignores this,
+// so a skill dropping mid-quest can't strand a player partway through.
+function QP_MeetsSkillGate(who, elem)
+
+	var skill_id := CInt(GetConfigString(elem, "SkillId"));
+	var min_skill := CInt(GetConfigString(elem, "MinSkill"));
+
+	if(!skill_id or !min_skill)
+		return 1;
+	endif
+
+	return GetEffectiveSkill(who, skill_id) >= min_skill;
+endfunction
+
+// Optional per-quest repeat cooldown, in seconds, checked against the timestamp
+// QP_CompleteQuest stamps on turn-in. Same plain-ObjProperty + ReadGameClock() convention
+// already proven reliable across restarts by powerhour/the BOD daily cap -- deliberately NOT
+// "#"-prefixed.
+function QP_CooldownRemaining(who, questid)
+
+	var state := QP_GetState(who);
+	var qstate := state[CInt(questid)];
+	if(!qstate or !qstate["LastCompleted"])
+		return 0;
+	endif
+
+	var elem := QP_GetQuestElem(questid);
+	var cooldown := CInt(GetConfigString(elem, "RepeatCooldown"));
+	if(!cooldown)
+		return 0;
+	endif
+
+	var remaining := (CInt(qstate["LastCompleted"]) + cooldown) - ReadGameClock();
+	if(remaining < 0)
+		return 0;
+	endif
+
+	return remaining;
+endfunction
+
+function QP_IsQuestOnCooldown(who, questid)
+	return QP_CooldownRemaining(who, questid) > 0;
+endfunction
+
+// Renders a cooldown-remaining second count as a short, rounded-up unit string for the
+// quest-giver gump ("ready again in 3h").
+function QP_FormatCooldown(seconds)
+
+	if(seconds >= 86400)
+		return CStr(CInt(seconds/86400)+1)+"d";
+	elseif(seconds >= 3600)
+		return CStr(CInt(seconds/3600)+1)+"h";
+	else
+		return CStr(CInt(seconds/60)+1)+"m";
+	endif
+
 endfunction
 
 function QP_GetQuestElem(questid, byref cfg_file := 0)
@@ -146,6 +211,18 @@ function QP_StartQuest(who, questid)
 
 	if(QP_IsQuestCompleted(who, questid) && !CInt(GetConfigString(elem, "Repeatable")))
 		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" already completed and not repeatable for "+who.name+", ignoring");
+		return 0;
+	endif
+
+	if(QP_IsQuestOnCooldown(who, questid))
+		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" still on cooldown for "+who.name+", ignoring");
+		SendSysMessage(who, "That's not ready again yet.", 3, 73);
+		return 0;
+	endif
+
+	if(!QP_MeetsSkillGate(who, elem))
+		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" skill gate not met by "+who.name+", ignoring");
+		SendSysMessage(who, "You're not skilled enough for that yet.", 3, 73);
 		return 0;
 	endif
 
@@ -399,6 +476,7 @@ function QP_CompleteQuest(who, questid, byref elem_in := 0)
 
 	Print("[QuestPkg] QP_CompleteQuest: completing quest "+CStr(questid)+" for "+who.name);
 	qstate["Completed"] := 1;
+	qstate["LastCompleted"] := ReadGameClock();
 	state[CInt(questid)] := qstate;
 	QP_SaveState(who, state);
 

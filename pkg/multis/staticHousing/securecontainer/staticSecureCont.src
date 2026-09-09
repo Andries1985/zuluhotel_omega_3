@@ -35,6 +35,19 @@ program use_securecontainer(who, item)
 			return 1;
 		endif
 	endif
+
+	// 2026-09-03: this secure-container check never went through
+	// HasHousePermission() at all (it's its own independent owner/co-owner/
+	// friend lookup), so unlike the house-package equivalent it also never
+	// went through HasHousePermission()'s new IsBanned() guard. Checked
+	// explicitly here instead, ahead of the ownership lookup below.
+	var sign := SystemFindObjectBySerial(GetObjProperty(house, "signserial"));
+	if(sign && sign.IsBanned(who))
+		SHDebug("Denied open (banned): item=" + item.serial + " who=" + who.name + " house=" + house.serial);
+		sign.BootBannedFromHouse(who);
+		return 0;
+	endif
+
 	// SecuredLevels are: O = owner, C = co-owners, F = friends, A = all house affiliates.
 
 	case(seclevel)

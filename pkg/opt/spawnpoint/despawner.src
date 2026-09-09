@@ -42,8 +42,14 @@ program DeSpawner( point )
 		case( pt_data[1] )
 			"NPC":			KillMobile( spawno, 1 );
 			"Group":		KillMobile( spawno, 1 );
+			"Quest NPC":	KillMobile( spawno, 1 );
 			"Container":	DestroyItem( spawno );
 			"Item":			if( spawno )
+								if( !spawno.container )
+									DestroyItem( spawno );
+								endif
+							endif
+			"Quest Item":	if( spawno )
 								if( !spawno.container )
 									DestroyItem( spawno );
 								endif

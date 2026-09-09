@@ -4,6 +4,7 @@ use uo;
 include "include/client";
 include "include/classes";
 include "rper";
+include ":admin:include/adminpanel";
 
 program OnUse_RPerFactionStone(who, newstone)
 
@@ -234,6 +235,7 @@ program OnUse_RPerFactionStone(who, newstone)
                     break;
                 2:	SetObjProperty(who,"IsRPer", 1);
                     SetObjProperty(who,"OrgName", who.name);
+                    RecordCharacterNameChange(who, who.name + " [RPer]", ADMINPANEL_INITIATOR_PLAYER);
                     who.name := who.name + " [RPer]";
                     //Needs to be fixed for new maps
                     //MoveObjectToLocation( who, 5227, 461, 16, "britannia", MOVEOBJECT_FORCELOCATION );

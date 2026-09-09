@@ -9,6 +9,7 @@ use uo;
 use os;
 
 include ":staff:include/staff";
+include ":admin:include/adminpanel";
 
 program SetProp(who, text)
 
@@ -61,6 +62,10 @@ endif
 // First part of the message
 SendSysMessage(who, "Object:  "+targ.name, 3, 53);
 SendSysMessage(who, "Old '"+pname+"': "+targ.get_member(pname), 3, 0);
+
+if(Lower(pname) == "name" && targ.isa(POLCLASS_MOBILE))
+	RecordCharacterNameChange(targ, pval, ADMINPANEL_INITIATOR_STAFF);
+endif
 
 var res := targ.set_member(pname, pval);
 

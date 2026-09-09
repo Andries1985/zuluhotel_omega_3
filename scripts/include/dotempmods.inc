@@ -10,6 +10,7 @@ include "include/spelldata";
 include "include/classes";
 include "include/random";
 include "include/constants/locations";
+include ":admin:include/adminpanel";
 
 
 function AddToPersistedMods( byref allmods , byref mmod )
@@ -410,6 +411,7 @@ function SetPoison( who , plvl , msg := 0, caster := 0, shuriken := 0)
 
 	if(caster)
 		SetObjProperty(who, "PoisonedBy", caster.name);
+		RecordCharacterPoisoning(who, CStr(caster.name), plvl);
 	endif
 
 	var parms := {};

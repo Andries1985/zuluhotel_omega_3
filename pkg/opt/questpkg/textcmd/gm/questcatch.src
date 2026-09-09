@@ -1,0 +1,53 @@
+// Synopsis: GM test tool -- simulate N fish/crustacean catches against yourself to validate a catch-quest's objective without actually fishing
+use uo;
+use os;
+use basicio;
+
+include ":questpkg:questfishing";
+
+program questcatch(who, text)
+
+	text := SplitWords(text);
+	if(text.size() < 1)
+		SendSysMessage(who, "Usage: .questcatch <CatchFish|CatchCrustacean> [tier] [weight] [times]");
+		SendSysMessage(who, "  tier defaults to Regular, weight defaults to 0, times defaults to 1.");
+		return 0;
+	endif
+
+	var kind := text[1];
+	if(kind != "CatchFish" and kind != "CatchCrustacean")
+		SendSysMessage(who, "Kind must be CatchFish or CatchCrustacean.");
+		return 0;
+	endif
+
+	var tier := "Regular";
+	if(text.size() >= 2)
+		tier := text[2];
+	endif
+	if(tier != "Regular" and tier != "Rare" and tier != "Legendary")
+		SendSysMessage(who, "Tier must be Regular, Rare, or Legendary.");
+		return 0;
+	endif
+
+	var weight := 0;
+	if(text.size() >= 3)
+		weight := CInt(text[3]);
+	endif
+
+	var times := 1;
+	if(text.size() >= 4)
+		times := CInt(text[4]);
+	endif
+	if(times < 1)
+		times := 1;
+	endif
+
+	var i;
+	for(i := 1; i <= times; i := i + 1)
+		QP_ProcessFishCatch(who, kind, tier, weight);
+	endfor
+
+	Print("[QuestPkg] .questcatch: "+who.name+" simulated "+CStr(times)+"x "+kind+" (tier="+tier+" weight="+CStr(weight)+")");
+	SendSysMessage(who, "Simulated "+CStr(times)+" "+kind+" catch(es) at tier "+tier+" (weight "+CStr(weight)+").", 3, 73);
+
+endprogram

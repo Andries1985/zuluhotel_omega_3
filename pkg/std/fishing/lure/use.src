@@ -1,0 +1,71 @@
+// Applies a fishing/crustacean lure to a pole or a deployed trap buoy. One lure loaded at
+// a time -- applying a new one overwrites whatever's already on the gear, remaining charges
+// and all (no stacking two effects or banking leftovers).
+//
+// Crustacean lures target the deployed buoy (0x3037F), not the un-deployed trap item --
+// the trap itself is a stackable consumable (SubtractAmount'd on deploy, a fresh one handed
+// back on collect, see crustaceantrap.src), so the buoy is the only object that actually
+// persists long enough to carry lure state through a deployment.
+use uo;
+use os;
+use basicio;
+use polsys;
+
+const UOBJ_FISHINGPOLE          := 0x0dbf;
+const UOBJ_GMFISHINGPOLE        := 0xcdbf;
+const UOBJ_CRUSTACEANTRAP_BUOY  := 0x3037f;
+
+program lure_use(character, lure)
+
+	if(!ReserveItem(lure)) return; endif
+
+	var lure_kind := GetObjProperty(lure, "LureKind");
+	var lure_tier := GetObjProperty(lure, "LureTier");
+	var lure_charges := CInt(GetObjProperty(lure, "charges"));
+
+	if(!lure_kind or !lure_tier or !lure_charges)
+		SendSysmessage(character, "This lure doesn't seem to work.");
+		return;
+	endif
+
+	SendSysmessage(character, "What do you want to attach the lure to?");
+	//No LOS/local-range check - a deployed buoy can legitimately sit up to TRAP_LEASH_DISTANCE
+	//tiles away with terrain/other players blocking sight of it, and the trap's own leash and
+	//expiry logic (crustaceansweeper.src) is already what keeps a real trap from being lured
+	//from somewhere it shouldn't be. The default Target() options would otherwise silently
+	//fail the click any time the buoy isn't directly visible.
+	var targetted := Target(character, TGTOPT_NOCHECK_LOS + TGTOPT_ALLOW_NONLOCAL);
+
+	if(!targetted)
+		SendSysmessage(character, "Canceled.");
+		return;
+	endif
+
+	if(lure_kind == "Fish")
+		if(targetted.objtype != UOBJ_FISHINGPOLE and targetted.objtype != UOBJ_GMFISHINGPOLE)
+			SendSysmessage(character, "That lure only works on a fishing pole.");
+			return;
+		endif
+	elseif(lure_kind == "Crustacean")
+		if(targetted.objtype != UOBJ_CRUSTACEANTRAP_BUOY)
+			SendSysmessage(character, "That lure needs to go on a deployed trap in the water, not the trap itself.");
+			return;
+		endif
+	else
+		SendSysmessage(character, "This lure doesn't seem to work.");
+		return;
+	endif
+
+	SetObjProperty(targetted, "LureTier", lure_tier);
+	SetObjProperty(targetted, "LureCharges", lure_charges);
+	//Renaming/recoloring/reproperty-ing an item after creation doesn't push a fresh
+	//MegaCliloc tooltip on its own - bump the revision so the client re-fetches and shows
+	//the lure line added in pkg/packethooks/megacliloc/itemdata.src.
+	IncRevision(targetted);
+
+	Print("[Lure] "+character.name+" attached "+lure_tier+" "+lure_kind+" lure to "+CStr(targetted.objtype)+" ("+CStr(lure_charges)+" charges)");
+	SendSysmessage(character, "You attach the lure. It should hold for "+CStr(lure_charges)+" more catches.");
+
+	DestroyItem(lure);
+
+endprogram

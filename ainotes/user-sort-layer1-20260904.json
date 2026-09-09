@@ -1,0 +1,627 @@
+[
+ {
+  "objtype": 9597,
+  "category": "non_rendering",
+  "name": "longsword - 0x257D [UNTESTED - AnimID 0]"
+ },
+ {
+  "objtype": 9571,
+  "category": "non_rendering",
+  "name": "terathan mace - 0x2563 [predicted IN-WORLD ONLY (dead on paperdoll)]"
+ },
+ {
+  "objtype": 9599,
+  "category": "non_rendering",
+  "name": "war mace - 0x257F [predicted NON-RENDERING (dead everywhere)]"
+ },
+ {
+  "objtype": 9598,
+  "category": "non_rendering",
+  "name": "shortsword - 0x257E [predicted NON-RENDERING (dead everywhere)]"
+ },
+ {
+  "objtype": 9583,
+  "category": "non_rendering",
+  "name": "smyth hammer - 0x256F [predicted IN-WORLD ONLY (dead on paperdoll)]"
+ },
+ {
+  "objtype": 3912,
+  "category": "correct",
+  "name": "battle axe - 0xF48 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 3920,
+  "category": "correct",
+  "name": "crossbow - 0xF50 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 3922,
+  "category": "correct",
+  "name": "dagger - 0xF52 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 3935,
+  "category": "correct",
+  "name": "broadsword - 0xF5F [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5040,
+  "category": "correct",
+  "name": "war axe - 0x13B0 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5044,
+  "category": "correct",
+  "name": "club - 0x13B4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5046,
+  "category": "correct",
+  "name": "scimitar - 0x13B6 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5048,
+  "category": "correct",
+  "name": "long sword - 0x13B8 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5050,
+  "category": "correct",
+  "name": "viking sword - 0x13BA [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5092,
+  "category": "correct",
+  "name": "smith's hammer - 0x13E4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5119,
+  "category": "correct",
+  "name": "katana - 0x13FF [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 5185,
+  "category": "correct",
+  "name": "cutlass - 0x1441 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 8794,
+  "category": "correct",
+  "name": "Bard Spell Book - 0x225A [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9100,
+  "category": "correct",
+  "name": "book of bushido - 0x238C [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9120,
+  "category": "correct",
+  "name": "book of ninjitsu - 0x23A0 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9593,
+  "category": "correct",
+  "name": "pick - 0x2579 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9915,
+  "category": "correct",
+  "name": "bone harvester - 0x26BB [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9916,
+  "category": "correct",
+  "name": "scepter - 0x26BC [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9920,
+  "category": "correct",
+  "name": "lance - 0x26C0 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9925,
+  "category": "correct",
+  "name": "bone harvester - 0x26C5 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9926,
+  "category": "correct",
+  "name": "scepter - 0x26C6 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9930,
+  "category": "correct",
+  "name": "lance - 0x26CA [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 9935,
+  "category": "correct",
+  "name": "paladin sword - 0x26CF [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 10148,
+  "category": "correct",
+  "name": "Wakizashi - 0x27A4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 10223,
+  "category": "correct",
+  "name": "Wakizashi - 0x27EF [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11555,
+  "category": "correct",
+  "name": "War Cleaver - 0x2D23 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 10227,
+  "category": "correct",
+  "name": "Bokuto - 0x27F3 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 10229,
+  "category": "correct",
+  "name": "Fukiya - 0x27F5 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 10154,
+  "category": "correct",
+  "name": "Fukiya - 0x27AA [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11553,
+  "category": "correct",
+  "name": "Assassin Spike - 0x2D21 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11554,
+  "category": "correct",
+  "name": "Leafblade - 0x2D22 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11559,
+  "category": "correct",
+  "name": "Radiant Scimitar - 0x2D27 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11561,
+  "category": "correct",
+  "name": "Elven Machete - 0x2D29 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11556,
+  "category": "correct",
+  "name": "Diamond Mace - 0x2D24 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11565,
+  "category": "correct",
+  "name": "Assassin Spike - 0x2D2D [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11567,
+  "category": "correct",
+  "name": "War Cleaver - 0x2D2F [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11568,
+  "category": "correct",
+  "name": "Diamond Mace - 0x2D30 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11569,
+  "category": "correct",
+  "name": "Wild Staff - 0x2D31 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11571,
+  "category": "correct",
+  "name": "Radiant Scimitar - 0x2D33 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11566,
+  "category": "correct",
+  "name": "Leafblade - 0x2D2E [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11573,
+  "category": "correct",
+  "name": "Elven Machete - 0x2D35 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 11600,
+  "category": "correct",
+  "name": "Spell weaving book - 0x2D50 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 16499,
+  "category": "correct",
+  "name": "Glass Sword - 0x4073 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 41609,
+  "category": "correct",
+  "name": "Barbed Whip - 0xA289 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41610,
+  "category": "correct",
+  "name": "Barbed Whip - 0xA28A [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41611,
+  "category": "correct",
+  "name": "Barbed Whip - 0xA28B [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41617,
+  "category": "correct",
+  "name": "Barbed Whip - 0xA291 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41618,
+  "category": "correct",
+  "name": "Spiked Whip - 0xA292 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41619,
+  "category": "correct",
+  "name": "Bladed Whip - 0xA293 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41793,
+  "category": "correct",
+  "name": "skull_sword_south - 0xA341 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41794,
+  "category": "correct",
+  "name": "skull_sword_east - 0xA342 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 41797,
+  "category": "correct",
+  "name": "gargoyle_skull_swor - 0xA345 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 41798,
+  "category": "correct",
+  "name": "gargoyle_skull_swor - 0xA346 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 44708,
+  "category": "correct",
+  "name": "Paladin Hammer - 0xAEA4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44709,
+  "category": "correct",
+  "name": "Paladin Fork - 0xAEA5 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44723,
+  "category": "correct",
+  "name": "Paladin Hammer - 0xAEB3 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44724,
+  "category": "correct",
+  "name": "Paladin Fork - 0xAEB4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44738,
+  "category": "correct",
+  "name": "Paladin Hammer - 0xAEC2 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44739,
+  "category": "correct",
+  "name": "Paladin Fork - 0xAEC3 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44753,
+  "category": "correct",
+  "name": "Paladin Hammer - 0xAED1 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 44754,
+  "category": "correct",
+  "name": "Paladin Fork - 0xAED2 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46271,
+  "category": "correct",
+  "name": "Tachi - 0xB4BF [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46272,
+  "category": "correct",
+  "name": "Tachi - 0xB4C0 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46274,
+  "category": "correct",
+  "name": "Escrima - 0xB4C2 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46279,
+  "category": "correct",
+  "name": "Tanto - 0xB4C7 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46280,
+  "category": "correct",
+  "name": "Tanto - 0xB4C8 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46273,
+  "category": "correct",
+  "name": "Escrima - 0xB4C1 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46283,
+  "category": "correct",
+  "name": "Gargish Otsuchi - 0xB4CB [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46284,
+  "category": "correct",
+  "name": "Gargish Otsuchi - 0xB4CC [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46292,
+  "category": "correct",
+  "name": "Skull_Blade - 0xB4D4 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46293,
+  "category": "correct",
+  "name": "Skull_Blade - 0xB4D5 [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46298,
+  "category": "correct",
+  "name": "Skull_Mace - 0xB4DA [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46299,
+  "category": "correct",
+  "name": "Skull_Mace - 0xB4DB [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 46301,
+  "category": "correct",
+  "name": "Skull_Crossbow - 0xB4DD [predicted HAS DATA both places - verify correct/wrong]"
+ },
+ {
+  "objtype": 16487,
+  "category": "paperdoll_only",
+  "name": "Boomerang - 0x4067 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 16491,
+  "category": "paperdoll_only",
+  "name": "Soul Glaive - 0x406B [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 16497,
+  "category": "paperdoll_only",
+  "name": "Stone War Sword - 0x4071 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 16498,
+  "category": "paperdoll_only",
+  "name": "Bloodblade - 0x4072 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18606,
+  "category": "paperdoll_only",
+  "name": "GargoyleAxe East - 0x48AE [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18607,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Cleaver SO - 0x48AF [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18614,
+  "category": "paperdoll_only",
+  "name": "Gargoyle ButchersKn - 0x48B6 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18615,
+  "category": "paperdoll_only",
+  "name": "Gargoyle ButchersKn - 0x48B7 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18618,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Katana EAS - 0x48BA [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18619,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Katana SOU - 0x48BB [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18620,
+  "category": "paperdoll_only",
+  "name": "Gargoyle KrissKnife - 0x48BC [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18621,
+  "category": "paperdoll_only",
+  "name": "Gargoyle KrissKnife - 0x48BD [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18622,
+  "category": "paperdoll_only",
+  "name": "Gargoyle WarFork EA - 0x48BE [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18623,
+  "category": "paperdoll_only",
+  "name": "Gargoyle WarFork EA - 0x48BF [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18624,
+  "category": "paperdoll_only",
+  "name": "Gargoyle WarHammer - 0x48C0 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18625,
+  "category": "paperdoll_only",
+  "name": "Gargoyle WarHammer - 0x48C1 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18626,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Maul EAST - 0x48C2 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18627,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Maul SOUTH - 0x48C3 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18630,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Scythe SOU - 0x48C6 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18631,
+  "category": "paperdoll_only",
+  "name": "Gargoyle BoneHarves - 0x48C7 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18634,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Pike SOUTH - 0x48CA [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 18635,
+  "category": "paperdoll_only",
+  "name": "Gargoyle Lance SOUT - 0x48CB [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46281,
+  "category": "paperdoll_only",
+  "name": "Gargish Tanto - 0xB4C9 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46282,
+  "category": "paperdoll_only",
+  "name": "Gargish Tanto - 0xB4CA [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46285,
+  "category": "paperdoll_only",
+  "name": "Gargish Bokuto - 0xB4CD [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46286,
+  "category": "paperdoll_only",
+  "name": "Gargish Bokuto - 0xB4CE [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46304,
+  "category": "paperdoll_only",
+  "name": "Skull_Glaive_G - 0xB4E0 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 46305,
+  "category": "paperdoll_only",
+  "name": "Skull_Glaive_G - 0xB4E1 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2302,
+  "category": "wrong_graphic",
+  "name": "Bloodblade - 0x8FE [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2303,
+  "category": "wrong_graphic",
+  "name": "Boomerang - 0x8FF [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2306,
+  "category": "wrong_graphic",
+  "name": "Gargish Dagger - 0x902 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2311,
+  "category": "wrong_graphic",
+  "name": "Shortblade - 0x907 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2314,
+  "category": "wrong_graphic",
+  "name": "Soul Glaive - 0x90A [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2315,
+  "category": "wrong_graphic",
+  "name": "Dread Sword - 0x90B [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 2316,
+  "category": "wrong_graphic",
+  "name": "Glass Sword - 0x90C [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 6588,
+  "category": "wrong_graphic",
+  "name": "Halloween Mask - 0x19BC [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 6589,
+  "category": "wrong_graphic",
+  "name": "Halloween Mask - 0x19BD [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9559,
+  "category": "wrong_graphic",
+  "name": "lizardman's mace - 0x2557 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9565,
+  "category": "wrong_graphic",
+  "name": "ratman axe - 0x255D [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9567,
+  "category": "wrong_graphic",
+  "name": "skeleton axe - 0x255F [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9568,
+  "category": "wrong_graphic",
+  "name": "skeleton scimitar - 0x2560 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9587,
+  "category": "wrong_graphic",
+  "name": "magic sword - 0x2573 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9588,
+  "category": "wrong_graphic",
+  "name": "magic sword - 0x2574 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9589,
+  "category": "wrong_graphic",
+  "name": "magic sword - 0x2575 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9590,
+  "category": "wrong_graphic",
+  "name": "magic sword - 0x2576 [predicted PAPERDOLL ONLY (dead in-world)]"
+ },
+ {
+  "objtype": 9596,
+  "category": "wrong_graphic",
+  "name": "sword - 0x257C [predicted PAPERDOLL ONLY (dead in-world)]"
+ }
+]

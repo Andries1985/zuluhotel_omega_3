@@ -83,6 +83,28 @@ const AS_GFX_ROWBUTTON_0		:= 0x647;
 const AS_GFX_ROWBUTTON_1		:= 0x648;
 const AS_GFX_DELETEBUTTON		:= 0x644;
 
+// Gump art 350's frame has ornate scroll-work eating into the top/bottom of
+// the panel - titles at the old y=15 sat right against that border, and the
+// last row/button in a full gump could land inside the bottom border too.
+// Y_SHIFT pushes every element down by the same amount the title used to sit
+// above the first row (so the title now sits where the first row used to,
+// and the first row moves down to keep that same gap below it); BOTTOM_PAD
+// adds extra clearance under the last element so it clears the bottom border.
+const AS_GUMP_Y_SHIFT			:= 30;
+const AS_GUMP_BOTTOM_PAD		:= 30;
+// Approx per-char width for the default gump text font - same fake-centering
+// convention as pkg/systems/crafting/include/craftmenu.inc's
+// CraftMenu_CenteredText (no real centering primitive for "text" elements).
+const AS_GUMP_TITLE_CHARWIDTH		:= 8;
+
+function AS_TitleX(width, text)
+	var offset := CInt( (width - Len(text) * AS_GUMP_TITLE_CHARWIDTH) / 2 );
+	if( offset < 20 )
+		offset := 20;
+	endif
+	return offset;
+endfunction
+
 
 function AreaSpawnerTypeLabel(kind)
 	case( kind )
@@ -125,17 +147,18 @@ function ShowSpawnerTypePicker(who, title)
 		"Item (Single Spawn at single location)",
 		"Chest (Group spawn in area)" };
 
+	var gumpwidth := 420;
 	var layout := array{ "page 0",
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 420 "+CStr(40 + types.size()*30) };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(40 + types.size()*30 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, title))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
 	data.append( title );
 	tid := tid + 1;
 
 	var i;
-	var y := 45;
+	var y := 45 + AS_GUMP_Y_SHIFT;
 	for( i := 1; i <= types.size(); i := i + 1 )
 		layout.append( "text 55 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( labels[i] );
@@ -166,17 +189,18 @@ function ShowRealmPicker(who, title := "Area Spawner - Choose Realm")
 	var realms := AreaSpawnerRealms();
 	var labels := array{ "Britannia", "Britannia Alt", "Malas", "Tokuno", "Ilshenar", "Termur" };
 
+	var gumpwidth := 260;
 	var layout := array{ "page 0",
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 260 "+CStr(40 + realms.size()*30) };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(40 + realms.size()*30 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, title))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
 	data.append( title );
 	tid := tid + 1;
 
 	var i;
-	var y := 45;
+	var y := 45 + AS_GUMP_Y_SHIFT;
 	for( i := 1; i <= realms.size(); i := i + 1 )
 		layout.append( "text 55 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( labels[i] );
@@ -224,23 +248,25 @@ function ShowSpawnerList(who, realm, prefix := "areaspawner", title := "Area Spa
 			endidx := names.size();
 		endif
 
+		var gumpwidth := 520;
+		var titletext := title+": "+realm+" (page "+CStr(page)+"/"+CStr(totalpages)+")";
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 520 "+CStr(170 + perpage*40) };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(170 + perpage*40 + AS_GUMP_Y_SHIFT) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( title+": "+realm+" (page "+CStr(page)+"/"+CStr(totalpages)+")" );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, titletext))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( titletext );
 		tid := tid + 1;
 
 		// ADD graphic already renders its own text, no extra label needed
-		layout.append( "button 20 45 "+CStr(GUMPID_BUTTON_ADD_0)+" "+CStr(GUMPID_BUTTON_ADD_1)+" 1 0 "+CStr(AS_BTN_ADD) );
-		layout.append( "button 190 45 "+CStr(GUMPID_BUTTON_PREVIOUS_0)+" "+CStr(GUMPID_BUTTON_PREVIOUS_1)+" 1 0 "+CStr(AS_BTN_PREV) );
-		layout.append( "button 230 45 "+CStr(GUMPID_BUTTON_NEXT_0)+" "+CStr(GUMPID_BUTTON_NEXT_1)+" 1 0 "+CStr(AS_BTN_NEXT) );
+		layout.append( "button 20 "+CStr(45+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_ADD_0)+" "+CStr(GUMPID_BUTTON_ADD_1)+" 1 0 "+CStr(AS_BTN_ADD) );
+		layout.append( "button 190 "+CStr(45+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_PREVIOUS_0)+" "+CStr(GUMPID_BUTTON_PREVIOUS_1)+" 1 0 "+CStr(AS_BTN_PREV) );
+		layout.append( "button 230 "+CStr(45+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_NEXT_0)+" "+CStr(GUMPID_BUTTON_NEXT_1)+" 1 0 "+CStr(AS_BTN_NEXT) );
 
 		var rownames := array{};
 		var rowdrawn := array{};	// isenabled as actually drawn this render, for detecting a genuine toggle below
-		var y := 85;
+		var y := 85 + AS_GUMP_Y_SHIFT;
 		var slot := 0;
 		var idx;
 		for( idx := startidx; idx <= endidx; idx := idx + 1 )
@@ -410,14 +436,15 @@ endfunction
 
 function ShowNamePrompt(who)
 
+	var nameprompttitle := "New Area Spawner - Enter a Name";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 300 120",
-		"text 20 15 "+CStr(Cint(COLOR_YELLOW))+" 0",
-		"textentry 20 45 250 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_NAME)+" 1",
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" 300 "+CStr(120 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD),
+		"text "+CStr(AS_TitleX(300, nameprompttitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" 0",
+		"textentry 20 "+CStr(45+AS_GUMP_Y_SHIFT)+" 250 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_NAME)+" 1",
 		// OKAY/CANCEL graphics already render their own text, no extra labels needed
-		"button 20 80 "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK),
-		"button 150 80 "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) };
-	var data := array{ "New Area Spawner - Enter a Name", "" };
+		"button 20 "+CStr(80+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK),
+		"button 150 "+CStr(80+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) };
+	var data := array{ nameprompttitle, "" };
 
 	var keyret := SendDialogGump( who, layout, data );
 	if( !keyret || keyret[AS_BTN_CANCEL] || !keyret[AS_BTN_OK] )
@@ -453,83 +480,85 @@ function ShowSpawnerEdit(who, realm, name, prefix := "areaspawner", kind := "are
 			return;
 		endif
 
+		var gumpwidth := 420;
+		var edittitle := AreaSpawnerPrefixLabel(prefix)+": "+name+" ("+realm+") - use the list to toggle Enabled";
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 420 455" };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(455 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( AreaSpawnerPrefixLabel(prefix)+": "+name+" ("+realm+") - use the list to toggle Enabled" );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, edittitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( edittitle );
 		tid := tid + 1;
 
 		if( usesbox )
-			layout.append( "text 20 50 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+			layout.append( "text 20 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 			data.append( "Last picked area:" );
 			tid := tid + 1;
-			layout.append( "text 150 50 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "text 150 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( record.area_label ? record.area_label : "(custom box)" );
 			tid := tid + 1;
-			layout.append( "button 300 48 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKAREA) );
-			layout.append( "text 325 50 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "button 300 "+CStr(48+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKAREA) );
+			layout.append( "text 325 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( "Pick Area" );
 			tid := tid + 1;
 
 			// per-corner target pickers - fills just minX/minY or just maxX/
 			// maxY from wherever the admin targets, so a custom (non-Pick
 			// Area) box can be walked out and clicked instead of typed
-			layout.append( "button 20 83 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKMINXY) );
-			layout.append( "text 55 85 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "button 20 "+CStr(83+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKMINXY) );
+			layout.append( "text 55 "+CStr(85+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( "Pick Min X/Y" );
 			tid := tid + 1;
-			layout.append( "button 220 83 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKMAXXY) );
-			layout.append( "text 255 85 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "button 220 "+CStr(83+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKMAXXY) );
+			layout.append( "text 255 "+CStr(85+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( "Pick Max X/Y" );
 			tid := tid + 1;
 
-			layout.append( "text 20 120 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+			layout.append( "text 20 "+CStr(120+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 			data.append( "Box minX/maxX/minY/maxY (Pick fills these in, or edit directly):" );
 			tid := tid + 1;
 
-			layout.append( "textentry 20 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINX)+" "+CStr(tid) );
+			layout.append( "textentry 20 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINX)+" "+CStr(tid) );
 			data.append( CStr(record.minx) );
 			tid := tid + 1;
-			layout.append( "textentry 90 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAXX)+" "+CStr(tid) );
+			layout.append( "textentry 90 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAXX)+" "+CStr(tid) );
 			data.append( CStr(record.maxx) );
 			tid := tid + 1;
-			layout.append( "textentry 160 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINY)+" "+CStr(tid) );
+			layout.append( "textentry 160 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINY)+" "+CStr(tid) );
 			data.append( CStr(record.miny) );
 			tid := tid + 1;
-			layout.append( "textentry 230 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAXY)+" "+CStr(tid) );
+			layout.append( "textentry 230 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAXY)+" "+CStr(tid) );
 			data.append( CStr(record.maxy) );
 			tid := tid + 1;
 		else
-			layout.append( "text 20 50 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+			layout.append( "text 20 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 			data.append( "Location:" );
 			tid := tid + 1;
-			layout.append( "text 150 50 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "text 150 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( (record.minx==0 && record.miny==0) ? "(not set)" : CStr(record.minx)+","+CStr(record.miny) );
 			tid := tid + 1;
-			layout.append( "button 300 48 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKAREA) );
-			layout.append( "text 325 50 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "button 300 "+CStr(48+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_PICKAREA) );
+			layout.append( "text 325 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( "Pick Location" );
 			tid := tid + 1;
 
-			layout.append( "text 20 120 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+			layout.append( "text 20 "+CStr(120+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 			data.append( "X / Y (Pick Location targets where you're standing, or edit directly):" );
 			tid := tid + 1;
 
-			layout.append( "textentry 20 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINX)+" "+CStr(tid) );
+			layout.append( "textentry 20 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINX)+" "+CStr(tid) );
 			data.append( CStr(record.minx) );
 			tid := tid + 1;
-			layout.append( "textentry 90 145 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINY)+" "+CStr(tid) );
+			layout.append( "textentry 90 "+CStr(145+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MINY)+" "+CStr(tid) );
 			data.append( CStr(record.miny) );
 			tid := tid + 1;
 		endif
 
-		layout.append( "text 20 180 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(180+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( "Population:" );
 		tid := tid + 1;
-		layout.append( "text 220 180 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+		layout.append( "text 220 "+CStr(180+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 		data.append( AreaSpawnerPopulationSummary(record) );
 		tid := tid + 1;
 
@@ -540,8 +569,8 @@ function ShowSpawnerEdit(who, realm, name, prefix := "areaspawner", kind := "are
 		// it has - not a per-entry setting. Not shown at all for item/chest
 		// kinds, which place plain items with no MoveMode concept.
 		if( showswater )
-			layout.append( "checkbox 20 203 "+CStr(AS_GFX_CHECKBOX_OFF)+" "+CStr(AS_GFX_CHECKBOX_ON)+" "+CStr(record.allow_water?1:0)+" "+CStr(AS_CHK_ALLOWWATER) );
-			layout.append( "text 55 205 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+			layout.append( "checkbox 20 "+CStr(203+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_CHECKBOX_OFF)+" "+CStr(AS_GFX_CHECKBOX_ON)+" "+CStr(record.allow_water?1:0)+" "+CStr(AS_CHK_ALLOWWATER) );
+			layout.append( "text 55 "+CStr(205+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 			data.append( "Allow Water Spawns (movemode-aware placement)" );
 			tid := tid + 1;
 		endif
@@ -550,24 +579,24 @@ function ShowSpawnerEdit(who, realm, name, prefix := "areaspawner", kind := "are
 		// with an adjacent label, so the label goes on its own line above the
 		// button instead of beside it - avoids the overlap regardless of the
 		// graphic's actual pixel width.
-		layout.append( "text 20 240 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(240+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 		data.append( "Entries / Edit Groups & NPCs" );
 		tid := tid + 1;
-		layout.append( "button 20 263 "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_ENTRIES) );
+		layout.append( "button 20 "+CStr(263+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_ENTRIES) );
 
-		layout.append( "text 20 298 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(298+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
 		data.append( "Full Respawn (despawn + refill to max)" );
 		tid := tid + 1;
-		layout.append( "button 20 321 "+CStr(GUMPID_BUTTON_APPLY_0)+" "+CStr(GUMPID_BUTTON_APPLY_1)+" 1 0 "+CStr(AS_BTN_FULLRESPAWN) );
+		layout.append( "button 20 "+CStr(321+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_APPLY_0)+" "+CStr(GUMPID_BUTTON_APPLY_1)+" 1 0 "+CStr(AS_BTN_FULLRESPAWN) );
 
-		layout.append( "text 20 356 "+CStr(Cint(COLOR_RED))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(356+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_RED))+" "+CStr(tid) );
 		data.append( "Delete Spawner" );
 		tid := tid + 1;
-		layout.append( "button 20 379 "+CStr(GUMPID_BUTTON_DELETE_0)+" "+CStr(GUMPID_BUTTON_DELETE_1)+" 1 0 "+CStr(AS_BTN_DELETESPAWNER) );
+		layout.append( "button 20 "+CStr(379+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_DELETE_0)+" "+CStr(GUMPID_BUTTON_DELETE_1)+" 1 0 "+CStr(AS_BTN_DELETESPAWNER) );
 
 		// OKAY/CANCEL graphics already render their own text, no extra labels needed
-		layout.append( "button 20 417 "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_SAVE) );
-		layout.append( "button 140 417 "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) );
+		layout.append( "button 20 "+CStr(417+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_SAVE) );
+		layout.append( "button 140 "+CStr(417+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) );
 
 		var keyret := SendDialogGump( who, layout, data );
 		if( !keyret || keyret[AS_BTN_CANCEL] )
@@ -718,17 +747,19 @@ function ShowAreaPicker(who, realm)
 			endidx := infos.size();
 		endif
 
+		var gumpwidth := 420;
+		var pickareatitle := "Pick Area ("+realm+") page "+CStr(page)+"/"+CStr(totalpages);
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 420 "+CStr(80 + perpage*24) };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(80 + perpage*24 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( "Pick Area ("+realm+") page "+CStr(page)+"/"+CStr(totalpages) );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, pickareatitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( pickareatitle );
 		tid := tid + 1;
 
 		var rowids := array{};
-		var y := 50;
+		var y := 50 + AS_GUMP_Y_SHIFT;
 		var slot := 0;
 		var idx;
 		for( idx := startidx; idx <= endidx; idx := idx + 1 )
@@ -807,26 +838,28 @@ function ShowEntriesList(who, realm, name, prefix := "areaspawner", kind := "are
 			endidx := record.entries.size();
 		endif
 
+		var gumpwidth := 460;
+		var entriestitle := "Entries: "+name+" (page "+CStr(page)+"/"+CStr(totalpages)+")";
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 460 "+CStr(90 + perpage*40) };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(90 + perpage*40 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( "Entries: "+name+" (page "+CStr(page)+"/"+CStr(totalpages)+")" );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, entriestitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( entriestitle );
 		tid := tid + 1;
 
 		// opens a standalone reference gump (its own script/thread) so it can
 		// stay on screen while this Entries gump keeps working
 		if( showsbrowse )
-			layout.append( "button 360 10 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_BROWSEGROUPS) );
-			layout.append( "text 395 13 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+			layout.append( "button 360 "+CStr(10+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_BROWSEGROUPS) );
+			layout.append( "text 395 "+CStr(13+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 			data.append( browselabel );
 			tid := tid + 1;
 		endif
 
 		var rowids := array{};
-		var y := 50;
+		var y := 50 + AS_GUMP_Y_SHIFT;
 		var slot := 0;
 		var idx;
 		for( idx := startidx; idx <= endidx; idx := idx + 1 )
@@ -967,25 +1000,27 @@ function ShowEntryEditor(who, realm, name, entry_id, prefix := "areaspawner", ki
 		endif
 	endif
 
+	var gumpwidth := 340;
+	var entrytitle := isnew ? "New Entry" : "Edit Entry";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 340 330" };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(330 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-	data.append( isnew ? "New Entry" : "Edit Entry" );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, entrytitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	data.append( entrytitle );
 	tid := tid + 1;
 
 	if( kind == "area" )
-		layout.append( "text 20 50 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(50+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( "Group (checked) / NPC template (unchecked):" );
 		tid := tid + 1;
-		layout.append( "checkbox 20 80 "+CStr(AS_GFX_CHECKBOX_OFF)+" "+CStr(AS_GFX_CHECKBOX_ON)+" "+CStr(source=="group"?1:0)+" "+CStr(AS_CHK_ISGROUP) );
+		layout.append( "checkbox 20 "+CStr(80+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_CHECKBOX_OFF)+" "+CStr(AS_GFX_CHECKBOX_ON)+" "+CStr(source=="group"?1:0)+" "+CStr(AS_CHK_ISGROUP) );
 
-		layout.append( "text 20 110 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(110+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( "Group# or NPC Template:" );
 		tid := tid + 1;
-		layout.append( "textentry 200 108 100 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
+		layout.append( "textentry 200 "+CStr(108+AS_GUMP_Y_SHIFT)+" 100 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
 		data.append( ref );
 		tid := tid + 1;
 	else
@@ -995,32 +1030,32 @@ function ShowEntryEditor(who, realm, name, entry_id, prefix := "areaspawner", ki
 		elseif( kind == "chest" )
 			reflabel := "Chest # (see Chests browser):";
 		endif
-		layout.append( "text 20 60 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(60+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( reflabel );
 		tid := tid + 1;
-		layout.append( "textentry 200 58 100 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
+		layout.append( "textentry 200 "+CStr(58+AS_GUMP_Y_SHIFT)+" 100 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
 		data.append( ref );
 		tid := tid + 1;
 	endif
 
-	layout.append( "text 20 140 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+	layout.append( "text 20 "+CStr(140+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 	data.append( "Min:" );
 	tid := tid + 1;
-	layout.append( "textentry 200 138 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MIN)+" "+CStr(tid) );
+	layout.append( "textentry 200 "+CStr(138+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MIN)+" "+CStr(tid) );
 	data.append( CStr(emin) );
 	tid := tid + 1;
 
-	layout.append( "text 20 170 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+	layout.append( "text 20 "+CStr(170+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 	data.append( "Max:" );
 	tid := tid + 1;
-	layout.append( "textentry 200 168 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAX)+" "+CStr(tid) );
+	layout.append( "textentry 200 "+CStr(168+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_MAX)+" "+CStr(tid) );
 	data.append( CStr(emax) );
 	tid := tid + 1;
 
-	layout.append( "text 20 200 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+	layout.append( "text 20 "+CStr(200+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 	data.append( "Frequency (mins):" );
 	tid := tid + 1;
-	layout.append( "textentry 200 198 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_FREQ)+" "+CStr(tid) );
+	layout.append( "textentry 200 "+CStr(198+AS_GUMP_Y_SHIFT)+" 60 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_FREQ)+" "+CStr(tid) );
 	data.append( CStr(efreq) );
 	tid := tid + 1;
 
@@ -1028,9 +1063,9 @@ function ShowEntryEditor(who, realm, name, entry_id, prefix := "areaspawner", ki
 	// labels needed (a plain "Delete" label here would just repeat what the
 	// DELETE graphic already says, unlike the more specific "Delete Spawner"
 	// label used one gump up).
-	layout.append( "button 20 250 "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK) );
-	layout.append( "button 140 250 "+CStr(GUMPID_BUTTON_DELETE_0)+" "+CStr(GUMPID_BUTTON_DELETE_1)+" 1 0 "+CStr(AS_BTN_DELETE) );
-	layout.append( "button 260 250 "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) );
+	layout.append( "button 20 "+CStr(250+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK) );
+	layout.append( "button 140 "+CStr(250+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_DELETE_0)+" "+CStr(GUMPID_BUTTON_DELETE_1)+" 1 0 "+CStr(AS_BTN_DELETE) );
+	layout.append( "button 260 "+CStr(250+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) );
 
 	var keyret := SendDialogGump( who, layout, data );
 	if( !keyret || keyret[AS_BTN_CANCEL] )
@@ -1183,23 +1218,25 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 	endif
 
 	while(1)
+		var gumpwidth := 380;
+		var cnpctitle := isnew ? "New Custom NPC" : "Edit Custom NPC";
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 380 415" };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(415 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( isnew ? "New Custom NPC" : "Edit Custom NPC" );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, cnpctitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( cnpctitle );
 		tid := tid + 1;
 
-		layout.append( "text 20 45 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(45+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( "NPC Template to copy (type name, then Load):" );
 		tid := tid + 1;
-		layout.append( "textentry 20 68 160 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
+		layout.append( "textentry 20 "+CStr(68+AS_GUMP_Y_SHIFT)+" 160 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_REF)+" "+CStr(tid) );
 		data.append( template );
 		tid := tid + 1;
-		layout.append( "button 200 66 "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_LOADTEMPLATE) );
-		layout.append( "text 225 68 "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
+		layout.append( "button 200 "+CStr(66+AS_GUMP_Y_SHIFT)+" "+CStr(AS_GFX_ROWBUTTON_0)+" "+CStr(AS_GFX_ROWBUTTON_1)+" 1 0 "+CStr(AS_BTN_LOADTEMPLATE) );
+		layout.append( "text 225 "+CStr(68+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_GREEN))+" "+CStr(tid) );
 		data.append( "Load" );
 		tid := tid + 1;
 
@@ -1209,7 +1246,7 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 		// it stays in sync with whatever's in the template box even before
 		// hitting Load, and goes blank for a name that isn't a real template.
 		var lootinfo := template ? AreaSpawnerNpcLootInfo(template) : 0;
-		layout.append( "text 20 92 "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
+		layout.append( "text 20 "+CStr(92+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( lootinfo ? "LG: "+CStr(lootinfo.lootgroup)+"   MIL: "+CStr(lootinfo.miclevel)+"   MIC: "+CStr(lootinfo.micchance) : "LG: -   MIL: -   MIC: -" );
 		tid := tid + 1;
 
@@ -1219,7 +1256,7 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 		// how the NPC presents rather than a spawn-entry setting like Min/
 		// Max/Frequency below. This mirrors how the box-edit gump already
 		// splits off into pickers rather than growing indefinitely.
-		var y := 130;
+		var y := 130 + AS_GUMP_Y_SHIFT;
 		var catlabels := array{ "Appearance...", "Stats...", "Protections...", "Other..." };
 		var catids := array{ AS_BTN_CATAPPEARANCE, AS_BTN_CATSTATS, AS_BTN_CATPROTS, AS_BTN_CATOTHER };
 		var c;
@@ -1353,16 +1390,18 @@ endfunction
 // category pages - see their consts' comment for why that's safe.
 function ShowCustomNpcAppearanceEditor(who, ov)
 
+	var gumpwidth := 380;
+	var apptitle := "Custom NPC - Appearance";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 380 390" };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(390 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-	data.append( "Custom NPC - Appearance" );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, apptitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	data.append( apptitle );
 	tid := tid + 1;
 
-	var y := 55;
+	var y := 55 + AS_GUMP_Y_SHIFT;
 	layout.append( "text 20 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 	data.append( "Name (blank = template default):" );
 	tid := tid + 1;
@@ -1447,16 +1486,18 @@ endfunction
 // regen rate and a Karma/Fame bonus once the critter's AI restarts).
 function ShowCustomNpcStatsEditor(who, ov)
 
+	var gumpwidth := 380;
+	var statstitle := "Custom NPC - Stats";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 380 330" };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(330 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-	data.append( "Custom NPC - Stats" );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, statstitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	data.append( statstitle );
 	tid := tid + 1;
 
-	var y := 55;
+	var y := 55 + AS_GUMP_Y_SHIFT;
 	var fieldlabels := array{ "STR:", "DEX:", "INT:", "Max Hits:", "Max Stam:", "Max Mana:", "HP Regen Bonus:", "Mana Regen Bonus:" };
 	var fieldids := array{ AS_TXT_CSTR, AS_TXT_CDEX, AS_TXT_CINT, AS_TXT_CHITS, AS_TXT_CSTAM, AS_TXT_CMANA, AS_TXT_G1, AS_TXT_G2 };
 	var fieldvals := array{ CStr(ov.str), CStr(ov.dex), CStr(ov.intel), CStr(ov.hits), CStr(ov.stam), CStr(ov.mana), CStr(ov.hpregen), CStr(ov.manaregen) };
@@ -1507,16 +1548,18 @@ endfunction
 // possible_prots list for the authoritative set of CProp names this reads.
 function ShowCustomNpcProtsEditor(who, ov)
 
+	var gumpwidth := 380;
+	var protstitle := "Custom NPC - Protections";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 380 420" };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(420 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-	data.append( "Custom NPC - Protections" );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, protstitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	data.append( protstitle );
 	tid := tid + 1;
 
-	var y := 50;
+	var y := 50 + AS_GUMP_Y_SHIFT;
 	layout.append( "text 20 "+CStr(y)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
 	data.append( "Elemental (-200 to 200, Physical -20 to 20):" );
 	tid := tid + 1;
@@ -1605,16 +1648,18 @@ endfunction
 function ShowCustomNpcOtherEditor(who, ov)
 
 	while(1)
+		var gumpwidth := 380;
+		var othertitle := "Custom NPC - Other";
 		var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-			"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 380 330" };
+			"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(330 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 		var data := array{};
 		var tid := 0;
 
-		layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-		data.append( "Custom NPC - Other" );
+		layout.append( "text "+CStr(AS_TitleX(gumpwidth, othertitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+		data.append( othertitle );
 		tid := tid + 1;
 
-		var y := 55;
+		var y := 55 + AS_GUMP_Y_SHIFT;
 		layout.append( "text 20 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
 		data.append( "Move Speed (0-300, 0 = dex-based default):" );
 		tid := tid + 1;
@@ -1702,16 +1747,18 @@ function ShowCustomNpcSlayTypePicker(who, current)
 
 	var types := AreaSpawnerSlayTypes();
 
+	var gumpwidth := 260;
+	var slaytitle := "Pick Slayer Type";
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 260 "+CStr(70 + (types.size()*24) + 50) };
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(70 + (types.size()*24) + 50 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD) };
 	var data := array{};
 	var tid := 0;
 
-	layout.append( "text 20 15 "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
-	data.append( "Pick Slayer Type" );
+	layout.append( "text "+CStr(AS_TitleX(gumpwidth, slaytitle))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_YELLOW))+" "+CStr(tid) );
+	data.append( slaytitle );
 	tid := tid + 1;
 
-	var y := 50;
+	var y := 50 + AS_GUMP_Y_SHIFT;
 	var i;
 	for( i := 1; i <= types.size(); i := i + 1 )
 		var btnid := AS_BTN_SLAYTYPE_BASE + i;
@@ -1750,12 +1797,13 @@ function ShowConfirm(who, prompt)
 		prompt := SubStr(prompt, 1, 70)+"...";
 	endif
 
+	var gumpwidth := 420;
 	var layout := array{ "page 0", GUMPID_SETTING_NO_DISPOSE,
-		"resizepic 0 0 "+CStr(GUMPID_BKGND_STONESLAB)+" 420 140",
-		"text 20 15 "+CStr(Cint(COLOR_RED))+" 0",
+		"resizepic 0 0 "+CStr(GUMPID_BKGND_AREASPAWNER)+" "+CStr(gumpwidth)+" "+CStr(140 + AS_GUMP_Y_SHIFT + AS_GUMP_BOTTOM_PAD),
+		"text "+CStr(AS_TitleX(gumpwidth, prompt))+" "+CStr(15+AS_GUMP_Y_SHIFT)+" "+CStr(Cint(COLOR_RED))+" 0",
 		// OKAY/CANCEL graphics already render their own text, no extra labels needed
-		"button 60 90 "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK),
-		"button 240 90 "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) };
+		"button 60 "+CStr(90+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_OKAY_0)+" "+CStr(GUMPID_BUTTON_OKAY_1)+" 1 0 "+CStr(AS_BTN_OK),
+		"button 240 "+CStr(90+AS_GUMP_Y_SHIFT)+" "+CStr(GUMPID_BUTTON_CANCEL_0)+" "+CStr(GUMPID_BUTTON_CANCEL_1)+" 1 0 "+CStr(AS_BTN_CANCEL) };
 	var data := array{ prompt };
 
 	var keyret := SendDialogGump( who, layout, data );

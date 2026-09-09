@@ -20,6 +20,7 @@ include "include/math";
 include ":staff:include/staff";
 include "include/constants/locations";
 include ":containers:storageAreas";
+include ":admin:include/adminpanel";
 
 const TEXTSTARTLOCY :=  70;
 
@@ -778,6 +779,7 @@ program textcmd_info( character , whom )
     if (!newname)
       SendSysMessage(character, "Canceled.");
     else
+      RecordCharacterNameChange( who , newname, ADMINPANEL_INITIATOR_STAFF );
       SetName( who , newname );
       SendSysMessage(who, "Your name has been changed.");
       LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Name Change: "+newname);
@@ -943,6 +945,7 @@ program textcmd_info( character , whom )
 
   if(note)
     acc.setprop("Notes", note);
+    RecordAccountNote(acc, note, ADMINPANEL_INITIATOR_STAFF);
   endif
   LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Set Note: "+note);
   return;
@@ -1102,6 +1105,7 @@ function fixnameguild(who)
 
   result:=result-1;
   name:=name[1,result];
+  RecordCharacterNameChange(who,name,ADMINPANEL_INITIATOR_STAFF);
   who.name:=name;
 endfunction
 

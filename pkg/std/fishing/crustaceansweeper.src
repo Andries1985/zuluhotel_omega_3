@@ -13,6 +13,7 @@ use uo;
 use os;
 use cfgfile;
 use basicio;
+use polsys;
 
 include "include/random";
 include "fishing";
@@ -127,10 +128,39 @@ function RollBob(buoy, owner, now)
 	SetObjProperty(buoy, PROP_TRAP_BOB_COUNT, bob_count);
 
 	//Escalating loss chance matching OSI's "~50% by the tenth bob" (5% per bob, uncapped -
-	//the 15-minute max lifetime is the real ceiling, not an artificial cap here).
+	//the 15-minute max lifetime is the real ceiling, not an artificial cap here). Nothing to
+	//spend a lure charge on here - the buoy (and whatever's loaded on it) is gone regardless.
 	if (Random(100) < Min(bob_count * 5, 100))
 		DestroyTrap(buoy, owner, "Your crustacean trap was lost to the sea.");
 		return 0;
+	endif
+
+	//Lure state captured once per surviving bob and spent right here, whether or not this
+	//bob goes on to actually land a crustacean - matches OSI's Hook convention (50 uses of
+	//the effect, not 50 successful catches), same principle as the pole. Captured BEFORE the
+	//decrement so this bob's own roll/tagging still gets the boost its charge is paying for.
+	var lure_tier := GetObjProperty(buoy, "LureTier");
+	var rare_div := TRAP_RARE_DIVISOR;
+	var legendary_div := TRAP_LEGENDARY_DIVISOR;
+	if (lure_tier == "Rare")
+		rare_div := 50;
+	elseif (lure_tier == "Legendary")
+		legendary_div := 500;
+	endif
+
+	if (lure_tier)
+		var lure_charges := CInt(GetObjProperty(buoy, "LureCharges")) - 1;
+		if (lure_charges > 0)
+			SetObjProperty(buoy, "LureCharges", lure_charges);
+		else
+			EraseObjProperty(buoy, "LureTier");
+			EraseObjProperty(buoy, "LureCharges");
+			SendSysmessage(owner, "The lure on your crustacean trap is spent.");
+		endif
+		//Keeps the buoy's tooltip (charges remaining, or the lure line disappearing entirely
+		//once spent) in sync - see the IncRevision note in lure/use.src.
+		IncRevision(buoy);
+		Print("[Lure] "+owner.name+" trap bob with "+lure_tier+" lure, "+CStr(Max(lure_charges,0))+" charges left (rare_div="+CStr(rare_div)+" legendary_div="+CStr(legendary_div)+")");
 	endif
 
 	var catches := GetObjProperty(buoy, PROP_TRAP_CATCHES);
@@ -138,17 +168,35 @@ function RollBob(buoy, owner, now)
 		catches := array{};
 	endif
 
+	var bigboosts := GetObjProperty(buoy, PROP_TRAP_BIGBOOST);
+	if (TypeOf(bigboosts) != "Array")
+		bigboosts := array{};
+	endif
+
 	if (len(catches) < TRAP_MAX_CATCH and Random(100) < TRAP_CATCH_CHANCE)
 		var deep_water := IsDeepWater(buoy.x, buoy.y, buoy.realm);
 		var in_dungeon := IsFishingInDungeon(buoy);
 		var location := GetFishingLocation(deep_water, in_dungeon);
 
-		var result := PickCaughtCrustacean(owner, location);
+		var result := PickCaughtCrustacean(owner, location, rare_div, legendary_div);
 		var objtype := result[1];
+		var caught_tier := result[2];
 
 		if (objtype)
 			catches.append(objtype);
 			SetObjProperty(buoy, PROP_TRAP_CATCHES, catches);
+
+			//Whether this specific catch gets the Big lure's weight-skew, using the tier
+			//captured above (before this bob's charge was spent) - see the tagging note on
+			//PROP_TRAP_BIGBOOST for why CollectTrap reads this back instead of re-deciding.
+			var big_boost := 0;
+			if (lure_tier == "Big" and (caught_tier == "Rare" or caught_tier == "Legendary"))
+				big_boost := 1;
+			endif
+			bigboosts.append(big_boost);
+			SetObjProperty(buoy, PROP_TRAP_BIGBOOST, bigboosts);
+
+			Print("[Fishing] "+owner.name+" trap bob caught tier="+caught_tier+" objtype="+CStr(objtype)+" big_boost="+CStr(big_boost));
 			SendSysmessage(owner, "Something moves in your crustacean trap.");
 		endif
 	endif

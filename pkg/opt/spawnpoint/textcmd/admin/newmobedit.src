@@ -18,6 +18,7 @@ include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
 include "include/spelldata";
 include "include/math";
+include ":admin:include/adminpanel";
 
 const TEXT_COLOR := 657;
 
@@ -279,6 +280,7 @@ program textcmd_mobedit(who)
 			return 0;
 		endif
 		if (old_stats[1] != new_stats[1])
+			RecordCharacterNameChange(mobile, new_stats[1], ADMINPANEL_INITIATOR_STAFF);
 			mobile.name := new_stats[1];
 			SendSysMessage(who, "Changing Name to: "+new_stats[1]);
 		endif

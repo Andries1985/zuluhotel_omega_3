@@ -32,18 +32,16 @@ program textcmd_householdmanager( who )
 		return 0;
 	endif
 
-	var store := ACCT_GetHouseholdStore( 1 );
-	if( store.errortext )
-		SendSysMessage( who, "Unable to open household store." );
-		return 0;
-	endif
-
-	var keys := store.Keys();
-	var result := HouseholdManagerGump( who, targ, info, store, keys );
-	// store's last use is inside HouseholdManagerGump above (store isn't
-	// touched again below this point, only the already-extracted keys array
-	// is) -- unload it here now that the gump wait is over.
-	UnloadDataFile( "AccountsHouseholds" );
+	// 2026-09-03: this used to open the store directly (ACCT_GetHouseholdStore)
+	// and call store.Keys() to list every household -- confirmed broken at
+	// runtime ("Method id '56' [keys] not found"), .Keys() isn't actually
+	// available on whatever DFOpenDataFile's wrapper returns in this engine
+	// build (same failure independently confirmed via :alryc:testadminpanel's
+	// household browser, which hit the identical error and was rebuilt the
+	// same way). Replaced with CollectHouseholdIds() below, which derives the
+	// list from every account's own ACCT_GetAccountDiscordInfo() instead.
+	var keys := CollectHouseholdIds();
+	var result := HouseholdManagerGump( who, targ, info, keys );
 	if( !result || !result[0] )
 		SendSysMessage( who, "Cancelled." );
 		return 0;
@@ -107,7 +105,38 @@ program textcmd_householdmanager( who )
 	SendSysMessage( who, "Cancelled." );
 	return 0;
 endprogram
-function HouseholdManagerGump( who, targ, info, store, keys )
+
+// Every HouseholdId that has ever been assigned to an account, derived from
+// each account's own Discord info rather than enumerating the household
+// datafile directly (see the 2026-09-03 comment above textcmd_householdmanager).
+function CollectHouseholdIds()
+	var ids := {};
+	foreach acctname in ( ListAccounts() )
+		var name := CStr( acctname );
+		if( !name )
+			continue;
+		endif
+		var account := FindAccount( name );
+		if( !account || account.errortext )
+			continue;
+		endif
+		var info := ACCT_GetAccountDiscordInfo( account );
+		if( !info || info.errortext )
+			continue;
+		endif
+		var hid := ACCT_TrimDiscordID( info["HouseholdId"] );
+		if( !hid )
+			continue;
+		endif
+		if( !( hid in ids ))
+			ids.append( hid );
+		endif
+	endforeach
+	ids.sort();
+	return ids;
+endfunction
+
+function HouseholdManagerGump( who, targ, info, keys )
 
 	var gump := GFCreateGump( 20, 20, 740, 640 );
 	GFDisposable( gump, 0 );
@@ -150,7 +179,7 @@ function HouseholdManagerGump( who, targ, info, store, keys )
 		endif
 
 		var key := CStr( keys[i] );
-		var household := DFFindElement( store, key, DF_NO_CREATE );
+		var household := ACCT_GetHouseholdById( key, 0 );
 		var cap := 0;
 		var member_count := 0;
 		if( !household.errortext )

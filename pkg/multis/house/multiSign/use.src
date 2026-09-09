@@ -525,6 +525,14 @@ function AddBan(hsign, who)
 		SendSysMessage(who, "That cannot be added to the list.", color := 33);
 		return;
 	endif
+	if(targetchr.serial == who.serial)
+		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+		return;
+	endif
+	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
+		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+		return;
+	endif
 	var result := hsign.IsBanned(targetchr);
 	if(result)
 		SendSysMessageCL(who, 501356, color := 42); // This person is already banned!
@@ -533,10 +541,6 @@ function AddBan(hsign, who)
 	if(targetchr.multi.serial == GetObjProperty(hsign, "houseserial"))
 		MoveObjectToLocation(targetchr, hsign.x, hsign.y, hsign.z, hsign.realm);
 	endif
-		if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
-			SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
-			return;
-		endif
 		checklists(hsign, targetchr, "friendlist", "coowners");
 		result := hsign.AddBan(targetchr);
 		if(result < 0)
@@ -1790,6 +1794,10 @@ endfunction
 
 function HandleLockdownRelease(sign, house, who, mode)
 	if(!sign.HasHousePermission(who, "lockdown"))
+		if(sign.IsBanned(who))
+			sign.BootBannedFromHouse(who);
+			return;
+		endif
 		SendSysMessage(who, "You do not have lockdown permission.", color := 33);
 		return;
 	endif

@@ -87,7 +87,6 @@ EraseCustomPropsandItems(who, point);
 
 var o := struct, vits := struct, cprops := {}, skillids := {};
 var allprops := GetObjPropertyNames( npc );
-var maxhitsnpc;
 
 o.+Name := npc.name;
 o.+Graphic := npc.graphic;
@@ -111,15 +110,10 @@ o.+titleguild := npc.title_guild;
 o.+titlerace := npc.title_race;
 o.+facing := npc.facing;
 
-if (GetObjProperty(npc, "CustomHitsLevel"))
-	maxhitsnpc := GetObjProperty(npc, "CustomHitsLevel");
-	//print($"Max hits for NPC is " + maxhitsnpc);
-	vits.+HITS := maxhitsnpc;
-	//print($"Vits 1 is " + vits);
-else
-	vits.+HITS := GetMaxHp(npc);
-	//print($"Vits 2 is " + vits);
-endif
+// GetMaxHp() already reads CustomHitsLevel internally (pkg/opt/shilhook/regen.src)
+// and converts it down from the engine's x100 fixed-point scale, so it's correct
+// for both custom and template-default NPCs -- no need to special-case it here.
+vits.+HITS := GetMaxHp(npc);
 vits.+STAM := GetMaxStamina(npc);
 vits.+MANA := GetMaxMana(npc);
 
