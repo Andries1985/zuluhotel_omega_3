@@ -21,6 +21,7 @@ const GUMPID_BKGND_SCROLL			:= 2520;	// Unrolling scroll style
 const GUMPID_BKGND_SILVERTRIM			:= 83;		// Fancy, dark-grey backing
 const GUMPID_BKGND_STONE			:= 5100;	// Marble stone, rounded edge
 const GUMPID_BKGND_STONESLAB			:= 5054;	// Plain, small corners
+const GUMPID_BKGND_AREASPAWNER			:= 350;		// Area spawner gumps
 /////////////////////////////////////////////////////////////////
 
 
