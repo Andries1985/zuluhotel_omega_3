@@ -6,6 +6,7 @@ include "include/attributes";
 include "include/spelldata";
 include "include/dotempmods";
 include "include/constants/locations";
+include ":attributes:regen";
 
 program processpersistedmods( parms )
 
@@ -21,11 +22,9 @@ program processpersistedmods( parms )
 	detach();
 
 	if( (!who.poisoned) )
-		// this person should not be poisoned
-		if ( GetHpRegenRate(who) != BaseRegenRate(who) )
-			SetHpRegenRate( who,  Cint(BaseRegenRate( who ) ));
-			who.setPoisoned(0);
-		endif
+		// this person should not be poisoned - clear any stale poison suppression.
+		ClearVitalRegenRateMod(who, VITALID_LIFE, "poison");
+		who.setPoisoned(0);
 	endif
 	
 	Set_Critical(1);

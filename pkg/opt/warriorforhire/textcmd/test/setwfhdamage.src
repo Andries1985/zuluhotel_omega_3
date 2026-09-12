@@ -1,0 +1,53 @@
+// Synopsis: Set Warrior for Hire damage multipliers vs NPCs and bosses
+use uo;
+use os;
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include ":staff:include/staff";
+
+program textcmd_setwfhdamage(who)
+
+	var toNPCs := GetGlobalProperty("WFHDamageToNPCs");
+	if (!toNPCs) toNPCs := 1.0; endif
+	var fromNPCs := GetGlobalProperty("WFHDamageFromNPCs");
+	if (!fromNPCs) fromNPCs := 1.0; endif
+	var toBosses := GetGlobalProperty("WFHDamageToBosses");
+	if (!toBosses) toBosses := 1.0; endif
+	var fromBosses := GetGlobalProperty("WFHDamageFromBosses");
+	if (!fromBosses) fromBosses := 1.0; endif
+
+	var gump := GFCreateGump( 50, 50, 340, 260 );
+	GFResizePic( gump, 0, 0, 3500, 340, 260 );
+	GFHTMLArea(gump, 20, 15, 300, 25, "<BASEFONT SIZE=20><CENTER>WFH Damage Multipliers", 0, 0);
+
+	GFTextLine(gump, 20, 60, 0, "Damage dealt to NPCs:");
+	var e1 := GFTextEntry(gump, 220, 58, 80, 20, 0, CStr(toNPCs));
+
+	GFTextLine(gump, 20, 90, 0, "Damage taken from NPCs:");
+	var e2 := GFTextEntry(gump, 220, 88, 80, 20, 0, CStr(fromNPCs));
+
+	GFTextLine(gump, 20, 120, 0, "Damage dealt to Bosses:");
+	var e3 := GFTextEntry(gump, 220, 118, 80, 20, 0, CStr(toBosses));
+
+	GFTextLine(gump, 20, 150, 0, "Damage taken from Bosses:");
+	var e4 := GFTextEntry(gump, 220, 148, 80, 20, 0, CStr(fromBosses));
+
+	GFHTMLArea(gump, 20, 180, 300, 40, "<BASEFONT COLOR=DARKGRAY>1.0 = no change. 0.5 = half. 2.0 = double.", 0, 0);
+
+	GFAddButton(gump, 130, 225, 2128, 2129, 1, 1);
+
+	var data := GFSendGump(who, gump);
+	if (!data or !data[0])
+		SendSysMessage(who, "Cancelled.");
+		return;
+	endif
+
+	SetGlobalProperty("WFHDamageToNPCs", CDbl(GFExtractData(data, e1)));
+	SetGlobalProperty("WFHDamageFromNPCs", CDbl(GFExtractData(data, e2)));
+	SetGlobalProperty("WFHDamageToBosses", CDbl(GFExtractData(data, e3)));
+	SetGlobalProperty("WFHDamageFromBosses", CDbl(GFExtractData(data, e4)));
+
+	SendSysMessage(who, "Warrior for Hire damage multipliers updated.");
+	LogCommand(who, GetProcess(GetPid()).name, "Set WFH damage multipliers");
+
+endprogram

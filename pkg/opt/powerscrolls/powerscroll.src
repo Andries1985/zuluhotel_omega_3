@@ -21,17 +21,33 @@ program powerscroll(who, scroll)
 		return;
 	endif
 
-	if(!GetObjProperty(who, "pScrollMatrix"))
-		var newMatrix := {}, i;
-		for(i:=0; i<49; i:=i+1)
-			newMatrix.append(0);
-		endfor
-		SetObjProperty(who, "pScrollMatrix", newMatrix);
+	var matrix := GetObjProperty(who, "pScrollMatrix");
+	if(!matrix)
+		matrix := {};
+	endif
+	// Pads a legacy 49-entry matrix (from before Throwing/id 50 existed) up to
+	// SKILLID_MAX, not just fresh allocations.
+	var padi;
+	for(padi := Len(matrix); padi < SKILLID_MAX; padi := padi+1)
+		matrix.append(0);
+	endfor
+	SetObjProperty(who, "pScrollMatrix", matrix);
+
+	var skill := GetObjProperty(scroll, "skill");
+	// Must be checked before NormalizeSkillAndSlot()/matrix[] below -- 666 is
+	// the "already spent" sentinel (set just before this scroll's own
+	// DestroyItem() call further down) and isn't a real skillid/slot, so
+	// normalizing it falls through to NormalizeSkillAndSlot()'s default case
+	// (slot := 666), an out-of-bounds index into a matrix only sized to
+	// SKILLID_MAX. Guarding here means a scroll that somehow survived being
+	// marked spent (e.g. that DestroyItem() call failed) can't crash this one.
+	if(skill == 666)
+		DestroyItem(scroll);
+		return;
 	endif
 
-	var matrix := GetObjProperty(who, "pScrollMatrix");
-	var skill := GetObjProperty(scroll, "skill");
-	if(matrix[skill] > 15)
+	var norm := NormalizeSkillAndSlot(skill);
+	if(matrix[norm.slot] > 15)
 		SendSysMessage(who, "You can't raise this cap any higher.");
 		return;
 	endif
@@ -41,12 +57,8 @@ program powerscroll(who, scroll)
 		SendSysMessage( who , "Canceled." );
 		return;
 	endif
-		
-	if(skill == 666)
-		DestroyItem(scroll);
-		return;
-	endif
-	var chance := chances(matrix, skill);
+
+	var chance := chances(matrix, norm.slot);
 
 	if(chance > Random(101))
 		var des := DestroyItem(scroll);
@@ -54,14 +66,11 @@ program powerscroll(who, scroll)
 		if(!des)
 			return;
 		endif
-		var skillName := GetAttributeIdBySkillId(skill);
+		var skillName := GetAttributeIdBySkillId(norm.skillid);
 		SendSysMessage(who, "Your "+skillName+" skill cap is increased by 5, type .showcaps to see your current skillcaps.");
-		if(skill == 0)
-			skill := 49;
-		endif
-		matrix[skill] := matrix[skill]+5;
-		if(matrix[skill] > 20)
-			matrix[skill] := 20;
+		matrix[norm.slot] := matrix[norm.slot]+5;
+		if(matrix[norm.slot] > 20)
+			matrix[norm.slot] := 20;
 		endif
 		SetObjProperty(who, "pScrollMatrix", matrix);
 		
@@ -79,17 +88,14 @@ program powerscroll(who, scroll)
 
 endprogram
 
-function chances(matrix, skill)
+function chances(matrix, slot)
 	var chance := 0;
-	if(skill == 0)
-		skill := 49;
-	endif
 
-	if(matrix[skill] < 5)
+	if(matrix[slot] < 5)
 		chance := 80;
-	elseif(matrix[skill] < 10)
+	elseif(matrix[slot] < 10)
 		chance := 60;
-	elseif(matrix[skill] < 15)
+	elseif(matrix[slot] < 15)
 		chance := 40;
 	else
 		chance := 20;

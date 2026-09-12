@@ -106,10 +106,10 @@ program OnUse_RPerFactionStone(who, newstone)
             default: selectedclass := "The player must have canceled the gump without doing anything";
         endcase
 
-        var i;
-        for(i := 0; i < 49; i := i + 1)
-            SetBaseSkill(who, i, 0);
-        endfor
+        var skillid;
+        foreach skillid in GetSkillIds()
+            SetBaseSkill(who, skillid, 0);
+        endforeach
 
         var skillamount := 75;
         foreach skill in GetClasseSkills( classid )

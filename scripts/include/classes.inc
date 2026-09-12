@@ -133,10 +133,9 @@ function EnumerateRestrictedItemTypesFromClasse( classeid )
 					fract_array.append( GetPlatemailArmorGraphics() );
 					fract_array.append( GetShieldGraphics() );
 					break;
-		CLASSEID_THIEF:		
-					fract_array.append( GetChainmailArmorGraphics() );
-					fract_array.append( GetPlatemailArmorGraphics() );
-					fract_array.append( GetShieldGraphicsThief() );
+		CLASSEID_THIEF:
+					// Unrestricted as of the Throwing rework -- Thief matches
+					// Powerplayer's full armor/shield freedom now.
 					break;
 
 		CLASSEID_WARRIOR:
@@ -159,7 +158,26 @@ function EnumerateRestrictedItemTypesFromClasse( classeid )
 endfunction
 
 
-function GetClasseIdForSkill( skillid )
+function GetClasseIdForSkill( who, skillid )
+
+	// Detecting Hidden and Snooping left Thief's classe_skills (they're free
+	// coskills now, exempt from the class-cap dilution total) but an actual
+	// Thief should still get the specialization bonus (skill-gain rate,
+	// success chance) these two already gave. Throwing has the identical
+	// ambiguity from the other direction -- it's brand new to BOTH Thief's
+	// and Powerplayer's lists, and GetClasseIds()' fixed search order always
+	// hits CLASSEID_THIEF first, so a genuine Powerplayer would silently read
+	// (and always miss) Thief's level instead of their own. For all three,
+	// resolve to whichever of Thief/Powerplayer the mobile actually has a
+	// recorded level in, falling through to the generic per-class search
+	// only if neither does.
+	if( skillid == SKILLID_DETECTINGHIDDEN or skillid == SKILLID_SNOOPING or skillid == SKILLID_THROWING )
+		if( GetObjProperty(who, CLASSEID_THIEF) )
+			return CLASSEID_THIEF;
+		elseif( GetObjProperty(who, CLASSEID_POWERPLAYER) )
+			return CLASSEID_POWERPLAYER;
+		endif
+	endif
 
 	foreach id in GetClasseIds()
 		if( skillid in GetClasseSkills( id ) )
@@ -284,15 +302,15 @@ function GetClasseSkills( classeid )
 						 SKILLID_TRACKING	,
 						 SKILLID_VETERINARY };
 
-		CLASSEID_THIEF:			
-				return { SKILLID_DETECTINGHIDDEN,
-						 SKILLID_HIDING		,
+		CLASSEID_THIEF:
+				return { SKILLID_HIDING		,
 						 SKILLID_LOCKPICKING	,
 						 SKILLID_POISONING	,
 						 SKILLID_REMOVETRAP	,
-						 SKILLID_SNOOPING	,
 						 SKILLID_STEALING	,
-						 SKILLID_STEALTH	};
+						 SKILLID_STEALTH	,
+						 SKILLID_THROWING	,
+						 SKILLID_TACTICS	};
 
 		CLASSEID_WARRIOR:		
 				return { SKILLID_ANATOMY	,
@@ -321,6 +339,7 @@ function GetClasseSkills( classeid )
 						 SKILLID_SNOOPING			,
 						 SKILLID_STEALING			,
 						 SKILLID_STEALTH			,
+						 SKILLID_THROWING			,
 						 SKILLID_ANIMALLORE			, //Ranger
 						 SKILLID_TAMING				,
 						 SKILLID_ARCHERY			,
@@ -447,6 +466,10 @@ function HaveInvalidSkillEnchantmentForClasse( item , classeid )
 	endif
 
 	if( classeid == CLASSEID_THIEF && skillnum == SKILLID_DETECTINGHIDDEN )
+		ret := 0;
+	endif
+
+	if( classeid == CLASSEID_THIEF && skillnum == SKILLID_SNOOPING )
 		ret := 0;
 	endif
 
@@ -577,7 +600,7 @@ endfunction
 
 function IsSpecialisedIn( who, skillid )
 
-	var classeid := GetClasseIdForSkill( skillid );
+	var classeid := GetClasseIdForSkill( who, skillid );
 	if( classeid )
 		return CInt( GetObjProperty( who, classeid ) );
 	endif
@@ -614,7 +637,7 @@ function IsRanger( who )
 endfunction
 
 function IsThief( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ) );
+	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ), 0, 0, 0, 1, 1, 1 );
 endfunction
 
 function IsWarrior( who )
@@ -626,7 +649,7 @@ function IsPowerplayer( who )
 endfunction
 
 
-function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryallowed := 0, musicianshipallowed := 0 )
+function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryallowed := 0, musicianshipallowed := 0, detectinghiddenallowed := 0, snoopingallowed := 0, throwingallowed := 0 )
 
 	var classe	:= 0;
 	var total	:= 0;
@@ -639,7 +662,10 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryal
 		//These skills are free coskills for certain classes and don't dilute their spec calculation
 		if( !( (forensicsallowed and i == SKILLID_FORENSICS)
 			or (mageryallowed and i == SKILLID_MAGERY)
-			or (musicianshipallowed and i == SKILLID_MUSICIANSHIP) ) )
+			or (musicianshipallowed and i == SKILLID_MUSICIANSHIP)
+			or (detectinghiddenallowed and i == SKILLID_DETECTINGHIDDEN)
+			or (snoopingallowed and i == SKILLID_SNOOPING)
+			or (throwingallowed and i == SKILLID_THROWING) ) )
 			total := total + amount;
 		endif
 
@@ -790,6 +816,8 @@ function AssignClasse( character )
 			t := IsFromThatClasse( character , GetClasseSkills(classe), 1, 0, 0 );
 		elseif(classe == "IsCrafter")
 			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 1, 1 );
+		elseif(classe == "IsThief")
+			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 0, 0, 1, 1, 1 );
 		else
 			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 0, 0 );
 		endif
@@ -808,8 +836,8 @@ function ClassWeapons(classString)
 	case (classString)
 		//Shepherds Crook, bow, heavy crossbow, crossbow, Yumi, Composite Bow, Repeating Crossbow, Lajatang
 		"IsBard": return {0x0e81, 0x13B2, 0x13fd, 0x0f4f, 0x27a5, 0x26c2, 0x26c3, 0x27a7};
-		//crossbow, bow, heavy crossbow, Yumi, Sai, Composite Bow, Repeating Crossbow, Kryss, Short Spear, Spear, Warfork, Dagger, Skinning Knife, Pitchfork
-		"IsThief": return {0x0f4f, 0x13B2, 0x13fd, 0x27a5, 0x27af, 0x26c2, 0x26c3, 0x1401, 0x1402, 0x0f63, 0x1404, 0x0f51, 0x0ec4, 0x0e87};
+		// Thief no longer gated here as of the Throwing rework -- Thief deals
+		// normal damage with any weapon now, same as Warrior/Ranger/Powerplayer.
 		//Black Staff, Gnarled Staff, QuarterStaff, Lajatang
 		"IsMage": return {0x0df0, 0x13f9, 0x0e8a, 0x27a7};
 		default:

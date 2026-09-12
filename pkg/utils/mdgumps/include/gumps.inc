@@ -10,7 +10,7 @@
  * GFCreateGump(x:=0, y:=0, width:=0, height:=0)
  * GFDisposable(byref gump, bool)
  * GFExtractData(input, data_id)
- * GFGumpPic(byref gump, x, y, gump_id, hue := 0)
+ * GFGumpPic(byref gump, x, y, gump_id, hue := 0, partial := 0)
  * GFHTMLArea(byref gump, x, y, width, height, text, background:=0, scrollbar:=0)
  * GFMovable(byref gump, bool)
  * GFPage(byref gump, page_num)
@@ -28,6 +28,13 @@
  * GFItemProperty ( byref gump, item_serial )
  * GFClosable(byref gump, bool)
  * GFAddAlphaRegion(byref gump, x, y, width, height)
+ * GFPicInPic(byref gump, x, y, gump_id, src_x, src_y, width, height, hue := 0, partial := 0)
+ * GFTilePicAsGumpPic(byref gump, x, y, tile_id, link_id := 1, param_b := 0, param_c := 0)
+ * GFMasterGump(byref gump, gump_id)
+ * GFEndRadioGroup(byref gump)
+ * GFToggleUpperWordCase(byref gump)
+ * GFToggleCroppedText(byref gump)
+ * GFECHandleInput(byref gump)
  *
  * Private Function List
  * XGFError(text)
@@ -171,7 +178,7 @@ function GFDisposable(byref gump, bool)
 			gump.base.DisposeLoc := (gump.layout).Size();
 			break;
 		1:
-			if ( !gump.base.CloseLoc )
+			if ( !gump.base.DisposeLoc )
 				return XGFError("Gump is already disposable.");
 			endif
 
@@ -224,6 +231,95 @@ function GFMovable(byref gump, bool)
 endfunction
 
 /*
+ * GFMasterGump(byref gump, gump_id)
+ *
+ * Purpose
+ * Links the gump to a master gump, so the client draws it
+ * as a sub-window of an existing gump.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ * gump_id:	The id to be linked under.
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFMasterGump(byref gump, gump_id)
+	(gump.layout).Append("MasterGump "+CStr(CInt(gump_id)));
+
+	return 1;
+endfunction
+
+/*
+ * GFToggleUpperWordCase(byref gump)
+ *
+ * Purpose
+ * Title-cases each word of every localized HTML area in the gump.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ *
+ * Notes:
+ * A parser flag, not a property of any one element: emitting it flips the
+ * setting on and it stays flipped to the end of the definition. Add it once.
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFToggleUpperWordCase(byref gump)
+	(gump.layout).Append("ToggleUpperWordCase");
+
+	return 1;
+endfunction
+
+/*
+ * GFToggleCroppedText(byref gump)
+ *
+ * Purpose
+ * Enables the client's cropped-text rendering mode for the gump.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ *
+ * Notes:
+ * A sticky parser flag, same as GFToggleUpperWordCase().
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFToggleCroppedText(byref gump)
+	(gump.layout).Append("ToggleCroppedText");
+
+	return 1;
+endfunction
+
+/*
+ * GFECHandleInput(byref gump)
+ *
+ * Purpose
+ * Sets the Enhanced Client input-handling flag.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ *
+ * Notes:
+ * The classic client accepts the token and flips the flag, but only the
+ * Enhanced Client acts on it.
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFECHandleInput(byref gump)
+	(gump.layout).Append("ECHandleInput");
+
+	return 1;
+endfunction
+
+/*
  * GFPage(byref gump, page_num)
  *
  * Purpose
@@ -271,7 +367,7 @@ function GFResizePic(byref gump, x, y, gump_id, width, height)
 		width := gump.base.width;
 	endif
 	if ( !height )
-		height := gump.base.width;
+		height := gump.base.height;
 	endif
 
 	(gump.layout).Append("ResizePic "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
@@ -341,7 +437,11 @@ function GFAddButton(byref gump, x, y, off_id, on_id, btn_type:=GF_PAGE_BTN, btn
 	elseif ( btn_type == GF_DUMMY_BTN )
 		line += " 0 0 "+CStr(btn_value);
 	else // Assume GF_PAGE_BTN
-		line += " 0 "+CStr(btn_value);
+		// The slots are [quit] [page-id] [return-value]. A page button carries
+		// its target in the middle one and returns nothing, but the trailing
+		// slot still has to be written: leaving it off is six tokens where the
+		// client's Button command wants seven.
+		line += " 0 "+CStr(btn_value)+" 0";
 	endif
 
 	(gump.layout).Append(line);
@@ -391,7 +491,11 @@ function GFAddImageTileButton ( byref gump, x, y, off_id, on_id, btn_type:=GF_PA
 	elseif ( btn_type == GF_DUMMY_BTN )
 		line += " 0 0 "+CStr(btn_value);
 	else // Assume GF_PAGE_BTN
-		line += " 0 "+CStr(btn_value);
+		// Not merely tidier than omitting the return-value slot, as it is in
+		// GFAddButton: the four tile parameters follow, so a page button that
+		// wrote six slots had the client read tilepic_id as its return value
+		// and every tile parameter one place to the left of where it belongs.
+		line += " 0 "+CStr(btn_value)+" 0";
 	endif
 
   line += " "+CStr(tilepic_id)+" "+CStr(hue)+" "+CStr(width_x)+" "+CStr(height_y);
@@ -471,6 +575,26 @@ function GFSetRadioGroup(byref gump, group_id)
 endfunction
 
 /*
+ * GFEndRadioGroup(byref gump)
+ *
+ * Purpose
+ * Closes the radio group opened by GFSetRadioGroup(), so radio buttons
+ * added after it are no longer part of that group.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFEndRadioGroup(byref gump)
+	(gump.layout).Append("EndGroup");
+
+	return 1;
+endfunction
+
+/*
  * GFHTMLArea(byref gump, x, y, width, height, text, background, scrollbar)
  *
  * Purpose
@@ -527,14 +651,18 @@ endfunction
  *
  */
 function GFAddHTMLLocalized(byref gump, x, y, width, height, cliloc, background:=0, scrollbar:=0, hue:=0, customstring:="")
+	// Guard the no-argument branch with a comparison, not SizeOf(). SizeOf()
+	// is not a length function - basic.em documents it as "returns estimate
+	// of memory used" - so on a string it reports the object's footprint and
+	// is never 0, which left the XMFHTMLGumpColor branch below unreachable.
 	if(hue == 0 && customstring == "")
 		(gump.layout).Append("XMFHTMLGump "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
-					+ CStr(CInt(width))+" "+CStr(CInt(height))+" "+CStr(cliloc)+" "
-          + " "+ CStr(CInt(background))+" "+ CStr(CInt(scrollbar)));
-	elseif(hue > 0 && SizeOf(customstring) == 0)
+					+ CStr(CInt(width))+" "+CStr(CInt(height))+" "+CStr(CInt(cliloc))+" "
+					+ CStr(CInt(background))+" "+ CStr(CInt(scrollbar)));
+	elseif(hue > 0 && customstring == "")
 		(gump.layout).Append("XMFHTMLGumpColor "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
 					+ CStr(CInt(width))+" "+CStr(CInt(height))+" "+CStr(CInt(cliloc))+" "
-					+ " "+ CStr(CInt(background))+" "+ CStr(CInt(scrollbar))+" "+CStr(CInt(hue)));
+					+ CStr(CInt(background))+" "+ CStr(CInt(scrollbar))+" "+CStr(CInt(hue)));
   else
 		(gump.layout).Append("XmfHtmlTok "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
 					+ CStr(CInt(width))+" "+CStr(CInt(height))+" "+CStr(CInt(background))+" "
@@ -556,21 +684,79 @@ endfunction
  * y:		The top-left spot of the Y axis.
  * gump_id:	The gump-id (graphic #).
  * hue:		The decimal number representing the gump-id's hue.
+ * partial:	0: the hue replaces the colour of every non-transparent pixel.
+ *		1: the hue replaces only the grayscale ones.
  *
  * Notes:
  * The hue parameter is only supported by 3.5x or newer clients.
+ *
+ * Dyeable cloth and armour need partial := 1. Tinting that art fully flattens
+ * the graphic to a single shade, because the full form does not leave the
+ * pixels that already carry colour alone.
  *
  * Return value
  * No return value.
  *
  */
-function GFGumpPic(byref gump, x, y, gump_id, hue := 0)
-	var text := "GumpPic "+CStr(CInt(x))+" "+CStr(CInt(y))+" "+CStr(CInt(gump_id));
+function GFGumpPic(byref gump, x, y, gump_id, hue := 0, partial := 0)
+	var text := CStr(CInt(x))+" "+CStr(CInt(y))+" "+CStr(CInt(gump_id));
 
 	hue := CInt(hue);
-	if ( hue )
-		text += " hue="+CStr(hue);
+	if ( hue && partial )
+		text := "GumpPicPHued "+text+" "+CStr(hue);
+	elseif ( hue )
+		// GumpPicHued, not "GumpPic ... hue=", though the client reads both.
+		// Its GumpPic handler takes three positional values and then wants
+		// key=value for the rest, so the keyword form is the only way to hue a
+		// GumpPic - and one typo in it drops the tint in silence. The explicit
+		// command has no such trap and matches the PHued branch above.
+		text := "GumpPicHued "+text+" "+CStr(hue);
+	else
+		text := "GumpPic "+text;
 	endif
+
+	(gump.layout).Append(text);
+
+	return 1;
+endfunction
+
+/*
+ * GFPicInPic(byref gump, x, y, gump_id, src_x, src_y, width, height, hue, partial)
+ *
+ * Purpose
+ * Draws a cropped region of a gump graphic, rather than the whole graphic.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ * x:		The top-left spot of the X axis.
+ * y:		The top-left spot of the Y axis.
+ * gump_id:	The gump-id (graphic #) to crop from.
+ * src_x:	The X offset into the source graphic to crop from.
+ * src_y:	The Y offset into the source graphic to crop from.
+ * width:	The width (pixels) of the region to draw.
+ * height:	The height (pixels) of the region to draw.
+ * hue:		The decimal number representing the region's hue (optional).
+ * partial:	Grayscale-only tinting, as for GFGumpPic().
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFPicInPic(byref gump, x, y, gump_id, src_x, src_y, width, height, hue := 0, partial := 0)
+	var region := CStr(CInt(x))+" "+CStr(CInt(y))+" "+CStr(CInt(gump_id))+" "
+				+ CStr(CInt(src_x))+" "+CStr(CInt(src_y))+" "
+				+ CStr(CInt(width))+" "+CStr(CInt(height));
+	var text := "";
+
+	hue := CInt(hue);
+	if ( !hue )
+		text := "PicInPic "+region;
+	elseif ( partial )
+		text := "PicInPicPHued "+region+" "+CStr(hue);
+	else
+		text := "PicInPicHued "+region+" "+CStr(hue);
+	endif
+
 	(gump.layout).Append(text);
 
 	return 1;
@@ -607,6 +793,37 @@ function GFTilePic(byref gump, x, y, tile_id, hue := 0)
 	endif
 
 	(gump.layout).Append(text);
+	return 1;
+endfunction
+
+/*
+ * GFTilePicAsGumpPic(byref gump, x, y, tile_id, link_id, param_b, param_c)
+ *
+ * Purpose
+ * Draws an art tile in a gump-art slot.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ * x:		The top-left spot of the X axis.
+ * y:		The top-left spot of the Y axis.
+ * tile_id:	The artwork tile number.
+ * link_id:	One-based link id. The client decrements it before use, so the
+ *		lowest usable value is 1.
+ * param_b:	Passed through unchanged; meaning not established.
+ * param_c:	Passed through unchanged; meaning not established.
+ *
+ * Notes:
+ * Leave param_b and param_c at 0 unless a template already sets them.
+ *
+ * Return value
+ * Returns 1.
+ *
+ */
+function GFTilePicAsGumpPic(byref gump, x, y, tile_id, link_id := 1, param_b := 0, param_c := 0)
+	(gump.layout).Append("TilePicAsGumpPic "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
+				+ CStr(CInt(tile_id))+" "+CStr(CInt(link_id))+" "
+				+ CStr(CInt(param_b))+" "+CStr(CInt(param_c)));
+
 	return 1;
 endfunction
 
@@ -656,7 +873,6 @@ endfunction
  *
  */
 function GFTextCrop(byref gump, x, y, width, height, hue:=0, text:="")
-	gump.data.Append(text);
 	gump.data.Append(""+CStr(text));
 	var index := gump.data.Size()-1;
 
@@ -820,6 +1036,27 @@ function XGFError(text, err_log:=0)
 endfunction
 
 /*
+ * XGFAddToLayout(byref gump, line)
+ *
+ * Purpose
+ * Writes a raw line straight into the gump's layout array, for elements that
+ * have no GF* wrapper yet.
+ *
+ * Parameters
+ * gump:	Reference to the gump
+ * line:	The layout line, exactly as the client should receive it.
+ *
+ * Return value
+ * The layout array position the line was written to.
+ *
+ */
+function XGFAddToLayout(byref gump, line)
+	(gump.layout).Append(CStr(line));
+
+	return (gump.layout).Size();
+endfunction
+
+/*
  * GFPicTiled(byref gump, x, y, width, height, gump_id)
  *
  * Purpose
@@ -844,7 +1081,7 @@ function GFPicTiled(byref gump, x, y, width, height, gump_id)
 		width := gump.base.width;
 	endif
 	if ( !height )
-		height := gump.base.width;
+		height := gump.base.height;
 	endif
 
 	(gump.layout).Append("gumppictiled "+CStr(CInt(x))+" "+CStr(CInt(y))+" "
@@ -869,10 +1106,17 @@ endfunction
  *
  */
 function GFTooltip(byref gump, cliloc_id, customstring := "")
- var text := "Tooltip " + CInt(cliloc_id) + "@" + customstring + "@" + "'";
- (gump.layout).Append(text);
+	var text := "Tooltip "+CStr(CInt(cliloc_id));
 
- return 1;
+	// A cliloc that takes no arguments wants no argument block at all, not an
+	// empty one.
+	if ( customstring != "" )
+		text += " @"+CStr(customstring)+"@";
+	endif
+
+	(gump.layout).Append(text);
+
+	return 1;
 endfunction
 
 /*

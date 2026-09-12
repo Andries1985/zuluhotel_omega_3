@@ -1,0 +1,29 @@
+use os;
+use uo;
+
+program resetwfhdeathscheck( who, item )
+
+	ReserveItem(item);
+
+	var hm := GetObjProperty(who, "henchman");
+	var wfh := SystemFindObjectBySerial(hm);
+	if (!wfh)
+		SendSysMessage(who, "You don't have a Warrior for Hire to reset.");
+		Releaseitem(item);
+		return;
+	endif
+
+	SetObjProperty(wfh, "resnum", 0);
+
+	var backup := GetObjProperty(who, "WFHBackup");
+	if (backup)
+		backup.insert("resnum", 0);
+		SetObjProperty(who, "WFHBackup", backup);
+	endif
+
+	SendSysMessage(who, wfh.name+"'s death count has been reset.");
+	DestroyItem(item);
+
+	Releaseitem(item);
+
+endprogram

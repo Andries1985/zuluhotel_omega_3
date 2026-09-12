@@ -7,7 +7,7 @@
 
 
 const CFGFILE_AREAS			:= ":areas:areas";
-const CFGFILE_ATTRIBUTES_ALL		:= ":shilhook:attributes";
+const CFGFILE_ATTRIBUTES_ALL		:= ":attributes:attributes";
 const CFGFILE_BOOKS_ZULU		:= ":sysbook:zulubooks";
 const CFGFILE_CIRCLES			:= ":*:circles";
 const CFGFILE_ENCHANTABLE_ITEMS		:= ":combat:enchantableitems";
@@ -40,7 +40,7 @@ const CFGFILE_POISON_DATA		:= ":mods:poison";
 const CFGFILE_REAGENT_NAMES		:= ":*:reagentsxlate";
 const CFGFILE_SHAPESHIFT		:= ":earth:shapeshift";
 const CFGFILE_SHRINES			:= ":shrines:shrines";
-const CFGFILE_SKILLS_ALL		:= ":shilhook:skillsdef";
+const CFGFILE_SKILLS_ALL		:= ":attributes:skillsdef";
 const CFGFILE_SPELLS_ALL		:= ":*:spells";
 const CFGFILE_SPELLS_EARTH		:= ":earth:spells";
 const CFGFILE_SPELLS_NECROMANCY		:= ":necro:spells";

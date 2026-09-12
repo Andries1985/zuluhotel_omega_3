@@ -1080,7 +1080,7 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 		// ways: SetVital's raw value is hundredths (overrides.hits is a real
 		// HP number, so it'd be 100x under-scaled), and it only stamps the
 		// CURRENT vital, not the ceiling - this repo's actual max-HP formula
-		// (pkg/opt/shilhook/regen.src's GetLifeMaximumValueExported, wired via
+		// (pkg/systems/attributes/hooks/vitalInit.src's GetLifeMaximumValueExported, wired via
 		// vitals.cfg's MaximumFunction) checks the CustomHitsLevel ObjProperty
 		// first and only falls back to STR*100 if it's unset, exactly like
 		// npcdesc.cfg's own CustomHitsLevel field. So the override has to set

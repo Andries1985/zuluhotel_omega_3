@@ -236,7 +236,7 @@ endprogram
 // Used to inform a player if and how much a NPC can train a player
 function MerchantTrain( me , who , text )
 
-   var skillcfg := ReadConfigFile( ":shilhook:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
+   var skillcfg := ReadConfigFile( ":attributes:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
     var elem;             // used to contain the skill structure for the skill in question.
     var i;                // Counter for various operations
 

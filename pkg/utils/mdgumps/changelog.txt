@@ -38,3 +38,29 @@ Changes:
 			ThisIsMe:
 				+ Fixed a compile error, stupid mistake on my part, changed the name of a parameter and forgot to change it in the function
 				  as well. Crumbs!
+
+2026-09-10: 2.1
+			AsYlum- (pulled from polserver/ModernDistro PR #157):
+				+ Added GFMasterGump - draws the gump as a sub-window of another gump.
+				+ Added GFToggleUpperWordCase and GFToggleCroppedText - sticky parser flags, emit once per gump.
+				+ Added GFECHandleInput - only the Enhanced Client acts on it.
+				+ Added GFEndRadioGroup - closes a group opened by GFSetRadioGroup.
+				+ Added GFPicInPic - draws a cropped region of a gump graphic. Needs a High Seas or newer client.
+				+ Added GFTilePicAsGumpPic - draws an art tile in a gump-art slot. link_id is one-based.
+				+ Added XGFAddToLayout - writes a raw layout line, for elements with no GF* wrapper yet. It was
+				  already in the header's private function list but had never been written.
+
+				+ GFGumpPic now emits 'GumpPicHued' rather than the 'hue=' attribute, and takes a 'partial'
+				  parameter selecting 'GumpPicPHued'. Dyeable cloth and armour need partial := 1.
+
+				+ Fixed GFDisposable testing CloseLoc where it meant DisposeLoc.
+				+ Fixed GFResizePic and GFPicTiled falling back to base.width when passed a height of 0.
+				+ Fixed GFTextCrop appending its text to the data array twice.
+				+ Fixed GFAddButton and GFAddImageTileButton writing six of the Button command's seven slots for
+				  a page button. In GFAddImageTileButton the tile parameters follow, so the client read
+				  tilepic_id as the return value and every tile parameter one place too early.
+				+ Fixed GFAddHTMLLocalized guarding a branch with SizeOf(customstring) == 0. SizeOf() is memory
+				  used, not length, so it is never 0 and XMFHTMLGumpColor was unreachable - a hued cliloc with no
+				  argument went out as XmfHtmlTok with an empty '@@' block.
+				+ Fixed GFTooltip emitting a malformed line: no space before the argument block, an empty '@@'
+				  for argument-less clilocs, and a trailing stray apostrophe.

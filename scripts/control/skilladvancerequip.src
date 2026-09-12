@@ -1,11 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
 //
-// SkillAdvancerEquip() - Function that handles applying all mods/stats/skills to the player when 
+// SkillAdvancerEquip() - Function that handles applying all mods/stats/skills to the player when
 //			  equiping items. Probably needs a bit of a clean up.
 //
-// TODO: The SetRegenMod function has been commented out. Find out why.
-//	
+// DoRegenMods() was disabled for a long time (SetHPRegenRate/GetHPRegenRate
+// never existed; SetManaRegenRate/SetStaminaRegenRate wrote a CProp the vitals
+// port's GetManaRegenRateExported/GetStaminaRegenRateExported don't read).
+// Re-enabled 2026-09-11 against the new SetVitalRegenRateMod/regen.inc API.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 use uo;
 use os;
@@ -16,6 +18,7 @@ include "include/client";
 include "include/namingbyenchant";
 include "include/attributes";
 include ":guilds:include/guilds";
+include ":attributes:include/regen";
 
 program equip( who, it )
 
@@ -106,7 +109,7 @@ program equip( who, it )
 	DeathShroudMod( it );
 	DoStatMods( who , it);
 	DoSkillAdvance( who , it);
-	//DoRegenMods( who , it );
+	DoRegenMods( who , it );
 	DoArMods( who , it );
 	//DoEquipSpell( who , it);
 	DoImmunity( who , it );
@@ -274,7 +277,10 @@ endfunction
 // Toadstool
 //
 // DoRegenMods() - Applies the regen mods to the player.
-//		   I Left the old methods commented out, for reference.
+//		   Each item contributes its own named entry (keyed by serial) to
+//		   the vitals port's regen-mod dictionary, so multiple regen items
+//		   worn at once stack correctly and each can be removed independently
+//		   on unequip (see UndoRegenMods() in skilladvancerunequip.src).
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 function DoRegenMods( who , item )
@@ -282,40 +288,22 @@ function DoRegenMods( who , item )
 	if( GetObjProperty( item , "EquippedAlready" ) )
 		return 1;
 	endif
-	
+
 	var hp := GetObjProperty( item , "HpRegen" );
 	if( hp )
-		if( GetObjProperty( who , "baseregen" ) )
-			SetObjProperty( who , "baseregen" , GetObjProperty( who , "baseregen" ) + hp );
-		else
-			SetObjProperty( who , "baseregen" , hp );
-		endif
-		SetHPRegenRate(who, GetHPRegenRate(who)+hp);
-		//who.hp_regen_rate := who.hp_regen_rate + hp;
+		SetVitalRegenRateMod(who, VITALID_LIFE, "item"+item.serial, hp);
 	endif
-	
+
 	var mana := GetObjProperty( item , "ManaRegen" );
 	if( mana )
-		if( GetObjProperty( who , "basemanaregen" ) )
-			SetObjProperty( who , "basemanaregen" , GetObjProperty( who , "basemanaregen" ) + mana );
-		else
-			SetObjProperty( who , "basemanaregen" , mana );
-		endif
-		SetManaRegenRate(who, GetManaRegenRate(who)+mana);
-		//who.mana_regen_rate := who.mana_regen_rate + mana;
+		SetVitalRegenRateMod(who, VITALID_MANA, "item"+item.serial, mana);
 	endif
-	
+
 	var stamina := GetObjProperty( item , "StamRegen" );
 	if( stamina )
-		if( GetObjProperty( who , "basestamregen" ) )
-			SetObjProperty( who , "basestamregen" , GetObjProperty( who , "basemanaregen" ) + stamina );
-		else
-			SetObjProperty( who , "basestamregen" , stamina );
-		endif
-		SetStaminaRegenRate(who, GetStaminaRegenRate(who)+stamina);
-		//who.stamina_regen_rate := who.stamina_regen_rate + stamina;
+		SetVitalRegenRateMod(who, VITALID_STAMINA, "item"+item.serial, stamina);
 	endif
-	
+
 endfunction
 	
 			

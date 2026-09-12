@@ -103,7 +103,38 @@ program skillwindow( who )
 		endif
 
 	endfor
-	
+
+	// Throwing (skill id 57) sits outside the 0-48 contiguous range the loop
+	// above covers, same reason Alchemy (id 0) needed its own matrix[49] slot --
+	// appended here as its own row rather than widening the loop, which would
+	// otherwise try to resolve the empty, unused ids 49-56 and error.
+	var throwingCap;
+	// Len() guard covers a legacy matrix saved before Throwing/id 50 existed --
+	// the raise/lower cap tools now pad it on next use, but until then a short
+	// matrix here would be an out-of-bounds read.
+	if(!matrix or Len(matrix) < 50)
+		throwingCap := 130;
+	else
+		throwingCap := 130+matrix[50];
+	endif
+	var throwingHue := 0;
+	if (throwingCap == 135)
+		throwingHue := 1951;
+	elseif (throwingCap == 140)
+		throwingHue := 1992;
+	elseif (throwingCap == 145)
+		throwingHue := 2159;
+	elseif (throwingCap == 150)
+		throwingHue := 1267;
+	endif
+	var throwingChue := 0;
+	if( SKILLID_THROWING in GetClasseSkills( GetClass(who) ) )
+		throwingChue := 2820;
+	endif
+	GFTextLine(gump, 420, 50+countd, throwingChue, "Throwing");
+	GFTextLine(gump, 545, 50+countd, throwingHue, throwingCap);
+	countd := countd + 20;
+
 	if(!statMatrix)
 		statMatrix := {0,0,0};
 	endif

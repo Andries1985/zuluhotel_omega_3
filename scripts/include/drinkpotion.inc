@@ -55,8 +55,10 @@ function GetPotionStrength( potion )
 		
 		if( GetObjProperty( potion , "ByTrueMage" ) )
 			power := power + Cint(GetObjProperty( potion , "ByTrueMage" ));
+		elseif( GetObjProperty( potion , "ByTrueThief" ) )
+			power := power + Cint(GetObjProperty( potion , "ByTrueThief" ));
 		endif
-		
+
 		return power;
 	endif
 

@@ -24,6 +24,19 @@ Program tss( who, scroll)
 		return;
 	endif
 
+	var matrix := GetObjProperty(who, "pScrollMatrix");
+	if(matrix)
+		// Pads a legacy 49-entry matrix (from before Throwing/slot 50 existed)
+		// up to SKILLID_MAX -- otherwise checkAmount()/GetHardCap() below hit
+		// an out-of-bounds matrix[50] for a character who saved their matrix
+		// before this shard added Throwing.
+		var padi;
+		for(padi := Len(matrix); padi < SKILLID_MAX; padi := padi+1)
+			matrix.append(0);
+		endfor
+		SetObjProperty(who, "pScrollMatrix", matrix);
+	endif
+
 	var gump := GFCreateGump(20, 20, 2, 530);
 
 	// The main gump screen
@@ -41,7 +54,7 @@ Program tss( who, scroll)
 	var count := 1;
 	var skill;
 	repeat
-	if(count != 49)
+	if(count != 49 && count != 50)
 		name := GetAttributeIdBySkillId( count );
 		skill := GetSkillIdByAttributeId( name );
 		skill := CDbl(GetBaseSkillBaseValue( who, skill )/10.0);
@@ -49,6 +62,10 @@ Program tss( who, scroll)
 	if (count == 49)
 		name := ATTRIBUTEID_ALCHEMY;
 		skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_ALCHEMY )/10.0);
+	endif
+	if (count == 50)
+		name := ATTRIBUTEID_THROWING;
+		skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_THROWING )/10.0);
 	endif
 
 	if (i >= line)
@@ -96,7 +113,13 @@ Program tss( who, scroll)
 			RecalculateEquippedSkillBonus(who, 0);
 		endif
 
-		if(result[0] != 0 and result[0] != 100 and result[0] != 999 and result[0] != 49)
+		if(result[0] == 50)
+			SetBaseSkillBaseValue(who, SKILLID_THROWING, amount);
+			ApplyHardCap(who, SKILLID_THROWING);
+			RecalculateEquippedSkillBonus(who, SKILLID_THROWING);
+		endif
+
+		if(result[0] != 0 and result[0] != 100 and result[0] != 999 and result[0] != 49 and result[0] != 50)
 			SetBaseSkillBaseValue(who, result[0], amount);
 			ApplyHardCap(who, result[0]);
 			RecalculateEquippedSkillBonus(who, result[0]);
@@ -111,10 +134,8 @@ endprogram
 function checkAmount( who, skill )
 	var amount, value;
 	var matrix := GetObjProperty(who, "pScrollMatrix");
-	if(skill == 49)
-		skill := 0;
-	endif
-	var base := GetBaseSkillBaseValue(who, skill);
+	var norm := NormalizeSkillAndSlot(skill);
+	var base := GetBaseSkillBaseValue(who, norm.skillid);
 	if(base >= 1500)
 		return 0;
 	endif
@@ -138,10 +159,7 @@ function checkAmount( who, skill )
 	
 	value := base+amount;
 	if(matrix)
-		var pscrollSkillCap := 130+matrix[skill];
-		if(skill == 0)
-			pscrollSkillCap := 130+matrix[49];
-		endif
+		var pscrollSkillCap := 130+matrix[norm.slot];
 		if(pscrollSkillCap > 150);
 			pscrollSkillCap := 150;
 		endif
@@ -163,12 +181,10 @@ endfunction
 function GetHardCap(who, skill)
 	var cap := 130;
 	var matrix := GetObjProperty(who, "pScrollMatrix");
+	var norm := NormalizeSkillAndSlot(skill);
 
 	if(matrix)
-		cap := 130 + CInt(matrix[skill]);
-		if(skill == 0)
-			cap := 130 + CInt(matrix[49]);
-		endif
+		cap := 130 + CInt(matrix[norm.slot]);
 		if(cap > 150)
 			cap := 150;
 		endif
@@ -179,7 +195,8 @@ endfunction
 
 function ApplyHardCap(who, skill)
 	var cap := GetHardCap(who, skill);
-	if(GetBaseSkillBaseValue(who, skill) > (cap * 10))
-		SetBaseSkillBaseValue(who, skill, cap * 10);
+	var norm := NormalizeSkillAndSlot(skill);
+	if(GetBaseSkillBaseValue(who, norm.skillid) > (cap * 10))
+		SetBaseSkillBaseValue(who, norm.skillid, cap * 10);
 	endif
 endfunction

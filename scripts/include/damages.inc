@@ -27,7 +27,7 @@ include "include/attributes";
 include ":karmafame:karmafame";
 //include "include/mobileutil";
 include "include/astralfights";
-//include ":shilhook:shilcombat";
+//include ":combat:shilcombat";
 //include "include/areas";
 //include "include/classes";
 //include "include/client";

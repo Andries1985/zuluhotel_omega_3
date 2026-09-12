@@ -51,7 +51,7 @@ var colour := 999;
 var count := 1;
 var skill;
 repeat
-	if(count != 49)
+	if(count != 49 && count != 50)
 		name := GetAttributeIdBySkillId( count );
 		skill := GetSkillIdByAttributeId( name );
 		skill := CDbl(GetBaseSkillBaseValue( who, skill )/10.0);
@@ -59,6 +59,10 @@ repeat
 	if (count == 49)
 	name := ATTRIBUTEID_ALCHEMY;
 	skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_ALCHEMY )/10.0);
+	endif
+	if (count == 50)
+	name := ATTRIBUTEID_THROWING;
+	skill := CDbl(GetBaseSkillBaseValue( who, SKILLID_THROWING )/10.0);
 	endif
 	if (i >= line)
 		x := x + 230;
@@ -119,12 +123,9 @@ foreach key in (result.keys)
         endif
 
 
-	if(key != 0 and key != 100 and key != 999 and key == 49)
-		SetBaseSkill(who, key == 0, 0);
-	endif
-
-	if(key != 0 and key != 100 and key != 999 and key != 49)
-		SetBaseSkill(who, key, 0);
+	if(key != 0 and key != 100 and key != 999)
+		var norm := NormalizeSkillAndSlot(key);
+		SetBaseSkill(who, norm.skillid, 0);
 	endif
 	
 endforeach

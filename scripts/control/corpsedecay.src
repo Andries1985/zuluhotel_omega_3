@@ -5,6 +5,8 @@ use basic;
 use cfgfile;
 
 include "include/constants/propids";
+include "include/objtype";
+include ":warriorforhire:include/wfhescrow";
 
 const DECAY_TIME_NPC_CORPSE		:= 30;		// In minutes.
 const DECAY_TIME_PLAYER_CORPSE		:= 30;		// In minutes.
@@ -74,6 +76,23 @@ endfunction
 function ProcessNpcCorpseDecaying( corpse )
 
 	Sleep( Cint(DECAY_TIME_NPC_CORPSE*60) );
+
+	if (GetObjProperty(corpse, "npctemplate") == "warriorforhire" and !GetObjProperty(corpse,"AbandonedByOwner"))
+		var ownerserial := GetObjProperty(corpse,"master");
+		var rootitems := EnumerateItemsInContainer(corpse, ENUMERATE_ROOT_ONLY);
+		if (ownerserial and len(rootitems))
+			var payout := CreateItemAtLocation(corpse.x, corpse.y, corpse.z, UOBJ_BACKPACK, 1, corpse.realm);
+			if (payout)
+				foreach item in rootitems
+					MoveItemToContainer(item, payout);
+				endforeach
+				if (!WFH_SaveToEscrow(payout, ownerserial, corpse.serial))
+					DestroyItem(payout);
+				endif
+			endif
+		endif
+	endif
+
 	DestroyItem(corpse);
 
 endfunction

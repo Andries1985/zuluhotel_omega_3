@@ -4,6 +4,7 @@ use basic;
 
 include ":karmafame:karmafame";
 include "include/attributes";
+include ":attributes:regen";
 
 const MAX_LOSS_PERCENT	:= 0.5;
 
@@ -15,7 +16,9 @@ function ResurrectMobile( who, by_who := 0 )
 	Resurrect( who );
 	FixColor( who );
 	
-	SetHpRegenRate(who , 1200);
+	ClearAllVitalRegenRateMods(who, VITALID_LIFE);
+	ClearAllVitalRegenRateMods(who, VITALID_MANA);
+	ClearAllVitalRegenRateMods(who, VITALID_STAMINA);
 
 	// Destroy a base colour non newbie robe in players pack after res
 	var robe := GetEquipmentByLayer( who, 0x16 );

@@ -7,6 +7,7 @@ include "include/client";
 include "include/dotempmods";
 include "include/areas";
 include "include/damages";
+include ":attributes:regen";
 
 program processtempmods( parms )
 
@@ -127,9 +128,7 @@ program processtempmods( parms )
 	var current_clock := Cint(ReadGameClock());
 	
 	if( plvl > current )
-		SetHpRegenRate(who, -1);
-		//SetHpRegenRate( who,  (newpoisonregenmod * 10));
-		//who.hp_regen_rate := Cint(BaseRegenRate( who ) + ( newpoisonregenmod));
+		SetVitalRegenRateMod(who, VITALID_LIFE, "poison", -1);
 	endif
 
 	var mmod := { plvl , Cint(current_clock + duration) };

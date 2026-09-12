@@ -1,0 +1,14 @@
+use uo;
+
+include "poisoning";
+
+program use_vialofvenom( user, vial )
+
+	if( !IsOnPlayer( user.backpack , vial ) )
+		SendSysmessage( user, "That item has to be in your backpack." );
+		return;
+	endif
+
+	ApplyPoison( user );
+
+endprogram

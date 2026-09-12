@@ -9,7 +9,7 @@ include "include/attributes";
 include "include/classes";
 
 function get_default_points(skillid)
-        var cfg := readconfigfile(":shilhook:attributes");
+        var cfg := readconfigfile(":attributes:attributes");
 
         var default_points := FindConfigElem( cfg, GetAttributeIdBySkillId( skillid ) ).DefaultPoints;
         
@@ -215,20 +215,6 @@ var skill := GetAttributeIdBySkillId(skillid);
 
 	if(GetObjProperty (who,"IsMage"))
 		var classweps := ClassWeapons("IsMage");
-		var wepfound := 0;
-		foreach wep in classweps
-			if(who.weapon.graphic == wep)
-				wepfound := 1;
-			endif
-		endforeach
-
-		if(wepfound)
-			if(skill == who.weapon.attribute || skill == ATTRIBUTEID_TACTICS)
-				rawpoints := 0;
-			endif
-		endif
-	elseif(GetObjProperty (who,"IsThief"))
-		var classweps := ClassWeapons("IsThief");
 		var wepfound := 0;
 		foreach wep in classweps
 			if(who.weapon.graphic == wep)

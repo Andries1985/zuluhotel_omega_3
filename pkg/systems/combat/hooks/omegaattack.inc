@@ -4,7 +4,6 @@ use uo;
 use os;
 use util;
 use cfgfile;
-use basicio;
 
 include "include/classes";
 include ":combat:hitscriptinc";
@@ -18,8 +17,6 @@ function OmegaAttack(attacker, defender)
 	var weapfile := ReadConfigFile( ":combat:itemdesc" );
 	var attackerweaponType := weapfile[attacker.weapon.objtype];
 
-	Print("[OmegaAttack] " + attacker.name + " weapon objtype=" + Hex(attacker.weapon.objtype) + " attribute=" + attacker.weapon.attribute + " attackerweaponType.Projectile=" + attackerweaponType.Projectile);
-
 //	var listofanim	:=	GetConfigIntArray( attackerweaponType, "Anim" );
 
 //	Print($"listofanim " +listofanim);
@@ -27,21 +24,26 @@ function OmegaAttack(attacker, defender)
 //	var Anim := listofanim[(Random(3)+1)];
 //	Print($"animation " +Anim);
 
-	if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY || attackerweaponType.Projectile)
-		Print("[OmegaAttack] took RANGED branch");
+	if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY || attacker.weapon.attribute == ATTRIBUTEID_THROWING)
 		if (!checkForAndDecrementAmmunition( attacker, attackerweaponType))
-			Print("[OmegaAttack] checkForAndDecrementAmmunition FAILED, aborting");
 			return;
 		endif
-		if (!ValidArcheryWeapon(attackerweaponType))
-			Print("[OmegaAttack] ValidArcheryWeapon FAILED, aborting -- ProjectileAnim=" + attackerweaponType.ProjectileAnim + " Anim=" + attackerweaponType.Anim + " hitSound=" + attackerweaponType.hitSound + " projectileSound=" + attackerweaponType.projectileSound + " hitscript=" + attackerweaponType.hitscript + " damage=" + attackerweaponType.damage + " Projectile=" + attackerweaponType.Projectile + " ProjectileType=" + attackerweaponType.ProjectileType);
-			return;
+		if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY)
+			if (!ValidArcheryWeapon(attackerweaponType))
+				return;
+			endif
+		else
+			if (!ValidThrowingWeapon(attackerweaponType))
+				return;
+			endif
 		endif
 		PerformAction( attacker, attackerweaponType.Anim);
-		PlayArcheryAnimation(attacker, defender, attackerweaponType);
-		var hitResult := CheckHitChance(attacker, defender);
-		Print("[OmegaAttack] ranged CheckHitChance=" + hitResult);
-		if(hitResult)
+		if(attacker.weapon.attribute == ATTRIBUTEID_ARCHERY)
+			PlayArcheryAnimation(attacker, defender, attackerweaponType);
+		else
+			PlayThrowAnimation(attacker, defender, attackerweaponType);
+		endif
+		if(CheckHitChance(attacker, defender))
 			if(attackerweaponType.HitSound)
 				PlaySoundEffect( attacker, attackerweaponType.ProjectileSound );
 				PlaySoundEffect( defender, attackerweaponType.ProjectileSound );
@@ -54,7 +56,6 @@ function OmegaAttack(attacker, defender)
 			return;
 		endif
 	else
-		Print("[OmegaAttack] took MELEE branch");
 		PerformAction( attacker, attackerweaponType.Anim);
 		if(CheckHitChance(attacker, defender))
 			if(attackerweaponType.HitSound)
@@ -137,9 +138,14 @@ function CheckHitChance(attacker, defender)
 	var attacker_wep_skill;
 	//award skill points regardless of hit or miss
 	CombatAdvancement( attacker, weapon, defender );
-	if(GetObjProperty( attacker , CLASSEID_THIEF ) || GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_BARD))
+	// Thief moved off the lowest-of-8 blend as of the Throwing rework -- with a
+	// real weapon skill now (Throwing, same as every other combat class), hit
+	// chance should track what they actually trained for the weapon in hand,
+	// not get capped by whichever unrelated class skill (Lockpicking, Stealth...)
+	// they happen to have neglected. Mage/Bard are untouched, out of scope here.
+	if(GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_BARD))
 		attacker_wep_skill := CDbl(GetLowestClassSkillValue(attacker));
-	else 
+	else
 		attacker_wep_skill := CDbl(GetEffectiveSkill(attacker, wep_skill));
 	endif
 
@@ -175,10 +181,22 @@ function ValidArcheryWeapon(weaponType)
 
 endfunction
 
+// Same shape as ValidArcheryWeapon(), minus ProjectileType -- a NonConsumingProjectile
+// throwing weapon has no real ammo, so it shouldn't be forced to fake one just to pass.
+function ValidThrowingWeapon(weaponType)
+
+	if(!weaponType.ProjectileAnim || !weaponType.Anim || !weaponType.hitSound || !weaponType.projectileSound ||
+		!weaponType.hitscript || !weaponType.damage || !weaponType.Projectile )
+		return 0;
+	endif
+
+	return 1;
+
+endfunction
+
 
 function checkForAndDecrementAmmunition( who, weaponType )
 
-	Print("[checkForAndDecrementAmmunition] NonConsumingProjectile=" + GetObjProperty(who.weapon, "NonConsumingProjectile"));
 	if (GetObjProperty(who.weapon, "NonConsumingProjectile"))
 		return 1;
 	endif
@@ -215,7 +233,60 @@ function PlayArcheryAnimation(attacker, defender, attackerweaponType)
 		animation := 0x183e;
 	endif
 
-	PlayMovingEffectXYZEx( attacker.x, attacker.y, attacker.z+9, defender.x, defender.y, defender.z+5, defender.realm, animation, 2, 0, color);
+	// Defaults here match what every existing archery weapon already got
+	// hardcoded before these became tunable per-weapon itemdesc fields.
+	var fxspeed := attackerweaponType.ProjectileSpeed;
+	if(!fxspeed)
+		fxspeed := 2;
+	endif
+
+	var fxduration := attackerweaponType.ProjectileLoop;
+	if(!fxduration)
+		fxduration := 0;
+	endif
+
+	var fxexplode := attackerweaponType.ProjectileExplode;
+	if(!fxexplode)
+		fxexplode := 0;
+	endif
+
+	PlayMovingEffectXYZEx( attacker.x, attacker.y, attacker.z+9, defender.x, defender.y, defender.z+5, defender.realm, animation, fxspeed, fxduration, color, 0, 0, fxexplode);
+endfunction
+
+// Isolated from PlayArcheryAnimation() on purpose -- Throwing weapons use the
+// object-based moving-effect call (same pattern as fanofknives.src) instead of
+// the XYZ-coordinate one Archery uses, so testing/tuning this never touches
+// Bow/Crossbow/Dreams Bow's existing, working visual.
+function PlayThrowAnimation(attacker, defender, attackerweaponType)
+	var animation := attackerweaponType.ProjectileAnim;
+
+	var fxspeed := attackerweaponType.ProjectileSpeed;
+	if(!fxspeed)
+		fxspeed := 5;
+	endif
+
+	var fxloop := attackerweaponType.ProjectileLoop;
+	if(!fxloop)
+		fxloop := 0;
+	endif
+
+	var fxexplode := attackerweaponType.ProjectileExplode;
+	if(!fxexplode)
+		fxexplode := 0;
+	endif
+
+	var fxhue := attackerweaponType.ProjectileHue;
+	if(!fxhue)
+		fxhue := 0;
+	endif
+
+	var fxrender := attackerweaponType.ProjectileRender;
+	if(!fxrender)
+		fxrender := 0;
+	endif
+
+	// Last three (effect3d/effect3dexplode/effect3dsound) are always 0 -- not exposed as options.
+	PlayMovingEffectXYZEx( attacker.x, attacker.y, attacker.z+9, defender.x, defender.y, defender.z+5, defender.realm, animation, fxspeed, fxloop, fxhue, fxrender, 0, fxexplode, 0, 0, 0 );
 endfunction
 
 function CombatAdvancement( attacker, weapon, defender )

@@ -179,7 +179,12 @@ endfunction
 
 function ACCT_TrimDiscordID( byref discord_id )
 
-	if( !discord_id )
+	// 2026-09-09: an error{} struct (e.g. from GetProp() on a property that
+	// was never set, like an old account with no HouseholdId) is truthy --
+	// !discord_id doesn't catch it, and CStr()'ing it below would return the
+	// literal "error{errortext=...}" text instead of "". Checked explicitly,
+	// same fix as ACCT_GetAccountDiscordInfo's DiscordID guard.
+	if( discord_id == error || !discord_id )
 		return "";
 	endif
 
@@ -233,9 +238,19 @@ function ACCT_GetAccountDiscordInfo( account_or_who )
 		return account;
 	endif
 
-	var discord_raw := CStr( account.GetProp( "DiscordID" ));
-	if( discord_raw == "<empty string>" )
-		discord_raw := "";
+	// 2026-09-09: accounts that predate this property entirely (e.g. the
+	// original bootstrap "admin" account) return the unresolved error{}
+	// struct from GetProp, not an empty string -- CStr()'d that straight
+	// into "DiscordIDRaw"/"DiscordIDNorm" as literal error{errortext=...}
+	// text, surfaced in :alryc:testadminpanel's account browser. Guarded the
+	// same way as every other error{}-from-GetProp case in this codebase.
+	var discord_prop := account.GetProp( "DiscordID" );
+	var discord_raw := "";
+	if( discord_prop != error )
+		discord_raw := CStr( discord_prop );
+		if( discord_raw == "<empty string>" )
+			discord_raw := "";
+		endif
 	endif
 
 	var discord_norm := ACCT_NormalizeDiscordID( discord_raw );

@@ -198,7 +198,7 @@ endprogram
 
 function ShowMainPanel(who)
 	var gump := GFCreateGump(50, 50, 320, 215);
-	GFResizePic(gump, 0, 0, 9250, 320, 215);
+	GFResizePic(gump, 0, 0, 350, 320, 215);
 	GFResizePic(gump, 10, 10, 9350, 300, 195);
 	GFTextLine(gump, 20, 20, 43, "Admin Data Panel");
 
@@ -242,7 +242,7 @@ function ShowAllAccountsList(who)
 	var total_pages := CInt((total - 1) / perpage) + 1;
 
 	var gump := GFCreateGump(50, 50, 580, 460);
-	GFResizePic(gump, 0, 0, 9250, 580, 460);
+	GFResizePic(gump, 0, 0, 350, 580, 460);
 	GFResizePic(gump, 10, 10, 9350, 560, 440);
 	GFTextLine(gump, 20, 20, 43, "Browse by Account ("+total+")");
 
@@ -361,7 +361,7 @@ function ShowHouseholdPicker(who)
 
 	var gump := GFCreateGump(50, 50, 500, 620);
 	GFDisposable(gump, 0);
-	GFResizePic(gump, 0, 0, 9250, 500, 620);
+	GFResizePic(gump, 0, 0, 350, 500, 620);
 	GFResizePic(gump, 10, 10, 9350, 480, 600);
 	GFTextLine(gump, 20, 20, 43, "Browse by Household ("+keys.size()+")");
 	GFTextLine(gump, 20, 44, 900, "HouseholdId");
@@ -497,7 +497,7 @@ function ShowHouseholdDetail(who, household_id)
 	endif
 
 	var gump := GFCreateGump(50, 50, 420, height);
-	GFResizePic(gump, 0, 0, 9250, 420, height);
+	GFResizePic(gump, 0, 0, 350, 420, height);
 	GFResizePic(gump, 10, 10, 9350, 400, height - 20);
 	GFTextLine(gump, 20, 20, 43, "Household: "+household_id);
 
@@ -587,7 +587,7 @@ function ShowDiscordIdPicker(who)
 
 	var gump := GFCreateGump(50, 50, 460, 620);
 	GFDisposable(gump, 0);
-	GFResizePic(gump, 0, 0, 9250, 460, 620);
+	GFResizePic(gump, 0, 0, 350, 460, 620);
 	GFResizePic(gump, 10, 10, 9350, 440, 600);
 	GFTextLine(gump, 20, 20, 43, "Browse by Discord ID ("+keys.size()+")");
 	GFTextLine(gump, 20, 44, 900, "DiscordIDNorm");
@@ -682,7 +682,7 @@ function ShowDiscordIdDetail(who, discord_id)
 	endif
 
 	var gump := GFCreateGump(50, 50, 460, height);
-	GFResizePic(gump, 0, 0, 9250, 460, height);
+	GFResizePic(gump, 0, 0, 350, 460, height);
 	GFResizePic(gump, 10, 10, 9350, 440, height - 20);
 	GFTextLine(gump, 20, 20, 43, "Discord ID: "+discord_id);
 	GFTextLine(gump, 20, top_offset, 900, CStr(accounts.size())+" account(s) linked to this Discord ID");
@@ -802,7 +802,7 @@ function ShowCharacterList(who, acctname)
 		var height := chars_y0 + (characters.size() * 24) + 40;
 
 		var gump := GFCreateGump(50, 50, 460, height);
-		GFResizePic(gump, 0, 0, 9250, 460, height);
+		GFResizePic(gump, 0, 0, 350, 460, height);
 		GFResizePic(gump, 10, 10, 9350, 440, height - 20);
 		GFTextLine(gump, 20, 20, 43, "Account: "+acctname);
 		GFTextLine(gump, 20, 44, 67, "Notes");
@@ -890,7 +890,7 @@ function ShowAccountsForIP(who, ip, exclude_acctname)
 	var height := back_y + 40;
 
 	var gump := GFCreateGump(50, 50, 380, height);
-	GFResizePic(gump, 0, 0, 9250, 380, height);
+	GFResizePic(gump, 0, 0, 350, 380, height);
 	GFResizePic(gump, 10, 10, 9350, 360, height - 20);
 	GFTextLine(gump, 20, 20, 43, "Accounts using IP: "+ip);
 	GFTextLine(gump, 20, 44, 67, total+" other account(s) found");
@@ -968,9 +968,9 @@ function ShowCharacterDetail(who, acctname, mobile)
 
 		var height := top_offset + section_heights + footer_h + button_h;
 
-		var gump := GFCreateGump(50, 50, 480, height);
-		GFResizePic(gump, 0, 0, 9250, 480, height);
-		GFResizePic(gump, 10, 10, 9350, 460, height - 20);
+		var gump := GFCreateGump(50, 50, 580, height);
+		GFResizePic(gump, 0, 0, 350, 580, height);
+		GFResizePic(gump, 10, 10, 9350, 560, height - 20);
 		GFTextLine(gump, 20, 20, 43, "Character Information");
 		GFTextLine(gump, 20, 44, 67, acctname);
 

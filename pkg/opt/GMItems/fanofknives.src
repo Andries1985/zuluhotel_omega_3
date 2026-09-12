@@ -22,7 +22,7 @@ program fanofknives(who)
     endif
 
     var range := thief*3;
-    var victims := ListMobilesNearLocationEx( who.x, who.y, who.z, range, 0x01, who.realm );
+    var victims := ListMobilesNearLocationEx( who.x, who.y, who.z, range, LISTEX_FLAG_NORMAL, who.realm );
     if(Len(victims) < 2)
         return;
     else

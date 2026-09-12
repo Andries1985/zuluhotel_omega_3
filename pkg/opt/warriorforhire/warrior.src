@@ -15,6 +15,9 @@ include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/dotempmods";
 include "include/myutil";
 include ":mdgumps:yesNo";
+include ":mdgumps:gumps";
+include ":mdgumps:gumps_ex";
+include "include/wfhcommon";
 include "include/random";
 include "ai/setup/modsetup";
 include "include/attributes";
@@ -29,7 +32,6 @@ Const EFFECT_SPARKLE  := 0x374a;
 var speech := 5;
 var me := Self();
 
-var lastbark := ReadGameClock();
 var masterserial := 0;
 var master;
 
@@ -38,6 +40,11 @@ var following := 0;
 var guarding := 0;
 var nextwatch := ReadGameClock();
 var laststrengthgain := ReadGameClock();
+var lastskillgain := ReadGameClock();
+var lastmodwipe := ReadGameClock();
+var wasownerOnline := 0;
+
+var TRACKED_SKILLS := {1,5,17,26,27,31,40,41,42,43,57};
 
 program Warrior()
 
@@ -52,7 +59,7 @@ program Warrior()
 	FixStuff();
 
 	masterserial := GetObjProperty(me,"master");
-	if ( (masterserial == 0) or (!masterserial) or (masterserial == "<error>") )
+	if ( (!masterserial) or (masterserial == "<error>") )
 		masterserial := 0;
 	else
 		master := SystemFindObjectBySerial(masterserial);
@@ -73,18 +80,10 @@ program Warrior()
 	var wanders := 9;
 
 	EnableAllEvents();
-	if (masterserial != 0)
-		EnableEvents(SYSEVENT_SPEECH,12);
-	else
-		EnableEvents(SYSEVENT_SPEECH,2);
-	endif
+	EnableEvents(SYSEVENT_SPEECH,12);
 
 	while (1)
-		SetObjProperty(me,"Str",GetStrength(me));
-		SetObjProperty(me,"Int",GetIntelligence(me));
-		SetObjProperty(me,"Dex",GetDexterity(me));
-		SetObjProperty(me,"Name",me.name);
-		SetObjProperty(me,"Sex",(400+me.gender));
+		SyncStatusMirror();
 		if (me.poisoned)
 			ApplyHealing(me);
 		elseif ( GetHP(me) < GetMaxHP(me) )
@@ -104,42 +103,59 @@ program Warrior()
 				monline := 1;
 			endif
 		endforeach
+
+		CheckOwnerModWipe(monline);
+
 		if (ev and monline)
-			if (masterserial == 0)
-				ProcessMasterlessEvents(ev, wanders, next_wander);
-			else
-				ProcessMasterEvents(ev, wanders, next_wander);
-			endif
+			ProcessMasterEvents(ev, wanders, next_wander);
 		elseif(ev and !monline)
 			sleep(5);
-		endif		
+		endif
 		sleepms(100);
 	endwhile
 
 endprogram
 
+function SyncStatusMirror()
+
+	if (GetObjProperty(me,"Str") != GetStrength(me)) SetObjProperty(me,"Str",GetStrength(me)); endif
+	if (GetObjProperty(me,"Int") != GetIntelligence(me)) SetObjProperty(me,"Int",GetIntelligence(me)); endif
+	if (GetObjProperty(me,"Dex") != GetDexterity(me)) SetObjProperty(me,"Dex",GetDexterity(me)); endif
+	if (GetObjProperty(me,"Name") != me.name) SetObjProperty(me,"Name",me.name); endif
+	if (GetObjProperty(me,"Sex") != (400+me.gender)) SetObjProperty(me,"Sex",(400+me.gender)); endif
+
+	var skills := GetObjProperty(me,"Skills");
+	if (!skills) skills := dictionary; endif
+	var changed := 0;
+	foreach skillid in TRACKED_SKILLS
+		var curval := GetBaseSkillBaseValue(me, skillid);
+		if ( (!skills.exists(skillid)) or (skills[skillid] != curval) )
+			skills.insert(skillid, curval);
+			changed := 1;
+		endif
+	endforeach
+	if (changed)
+		SetObjProperty(me,"Skills",skills);
+	endif
+
+endfunction
+
+function CheckOwnerModWipe(byref monline)
+
+	if (monline != wasownerOnline)
+		WipeMods(me);
+		wasownerOnline := monline;
+	elseif (lastmodwipe < ReadGameClock())
+		WipeMods(me);
+		lastmodwipe := ReadGameClock() + Random(1800)+1800;
+	endif
+
+endfunction
+
 function CloseDistance( opponent )
 
-	var archerymovement := HasBow();
-	var gd := 0;
-	if (guarding) gd := distance(me,guarding); endif
+	var archerymovement := HasRanged();
 	var d := distance(me, opponent);
-
-
-	if ( gd > 15 )
-		guarding := 0;
-	elseif ( gd > 8 )
-		RunToward( guarding );
-		return 2;
-	elseif ( gd > 4 )
-		if (archerymovement)
-			if (d == 1) ChangeWeapons(); endif
-			return 1; 
-		else
-			RunToward( guarding );
-			return 2;
-		endif
-	endif
 
 	if ( d > 15 )
 		return 2;
@@ -220,6 +236,39 @@ function HasBow()
 
 endfunction
 
+function HasThrowing()
+
+	var weapon := me.weapon;
+	if (!weapon.objtype)
+		say("I don't have a weapon!");
+		ChangeWeapons();
+		return 0;
+	endif
+
+	if (weapon.attribute != ATTRIBUTEID_THROWING)
+		return 0;
+	endif
+
+	foreach item in EnumerateItemsInContainerOfObjtype(me.backpack, weapon.objtype)
+		if (item.amount > 0)
+			return 1;
+		endif
+	endforeach
+
+	say("Out of throwing weapons!");
+	ChangeWeapons();
+	return 0;
+
+endfunction
+
+function HasRanged()
+
+	var r := HasBow();
+	if (!r) r := HasThrowing(); endif
+	return r;
+
+endfunction
+
 function ChangeWeapons()
 
 	var weapon := GetEquipmentByLayer(me,LAYER_HAND1);
@@ -243,35 +292,6 @@ function ChangeWeapons()
 
 endfunction
 
-function sleepmode()
-
-	foreach critter in ListMobilesNearLocation( me.x, me.y, me.z, 32, me.realm )
-          if (!critter.npctemplate)
-		return 0;
-          endif
-	endforeach
-
-	var ev;
-	while (1)
-		ev := os::wait_for_event( 120 );
-		repeat
-		if (ev)
-		case (ev.type)
-                	SYSEVENT_ENGAGED:
-			SYSEVENT_DAMAGED:
-				return ev;
-			SYSEVENT_ENTEREDAREA:
-			SYSEVENT_SPEECH:
-				if (!ev.source.npctemplate)
-					return ev;
-				endif
-		endcase
-		endif
-		until (! (ev := os::wait_for_event(120)) );
-	endwhile      
-
-endfunction       
-
 function SetMeUp()
 
 	me.gender := Random(2);
@@ -287,77 +307,37 @@ function SetMeUp()
 		DestroyItem(item);
 	endforeach
 
-	SetBaseStrength(me, Random(40)+20 );
-	SetBaseIntelligence(me, Random(40)+20 );
-	SetBaseDexterity(me, Random(40)+20 );
+	SetBaseStrength(me, 75 );
+	SetBaseIntelligence(me, 50 );
+	SetBaseDexterity(me, 50 );
 
-	if (!GetObjProperty(me,"master"))
-		var parms := {};
-		parms[1]:= me;
-		parms[2]:= "weakwarrior";
-		start_script("::/misc/dressme", parms);
-	endif
+	var parms := {};
+	parms[1]:= me;
+	parms[2]:= "weakwarrior";
+	start_script("::/misc/dressme", parms);
 
 	if (!me.backpack)
 		var newbackpack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
 		if (!EquipItem(me, newbackpack)) DestroyItem(newbackpack); endif
 	endif
 	var i;
-	if (!GetObjProperty(me,"master"))
-		for (i := 0; i <= 48; i := i + 1)
-			SetBaseSkill(me, i, 0);//SetBaseSkill( me , i , BaseSkillToRawSkill( 1 ) );
-		endfor
-		SetBaseSkill(me, 1, 130);//SetBaseSkill( me , 1 ,130 );
-		SetBaseSkill(me, 17, 130);
-		SetBaseSkill(me, 5, 130);
-		SetBaseSkill(me, 43, 130);
-		SetBaseSkill(me, 27, 130);
-		SetBaseSkill(me, 41, 130);
-		SetBaseSkill(me, 40, 130);
-		SetBaseSkill(me, 42, 130);
-		SetBaseSkill(me, 5, 130);
-		SetBaseSkill(me, 31, 130);
-		SetBaseSkill(me, 26, 130);
-		master := 0;
-		masterserial := 0;
-		SetObjProperty(me,"master",masterserial);
-	endif
+	for (i := 0; i <= 48; i := i + 1)
+		SetBaseSkill(me, i, 0);
+	endfor
+	SetBaseSkill(me, 1, 50);   //Anatomy
+	SetBaseSkill(me, 17, 100); //Healing
+	SetBaseSkill(me, 5, 50);   //Parry
+	SetBaseSkill(me, 43, 50);  //Wrestling
+	SetBaseSkill(me, 27, 50);  //Tactics
+	SetBaseSkill(me, 41, 50);  //Macefighting
+	SetBaseSkill(me, 40, 50);  //Swordsmanship
+	SetBaseSkill(me, 42, 50);  //Fencing
+	SetBaseSkill(me, 31, 50);  //Archery
+	SetBaseSkill(me, 26, 50);  //MagicResist
+	SetBaseSkill(me, 57, 50);  //Throwing
+
 	SetObjProperty(me,"WarriorForHire",1);
 	SetHP(me, GetMaxHP(me));
-endfunction
-
-function ProcessMasterlessEvents(byref ev, byref wanders, byref next_wander)
-
-	case (ev.type)
-	SYSEVENT_SPEECH:
-		wanders := 0;
-		next_wander := readgameclock()+60;
-		var evtext := lower(ev.text);
-		if ( evtext[ lower(me.name) ] )
-			TurnToward(ev.source);
-			say ("Hi there, " + ev.source.name);
-		elseif ( evtext[ "join"] )
-			TurnToward(ev.source);
-			JoinThem(ev.source);
-		elseif (!AskToJoin(ev.source))
-			check_speech(me, ev.source, ev.text, speech);
-		endif
-	SYSEVENT_ENGAGED:
-	SYSEVENT_DAMAGED:
-		AddToHitList(ev);
-		wanders := 0;
-		next_wander := readgameclock()+60;
-		if ( (ev.source) and (!ev.source.dead) )
-			Fight( ev.source );
-		endif
-	SYSEVENT_ENTEREDAREA:
-		return;
-	SYSEVENT_ITEM_GIVEN:
-		wanders := 0;
-		next_wander := readgameclock()+60;
-		TakeItem(me, ev.source, ev.item, speech);
-	endcase
-
 endfunction
 
 function FixStuff()
@@ -425,6 +405,7 @@ function fight(opponent)
 		endif
 
 		GainStat();
+		GainSkill();
 
 		cd := CloseDistance( opponent );
 		case (cd)
@@ -432,7 +413,7 @@ function fight(opponent)
 			wasmoving := 1;
 			loops := loops + 1;
 			if (loops > 25)
-				if ( HasBow() ) ChangeWeapons(); endif
+				if ( HasRanged() ) ChangeWeapons(); endif
 				chaseloop := chaseloop + 1;
 				loops := 0;
 				RunRandom(opponent, chaseloop);
@@ -492,7 +473,7 @@ function fight(opponent)
 				elseif (evtext[mename + " rearm"] )
 					say("Okay");
 					ChangeWeapons();
-					if (HasBow())
+					if (HasRanged())
 						RunAwayFrom(opponent);
 						RunAwayFrom(opponent);
 						RunAwayFrom(opponent);
@@ -602,96 +583,6 @@ function EnableAllEvents()
 
 endfunction
 
-function AskToJoin(you)
-
-	if ( lastbark > ReadGameClock() ) return 0; endif
-	if (GetStrength(you) < 90 and GetIntelligence(you) < 90 and GetDexterity(you) < 90)
-		return 0;
-	else
-		lastbark := ReadGameClock()+60;
-		say("I want to be a great warrior someday.");
-		sleep(1);
-		say("You look like a capable leader. If you will train me, I would follow you.");
-		sleep(1);
-		say("Would you like for me to JOIN you?");
-		return 1;
-	endif
-
-endfunction
-
-function JoinThem(you)
-
-	if (GetStrength(you) < 90 and GetIntelligence(you) < 90 and GetDexterity(you) < 90)
-		say("You don't look like much of a leader, to me.");
-		return 0;
-	endif
-
-	var henchman := GetObjProperty(you,"henchman");
-	if (henchman)
-		henchman := SystemFindObjectBySerial(henchman);
-		if (henchman) 
-			say("You already have a henchman.");
-			return;
-		endif
-	endif
-
-	setobjproperty(you,"henchman",me.serial);
-	setobjproperty(me,"master",you.serial);
-	masterserial := you.serial;
-	master := you;
-	me.SetMaster(you);
-	following := master;
-	guarding := master;
-
-	var i;
-if (!GetObjProperty(me,"master"))
-	for (i := 0; i <= 48; i := i + 1)
-		SetBaseSkill( me , i , 0 );
-	endfor
-	SetBaseSkill( me , 1 ,130 );
-	SetBaseSkill( me , 17 ,130 );
-	SetBaseSkill( me , 5 ,130 );
-	SetBaseSkill( me , 43 ,130 );
-	SetBaseSkill( me , 27 ,130 );
-	SetBaseSkill( me , 41 ,130 );
-	SetBaseSkill( me , 40 ,130 );
-	SetBaseSkill( me , 42 ,130 );
-	SetBaseSkill( me , 5 ,130 );	
-	SetBaseSkill( me , 31 ,130 );	
-	SetBaseSkill( me , 26 ,130 );	
-	SetBaseSkill( me , 21 , 100 );	
-	
-	SetBaseStrength(me, ( Random(10)+50 ));
-	SetBaseIntelligence(me, ( Random(10)+50 ));
-	SetBaseDexterity(me, ( Random(10)+50 ));
-	
-	SetObjProperty(me,"PermMagicImmunity",3);
-	SetObjProperty(me,"NecroProtection",3);
-	SetObjProperty(me,"EarthProtection",3);
-	SetObjProperty(me,"FireProtection",3);
-	SetObjProperty(me,"WaterProtection",3);
-	SetObjProperty(me,"AirProtection",3);
-	SetObjProperty(me,"PhysicalProtection",3);
-	SetObjProperty(me,"PermPoisonImmunity",3);
-	SetObjProperty(me,"BaseHpRegen",100);
-	SetObjProperty(me,"HealingIncrease",3);
-endif
-	SetObjProperty(me,"WarriorForHire",1);
-	Say("Wow, I've learned so much from you already!");
-
-	set_critical(1);
-	if ( GetObjProperty( me, "regspawn" ) )
-		var SpawnName := GetObjProperty( me, "regspawn" );
-		var numspawns := Cint(GetGlobalProperty(SpawnName))-1;
-		SetGlobalProperty(SpawnName,numspawns);
-		EraseObjProperty( me, "regspawn" );
-	endif
-	set_critical(0);
-
-	EnableEvents(SYSEVENT_SPEECH,12);
-
-endfunction
-
 function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 
 	if ( (!master) and (ev.source.serial == masterserial) )
@@ -756,22 +647,6 @@ endfunction
 
 function WarriorMovement(byref wanders, byref next_wander)
 
-	if (masterserial == 0)
-		if ( ReadGameClock() >= next_wander )
-			wanders:=wanders+1;
-			wander();
-			next_wander := ReadGameClock() + 10;
-			if (wanders>60)
-				wanders := 0;
-				return (sleepmode());
-			else
-				return (wait_for_event(5));
-			endif
-		else
-			return (wait_for_event(5));
-		endif
-	endif
-
 	if ( (following) and (master) )
 		SetAnchor( me.x, me.y, 20, 0 );
 		Follow();
@@ -781,20 +656,10 @@ function WarriorMovement(byref wanders, byref next_wander)
 		Guard();
 		return (wait_for_event(7));
 	else
-		//I'm not following, guarding, my master is offline, and I'm bored:
-		var monline := 0;
-		var mygod := GetObjProperty(me, "master");
-		foreach char in EnumerateOnlineCharacters()
-			if (char.serial == mygod)
-				monline := 1;
-			endif
-		endforeach
-		if (monline == 0)
-			me.warmode := 0;
-			me.hidden := 1;
-		endif
+		//I'm not following or guarding, and I'm bored:
+		me.warmode := 0;
 		return (wait_for_event(240));
-	endif			
+	endif
 
 endfunction
 
@@ -965,7 +830,7 @@ function ObeyCommand(ev)
 		endif
 	elseif (evtext[mename + " transfer"])
 		TurnToward(you);
-		say("Are you talking to me?");
+		say("I'm afraid I'm not comfortable with mounts, master.");
 	elseif (evtext[mename + " guard"])
 		if (evtext["guard me"])
 			guarding := you;
@@ -994,32 +859,11 @@ function ObeyCommand(ev)
 		say("Okay");
 		DropEverything();
 	elseif (evtext[mename + " dismount"])
-		var mount := GetEquipmentByLayer( me, 25 );
-		if (mount) 
-			DestroyItem(mount);
-			var spawnmount := GetObjProperty(me, "mountedon");
-			if (spawnmount)
-				var newmount := CreateNPCfromTemplate( spawnmount , me.x , me.y , me.z, 0, me.realm );
-				say("all transfer");
-				SetObjProperty( newmount ,"master" , master.serial );
-				newmount.setmaster( newmount );
-				newmount.script := "tamed";
-				RestartScript( newmount );
-				SetObjProperty( newmount , "PreviouslyTamed" , 1);
-			endif
-		endif		
+		TurnToward(you);
+		say("I'm afraid I'm not comfortable with mounts, master.");
 	elseif ( (evtext[mename + " ride"]) or (evtext[mename + " mount"]) )
 		TurnToward(you);
-		var alreadymounted := GetEquipmentByLayer( me, 25 );
-		if (alreadymounted) 
-			say("I already have a mount, thanks");
-		else
-			say("Ride what?");
-			var horse := Target(you);
-			if (horse)
-				MountHorse(horse);
-			endif
-		endif
+		say("I'm afraid I'm not comfortable with mounts, master.");
 	elseif (evtext[mename + " speak"] )
 		EraseObjProperty(me,"squelch");
 		Say("Okay");
@@ -1049,8 +893,10 @@ function ObeyCommand(ev)
 		sleep(5);
 	elseif (evtext[mename + " hide"]) 
 		me.hidden := 1;
-	elseif (evtext[mename + " showpack"]) 
+	elseif (evtext[mename + " showpack"])
 		OpenMyPack();
+	elseif (evtext[mename + " status"])
+		ShowStatus(you);
 	elseif (evtext[mename + " warcry "])
 		var bcry := SplitWords( evtext );
 			if (!bcry[3] or bcry[3] =="" or bcry[3] == "none")
@@ -1228,88 +1074,6 @@ function DropEverything()
 
 endfunction
 
-function MountHorse(horse)
-
-	if (horse.script != "tamed")
-		say("I don't know... Looks kind of wild, to me.");
-		return;
-	elseif ( GetObjProperty(horse,"master") != masterserial )
-		say("Howzabout you lemme ride YOUR horse?");
-		return;
-	endif
-
-	var mounttype := 0;
-	case (horse.graphic)
-	0xcc: //dark brown/horse
-			mounttype := 0x3ea2;
-		0xc8: //lightbrown/horse2
-			mounttype := 0x3e9f;
-		0xe2: //light grey/horse3
-			mounttype := 0x3ea0;
-		0xe4: //greybrown/horse4
-			mounttype := 0x3ea1;
-		0xdc: //Llama:
-			mounttype := 0x3ea6;
-		0xd2: //desert
-			mounttype := 0x3ea3;
-		0xda: //frenzied
-			mounttype := 0x3ea4;
-		0xdb: //forest
-			mounttype := 0x3ea5;
-		0x23d: //vortex
-			mounttype := 0x3ea7;
-		0xd5:  //polar
-			mounttype := 0x03f0f;
-		0x3c: //drake1
-			mounttype := 0x03f0e;
-		0xF1: //Unicorn
-			mounttype := 0x469;
-		0xF3: //Undead Horse
-			mounttype := 0x1FA;
-		0xF4: //Beetle
-			mounttype := 0x3F10;
-		0xF6: //Ridgeback
-			mounttype := 0x1FB;
-		0x84: //Sphinx
-			mounttype :=  0x3F13;
-
-	endcase
-
-
-	if (!mounttype)
-		say("Well how am I supposed to ride THAT?");
-		return;
-	endif
-	if (mounttype)
-		if ( MoveObjectToLocation(me, horse.x, horse.y, horse.z, horse.realm, 0) )
-			set_critical(1);
-			me.facing := horse.facing;
-			var mount := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0x1F021, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
-			mount.color := horse.color;
-			setobjproperty(mount,"petname",horse.name);
-			setobjproperty(mount,"pethp",GetHP(horse));
-			setobjproperty(mount,"petmana",GetMana(horse));
-			setobjproperty(mount,"freetime",ReadGameClock()+1200);
-			mount.graphic := mounttype;
-			setobjproperty(me,"mountedon",horse.npctemplate);
-			setobjproperty(me,"mountspawn",horse.npctemplate);
-			MoveObjectToLocation( horse, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-			RevokePrivilege( horse, "invul" );
-			setobjproperty(horse,"guardkill",1);
-			horse.kill();
-			EquipItem(me,mount);
-			if (horse)
-				MoveObjectToLocation( horse, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-				RevokePrivilege(horse, "invul" );
-				setobjproperty(horse,"guardkill",1);
-				horse.kill();
-			endif
-			set_critical(0);
-		endif
-	endif
-
-endfunction
-
 function OpenMyPack()
 
 	if (!master)
@@ -1319,7 +1083,8 @@ function OpenMyPack()
 		guarding := master;
 	endif
 
-	if (distance(me,master) > 1)
+	if (distance(me,master) > 3)
+		say("You'll need to come closer for me to show you my pack.");
 		return;
 	endif
 
@@ -1332,15 +1097,119 @@ function OpenMyPack()
 
 endfunction
 
-function GainStat()
-	var ismo;
+function LayerName(layer)
+
+	case (layer)
+		LAYER_HAND1:  return "Weapon";
+		LAYER_HAND2:  return "Shield/Off-hand";
+		LAYER_SHOES:  return "Shoes";
+		LAYER_PANTS:  return "Pants";
+		LAYER_SHIRT:  return "Shirt";
+		LAYER_HELM:   return "Helm";
+		LAYER_GLOVES: return "Gloves";
+		LAYER_RING:   return "Ring";
+		LAYER_NECK:   return "Gorget";
+		LAYER_WAIST:  return "Waist";
+		LAYER_CHEST:  return "Chest";
+		LAYER_WRIST:  return "Bracelet";
+		LAYER_TUNIC:  return "Tunic";
+		LAYER_EARS:   return "Earrings";
+		LAYER_ARMS:   return "Arms";
+		LAYER_CAPE:   return "Cloak";
+		LAYER_ROBE:   return "Robe";
+		LAYER_SKIRT:  return "Skirt";
+		LAYER_LEGS:   return "Legs";
+		default: return "Item";
+	endcase
+
+endfunction
+
+function FmtSkill(skillid)
+
+	return CDbl(GetBaseSkillBaseValue(me,skillid)/10.0);
+
+endfunction
+
+function ShowStatus(you)
+
+	var ar := me.ar;
+	var phys := Cint(GetObjProperty(me,"PhysicalProtection"));
+	var fire := Cint(GetObjProperty(me,"FireProtection"));
+	var poison := Cint(GetObjProperty(me,"PermPoisonImmunity"));
+
+	var equipped := ListEquippedItems(me);
+	var resnum := Cint(GetObjProperty(me,"resnum"));
+	var deathsleft := 10 - resnum;
+	if (deathsleft < 0) deathsleft := 0; endif
+
+	var ysize := 380 + (len(equipped)*22);
+
+	var gump := GFCreateGump( 50, 50, 420, ysize );
+	GFResizePic( gump, 0, 0, 3500, 420, ysize );
+	GFHTMLArea(gump, 20, 15, 380, 25, "<BASEFONT SIZE=20><CENTER><U>"+me.name+"</U>", 0, 0);
+
+	GFTextLine(gump, 20, 50, 0, "Strength: "+GetStrength(me));
+	GFTextLine(gump, 20, 70, 0, "Intelligence: "+GetIntelligence(me));
+	GFTextLine(gump, 20, 90, 0, "Dexterity: "+GetDexterity(me));
+
+	GFTextLine(gump, 220, 50, 0, "Armor: "+ar);
+	GFTextLine(gump, 220, 70, 0, "Physical Prot: "+phys);
+	GFTextLine(gump, 220, 90, 0, "Fire Prot: "+fire);
+	GFTextLine(gump, 220, 110, 0, "Poison Imm: "+poison);
+
+	var y := 140;
+	GFTextLine(gump, 20, y, 0, "Skills:");
+	y := y + 20;
+	GFTextLine(gump, 20, y, 0, "Anatomy: "+FmtSkill(1));
+	y := y + 18;
+	GFTextLine(gump, 20, y, 0, "Parry: "+FmtSkill(5));
+	y := y + 18;
+	GFTextLine(gump, 20, y, 0, "Healing: "+FmtSkill(17));
+	y := y + 18;
+	GFTextLine(gump, 20, y, 0, "Magic Resist: "+FmtSkill(26));
+	y := y + 18;
+	GFTextLine(gump, 20, y, 0, "Tactics: "+FmtSkill(27));
+	y := y + 18;
+	GFTextLine(gump, 20, y, 0, "Archery: "+FmtSkill(31));
+
+	var y2 := 160;
+	GFTextLine(gump, 220, y2, 0, "Swordsmanship: "+FmtSkill(40));
+	y2 := y2 + 18;
+	GFTextLine(gump, 220, y2, 0, "Macefighting: "+FmtSkill(41));
+	y2 := y2 + 18;
+	GFTextLine(gump, 220, y2, 0, "Fencing: "+FmtSkill(42));
+	y2 := y2 + 18;
+	GFTextLine(gump, 220, y2, 0, "Wrestling: "+FmtSkill(43));
+	y2 := y2 + 18;
+	GFTextLine(gump, 220, y2, 0, "Throwing: "+FmtSkill(57));
+
+	y := y + 30;
+	GFTextLine(gump, 20, y, 0, "Equipment:");
+	y := y + 20;
+	foreach item in equipped
+		GFTextLine(gump, 20, y, 0, LayerName(item.tile_layer)+": "+item.name);
+		y := y + 22;
+	endforeach
+
+	y := y + 10;
+	GFTextLine(gump, 20, y, 0, "Deaths survived: "+resnum+" / 10 (" +deathsleft+ " remaining)");
+
+	GFAddButton(gump, 190, ysize-35, 2128, 2129, 1, 0);
+
+	GFSendGump(you, gump);
+
+endfunction
+
+function GetLiveMaster()
 	var mo := GetObjProperty(me, "master");
-	if (mo)
-		ismo := SystemFindObjectBySerial( mo );
-	else
-		return;
+	if (!mo)
+		return 0;
 	endif
-	if (!ismo)
+	return SystemFindObjectBySerial( mo );
+endfunction
+
+function GainStat()
+	if (!GetLiveMaster())
 		return;
 	endif
 	if ( laststrengthgain > ReadGameClock() )
@@ -1377,11 +1246,38 @@ function GainStat()
 			say("Ha! I liked that move!");
 		endif
 	endif
-	SetObjProperty(me,"Str",GetStrength(me));
-	SetObjProperty(me,"Int",GetIntelligence(me));
-	SetObjProperty(me,"Dex",GetDexterity(me));
-	SetObjProperty(me,"Name",me.name);
-	SetObjProperty(me,"Sex",me.objtype);
+	SyncStatusMirror();
+endfunction
+
+function GainSkill()
+	if (!GetLiveMaster())
+		return;
+	endif
+	if ( lastskillgain > ReadGameClock() )
+		return;
+	else
+		lastskillgain := ReadGameClock()+300;
+	endif
+
+	if (!master) return; endif
+
+	var grew := 0;
+	foreach skillid in TRACKED_SKILLS
+		var mastercap := GetBaseSkillBaseValue(master, skillid);
+		var curval := GetBaseSkillBaseValue(me, skillid);
+		if ( curval < mastercap )
+			if ( (Random(140)+1) > CInt(curval/10) )
+				SetBaseSkillBaseValue(me, skillid, curval+1);
+				grew := 1;
+			endif
+		endif
+	endforeach
+
+	if (grew)
+		say("I'm getting better at this!");
+	endif
+
+	SyncStatusMirror();
 endfunction
 
 function runrandom(opponent, numruns := 2)
@@ -1483,13 +1379,10 @@ endfunction
 
 function Release()
 
-	me.setmaster( 0 );
-	SetObjProperty(me, "master", 0);
-	EraseObjproperty(master,"henchman");
 	say("See ya");
-	flee(master);
-	SetAnchor(me.x,me.y,10,1 );
-	RestartScript(me);
+	EraseObjProperty(master,"henchman");
+	EraseObjProperty(master,"WFHBackup");
+	AbandonWarrior(me);
 
 endfunction
 

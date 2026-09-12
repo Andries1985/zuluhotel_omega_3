@@ -523,6 +523,16 @@ function Calcdamage(who, xObject, basedamage)
 			basedamage *= ClasseSmallBonusByLevel( level );
 		endif
 
+	elseif( xObject.attribute == ATTRIBUTEID_THROWING )
+		if(!who.isA(POLCLASS_NPC))
+			basedamage *= 1 + GetDexterity(who) * 0.0007;
+		endif
+
+		if( GetObjProperty( who, CLASSEID_THIEF ) || GetObjProperty( who, CLASSEID_POWERPLAYER ) )
+			basedamage *= 1 + ((CDbl(GetAttribute(who, ATTRIBUTEID_THROWING) + GetAttribute(who, ATTRIBUTEID_TACTICS))) / 2.00) * 0.007;
+		endif
+		// Poison-scaled bonus is target-dependent and not shown in a static tooltip estimate.
+
 	else
 		//Changes Jan 2025, Class Damage Changes
 		//Bumped Str damage to 0.005
@@ -564,7 +574,7 @@ endfunction
 
 function GetSkillName( skillid )
 
-    	var cfg := ReadConfigFile( ":shilhook:skillsdef" );
+    	var cfg := ReadConfigFile( ":attributes:skillsdef" );
     	return cfg[skillid].name;
 	
 endfunction

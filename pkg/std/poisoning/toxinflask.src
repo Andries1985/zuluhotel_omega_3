@@ -1,0 +1,9 @@
+use uo;
+
+include "poisoning";
+
+program use_toxinflask( user, flask )
+
+	BrewPoison( user, flask );
+
+endprogram

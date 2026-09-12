@@ -108,6 +108,15 @@ program textcmd_mobedit(who)
 	desc_list[74] := "meditation";
 	desc_list[75] := "stealth";
 	desc_list[76] := "removetrap";
+	desc_list[77] := "necromancy";
+	desc_list[78] := "focus";
+	desc_list[79] := "chivalry";
+	desc_list[80] := "bushido";
+	desc_list[81] := "ninjitsu";
+	desc_list[82] := "spellweaving";
+	desc_list[83] := "mysticism";
+	desc_list[84] := "imbuing";
+	desc_list[85] := "throwing";
 
 	var mobile := target(who);
 
@@ -143,7 +152,7 @@ program textcmd_mobedit(who)
 
 	var i := 0;
 	var j := 28;
-	for (i := 0; i < 49; i := i+1)
+	for (i := 0; i < 58; i := i+1)
 		old_stats[j] := GetBaseSkill(mobile, i);
 		j +=1;
 	endfor
@@ -163,7 +172,7 @@ program textcmd_mobedit(who)
 
 		new_stats[1] := GFExtractData(gump_ret, 1);
 
-		for (i := 2; i <= 76; i := i+1)
+		for (i := 2; i <= 85; i := i+1)
 			new_stats[i] := Cint(GFExtractData(gump_ret, i));
 		endfor
 
@@ -220,14 +229,14 @@ program textcmd_mobedit(who)
 			if (multiplier)
 				skill_change := 60+(15*multiplier);
 			endif
-			new_stats[28+SKILLID_DETECTINGHIDDEN ] := skill_change;
 			new_stats[28+SKILLID_HIDING ] := skill_change;
 			new_stats[28+SKILLID_LOCKPICKING ] := skill_change;
 			new_stats[28+SKILLID_POISONING ] := skill_change;
 			new_stats[28+SKILLID_REMOVETRAP ] := skill_change;
-			new_stats[28+SKILLID_SNOOPING ] := skill_change;
 			new_stats[28+SKILLID_STEALING ] := skill_change;
 			new_stats[28+SKILLID_STEALTH ] := skill_change;
+			new_stats[28+SKILLID_THROWING ] := skill_change;
+			new_stats[28+SKILLID_TACTICS ] := skill_change;
 		elseif ( gump_ret[0] <= 35 )
 			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
 			multiplier := Trunc(multiplier, 1);
@@ -266,7 +275,7 @@ program textcmd_mobedit(who)
         SendSysMessage(who, "Saved mob info to cfg!", FONT_NORMAL, 43);
         var props := array;
         //Print($"props is currently 1: " +props);
-        for (i := 1; i <= 76; i := i + 1)
+        for (i := 1; i <= 85; i := i + 1)
             props.append(array { desc_list[i], old_stats[i] });
         endfor
         //Print($"props is currently 2: ");
@@ -408,7 +417,7 @@ program textcmd_mobedit(who)
 		endif
 
 		j := 28;
-		for (i := 0; i < 49; i := i+1)
+		for (i := 0; i < 58; i := i+1)
 			if (old_stats[j] != new_stats[j])
 				SetBaseSkill(mobile, i, new_stats[j]);
 				SendSysMessage(who, "Changing "+GetAttributeIdBySkillId(i)+" to: "+new_stats[j]);
@@ -451,7 +460,9 @@ function gump_mobedit(who)
 	GFTextLine(mobedit, 212, 230, TEXT_COLOR, "Prots");
 	GFAddButton(mobedit, 255, 260, 216, 216, GF_PAGE_BTN, 8);
 	GFTextLine(mobedit, 205, 255, TEXT_COLOR, "Prots 2");
-	
+	GFAddButton(mobedit, 255, 285, 216, 216, GF_PAGE_BTN, 9);
+	GFTextLine(mobedit, 212, 280, TEXT_COLOR, "Misc");
+
 	GFTextLine(mobedit, 335, 290, TEXT_COLOR, "Set Lvl");
 
 	//Left Side Boxes
@@ -610,23 +621,23 @@ function gump_mobedit(who)
 		
 	//Thief
 	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Thief Skills");
-	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Detect Hidden");
-	GFTextRight(mobedit, 402, 100, TEXT_COLOR, "Hiding");
-	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Lockpicking");
-	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Poisoning");
-	GFTextRight(mobedit, 402, 168, TEXT_COLOR, "Remove Trap");
-	GFTextRight(mobedit, 402, 190, TEXT_COLOR, "Snooping");
-	GFTextRight(mobedit, 402, 213, TEXT_COLOR, "Stealing");
-	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Stealth");
-	
-	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_DETECTINGHIDDEN], 28+SKILLID_DETECTINGHIDDEN);
-	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_HIDING], 28+SKILLID_HIDING);
-	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_LOCKPICKING], 28+SKILLID_LOCKPICKING);
-	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_POISONING], 28+SKILLID_POISONING);
-	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_REMOVETRAP], 28+SKILLID_REMOVETRAP);
-	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SNOOPING], 28+SKILLID_SNOOPING);
-	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALING], 28+SKILLID_STEALING);
-	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALTH], 28+SKILLID_STEALTH);
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Hiding");
+	GFTextRight(mobedit, 402, 100, TEXT_COLOR, "Lockpicking");
+	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Poisoning");
+	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Remove Trap");
+	GFTextRight(mobedit, 402, 168, TEXT_COLOR, "Stealing");
+	GFTextRight(mobedit, 402, 190, TEXT_COLOR, "Stealth");
+	GFTextRight(mobedit, 402, 213, TEXT_COLOR, "Throwing");
+	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Tactics");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_HIDING], 28+SKILLID_HIDING);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_LOCKPICKING], 28+SKILLID_LOCKPICKING);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_POISONING], 28+SKILLID_POISONING);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_REMOVETRAP], 28+SKILLID_REMOVETRAP);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALING], 28+SKILLID_STEALING);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_STEALTH], 28+SKILLID_STEALTH);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_THROWING], 28+SKILLID_THROWING);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_TACTICS], 28+SKILLID_TACTICS);
 	
 	//Thief LVL
 	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 22);
@@ -742,6 +753,35 @@ function gump_mobedit(who)
 	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[25], 25);
 	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[26], 26);
 	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[27], 27);
+
+	GFPage(mobedit, 9);
+
+	// Misc: Thief's free coskills (no longer core Thief skills, but still
+	// real and trainable) plus the 8 AOS-era skills wired in for client
+	// protocol compliance (MaxSkillID=57) but not implemented on this shard.
+	// No quick-fill preset buttons here -- there's no "Misc class" to level.
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Misc Skills");
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Detect Hidden");
+	GFTextRight(mobedit, 402, 101, TEXT_COLOR, "Snooping");
+	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Necromancy");
+	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Focus");
+	GFTextRight(mobedit, 402, 167, TEXT_COLOR, "Chivalry");
+	GFTextRight(mobedit, 402, 189, TEXT_COLOR, "Bushido");
+	GFTextRight(mobedit, 402, 211, TEXT_COLOR, "Ninjitsu");
+	GFTextRight(mobedit, 402, 233, TEXT_COLOR, "Spellweaving");
+	GFTextRight(mobedit, 402, 255, TEXT_COLOR, "Mysticism");
+	GFTextRight(mobedit, 402, 277, TEXT_COLOR, "Imbuing");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_DETECTINGHIDDEN], 28+SKILLID_DETECTINGHIDDEN);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SNOOPING], 28+SKILLID_SNOOPING);
+	GFTextEntry(mobedit, 408, 124, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_NECROMANCY], 28+SKILLID_NECROMANCY);
+	GFTextEntry(mobedit, 408, 146, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_FOCUS], 28+SKILLID_FOCUS);
+	GFTextEntry(mobedit, 408, 168, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_CHIVALRY], 28+SKILLID_CHIVALRY);
+	GFTextEntry(mobedit, 408, 190, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_BUSHIDO], 28+SKILLID_BUSHIDO);
+	GFTextEntry(mobedit, 408, 212, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_NINJITSU], 28+SKILLID_NINJITSU);
+	GFTextEntry(mobedit, 408, 234, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_SPELLWEAVING], 28+SKILLID_SPELLWEAVING);
+	GFTextEntry(mobedit, 408, 256, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MYSTICISM], 28+SKILLID_MYSTICISM);
+	GFTextEntry(mobedit, 408, 278, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_IMBUING], 28+SKILLID_IMBUING);
 
 	return GFSendGump(who, mobedit);
 

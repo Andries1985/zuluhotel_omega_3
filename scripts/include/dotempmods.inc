@@ -11,6 +11,7 @@ include "include/classes";
 include "include/random";
 include "include/constants/locations";
 include ":admin:include/adminpanel";
+include ":attributes:regen";
 
 
 function AddToPersistedMods( byref allmods , byref mmod )
@@ -214,7 +215,7 @@ function CurePoison( who , sound := 0 , msg := 0)
 
 	EraseObjProperty(who, "poison_level");
 	EraseObjProperty( who , "poison" );
-	SetHpRegenRate(who , ( BaseRegenRate(who)) * 12);
+	ClearVitalRegenRateMod(who, VITALID_LIFE, "poison");
 	who.SetPoisoned( 0 );
 	IncRevision(who);
 	Set_Critical( 0 );
@@ -545,7 +546,7 @@ function UndoTheMod( who , prop , amt , liche := 0 )
 						EquipItem(who,newhair);
 					endif
 		"poison":
-					SetHpRegenRate( who,  Cint(BaseRegenRate( who )));
+					ClearVitalRegenRateMod(who, VITALID_LIFE, "poison");
 					who.SetPoisoned( 0 );
 	endcase
 

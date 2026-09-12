@@ -1,0 +1,158 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// vitalInit.src — Max-value and regen-rate hooks for Life/Mana/Stamina, wired via
+// ../config/vitals.cfg. Replaces pkg/opt/shilhook/regen.src, which ran POLMD's own
+// deprecated pre-0.98 flat-CProp regen shim. This is the current ModernDistro
+// pattern instead: config-driven, dice-string-capable, per-instance-cached max
+// values, and a stacking-safe regen-rate modifier dictionary (see ../include/regen.inc).
+//
+// CustomHitsLevel/CustomManaLevel/CustomStaminaLevel (this shard's per-instance
+// GM/boss override, set statically in npcdesc.cfg or dynamically by areaspawner)
+// is checked FIRST, before the new HITS/MANA/STAM lookup, so every existing
+// override resolves to an identical number under this rewrite.
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use vitals;
+use attributes;
+use cfgfile;
+use util;                          // RandomDiceRoll
+
+var npcdesc := ReadConfigFile( "::npcdesc" );
+include "include/attributes";
+include ":attributes:regen";
+
+program VitalInit()
+	Print( "using vitalInit.ecl..." );
+	return 1;
+endprogram
+
+// Real npcdesc.cfg vital field for this NPC's template, x100-scaled to match
+// CustomHitsLevel's own storage convention. Resolves a dice-string on first
+// use and caches the roll so it never drifts afterward. Returns -1 if the
+// template has no such field, so callers fall back to Strength/Intelligence/
+// Dexterity*100 exactly like they do today -- distinct from 0, which is a
+// real, explicit override a template author could legitimately set.
+function GetNpcVitalSetting( who, vitalfield )
+
+	var cache := GetObjProperty(who, "RolledNpcVitals");
+	if (!cache)
+		cache := dictionary;
+	endif
+
+	if (cache.exists(vitalfield))
+		return Cint(cache[vitalfield]);
+	endif
+
+	var raw := GetConfigString(npcdesc[who.npctemplate], vitalfield);
+	if (!raw)
+		return -1;	// field absent -- distinct from a real, explicit "0" override
+	endif
+
+	var value;
+	if (Find(raw, "d", 1))
+		value := RandomDiceRoll(raw);
+		if (value.errortext)
+			value := 0;
+		endif
+	else
+		value := Cint(raw);
+	endif
+
+	value := value * 100;
+	cache.insert(vitalfield, value);
+	SetObjProperty(who, "RolledNpcVitals", cache);
+
+	return value;
+
+endfunction
+
+exported function GetLifeRegenRateExported( who )
+
+	var dict := GetVitalRegenRateModDict(who, VITALID_LIFE);
+
+	// Poison is a hard suppression, not a stackable penalty (matches today's
+	// flat SetHpRegenRate(who,-1)): it overrides everything else outright
+	// rather than merely subtracting from it.
+	if (dict.exists("poison"))
+		return Cint(dict["poison"]);
+	endif
+
+	var total := CORE_SETTINGS_DEFAULT_REGEN_RATE;
+	foreach modname in (dict.keys())
+		total := total + Cint(dict[modname]);
+	endforeach
+
+	return ClampRegenRate(total);
+
+endfunction
+
+exported function GetLifeMaximumValueExported( who )
+
+	var life := GetAttribute(who, ATTRIBUTEID_STRENGTH) * 100;
+
+	if (who.isa(POLCLASS_NPC))
+		if (GetObjProperty(who, "CustomHitsLevel"))
+			life := CInt(GetObjProperty(who, "CustomHitsLevel"));
+			if ((GetMaxHp(who) != GetHp(who) and !GetObjProperty(who, "firstTimeCustomHp")) || GetMaxHp(who) != GetHp(who) && GetGlobalProperty("CustomHPFix"))
+				SetHP(who, GetMaxHP(who));
+				SetObjProperty(who, "firstTimeCustomHp", 1);
+			endif
+		else
+			var hits := GetNpcVitalSetting(who, "HITS");
+			if (hits >= 0)
+				life := hits;
+			endif
+		endif
+	endif
+
+	return life;
+
+endfunction
+
+exported function GetManaRegenRateExported( who )
+	return ClampRegenRate(CORE_SETTINGS_DEFAULT_REGEN_RATE + GetVitalRegenRateMod(who, VITALID_MANA));
+endfunction
+
+exported function GetManaMaximumValueExported( who )
+
+	var mana := GetAttribute(who, ATTRIBUTEID_INTELLIGENCE) * 100;
+
+	if (who.isa(POLCLASS_NPC))
+		if (GetObjProperty(who, "CustomManaLevel"))
+			mana := CInt(GetObjProperty(who, "CustomManaLevel"));
+		else
+			var npcmana := GetNpcVitalSetting(who, "MANA");
+			if (npcmana >= 0)
+				mana := npcmana;
+			endif
+		endif
+	endif
+
+	return mana;
+
+endfunction
+
+exported function GetStaminaRegenRateExported( who )
+	return ClampRegenRate(CORE_SETTINGS_DEFAULT_REGEN_RATE + GetVitalRegenRateMod(who, VITALID_STAMINA));
+endfunction
+
+exported function GetStaminaMaximumValueExported( who )
+
+	var stam := GetAttribute(who, ATTRIBUTEID_DEXTERITY) * 100;
+
+	if (who.isa(POLCLASS_NPC))
+		if (GetObjProperty(who, "CustomStaminaLevel"))
+			stam := CInt(GetObjProperty(who, "CustomStaminaLevel"));
+		else
+			var npcstam := GetNpcVitalSetting(who, "STAM");
+			if (npcstam >= 0)
+				stam := npcstam;
+			endif
+		endif
+	endif
+
+	return stam;
+
+endfunction

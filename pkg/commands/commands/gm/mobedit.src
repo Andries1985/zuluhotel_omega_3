@@ -51,7 +51,7 @@ program textcmd_mobedit(who)
 	
 	var i := 0;
 	var j := 11;
-	for (i := 0; i < 49; i := i+1)
+	for (i := 0; i < 58; i := i+1)
 		old_stats[j] := GetBaseSkill(mobile, i);
 		j +=1;
 	endfor
@@ -66,7 +66,7 @@ program textcmd_mobedit(who)
 			return 0;
 		endif
 		new_stats[1] := GFExtractData(gump_ret, 1);
-		for (i := 2; i <= 59; i := i+1)
+		for (i := 2; i <= 68; i := i+1)
 			new_stats[i] := Cint(GFExtractData(gump_ret, i));
 		endfor
 		if ( gump_ret[0] <= 7 )
@@ -119,14 +119,14 @@ program textcmd_mobedit(who)
 			if (multiplier)
 				skill_change := 60+(15*multiplier);
 			endif
-			new_stats[11+SKILLID_DETECTINGHIDDEN ] := skill_change;
 			new_stats[11+SKILLID_HIDING ] := skill_change;
 			new_stats[11+SKILLID_LOCKPICKING ] := skill_change;
 			new_stats[11+SKILLID_POISONING ] := skill_change;
 			new_stats[11+SKILLID_REMOVETRAP ] := skill_change;
-			new_stats[11+SKILLID_SNOOPING ] := skill_change;
 			new_stats[11+SKILLID_STEALING ] := skill_change;
 			new_stats[11+SKILLID_STEALTH ] := skill_change;
+			new_stats[11+SKILLID_THROWING ] := skill_change;
+			new_stats[11+SKILLID_TACTICS ] := skill_change;
 		elseif ( gump_ret[0] <= 35 )
 			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
 			var skill_change := 0;
@@ -206,7 +206,7 @@ program textcmd_mobedit(who)
 			mobile.color := Cint(new_stats[10]);
 		endif
 		j := 11;
-		for (i := 0; i < 49; i := i+1)
+		for (i := 0; i < 58; i := i+1)
 			if (old_stats[j] != new_stats[j])
 				SetBaseSkill(mobile, i, new_stats[j]);
 				SendSysMessage(who, "Changing "+GetAttributeIdBySkillId(i)+" to: "+new_stats[j]);
@@ -246,7 +246,9 @@ function gump_mobedit(who)
 	GFTextLine(mobedit, 197, 199, TEXT_COLOR, "Crafter");
 	GFAddButton(mobedit, 255, 231, 216, 216, GF_PAGE_BTN, 6);
 	GFTextLine(mobedit, 218, 226, TEXT_COLOR, "Bard");
-	
+	GFAddButton(mobedit, 255, 258, 216, 216, GF_PAGE_BTN, 7);
+	GFTextLine(mobedit, 222, 253, TEXT_COLOR, "Misc");
+
 	GFTextLine(mobedit, 333, 293, TEXT_COLOR, "Set Lvl");
 	GFResizePic(mobedit, 400, 146, 9550, 57, 22);
 	GFResizePic(mobedit, 400, 236, 9550, 57, 22);
@@ -388,23 +390,23 @@ function gump_mobedit(who)
 		
 	//Thief skills
 	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Thief Skills");
-	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Detect Hidden");
-	GFTextRight(mobedit, 402, 100, TEXT_COLOR, "Hiding");
-	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Lockpicking");
-	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Poisoning");
-	GFTextRight(mobedit, 402, 168, TEXT_COLOR, "Remove Trap");
-	GFTextRight(mobedit, 402, 190, TEXT_COLOR, "Snooping");
-	GFTextRight(mobedit, 402, 213, TEXT_COLOR, "Stealing");
-	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Stealth");
-	
-	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_DETECTINGHIDDEN], 11+SKILLID_DETECTINGHIDDEN);
-	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_HIDING], 11+SKILLID_HIDING);
-	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_LOCKPICKING], 11+SKILLID_LOCKPICKING);
-	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_POISONING], 11+SKILLID_POISONING);
-	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_REMOVETRAP], 11+SKILLID_REMOVETRAP);
-	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_SNOOPING], 11+SKILLID_SNOOPING);
-	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_STEALING], 11+SKILLID_STEALING);
-	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_STEALTH], 11+SKILLID_STEALTH);
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Hiding");
+	GFTextRight(mobedit, 402, 100, TEXT_COLOR, "Lockpicking");
+	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Poisoning");
+	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Remove Trap");
+	GFTextRight(mobedit, 402, 168, TEXT_COLOR, "Stealing");
+	GFTextRight(mobedit, 402, 190, TEXT_COLOR, "Stealth");
+	GFTextRight(mobedit, 402, 213, TEXT_COLOR, "Throwing");
+	GFTextRight(mobedit, 402, 236, TEXT_COLOR, "Tactics");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_HIDING], 11+SKILLID_HIDING);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_LOCKPICKING], 11+SKILLID_LOCKPICKING);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_POISONING], 11+SKILLID_POISONING);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_REMOVETRAP], 11+SKILLID_REMOVETRAP);
+	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_STEALING], 11+SKILLID_STEALING);
+	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_STEALTH], 11+SKILLID_STEALTH);
+	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_THROWING], 11+SKILLID_THROWING);
+	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_TACTICS], 11+SKILLID_TACTICS);
 
 	GFAddButton(mobedit, 278, 319, 2225, 2225, GF_CLOSE_BTN, 22);
 	GFAddButton(mobedit, 306, 319, 2226, 2226, GF_CLOSE_BTN, 23);
@@ -475,6 +477,35 @@ function gump_mobedit(who)
 	GFAddButton(mobedit, 389, 319, 2229, 2229, GF_CLOSE_BTN, 40);
 	GFAddButton(mobedit, 418, 319, 2230, 2230, GF_CLOSE_BTN, 41);
 	GFAddButton(mobedit, 445, 319, 1151, 1152, GF_CLOSE_BTN, 42);
+
+	GFPage(mobedit, 7);
+
+	// Misc: Thief's free coskills (no longer core Thief skills, but still
+	// real and trainable) plus the 8 AOS-era skills wired in for client
+	// protocol compliance (MaxSkillID=57) but not implemented on this shard.
+	// No quick-fill preset buttons here -- there's no "Misc class" to level.
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Misc Skills");
+	GFTextRight(mobedit, 402, 79, TEXT_COLOR, "Detect Hidden");
+	GFTextRight(mobedit, 402, 101, TEXT_COLOR, "Snooping");
+	GFTextRight(mobedit, 402, 123, TEXT_COLOR, "Necromancy");
+	GFTextRight(mobedit, 402, 145, TEXT_COLOR, "Focus");
+	GFTextRight(mobedit, 402, 167, TEXT_COLOR, "Chivalry");
+	GFTextRight(mobedit, 402, 189, TEXT_COLOR, "Bushido");
+	GFTextRight(mobedit, 402, 211, TEXT_COLOR, "Ninjitsu");
+	GFTextRight(mobedit, 402, 233, TEXT_COLOR, "Spellweaving");
+	GFTextRight(mobedit, 402, 255, TEXT_COLOR, "Mysticism");
+	GFTextRight(mobedit, 402, 277, TEXT_COLOR, "Imbuing");
+
+	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_DETECTINGHIDDEN], 11+SKILLID_DETECTINGHIDDEN);
+	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_SNOOPING], 11+SKILLID_SNOOPING);
+	GFTextEntry(mobedit, 408, 124, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_NECROMANCY], 11+SKILLID_NECROMANCY);
+	GFTextEntry(mobedit, 408, 146, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_FOCUS], 11+SKILLID_FOCUS);
+	GFTextEntry(mobedit, 408, 168, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_CHIVALRY], 11+SKILLID_CHIVALRY);
+	GFTextEntry(mobedit, 408, 190, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_BUSHIDO], 11+SKILLID_BUSHIDO);
+	GFTextEntry(mobedit, 408, 212, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_NINJITSU], 11+SKILLID_NINJITSU);
+	GFTextEntry(mobedit, 408, 234, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_SPELLWEAVING], 11+SKILLID_SPELLWEAVING);
+	GFTextEntry(mobedit, 408, 256, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_MYSTICISM], 11+SKILLID_MYSTICISM);
+	GFTextEntry(mobedit, 408, 278, 59, 20, TEXT_COLOR, new_stats[11+SKILLID_IMBUING], 11+SKILLID_IMBUING);
 
 	return GFSendGump(who, mobedit);
 

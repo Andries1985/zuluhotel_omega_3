@@ -38,7 +38,12 @@ program logon( who )
 	WipeMods(who);
 	CurePoison(who);
 	set_critical(0);
-	
+
+	var wfhhenchman := GetObjProperty(who, "henchman");
+	if (wfhhenchman and !SystemFindObjectBySerial(wfhhenchman))
+		EraseObjProperty(who, "henchman");
+	endif
+
 	var macrowhen := GetMacroString();
 	var description := GetGlobalProperty("QuestDescription");
 	if( !description )

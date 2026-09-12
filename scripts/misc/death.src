@@ -14,9 +14,10 @@ include "include/dismount";
 include "include/managers";
 include ":questpkg:questdeath";
 include "../pkg/opt/rituals/include/altarquest";
-include ":shilhook:shilcombat";
+include ":combat:shilcombat";
 include ":champspawns:death";
 include ":lootlottery:lootlottery";
+include ":containers:storageAreas";
 
 program npcdeath(corpse)
 
@@ -84,15 +85,24 @@ program npcdeath(corpse)
     MoveBackpackToCorpse( corpse );
 	var heart;
 	var resnum;
-	if (GetObjProperty(corpse,"WarriorForHire") and GetObjProperty(corpse,"npctemplate") == "warriorforhire")
+	if (GetObjProperty(corpse,"WarriorForHire") and GetObjProperty(corpse,"npctemplate") == "warriorforhire" and !GetObjProperty(corpse,"AbandonedByOwner"))
+
+		var corpsemasterserial := GetObjProperty(corpse,"master");
+		var corpsemaster := SystemFindObjectBySerial(corpsemasterserial);
+		var mastermonline := 1;
+		if (!corpsemaster)
+			corpsemaster := SystemFindObjectBySerial(corpsemasterserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+			mastermonline := 0;
+		endif
+
 		resnum := GetObjProperty(corpse,"resnum");
 		if (!resnum)
 			resnum := 0;
 		endif
 		resnum := resnum + 1;
-		if (resnum < 4 and GetObjProperty(corpse,"master") != 0) 
+		if (resnum < 11 and corpsemasterserial != 0 and corpsemaster)
 			heart := CreateItemAtLocation(corpse.x,corpse.y,corpse.z,0x1CED,1,corpse.realm);
-			heart.newbie := 1;	
+			heart.newbie := 1;
 			heart.color := 2750;
 			heart.usescript := "";
 			heart.name := "The Heart of "+GetObjProperty(corpse,"Name");
@@ -102,17 +112,37 @@ program npcdeath(corpse)
 			SetObjProperty(heart,"Name",GetObjProperty(corpse,"Name"));
 			SetObjProperty(heart,"resnum",resnum);
 			SetObjProperty(heart,"Sex",GetObjProperty(corpse,"Sex"));
-			SetObjProperty(heart,"master",GetObjProperty(corpse,"master"));
-			MoveItemToContainer(heart,SystemFindObjectBySerial(GetObjProperty(corpse,"master")).backpack);
-			SendSysMessage(SystemFindObjectBySerial(GetObjProperty(corpse,"master")), heart.name+" has been placed in your backpack.");
-		else
-			SendSysMessage(SystemFindObjectBySerial(GetObjProperty(corpse,"master")), GetObjProperty(corpse,"Name")+"'s heart has disintegrated and could not be recovered.");
+			SetObjProperty(heart,"master",corpsemasterserial);
+			SetObjProperty(heart,"Skills",GetObjProperty(corpse,"Skills"));
+
+			var backup := dictionary;
+			backup.insert("Str", GetObjProperty(corpse,"Str"));
+			backup.insert("Int", GetObjProperty(corpse,"Int"));
+			backup.insert("Dex", GetObjProperty(corpse,"Dex"));
+			backup.insert("Name", GetObjProperty(corpse,"Name"));
+			backup.insert("Sex", GetObjProperty(corpse,"Sex"));
+			backup.insert("resnum", resnum);
+			backup.insert("Skills", GetObjProperty(corpse,"Skills"));
+			SetObjProperty(corpsemaster, "WFHBackup", backup);
+
+			if (mastermonline)
+				MoveItemToContainer(heart, corpsemaster.backpack);
+				SendSysMessage(corpsemaster, heart.name+" has been placed in your backpack.");
+			else
+				var bankbox := CP_GetStorageContainerForMobile(corpsemaster, CP_DEFAULT_AREA, CP_CREATE);
+				if (bankbox)
+					MoveItemToContainer(heart, bankbox);
+					SendSysMessage(corpsemaster, heart.name+" has been placed in your bank box.");
+				endif
+			endif
+		elseif (corpsemaster)
+			SendSysMessage(corpsemaster, GetObjProperty(corpse,"Name")+"'s heart has disintegrated and could not be recovered.");
 		endif
-		
-		if(IsInSafeArea(corpse))
+
+		if(IsInSafeArea(corpse) and corpsemaster)
 			foreach item in EnumerateItemsInContainer( corpse )
 				if (item.container.serial == corpse.serial)
-					MoveItemToContainer( item, SystemFindObjectBySerial(GetObjProperty(corpse,"master")).backpack );
+					MoveItemToContainer( item, corpsemaster.backpack );
 				endif
 			endforeach
 		endif

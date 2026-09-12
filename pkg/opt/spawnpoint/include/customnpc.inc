@@ -110,7 +110,7 @@ o.+titleguild := npc.title_guild;
 o.+titlerace := npc.title_race;
 o.+facing := npc.facing;
 
-// GetMaxHp() already reads CustomHitsLevel internally (pkg/opt/shilhook/regen.src)
+// GetMaxHp() already reads CustomHitsLevel internally (pkg/systems/attributes/hooks/vitalInit.src)
 // and converts it down from the engine's x100 fixed-point scale, so it's correct
 // for both custom and template-default NPCs -- no need to special-case it here.
 vits.+HITS := GetMaxHp(npc);

@@ -4,7 +4,15 @@ include "include/attributes";
 include "include/random";
 
 program createpowerscroll(scroll)
-	var skill := GetAttributeIdBySkillId( Random(49) );
+	// Rolls from the full real skill-id space (0-SKILLID__HIGHEST) and re-rolls
+	// on ids 49-56 -- the AOS-era skills dummy-wired in for client protocol
+	// compliance (MaxSkillID=57) but not implemented on this shard, so a tome
+	// must never resolve to one.
+	var skillid;
+	repeat
+		skillid := Random(SKILLID__HIGHEST + 1);
+	until (skillid < 49 or skillid > 56);
+	var skill := GetAttributeIdBySkillId( skillid );
 	var skillName := GetSkillIdByAttributeId( skill );
 	if(skill == "Enticement")
 		skill := "Discordance";

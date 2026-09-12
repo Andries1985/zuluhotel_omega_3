@@ -171,8 +171,19 @@ function CreateStartingEquipment( who, skillids )
     	starteqp_cfg := ReadConfigFile( "::starteqp" );
 
     	foreach skillid in skillids
-        	var skillname := GetSkillName( CInt(skillid) );
-        	CreateFromGroup( who.backpack, skillname );
+        	var id := CInt(skillid);
+        	// AOS-era skills, dummy-wired for client protocol compliance but not
+        	// implemented -- if a player somehow picks one at creation, zero out
+        	// whatever the engine assigned (there's no ability behind it to keep)
+        	// and give a neutral kit instead of the skill-named one, which
+        	// doesn't exist.
+        	if( id >= 49 and id <= 56 )
+        		SetBaseSkill( who, id, 0 );
+        		CreateFromGroup( who.backpack, "Generic" );
+        	else
+        		var skillname := GetSkillName( id );
+        		CreateFromGroup( who.backpack, skillname );
+        	endif
     	endforeach
 
 		creating_starter_all_group := 1;
@@ -215,7 +226,7 @@ endfunction
 //Touched by Dev Alryc 04-11-2026
 function GetSkillName( skillid )
 
-    	var cfg := ReadConfigFile( ":shilhook:skillsdef" );
+    	var cfg := ReadConfigFile( ":attributes:skillsdef" );
     	return cfg[skillid].name;
     	
 endfunction

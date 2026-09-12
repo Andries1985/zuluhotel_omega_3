@@ -122,7 +122,7 @@ function RecalcPhysicalDmg( attacker, defender, weapon, armor, byref basedamage,
 
 	basedamage := basedamage * slayerMultiply;
 
-	if(!attacker.isA(POLCLASS_NPC) && (GetObjProperty( attacker , CLASSEID_THIEF ) || GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_BARD)))
+	if(!attacker.isA(POLCLASS_NPC) && (GetObjProperty( attacker , CLASSEID_MAGE) || GetObjProperty( attacker , CLASSEID_BARD)))
 		if(weapon.graphic in ClassWeapons(GetClass(attacker)))
 			basedamage := CalcPhysicalDamage( attacker, defender, weapon, basedamage );
 		else
@@ -360,6 +360,34 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 			if(DEBUG_MODE)
 				SendSysMessage( attacker, "Ranger / MA Bonus: "+basedamage, FONT_NORMAL, 2569 );
 			endif
+		endif
+	// Throwing -- built pure-DEX by design, no STR term (unlike Archery's
+	// universal STR+DEX bonus above). Poison payoff is strictly gated on this
+	// being an actual Throwing-attribute weapon; a Fencing weapon (Lance of
+	// Lothian, anything picked up off a corpse) never reaches this branch.
+	elseif( weapon.attribute == ATTRIBUTEID_THROWING )
+		if(!attacker.isA(POLCLASS_NPC))
+			basedamage *= 1 + GetDexterity(attacker) * 0.0007;
+		endif
+		if(DEBUG_MODE)
+			SendSysMessage( attacker, "Stat Bonus: "+basedamage, FONT_NORMAL, 2569 );
+		endif
+
+		if( GetObjProperty( attacker, CLASSEID_THIEF ) || GetObjProperty( attacker, CLASSEID_POWERPLAYER ) )
+			var throwingSkillLevel := GetAttribute( attacker, ATTRIBUTEID_THROWING );
+			var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
+			var averageSkill := ((CDbl(throwingSkillLevel + tacticsSkillLevel)) / 2.00);
+			basedamage *= 1 + (averageSkill * 0.007);
+		endif
+		if(DEBUG_MODE)
+			SendSysMessage( attacker, "Skill Bonus: "+basedamage, FONT_NORMAL, 2569 );
+		endif
+
+		if( (GetObjProperty( attacker, CLASSEID_THIEF ) || GetObjProperty( attacker, CLASSEID_POWERPLAYER )) && defender.poisoned )
+			basedamage *= 1 + (PoisonLevel( defender ) * 0.98);
+		endif
+		if(DEBUG_MODE)
+			SendSysMessage( attacker, "Poison Bonus: "+basedamage, FONT_NORMAL, 2569 );
 		endif
 	// Melee
 	else
@@ -629,7 +657,48 @@ function GetShieldAbsorption( attacker, defender, weapon, basedamage )
 endfunction
 
 
+function WFHDamageMultiplier(propname)
+
+	var val := GetGlobalProperty(propname);
+	if (!val)
+		val := 1.0;
+	endif
+	return val;
+
+endfunction
+
+// Warrior for Hire damage moderation, isolated here so DealDamage() itself
+// stays free of template-specific branching. Halves damage between a WFH
+// and its own master, and applies the admin-tunable NPC/Boss knobs otherwise.
+function WFHModifyDamage(attacker, defender, rawdamage)
+
+	if (attacker.npctemplate == "warriorforhire")
+		if (GetObjProperty(attacker,"master") == defender.serial)
+			rawdamage := CInt(rawdamage / 2);
+		elseif (defender.isa(POLCLASS_NPC))
+			if (GetObjProperty(defender,"Boss") or GetObjProperty(defender,"SuperBoss"))
+				rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageToBosses"));
+			else
+				rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageToNPCs"));
+			endif
+		endif
+	elseif (defender.npctemplate == "warriorforhire" and attacker.isa(POLCLASS_NPC))
+		if (GetObjProperty(attacker,"Boss") or GetObjProperty(attacker,"SuperBoss"))
+			rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageFromBosses"));
+		else
+			rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageFromNPCs"));
+		endif
+	endif
+
+	return rawdamage;
+
+endfunction
+
 function DealDamage( attacker, defender, weapon, armor, basedamage, rawdamage )
+
+	//Warrior for Hire damage moderation - applied before any routing (astral/onhit/normal)
+	//so it covers every downstream path, not just the plain ApplyTheDamage() case.
+	rawdamage := WFHModifyDamage(attacker, defender, rawdamage);
 
 	var noPKatk := GetObjProperty(attacker, "NOPKAREA");
 	var noPKdef := GetObjProperty(defender, "NOPKAREA");

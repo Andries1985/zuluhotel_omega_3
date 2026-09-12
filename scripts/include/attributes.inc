@@ -50,7 +50,7 @@ include "include/areas";
 
 // This is the path to the custom skills.cfg
 // This file work exactly like a normal skills.cfg except that skillids can go above 48.
-const CFGFILESPEC_SKILLSDEF		:= ":shilhook:skillsdef";
+const CFGFILESPEC_SKILLSDEF		:= ":attributes:skillsdef";
 
 // The core minimum and maximum value for an attribute in base value
 const CORE_SETTINGS_MIN_ATTRIBUTE	:= 0;
@@ -63,6 +63,9 @@ const CORE_SETTINGS_MAX_VITAL		:= 10000000;
 // The core minimum and maximum for regen rates
 const CORE_SETTINGS_MIN_REGEN_RATE	:= -30000;
 const CORE_SETTINGS_MAX_REGEN_RATE	:= 30000;
+
+// Baseline regen rate (hundredths per minute) when nothing overrides it
+const CORE_SETTINGS_DEFAULT_REGEN_RATE	:= 1200;
 
 // CProp name prefix for regen rate changes
 const CPROP_NAME_PREFIX_REGEN_RATE	:= "NewRegenRateFor";
@@ -114,6 +117,17 @@ const ATTRIBUTEID_TACTICS		:= "Tactics";
 const ATTRIBUTEID_TAILORING		:= "Tailoring";
 const ATTRIBUTEID_TAMING		:= "Animaltaming";
 const ATTRIBUTEID_TASTEID		:= "Tasteidentification";
+const ATTRIBUTEID_THROWING		:= "Throwing";
+
+// AOS-era skills, dummy-wired but not implemented -- see skillids.inc
+const ATTRIBUTEID_NECROMANCY		:= "Necromancy";
+const ATTRIBUTEID_FOCUS			:= "Focus";
+const ATTRIBUTEID_CHIVALRY		:= "Chivalry";
+const ATTRIBUTEID_BUSHIDO		:= "Bushido";
+const ATTRIBUTEID_NINJITSU		:= "Ninjitsu";
+const ATTRIBUTEID_SPELLWEAVING		:= "Spellweaving";
+const ATTRIBUTEID_MYSTICISM		:= "Mysticism";
+const ATTRIBUTEID_IMBUING		:= "Imbuing";
 const ATTRIBUTEID_TINKERING		:= "Tinkering";
 const ATTRIBUTEID_TRACKING		:= "Tracking";
 const ATTRIBUTEID_VETERINARY		:= "Veterinary";
@@ -131,7 +145,7 @@ const VITALID_STAMINA			:= "stamina";
 
 Const SKILLSTATE := "SkillStates";
 Const SKILLID_MIN := 1;
-Const SKILLID_MAX := 49;
+Const SKILLID_MAX := 50;
 Const SKILLSTATE_NORMAL := "R";
 Const SKILLSTATE_LOCKED := "L";
 Const SKILLSTATE_LOWER  := "D";
@@ -598,6 +612,47 @@ endfunction
 **	error {errortext := "No equivalent attributeid found for skillid "} if not
 **
 ***********************************************************************************/
+
+/***********************************************************************************
+**
+** function NormalizeSkillAndSlot( skill )
+**
+** Usage:
+**	The powerscroll cap matrix ("pScrollMatrix") has slots 1..SKILLID_MAX(50),
+**	but the real skill roster is 0-48 plus Throwing at 57 -- slot 49 holds
+**	Alchemy's cap (real skillid 0, which can't be its own slot since these
+**	tools' display loops start counting at 1) and slot 50 holds Throwing's
+**	cap (real skillid 57, added after the dummy AOS-era skills 49-56 without
+**	a slot of its own). Every caller that mixed up which of the two numbers
+**	("skillid" vs "matrix slot") it was holding is a real bug that shipped
+**	(transcendscroll.src, powerscroll.src, dropskills.src, the GM cap tools)
+**	-- this is the one place that conversion happens now.
+**
+** Parameters:
+**	skill: Either a real skillid or a matrix slot -- accepts both for
+**	       Alchemy (0 or 49) and Throwing (57 or 50); every other value
+**	       (1-48) is its own slot already, so it passes through unchanged.
+**
+** return:
+**	A struct{ skillid, slot } with both forms.
+**
+***********************************************************************************/
+function NormalizeSkillAndSlot( skill )
+
+	var result := struct;
+	case( skill )
+		0:				result.skillid := SKILLID_ALCHEMY;	result.slot := 49;
+		49:				result.skillid := SKILLID_ALCHEMY;	result.slot := 49;
+		SKILLID_THROWING:		result.skillid := SKILLID_THROWING;	result.slot := 50;
+		50:				result.skillid := SKILLID_THROWING;	result.slot := 50;
+		default:			result.skillid := skill;		result.slot := skill;
+	endcase
+
+	return result;
+
+endfunction
+
+
 function GetAttributeIdBySkillId( skillid )
 
 	case( skillid )
@@ -650,6 +705,15 @@ function GetAttributeIdBySkillId( skillid )
 	SKILLID_MEDITATION:		return ATTRIBUTEID_MEDITATION;
 	SKILLID_STEALTH:		return ATTRIBUTEID_STEALTH;
 	SKILLID_REMOVETRAP:		return ATTRIBUTEID_REMOVETRAP;
+	SKILLID_THROWING:		return ATTRIBUTEID_THROWING;
+	SKILLID_NECROMANCY:		return ATTRIBUTEID_NECROMANCY;
+	SKILLID_FOCUS:			return ATTRIBUTEID_FOCUS;
+	SKILLID_CHIVALRY:		return ATTRIBUTEID_CHIVALRY;
+	SKILLID_BUSHIDO:		return ATTRIBUTEID_BUSHIDO;
+	SKILLID_NINJITSU:		return ATTRIBUTEID_NINJITSU;
+	SKILLID_SPELLWEAVING:		return ATTRIBUTEID_SPELLWEAVING;
+	SKILLID_MYSTICISM:		return ATTRIBUTEID_MYSTICISM;
+	SKILLID_IMBUING:		return ATTRIBUTEID_IMBUING;
 	default:	var ret        := error;
 				ret.+errortext := "No equivalent attributeid found for skillid " + skillid;
 				return ret;
@@ -722,6 +786,7 @@ function GetAttributeIds()
 		 ATTRIBUTEID_TAILORING,
 		 ATTRIBUTEID_TAMING,
 		 ATTRIBUTEID_TASTEID,
+		 ATTRIBUTEID_THROWING,
 		 ATTRIBUTEID_TINKERING,
 		 ATTRIBUTEID_TRACKING,
 		 ATTRIBUTEID_VETERINARY,
@@ -776,6 +841,7 @@ function GetAttributeNoStrIntDexIds()
 		 ATTRIBUTEID_TAILORING,
 		 ATTRIBUTEID_TAMING,
 		 ATTRIBUTEID_TASTEID,
+		 ATTRIBUTEID_THROWING,
 		 ATTRIBUTEID_TINKERING,
 		 ATTRIBUTEID_TRACKING,
 		 ATTRIBUTEID_VETERINARY,
@@ -1342,6 +1408,15 @@ function GetSkillIdByAttributeId( attributeid )
 		ATTRIBUTEID_MEDITATION:		return SKILLID_MEDITATION;
 		ATTRIBUTEID_STEALTH:		return SKILLID_STEALTH;
 		ATTRIBUTEID_REMOVETRAP:		return SKILLID_REMOVETRAP;
+		ATTRIBUTEID_THROWING:		return SKILLID_THROWING;
+		ATTRIBUTEID_NECROMANCY:		return SKILLID_NECROMANCY;
+		ATTRIBUTEID_FOCUS:		return SKILLID_FOCUS;
+		ATTRIBUTEID_CHIVALRY:		return SKILLID_CHIVALRY;
+		ATTRIBUTEID_BUSHIDO:		return SKILLID_BUSHIDO;
+		ATTRIBUTEID_NINJITSU:		return SKILLID_NINJITSU;
+		ATTRIBUTEID_SPELLWEAVING:	return SKILLID_SPELLWEAVING;
+		ATTRIBUTEID_MYSTICISM:		return SKILLID_MYSTICISM;
+		ATTRIBUTEID_IMBUING:		return SKILLID_IMBUING;
 	endcase
 	
 	var ret        := error;
@@ -1404,6 +1479,7 @@ function GetSkillIds()
 		 SKILLID_TAILORING,
 		 SKILLID_TAMING,
 		 SKILLID_TASTEID,
+		 SKILLID_THROWING,
 		 SKILLID_TINKERING,
 		 SKILLID_TRACKING,
 		 SKILLID_VETERINARY,
@@ -2182,38 +2258,6 @@ function SetStrengthMod( who, mod_amt )
 	return ret;
 
 endfunction
-
-
-/***********************************************************************************
-**
-** function SetStaminaRegenRate( who, vitalid, hundreth_per_minute )
-**
-** Usage:
-**	Set the hp level of a mobile. Equivalent to the old mobile.hp := hp;
-**
-** Parameters:
-**	who:                 The mobile. (Mobileref)
-**	vitalid:             The vital id of the wanted vital. (String)
-**	hundreth_per_minute: The amount of stamina restored every minute in hundreth. (integer)
-**
-** return:
-**	0/1
-**
-***********************************************************************************/
-
-//function SetVitalRegenRate( who, vitalid, hundreth_per_minute )
-
-//	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
-//		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
-//	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
-//		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
-//	endif
-	
-//	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+vitalid, //hundreth_per_minute);
-	
-//	return RecalcVitalsIfOnline(who);
-
-//endfunction
 
 
 ////////////////////////////////////////////////////////////////////////////////////

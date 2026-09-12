@@ -7,6 +7,7 @@ use cfgfile;
 
 include "include/attributes";
 include "include/random";
+include ":attributes:regen";
 
 var modnpc := Self();
 
@@ -37,24 +38,24 @@ if( !GetDexterityMod(modnpc) )
 endif
 
 
-if( GetObjProperty( modnpc , "BaseHpRegen" ) and GetHpRegenRate( modnpc ) == 100 )
-	var base_hp_regen := GetObjProperty( modnpc , "BaseHpRegen" );
+var base_hp_regen := GetObjProperty( modnpc , "BaseHpRegen" );
+if( base_hp_regen )
 	SetObjProperty( modnpc , "baseregen" , base_hp_regen );
-	SetHpRegenRate( modnpc, base_hp_regen  * 12);
+	SetVitalRegenRateMod( modnpc, VITALID_LIFE, "template", (Cint(base_hp_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
 endif
 
 
-if( GetObjProperty( modnpc , "BaseManaRegen" ) and GetManaRegenRate(modnpc) == 100 )
-	var base_mana_regen := GetObjProperty( modnpc , "BaseManaRegen" );
+var base_mana_regen := GetObjProperty( modnpc , "BaseManaRegen" );
+if( base_mana_regen )
 	SetObjProperty( modnpc , "basemanaregen" , base_mana_regen);
-	SetManaRegenRate(modnpc,  base_mana_regen * 12);
+	SetVitalRegenRateMod( modnpc, VITALID_MANA, "template", (Cint(base_mana_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
 endif
 
 
-if( GetObjProperty( modnpc , "BaseStaminaRegen" ) and GetStaminaRegenRate(modnpc) == 100 )
-	var base_stamina_regen := GetObjProperty( modnpc , "BaseStaminaRegen" );
+var base_stamina_regen := GetObjProperty( modnpc , "BaseStaminaRegen" );
+if( base_stamina_regen )
 	SetObjProperty( modnpc , "basestaminaregen" , base_stamina_regen);
-	SetStaminaRegenRate(modnpc, base_stamina_regen * 12);
+	SetVitalRegenRateMod( modnpc, VITALID_STAMINA, "template", (Cint(base_stamina_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
 endif
 
 if(1)

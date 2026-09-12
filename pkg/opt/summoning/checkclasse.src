@@ -16,6 +16,8 @@ program show_classe()
                         level := IsFromThatClasse( player , GetClasseSkills(classe), 1, 0, 0 );
                     elseif(classe == "IsCrafter")
                         level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 1, 1 );
+                    elseif(classe == "IsThief")
+                        level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 0, 0, 1, 1, 1 );
                     else
                         level := IsFromThatClasse( player , GetClasseSkills(classe), 0, 0, 0 );
                     endif

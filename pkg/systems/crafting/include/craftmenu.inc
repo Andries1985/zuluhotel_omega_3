@@ -863,12 +863,12 @@ endfunction
 // Category + recipe-detail gumps.
 // ------------------------------------------------------------------
 
-// Reads the display name for a skill id out of :shilhook:skillsdef (the same
+// Reads the display name for a skill id out of :attributes:skillsdef (the same
 // data source starteqp.inc's GetSkillName uses) -- kept local instead of
 // including starteqp.inc so this stays a self-contained one-line lookup
 // rather than pulling in that file's other, unrelated content.
 function CraftMenu_GetSkillName( skillid )
-	var skills_cfg := ReadConfigFile( ":shilhook:skillsdef" );
+	var skills_cfg := ReadConfigFile( ":attributes:skillsdef" );
 	var name := skills_cfg[skillid].name;
 	if( !name or name == "" )
 		return "Skill " + CStr(CInt(skillid));

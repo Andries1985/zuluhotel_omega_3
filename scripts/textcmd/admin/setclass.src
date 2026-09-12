@@ -39,10 +39,13 @@ program textcmd_class(who, lvl)
 
 	var classid := GetClasseIds()[result[0]];
 
-	var i;
-	for (i := 0; i < 49; i := i + 1)
-		SetBaseSkill(targ, i, 0);
-	endfor
+	// GetSkillIds() rather than a raw numeric range -- ids 49-56 have no
+	// skillsdef.cfg entry (only Throwing/57 was added), and SetBaseSkill on
+	// an unconfigured id risks feeding an error struct into SetAttributeBaseValue.
+	var resetskill;
+	foreach resetskill in GetSkillIds()
+		SetBaseSkill(targ, resetskill, 0);
+	endforeach
 
 	foreach skill in GetClasseSkills( classid )
 		var skillamount := 60 + (CInt(lvl) * 15);

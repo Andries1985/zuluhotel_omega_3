@@ -96,15 +96,33 @@ program classbooststone( who )
         default: selectedclass := "The player must have canceled the gump without doing anything";
     endcase
 
-    var i;
-    for(i := 0; i < 49; i := i + 1)
-        SetBaseSkill(who, i, 0);
-    endfor
+    // Iterates the actual configured skill list rather than the raw 0..HIGHEST
+    // numeric range -- ids 49-56 have no skillsdef.cfg entry (only Throwing/57
+    // was added), and GetAttributeIdBySkillId() returns an error struct for an
+    // unconfigured id, which SetBaseSkill would otherwise pass straight into
+    // SetAttributeBaseValue.
+    var resetskill;
+    foreach resetskill in GetSkillIds()
+        SetBaseSkill(who, resetskill, 0);
+    endforeach
 
     var skillamount := 75;
     foreach skill in GetClasseSkills( classid )
         SetBaseSkill(who, skill, skillamount);
     endforeach
+
+    // Free coskills -- tracked outside GetClasseSkills() so they don't dilute
+    // IsFromThatClasse()'s specialization-total calc, but a starting character
+    // of these classes should still have them (mirrors Testclassbooststone.src).
+    if( classid == CLASSEID_RANGER )
+        SetBaseSkill(who, SKILLID_FORENSICS, skillamount);
+    elseif( classid == CLASSEID_CRAFTER )
+        SetBaseSkill(who, SKILLID_MAGERY, skillamount);
+        SetBaseSkill(who, SKILLID_MUSICIANSHIP, skillamount);
+    elseif( classid == CLASSEID_THIEF )
+        SetBaseSkill(who, SKILLID_DETECTINGHIDDEN, skillamount);
+        SetBaseSkill(who, SKILLID_SNOOPING, skillamount);
+    endif
 
     SetBaseStrength(who, 90);
     SetBaseIntelligence(who, 90);

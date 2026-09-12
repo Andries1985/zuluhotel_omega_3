@@ -980,7 +980,7 @@ endfunction
 // Used to inform a player if and how much a NPC can train a player
 function MerchantTrain( me, who, text )
 
-	var skillcfg := ReadConfigFile( ":shilhook:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
+	var skillcfg := ReadConfigFile( ":attributes:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
 
 	// Get what the player says and divide it into words
 	var words := SplitWords( text );

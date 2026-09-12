@@ -1840,7 +1840,20 @@ const SKILLID_MINING            := 45;
 const SKILLID_MEDITATION        := 46;
 const SKILLID_STEALTH           := 47;
 const SKILLID_REMOVETRAP        := 48;
-const SKILLID__HIGHEST          := 48;
+
+// AOS-era skills, dummy-wired for client protocol compliance but not
+// implemented -- see scripts/include/constants/skillids.inc for the same list.
+const SKILLID_NECROMANCY        := 49;
+const SKILLID_FOCUS             := 50;
+const SKILLID_CHIVALRY          := 51;
+const SKILLID_BUSHIDO           := 52;
+const SKILLID_NINJITSU          := 53;
+const SKILLID_SPELLWEAVING      := 54;
+const SKILLID_MYSTICISM         := 55;
+const SKILLID_IMBUING           := 56;
+
+const SKILLID_THROWING          := 57;
+const SKILLID__HIGHEST          := 57;
 
 
 /////////////////////////////////////  SPELLS START  //////////////////////////////

@@ -6,6 +6,7 @@ include "include/attributes";
 include "include/spelldata";
 include "include/dotempmods";
 include "include/classes";
+include ":attributes:regen";
 
 program processtempmods( parms )
 
@@ -23,11 +24,9 @@ program processtempmods( parms )
 	endif
 		
 	if( (!who.poisoned) )
-		// this person should not be poisoned
-		if ( GetHpRegenRate(who) != BaseRegenRate(who) )
-			SetHpRegenRate( who,  Cint(BaseRegenRate( who ) ));
-			who.setPoisoned(0);
-		endif
+		// this person should not be poisoned - clear any stale poison suppression.
+		ClearVitalRegenRateMod(who, VITALID_LIFE, "poison");
+		who.setPoisoned(0);
 	endif
 	
 	Set_Critical(1);
@@ -117,37 +116,37 @@ program processtempmods( parms )
 	endcase
 	IncRevision(who);
 	SetObjProperty( who , "#mods" , allmods );
-	//Set_Critical(0);
-	
-	/*detach();
+	Set_Critical(0);
+
+	detach();
 	Sleep(duration);
-	
+
 	if( who )
 		Set_Critical(1);
 		allmods := GetObjProperty( who , "#mods" );
-	
+
 		if( !allmods )
 			Set_Critical( 0 );
 			return;
 		endif
-	
+
 		var newmods := {};
 		var i;
 		for( i := 1 ; i <= len(allmods) ; i := i + 1 )
 			if( allmods[i][1] == mmod[1] and ReadGameClock() >= allmods[i][3] )
 				UndoTheMod( who , allmods[i][1] , allmods[i][2] );
-			else	
+			else
 				newmods.append( allmods[i] );
 			endif
 		endfor
-	
+
 		if( len(newmods) )
 			SetObjProperty( who , "#mods" , newmods );
 		else
 			EraseObjProperty( who , "#mods" );
 		endif
-	
+
 		Set_Critical( 0 );
-	endif*/
-	
+	endif
+
 endprogram
