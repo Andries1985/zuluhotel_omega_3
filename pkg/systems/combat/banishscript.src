@@ -29,22 +29,32 @@ program banishscript(attacker, defender, weapon, armor, basedamage, rawdamage)
                 PlaySoundEffect( attacker , SFX_SPELL_MANA_VAMPIRE );
                 PlayStationaryEffect( defender.x, defender.y, defender.z, FX_SPELL_SUMMON_CREATURE, 0xA, 0xA, 0, defender.realm );
                 MoveObjectToLocation(defender, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
-                ApplyTheDamage( defender , attacker , GetMaxHP(defender) + 3 , DMGID_MAGIC );
+                // was ApplyTheDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP;
+                // set KilledBy/KilledBySerial manually so RegisterNPC/ProcessQuestKill still credit the kill
+                SetObjProperty( defender, "KilledBy", attacker.name );
+                SetObjProperty( defender, "KilledBySerial", attacker.serial );
+                defender.kill();
             else
                 PlayObjectCenteredEffect( attacker, FX_SPELL_MANA_VAMPIRE, 7,7);
                 PlaySoundEffect( defender , SFX_SPELL_MANA_VAMPIRE );
-                ApplyTheDamage( attacker , attacker , GetMaxHP(defender) + 3 , DMGID_MAGIC );
+                SetObjProperty( attacker, "KilledBy", attacker.name );
+                SetObjProperty( attacker, "KilledBySerial", attacker.serial );
+                attacker.kill();
             endif
 
         elseif( animated )
             if( !cursed )
                 PlayObjectCenteredEffect( defender, FX_SPELL_MANA_VAMPIRE, 7,7);
                 PlaySoundEffect( attacker , SFX_SPELL_MANA_VAMPIRE );
-                ApplyTheDamage( defender , attacker , GetMaxHP(defender) + 3 , DMGID_MAGIC );
+                SetObjProperty( defender, "KilledBy", attacker.name );
+                SetObjProperty( defender, "KilledBySerial", attacker.serial );
+                defender.kill();
             else
                 PlayObjectCenteredEffect( attacker, FX_SPELL_MANA_VAMPIRE, 7,7);
                 PlaySoundEffect( defender , SFX_SPELL_MANA_VAMPIRE );
-                ApplyTheDamage( attacker , attacker , GetMaxHP(defender) + 3 , DMGID_MAGIC );
+                SetObjProperty( attacker, "KilledBy", attacker.name );
+                SetObjProperty( attacker, "KilledBySerial", attacker.serial );
+                attacker.kill();
             endif
         else
             rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );

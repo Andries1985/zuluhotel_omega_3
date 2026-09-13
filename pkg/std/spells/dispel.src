@@ -116,7 +116,11 @@ program dispel ( parms, spell_id )
 		
 		if( !CheckSkill( cast_on, SKILLID_MAGICRESISTANCE, magery, 50 ))
 			PlaySoundEffect( cast_on, SFX_SPELL_DISPEL );
-			ApplyTheDamage( cast_on, caster, GetMaxHP(cast_on) + 3, DMGID_MAGIC );
+			// was ApplyTheDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP;
+			// set KilledBy/KilledBySerial manually so RegisterNPC/ProcessQuestKill still credit the kill
+			SetObjProperty( cast_on, "KilledBy", caster.name );
+			SetObjProperty( cast_on, "KilledBySerial", caster.serial );
+			cast_on.kill();
 		else
 			SendSysmessage( caster , "You could not dispel the creature." );
 		endif
