@@ -9,7 +9,7 @@ include "tstone";
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const WATCHER_PROP := "#TownstoneElectionWatcherRunning";
 const WATCHER_INTERVAL_SECONDS := 5;
-const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_OBJTYPE := 0x35006;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 // Player towns aren't confined to Britannia (playertowns.cfg configures
 // Zento, a Tokuno region) -- search every realm the shard defines instead

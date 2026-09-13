@@ -3,7 +3,7 @@ use os;
 use datafile;
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
-const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_OBJTYPE := 0x35006;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 // Player towns aren't confined to Britannia (playertowns.cfg configures
 // Zento, a Tokuno region) -- search every realm the shard defines instead

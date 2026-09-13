@@ -53,11 +53,34 @@ function ThrowPotion(you)
 
 	if ( (distance(me,you)>2) and Random(2) )
 
+		var potiontype := GetObjProperty(me,"ExplosionPotionType");
+		if (!potiontype)
+			potiontype := 0xdc09; // ExplosionPotion (Strength 3) -- default tier
+		endif
+
+		var potion := CreateItemInInventory(me.backpack, potiontype, 1);
+		if (!potion)
+			return;
+		endif
+
+		var where := array;
+		where.+x;
+		where.+y;
+		where.+z;
+		where.+realm;
+		where.x := you.x;
+		where.y := you.y;
+		where.z := you.z;
+		where.realm := you.realm;
+
+		PlayMovingEffectXYZ( me.x, me.y, me.z+15, where.x, where.y, where.z, 0x0f0d, 8, 0, 0, where.realm );
+
 		var parms := {};
 		parms[1] := me;
-		parms[2] := you;
+		parms[2] := potion;
+		parms[3] := where;
 
-		start_script( ":alchemy:explosion", parms ); 
+		start_script( ":alchemy:exploder", parms );
 
 	endif
 

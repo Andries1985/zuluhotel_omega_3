@@ -1,0 +1,28 @@
+/////////////////
+// alchemy_station_use.src
+//
+// Shared double-click entry point for every Alchemy-flavored STATION
+// (Elven Alchemy Table, Alchemy Machine, Potion Vat). Class-gated per
+// user's explicit design: a Thief gets the poison-BREWING menu (crafting
+// poisons, not applying them -- applying still needs a real Vial of Venom
+// in the backpack, deliberately not reachable from any station); anyone
+// else gets the real Alchemy menu. Neither path needs the usual carried
+// tool (Toxin Flask / Mortar and Pestle) -- crafting-station rollout,
+// 2026-09-12.
+////////////////
+
+use uo;
+
+include "include/classes";
+include ":poisoning:poisoning";
+include ":alchemy:alchemyfunctions";
+
+program use_alchemy_station( character, station )
+
+	if( GetObjProperty( character, CLASSEID_THIEF ) )
+		BrewPoison( character, station, 1 );
+	else
+		DoAlchemy( character, station, 1 );
+	endif
+
+endprogram

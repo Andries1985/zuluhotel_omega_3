@@ -2,6 +2,7 @@ use uo;
 use os;
 use guilds;
 use polsys;
+use cliloc;
 
 //include "include/client";
 //include "include/objtype";
@@ -131,9 +132,10 @@ program use_house_sign (character, sign)
 
 				// Omega Cache containers are freestanding items placed inside
 				// the house footage, not tracked in house.components, so they
-				// need their own sweep. Block the redeed if anything is still
-				// stored (matching house's own manual-demolish guard); collect
-				// the (now confirmed empty) containers to clean up below.
+				// need their own sweep. If anything is still stored, warn the
+				// owner and let them forfeit it rather than hard-blocking the
+				// redeed (matching house's own manual-demolish flow); collect
+				// the containers to clean up below either way.
 				var homeinfo := GetObjProperty (sign, "homeinfo");
 				var cache_items := array {};
 				var cache_serials := array {};
@@ -150,10 +152,6 @@ program use_house_sign (character, sign)
 				if (homeinfo)
 					foreach thing in ListObjectsInBox (homeinfo[2], homeinfo[3], -128, homeinfo[4], homeinfo[5], 127, sign.realm)
 						if (thing.objtype == OMEGACACHE_OBJTYPE)
-							if (!IsOmegaCacheEmpty (CInt (GetObjProperty (thing, "houseserial"))))
-								SendSysMessage (character, "You cannot redeed this house while Omega Cache contents are stored.", color := 33);
-								return;
-							endif
 							cache_items.append (thing);
 							cache_serials.append (CInt (GetObjProperty (thing, "houseserial")));
 						elseif (thing.objtype == GUILDSTONE_OBJTYPE)
@@ -161,6 +159,23 @@ program use_house_sign (character, sign)
 						elseif (thing.objtype == 0x15000)
 							teleporters.append (thing);
 						endif
+					endforeach
+				endif
+
+				var cache_has_contents := 0;
+				foreach cache_serial in cache_serials
+					if (!IsOmegaCacheEmpty (cache_serial))
+						cache_has_contents := 1;
+						break;
+					endif
+				endforeach
+				if (cache_has_contents)
+					if (!YesNo (character, "Your Omega Cache still contains stored items, which will be permanently lost. Demolish anyway?"))
+						SendSysMessageCL (character, 1042023, color := 33); // Cancelled.
+						return;
+					endif
+					foreach cache_serial in cache_serials
+						ForceEmptyOmegaCache (cache_serial);
 					endforeach
 				endif
 

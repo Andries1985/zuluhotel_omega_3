@@ -67,7 +67,7 @@ endprogram
 // The gump flow itself lives in the shared craftmenu.inc -- this is just the
 // tailoring-specific wiring: Repair Item / Fortify a Hat handling, and
 // dispatching a completed pick into TryToMakeItem below.
-function RunTailoringGump( character )
+exported function RunTailoringGump( character )
 
 	while( 1 )
 		var extra_options := array{
@@ -107,7 +107,11 @@ function RunTailoringGump( character )
 			continue;
 		endif
 
-		TryToMakeItem( character, detail.slot1, choice );
+		if( detail.mode == "bulk" )
+			CraftClothBulk( character, choice, element, detail.slot1, detail.qty );
+		else
+			TryToMakeItem( character, detail.slot1, choice );
+		endif
 		return;
 	endwhile
 
@@ -345,6 +349,63 @@ function TryToMakeItem( character, resourceRequest, item )
 
 	ReleaseResourceLease(resourceRequest);
 	AutoLoop_finish();
+
+endfunction
+
+
+// Bulk version of TryToMakeItem, mirroring Bowcraft's CraftLogBulk (shafts/
+// arrows): one CheckSkill roll for the whole player-chosen quantity instead
+// of one roll per unit, then create/consume the entire batch in one shot.
+// Crafting-station rollout, 2026-09-12 -- added for Bandages specifically
+// (the only Tailoring recipe with Bulk 1 so far), but works for any single-
+// material Tailoring recipe.
+function CraftClothBulk( character, item, element, resourceRequest, qty )
+
+	var resource_diff := tailor_cfg[resourceRequest.objtype].Difficulty;
+	var material := CInt(element.Material) * qty;
+
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		material := CInt(Ceil(material/2));
+	endif
+
+	var skill := element.Skill + CInt( resource_diff / DIVIDER );
+	if( skill < 1 )
+		skill := 1;
+	elseif( skill > 150 )
+		skill := 150;
+	endif
+
+	// Points computed off one unit's worth, not the scaled batch total -- a
+	// bulk click is only worth the same skill gain as crafting a single item.
+	var points := CInt( (skill + element.Material) * POINTS_MULTIPLIER );
+
+	_Play_Sound( character );
+
+	if( CheckSkill( character, SKILLID_TAILORING, skill, points ) )
+		var theitem := CreateItemInBackpack( character, item, qty );
+		if( theitem )
+			theitem.color := resourceRequest.color;
+			theitem.hp := theitem.maxhp;
+			IncRevision(theitem);
+			SendSysmessage( character, "You place " + qty + " " + element.Name + " in your pack." );
+		endif
+		ConsumeResource( character, resourceRequest, material );
+	else
+		var tail := GetEffectiveSkill( character, SKILLID_TAILORING );
+		var destroy := 75 - CInt( tail / 2 );
+		if( GetObjProperty( character, CLASSEID_CRAFTER ) )
+			destroy := Cint( destroy / ClasseBonus( character, CLASSEID_CRAFTER ) );
+		endif
+		if( destroy > 50 )
+			destroy := 50;
+		endif
+		destroy := Cint( material * destroy / 100 );
+		if( destroy < 1 )
+			destroy := 1;
+		endif
+		ConsumeResource( character, resourceRequest, destroy );
+		SendSysmessage( character, "You destroyed some resources." );
+	endif
 
 endfunction
 

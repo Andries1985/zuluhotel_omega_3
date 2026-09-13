@@ -36,13 +36,15 @@ function ApplyRitualEffect( mobile, item )
 	if( RitualHasOtherImmunity( item, "HealingIncrease" ))
 		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
                 return 0;
-        elseif( GetObjProperty( item, "HealingIncrease" ))
+        endif
+
+        var healing := CInt( GetObjProperty( item, "HealingIncrease" ));
+        if( healing >= 6 )
 		SendSysMessage( mobile, "This "+item_desc+" already have a powerful enchantment on it." );
                 return 0;
         endif
 
-	//SetObjProperty( item, "HealingIncrease", GetObjProperty( mobile, MAGE ));
-        SetObjProperty( item, "HealingIncrease", GetClasseLevel( mobile));
+        SetObjProperty( item, "HealingIncrease", healing + 1 );
 	SetNameByEnchant( item );
 
 	SendSysMessage( mobile, "This "+item_desc+" will now receive a bonus on all healing actions." );

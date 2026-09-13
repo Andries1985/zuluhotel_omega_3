@@ -27,9 +27,10 @@ var runaway := 0;
 
 program KillPlayers()
 
+	SetObjProperty(me,"ExplosionPotionType",0xdc07); // Greater Explosion Potion -- boss tier
 	SetWarMode( 0 );
     	main_AI_loop();
-        
+
 endprogram
 
 function CloseDistance( opponent )

@@ -10,6 +10,7 @@ include ":mdgumps:gumps_ex";
 include ":townstone:tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
+const TOWNSTONE_OBJTYPE := 0x35006;
 const BTN_PREV := 7001;
 const BTN_NEXT := 7002;
 const BTN_CANCEL := 7003;
@@ -51,12 +52,22 @@ program textcmd_createtownstone(who)
 		return;
 	endif
 
-	var item := CreateItemAtLocation(who.x, who.y, who.z, 0xa320, 1);
+	// 2026-09-13: was missing the realm argument entirely -- CreateItemAtLocation
+	// defaults to _DEFAULT_REALM ("britannia") when it's omitted (see uo.em),
+	// so every townstone ever created by this command landed in Britannia at
+	// the GM's raw x/y, regardless of which (possibly non-Britannia) region
+	// they picked. Confirmed live: a Zento (tokuno) stone saved with
+	// Realm britannia in data/items.txt. Also adding item.decay := 0 -- a
+	// permanent town fixture decaying away was never intended, matching the
+	// same explicit suppression pkg/std/tinkering's MakeTotem already uses
+	// for its own permanent creation.
+	var item := CreateItemAtLocation(who.x, who.y, who.z, TOWNSTONE_OBJTYPE, 1, who.realm);
 	if(!item)
 		SendSysMessage(who, "Failed to create townstone.");
 		return;
 	endif
 
+	item.decay := 0;
 	item.name := item.name + " of " + name;
 	SetObjProperty(item, "town", insertpoint);
 	SetObjProperty(item, "regionname", name);
@@ -106,7 +117,7 @@ function HasActiveTownstoneForRegion(region_name)
 	endif
 
 	var stone := SystemFindObjectBySerial(stone_serial);
-	if(stone and stone.objtype == 0xa320)
+	if(stone and stone.objtype == TOWNSTONE_OBJTYPE)
 		return 1;
 	endif
 
@@ -163,7 +174,7 @@ function HasLiveTownstoneConflict(region_name, town_index, townnames)
 		endif
 
 		var stone := SystemFindObjectBySerial(stone_serial);
-		if(!stone or stone.objtype != 0xa320)
+		if(!stone or stone.objtype != TOWNSTONE_OBJTYPE)
 			continue;
 		endif
 
@@ -290,13 +301,19 @@ function GetAvailableCityRegions()
 			continue;
 		endif
 
-		var city_raw := GetConfigString(elem, "City");
-		if(city_raw.errortext)
+		// 2026-09-13: was checking for a "City 1" field, which no region in
+		// regions.cfg has ever actually had (every real city region uses
+		// "Type City" instead) -- this made this list come back empty for
+		// EVERY town, not just one. Fixed to check the field regions.cfg
+		// actually uses (see tstone.inc's GetCityRegionsFromConfig, which had
+		// the identical bug independently -- this function isn't shared with
+		// it despite doing the same thing).
+		var type_raw := GetConfigString(elem, "Type");
+		if(type_raw.errortext)
 			continue;
 		endif
 
-		var city_flag := CInt(city_raw);
-		if(city_flag != 1)
+		if(CStr(type_raw) != "City")
 			continue;
 		endif
 
@@ -338,7 +355,7 @@ function PickRegionFromGump(who, regions)
 		GFPage(gump, 1);
 
 		GFTextLine(gump, 28, 28, 1153, "Create Townstone - Pick City Region");
-		GFTextLine(gump, 28, 48, 1153, "Only City=1 regions without active townstones are listed.");
+		GFTextLine(gump, 28, 48, 1153, "Only Type=City regions without active townstones are listed.");
 		GFTextLine(gump, 28, 68, 1153, "Page " + CStr(page) + " of " + CStr(total_pages));
 
 		var row := 0;

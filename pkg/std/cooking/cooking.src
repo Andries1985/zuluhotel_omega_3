@@ -505,6 +505,11 @@ function near_a_fire(character, nearby_objtypes)
 	if (objtype_in_range_list(nearby_objtypes, 0x2a04, 0x2a04)) return 1; endif // Fire pit
 	if (objtype_in_range_list(nearby_objtypes, 0x2ddb, 0x2ddc)) return 1; endif // Elven stove
 	if (objtype_in_range_list(nearby_objtypes, 0x3651, 0x3653)) return 1; endif // Shadow fire pit
+	if (objtype_in_range_list(nearby_objtypes, 0xa2a4, 0xa2ab)) return 1; endif // Wood Stove (crafting-station rollout, 2026-09-12)
+	if (objtype_in_range_list(nearby_objtypes, 0x2068, 0x2068)) return 1; endif // Cauldron (crafting-station rollout, 2026-09-12)
+	if (objtype_in_range_list(nearby_objtypes, 0x207a, 0x207a)) return 1; endif // Cauldron (crafting-station rollout, 2026-09-12)
+	if (objtype_in_range_list(nearby_objtypes, 0x9987, 0x999e)) return 1; endif // Grill (crafting-station rollout, 2026-09-12)
+	if (objtype_in_range_list(nearby_objtypes, 0x9d98, 0x9da2)) return 1; endif // Machine Cooking (crafting-station rollout, 2026-09-12)
 	return 0;
 endfunction
 
@@ -516,6 +521,7 @@ endfunction
 ///////////////////
 
 function near_an_oven(character, nearby_objtypes)
+	if (objtype_in_range_list(nearby_objtypes, 0x9d98, 0x9da2)) return 1; endif // Machine Cooking (crafting-station rollout, 2026-09-12)
 	if (objtype_in_range_list(nearby_objtypes, 0x0461, 0x046f)) return 1; endif
 	if (objtype_in_range_list(nearby_objtypes, 0x092b, 0x0934)) return 1; endif
 	return 0;

@@ -134,8 +134,11 @@ function EnumerateRestrictedItemTypesFromClasse( classeid )
 					fract_array.append( GetShieldGraphics() );
 					break;
 		CLASSEID_THIEF:
-					// Unrestricted as of the Throwing rework -- Thief matches
-					// Powerplayer's full armor/shield freedom now.
+					fract_array.append( GetBoneArmorGraphics() );
+					fract_array.append( GetRingmailArmorGraphics() );
+					fract_array.append( GetChainmailArmorGraphics() );
+					fract_array.append( GetPlatemailArmorGraphics() );
+					fract_array.append( GetShieldGraphicsThief() );
 					break;
 
 		CLASSEID_WARRIOR:
@@ -637,7 +640,7 @@ function IsRanger( who )
 endfunction
 
 function IsThief( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ), 0, 0, 0, 1, 1, 1 );
+	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ), 0, 0, 0, 1, 1 );
 endfunction
 
 function IsWarrior( who )
@@ -649,7 +652,7 @@ function IsPowerplayer( who )
 endfunction
 
 
-function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryallowed := 0, musicianshipallowed := 0, detectinghiddenallowed := 0, snoopingallowed := 0, throwingallowed := 0 )
+function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryallowed := 0, musicianshipallowed := 0, detectinghiddenallowed := 0, snoopingallowed := 0 )
 
 	var classe	:= 0;
 	var total	:= 0;
@@ -665,7 +668,7 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryal
 			or (musicianshipallowed and i == SKILLID_MUSICIANSHIP)
 			or (detectinghiddenallowed and i == SKILLID_DETECTINGHIDDEN)
 			or (snoopingallowed and i == SKILLID_SNOOPING)
-			or (throwingallowed and i == SKILLID_THROWING) ) )
+		 	) )
 			total := total + amount;
 		endif
 
@@ -744,6 +747,8 @@ function IsProhibitedByClasse( who , item )
 			ret := 1;
 		elseif( GetObjProperty( item , "dex" ) )
 			ret := 1;
+		elseif( GetObjProperty( item , "ar" ) )
+			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MAGE ) )
 			ret := 1;
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MAGE ) )
@@ -753,6 +758,8 @@ function IsProhibitedByClasse( who , item )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_MYSTIC_ARCHER ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "str" ) )
+			ret := 1;
+		elseif( GetObjProperty( item , "ar" ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MYSTIC_ARCHER ) )
 			ret := 1;
@@ -813,13 +820,13 @@ function AssignClasse( character )
 	foreach classe in GetClasseIds()
 		EraseObjProperty( character , classe );
 		if(classe == "IsRanger")
-			t := IsFromThatClasse( character , GetClasseSkills(classe), 1, 0, 0 );
+			t := IsFromThatClasse( character , GetClasseSkills(classe), 1, 0, 0, 0, 0 );
 		elseif(classe == "IsCrafter")
-			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 1, 1 );
+			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 1, 1, 0, 0 );
 		elseif(classe == "IsThief")
-			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 0, 0, 1, 1, 1 );
+			t := IsFromThatClasse( character , GetClasseSkills(classe), 0, 0, 0, 1, 1 );
 		else
-			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 0, 0 );
+			t := IsFromThatClasse( character , GetClasseSkills( classe ), 0, 0, 0, 0, 0 );
 		endif
 		if( t )
 			SetObjProperty( character , classe , t );
@@ -834,10 +841,12 @@ endfunction
 function ClassWeapons(classString)
 
 	case (classString)
-		//Shepherds Crook, bow, heavy crossbow, crossbow, Yumi, Composite Bow, Repeating Crossbow, Lajatang
-		"IsBard": return {0x0e81, 0x13B2, 0x13fd, 0x0f4f, 0x27a5, 0x26c2, 0x26c3, 0x27a7};
 		// Thief no longer gated here as of the Throwing rework -- Thief deals
 		// normal damage with any weapon now, same as Warrior/Ranger/Powerplayer.
+
+		//Shepherds Crook, bow, heavy crossbow, crossbow, Yumi, Composite Bow, Repeating Crossbow, Lajatang
+		"IsBard": return {0x0e81, 0x13B2, 0x13fd, 0x0f4f, 0x27a5, 0x26c2, 0x26c3, 0x27a7};
+
 		//Black Staff, Gnarled Staff, QuarterStaff, Lajatang
 		"IsMage": return {0x0df0, 0x13f9, 0x0e8a, 0x27a7};
 		default:

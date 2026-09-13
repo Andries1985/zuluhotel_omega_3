@@ -172,6 +172,28 @@ function NearAnElvenAnvilOrForge(me)
 
 endfunction
 
+// OSI-style Blacksmithy requirement: both an anvil-type AND a forge-type
+// object within range, whether the player got here via the hand hammer or
+// by double-clicking a station directly. Radius 2, matching the other
+// station-proximity checks above (NearASoulforge / NearAnElvenAnvilOrForge).
+function NearForgeAndAnvil(me)
+
+	var have_anvil := 0;
+	var have_forge := 0;
+
+	foreach item in ListItemsNearLocation( me.x, me.y, me.z, 2, me.realm )
+		if (item.objtype == UOBJ_ANVIL1 or item.objtype == UOBJ_ANVIL2 or item.objtype == UOBJ_ELVEN_ANVIL1 or item.objtype == UOBJ_ELVEN_ANVIL2 or (item.objtype >= UOBJ_SOULFORGE_ANVIL_START and item.objtype <= UOBJ_SOULFORGE_ANVIL_END))
+			have_anvil := 1;
+		endif
+		if ((item.objtype >= UOBJ_FORGE_START and item.objtype <= UOBJ_FORGE_END) or item.objtype == UOBJ_ELVEN_FORGE or item.objtype == UOBJ_SOULFORGE or (item.objtype >= UOBJ_MINISOULFORGE_START and item.objtype <= UOBJ_MINISOULFORGE_END) or (item.objtype >= UOBJ_LARGESOULFORGE_START and item.objtype <= UOBJ_LARGESOULFORGE_END) or (item.objtype >= UOBJ_BLACKSMITH_MACHINE_START and item.objtype <= UOBJ_BLACKSMITH_MACHINE_END))
+			have_forge := 1;
+		endif
+	endforeach
+
+	return (have_anvil and have_forge);
+
+endfunction
+
 function ApplyMaterialPropertiesDeed(byref product_desc, material, is_exceptional, character, skill_id, deedname)
 
 	var material_cfg;

@@ -385,11 +385,17 @@ endfunction
 // SKILLID_ALCHEMY. Thief gets the same ByTrueMage-style bonus Mage gets
 // in Alchemy, via ByTrueThief instead, same ClasseBonus() formula.
 ///////////////////////////////////////////////////////////////////////
-function BrewPoison( character, flask )
+// via_station (crafting-station rollout, 2026-09-12): a placed Alchemy
+// station isn't "on the player", so the carried-Toxin-Flask-only check is
+// skipped when invoked from a station instead of a held flask -- brewing
+// still needs Nightshade and an empty bottle either way.
+exported function BrewPoison( character, flask, via_station := 0 )
 
-	if( !IsOnPlayer( character.backpack , flask ) )
-		SendSysmessage( character, "That item has to be in your backpack." );
-		return;
+	if( !via_station )
+		if( !IsOnPlayer( character.backpack , flask ) )
+			SendSysmessage( character, "That item has to be in your backpack." );
+			return;
+		endif
 	endif
 
 	if( !ReserveItem( flask ) )

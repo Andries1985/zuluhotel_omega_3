@@ -1,0 +1,60 @@
+/////////////////
+// repair_table_use.src
+//
+// Repair Table: a universal repair station covering all four crafting
+// skills that already have their own tool-specific Repair Item option
+// (Blacksmithy, Bowcraft, Tailoring, Carpentry). Unlike those, this
+// station doesn't open a crafting menu at all -- it goes straight to
+// "what would you like to repair?" and figures out which skill's repair
+// math to use by checking the targeted item's graphic against all four
+// recipe cfgs in turn. Crafting-station rollout, 2026-09-12.
+////////////////
+
+use uo;
+use cfgfile;
+
+include "util/repair";
+include "include/objtype";
+
+var repairtable_smith_cfg;
+var repairtable_bowcraft_cfg;
+var repairtable_tailor_cfg;
+var repairtable_carpenter_cfg;
+
+program use_repair_table( character, station )
+
+	if( !ReserveItem( station ) )
+		return;
+	endif
+
+	if( !repairtable_smith_cfg )
+		repairtable_smith_cfg := ReadConfigFile( "blacksmithy" );
+		repairtable_bowcraft_cfg := ReadConfigFile( ":bowcraft:bowcraft" );
+		repairtable_tailor_cfg := ReadConfigFile( ":tailoring:tailoring" );
+		repairtable_carpenter_cfg := ReadConfigFile( ":carpentry:carpentry" );
+	endif
+
+	SendSysmessage( character, "What would you like to repair?" );
+	var use_on := Target( character, TGTOPT_CHECK_LOS );
+	if( !use_on or !Accessible(character, use_on) )
+		return;
+	endif
+
+	if( !use_on.hp or !use_on.quality )
+		SendSysMessage( character, "You can't repair that with this." );
+		return;
+	endif
+
+	if( repairtable_smith_cfg[use_on.graphic] )
+		repair_item( character, use_on, SKILLID_BLACKSMITHY );
+	elseif( repairtable_bowcraft_cfg[use_on.graphic] )
+		repair_item( character, use_on, SKILLID_BOWCRAFT );
+	elseif( repairtable_tailor_cfg[use_on.graphic] )
+		repair_item( character, use_on, SKILLID_TAILORING );
+	elseif( repairtable_carpenter_cfg[use_on.graphic] )
+		repair_item( character, use_on, SKILLID_CARPENTRY );
+	else
+		SendSysMessage( character, "You can't repair that with this." );
+	endif
+
+endprogram

@@ -1,0 +1,46 @@
+use uo;
+use os;
+include ":itemutils:itemUtil";
+include ":tinkering:tinkeringfunctions";
+
+// Glassblowing Table: wraps the standard light/use.src Toggle() behavior
+// (still manually lightable/extinguishable on double-click) with also
+// opening the Tinkering gump on the same click -- crafting-station
+// rollout, 2026-09-12.
+//
+// Auto-light while crafting: the manual Toggle() above is untouched and
+// always flips exactly like a plain light/use.src item would. Separately,
+// if that manual flip just left the table dark, this forces it lit for the
+// duration of the gump/crafting session that follows (glass recipes read
+// better lit, matching the forge's always-hot-while-smithing flavor), then
+// reverts it back to dark once the session ends. If the manual flip left it
+// already lit, nothing extra happens -- that's the player's own choice to
+// leave the light on, never overridden here.
+
+program useGlassblowingTool( who, tool )
+
+	if( !useItem_check( who, tool, DEFAULT_ITEM ))
+		return 0;
+	endif
+
+	tool.Toggle();
+
+	if( !ReserveItem( tool ) )
+		return 1;
+	endif
+
+	var we_forced_lit := 0;
+	if( !tool.IsOn() )
+		tool.Toggle();
+		we_forced_lit := 1;
+	endif
+
+	RunTinkeringGump( who );
+
+	if( we_forced_lit )
+		tool.Toggle();
+	endif
+
+	return 1;
+
+endprogram

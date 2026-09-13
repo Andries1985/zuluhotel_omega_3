@@ -142,3 +142,20 @@ function IsOmegaCacheEmpty(house_serial)
 	var keys := df.Keys();
 	return (keys.size() == 0);
 endfunction
+
+// Wipes every stored entry (items and resource leases alike) from a house's
+// Omega Cache DataFile without going through the normal deposit/withdraw
+// accounting. For explicit "forfeit the contents" flows only -- an owner
+// choosing to demolish/redeed/relinquish anyway despite a non-empty cache,
+// or a staff member force-destroying an Omega Cache container -- never as a
+// silent side effect. After this call IsOmegaCacheEmpty() reports empty, so
+// the normal destroy-time safety check (destroycache.src) no longer blocks.
+function ForceEmptyOmegaCache(house_serial)
+	var df := OpenOmegaCacheStore(house_serial);
+	if(!df)
+		return;
+	endif
+	foreach key in (df.Keys())
+		df.DeleteElement(key);
+	endforeach
+endfunction

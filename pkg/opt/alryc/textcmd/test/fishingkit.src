@@ -1,0 +1,114 @@
+// Synopsis: Drop a backpack with a fishing pole, GM fishing pole, a stack each of every other fishing tool/species/Fish Lure, and a separate bag of Crustacean Lures at your feet for fishing testing
+use uo;
+use cfgfile;
+
+include ":staff:include/staff";
+
+const STACK_AMOUNT := 100;
+const SPECIES_AMOUNT := 25;
+const LURE_AMOUNT := 100;
+const CRUSTACEAN_LURE_AMOUNT := 10;
+const CRAFTING_BACKPACK := 0x9B2;
+
+// A real stack -- one item object holding `amount`. Only safe for objtypes whose "use"
+// script consumes one unit at a time (SubtractAmount) rather than the whole object -- see
+// CarveFish (bladed.src), createfish()/ResolveFishCatch() (fishing.inc), and lure/use.src's
+// SubtractAmount(lure, 1).
+function FillMerged(chest, objtypes, amount)
+	foreach objtype in objtypes
+		CreateItemInContainer(chest, objtype, amount);
+	endforeach
+endfunction
+
+// `amount` separate item objects instead of one stack. Used for objtypes whose graphic isn't
+// tiledata-stackable (so they'd never actually merge in-game) and/or whose "use" script does
+// an unconditional DestroyItem() on the whole object (taxidermy.src).
+function FillDiscrete(chest, objtypes, amount)
+	foreach objtype in objtypes
+		var i;
+		for (i := 1; i <= amount; i := i + 1)
+			CreateItemInContainer(chest, objtype, 1);
+		endfor
+	endforeach
+endfunction
+
+// Reads every species out of :fishing:catchtable / :fishing:crustaceantable (the same
+// tables PickFishFromTier()/PickCrustaceanFromTier() catch from -- see fishing.inc) so the
+// kit always matches whatever's actually catchable, instead of a hand-maintained list going
+// stale. Regular entries carry a single Objtype; Rare/Legendary carry ObjtypeEast/
+// ObjtypeSouth (built with both facings) -- East is picked arbitrarily since either is a
+// valid instance of the species.
+function CollectSpeciesObjtypes(cfgname)
+	var cfg := ReadConfigFile(cfgname);
+	var keys := GetConfigStringKeys(cfg);
+	var objtypes := {};
+
+	foreach key in keys
+		var elem := cfg[key];
+		if (elem.Objtype)
+			objtypes.append(CInt(elem.Objtype));
+		elseif (elem.ObjtypeEast)
+			objtypes.append(CInt(elem.ObjtypeEast));
+		endif
+	endforeach
+
+	UnloadConfigFile(cfgname);
+
+	return objtypes;
+endfunction
+
+program fishingkit(who)
+	var chest := CreateItemAtLocation(who.x, who.y, who.z, CRAFTING_BACKPACK, 1, who.realm);
+
+	if (!chest)
+		SendSysMessage(who, "Couldn't create a backpack at your feet.");
+		return 0;
+	endif
+
+	chest.name := "Fishing Kit";
+	chest.movable := 1;
+	chest.color := 1102;
+
+	CreateItemInContainer(chest, "FishingPole", 1);
+	CreateItemInContainer(chest, "GMFishingPole", 1);
+
+	// Fishingnet/CrustaceanTrap consume one unit at a time via SubtractAmount() -- safe to
+	// hand over as a real stack.
+	var stackableTools := { "Fishingnet", "CrustaceanTrap" };
+
+	// TaxidermyKit is DestroyItem()'d whole on use (taxidermy.src) -- one kit per mount, so
+	// it has to stay as discrete items or using one would wipe the whole pile.
+	var discreteTools := { "TaxidermyKit" };
+
+	// Fish Lures (quest rewards only -- no other spawn path, see pkg/std/fishing/itemdesc.cfg)
+	// share graphic 0x4B44, which is tiledata-stackable, and lure/use.src now consumes one
+	// via SubtractAmount() -- safe to hand over as a real stack.
+	var stackableLures := { "RareFishLure", "LegendaryFishLure", "BigFishLure" };
+
+	// Crustacean Lures share graphic 0x44CB, which ISN'T tiledata-stackable, so they'd never
+	// actually merge in-game -- discrete instances match live behavior. Kept to a smaller
+	// count than the stackable Fish Lures since each one is a separate icon, and tucked into
+	// their own bag so they don't clutter the main kit.
+	var discreteLures := { "RareCrustaceanLure", "LegendaryCrustaceanLure", "BigCrustaceanLure" };
+
+	var lureBag := CreateItemInContainer(chest, CRAFTING_BACKPACK, 1);
+	lureBag.name := "Crustacean Lures";
+	lureBag.movable := 1;
+	lureBag.color := 1153;
+
+	// Every real catchable species (Regular/Rare/Legendary), not placeholder Fish1-4/Crab1/
+	// Lobster1 -- pulled straight from the same tables the pole/trap actually catch from.
+	var fish := CollectSpeciesObjtypes(":fishing:catchtable");
+	var crustaceans := CollectSpeciesObjtypes(":fishing:crustaceantable");
+
+	FillMerged(chest, stackableTools, STACK_AMOUNT);
+	FillDiscrete(chest, discreteTools, STACK_AMOUNT);
+	FillMerged(chest, stackableLures, LURE_AMOUNT);
+	FillDiscrete(lureBag, discreteLures, CRUSTACEAN_LURE_AMOUNT);
+	FillMerged(chest, fish, SPECIES_AMOUNT);
+	FillMerged(chest, crustaceans, SPECIES_AMOUNT);
+
+	SendSysMessage(who, "Dropped a Fishing Kit at your feet -- pole + GM pole, " + STACK_AMOUNT + " of every net/trap/kit, " + LURE_AMOUNT + " of every Fish Lure, " + CRUSTACEAN_LURE_AMOUNT + " of every Crustacean Lure (in its own bag), and " + SPECIES_AMOUNT + " of every catchable fish/crustacean species.");
+	LogCommand(who, GetProcess(GetPid()).name);
+	return 1;
+endprogram

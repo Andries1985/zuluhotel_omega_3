@@ -46,7 +46,10 @@ function KillMobile( byref mobile, guard_killed := 0, by_who := 0 )
 	
 	RevokePrivilege( mobile, PRIVILEGEID_INVULNERABLE );
 	if( by_who )
-		return ApplyTheDamage( mobile, by_who, GetMaxHP(mobile)+3 );
+		// was ApplyTheDamage(mobile,by_who,GetMaxHP(mobile)+n), silently no-ops above 65535 HP;
+		// .kill() doesn't attribute the kill to by_who -- fine while this branch is unreachable
+		// (no caller currently passes by_who), revisit attribution if that ever changes
+		return mobile.kill();
 	else
 		EraseObjProperty( mobile, PROPID_MOBILE_HITLIST );
 		return mobile.kill();

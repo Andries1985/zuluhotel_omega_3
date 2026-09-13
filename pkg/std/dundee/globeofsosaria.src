@@ -4,7 +4,7 @@ include "include/random";
 include "include/client";
 
 const GLOBE_COOLDOWN_SECONDS := 24 * 60 * 60;
-const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_OBJTYPE := 0x35006;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 const SOSARIA_MIN_X := 0;
 const SOSARIA_MIN_Y := 0;

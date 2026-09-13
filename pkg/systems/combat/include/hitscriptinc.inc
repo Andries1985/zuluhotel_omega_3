@@ -333,12 +333,16 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 			SendSysMessage( attacker, "Stat Bonus: "+basedamage, FONT_NORMAL, 2569 );
 		endif
 
-		if( GetObjProperty( attacker, CLASSEID_RANGER ) || GetObjProperty( attacker, CLASSEID_BARD ) )
-			basedamage *= 1 + GetAttribute(attacker, ATTRIBUTEID_ARCHERY) * 0.007;
-		elseif( GetObjProperty( attacker, CLASSEID_THIEF ))
-			basedamage *= 1 + avg_skill * 0.003;
-		elseif(GetObjProperty( attacker, CLASSEID_WARRIOR ) || GetObjProperty( attacker, CLASSEID_BLADESINGER ))
-			basedamage *= 1 + GetAttribute(attacker, ATTRIBUTEID_TACTICS) * 0.003;
+		if( GetObjProperty( attacker, CLASSEID_RANGER ) )
+			//basedamage *= 1 + GetAttribute(attacker, ATTRIBUTEID_ARCHERY) * 0.007;
+			var archerySkillLevel := GetAttribute( attacker, ATTRIBUTEID_ARCHERY );
+			var animalloreSkillLevel := GetAttribute( attacker, ATTRIBUTEID_ANIMALLORE );
+			var averageSkill := ((CDbl(archerySkillLevel + animalloreSkillLevel)) / 2.00);
+			basedamage *= 1 + (averageSkill * 0.007);
+		elseif( GetObjProperty( attacker, CLASSEID_BARD ))
+			basedamage *= 1 + avg_skill * 0.007;
+		// elseif(GetObjProperty( attacker, CLASSEID_WARRIOR ) || GetObjProperty( attacker, CLASSEID_BLADESINGER ) )
+		// 	basedamage *= 1 + GetAttribute(attacker, ATTRIBUTEID_TACTICS) * 0.003;
 		elseif(GetObjProperty( attacker, CLASSEID_POWERPLAYER ))
 		    var archerySkillLevel := GetAttribute( attacker, ATTRIBUTEID_ARCHERY );
 			var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
@@ -348,7 +352,7 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 		    var archerySkillLevel := GetAttribute( attacker, ATTRIBUTEID_ARCHERY );
 		    var evalIntSkillLevel := GetAttribute( attacker, ATTRIBUTEID_EVALINT );
 			var averageSkill := ((CDbl(archerySkillLevel + evalIntSkillLevel)) / 2.00);
-			basedamage *= 1 + (averageSkill * 0.005);
+			basedamage *= 1 + (averageSkill * 0.004);
 		endif
 		if(DEBUG_MODE)
 			SendSysMessage( attacker, "Skill Bonus: "+basedamage, FONT_NORMAL, 2569 );
@@ -373,25 +377,32 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 			SendSysMessage( attacker, "Stat Bonus: "+basedamage, FONT_NORMAL, 2569 );
 		endif
 
-		if( GetObjProperty( attacker, CLASSEID_THIEF ) || GetObjProperty( attacker, CLASSEID_POWERPLAYER ) )
+		if( GetObjProperty( attacker, CLASSEID_THIEF ) )
 			var throwingSkillLevel := GetAttribute( attacker, ATTRIBUTEID_THROWING );
 			var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
 			var averageSkill := ((CDbl(throwingSkillLevel + tacticsSkillLevel)) / 2.00);
 			basedamage *= 1 + (averageSkill * 0.007);
+		elseif( GetObjProperty( attacker, CLASSEID_POWERPLAYER ) )
+			var throwingSkillLevel := GetAttribute( attacker, ATTRIBUTEID_THROWING );
+			var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
+			var averageSkill := ((CDbl(throwingSkillLevel + tacticsSkillLevel)) / 2.00);
+			basedamage *= 1 + (averageSkill * 0.003);
 		endif
 		if(DEBUG_MODE)
 			SendSysMessage( attacker, "Skill Bonus: "+basedamage, FONT_NORMAL, 2569 );
 		endif
 
-		if( (GetObjProperty( attacker, CLASSEID_THIEF ) || GetObjProperty( attacker, CLASSEID_POWERPLAYER )) && defender.poisoned )
-			basedamage *= 1 + (PoisonLevel( defender ) * 0.98);
+		if( (GetObjProperty( attacker, CLASSEID_THIEF ) && defender.poisoned ) )
+			//Poison bonus damage adjustable variable
+			var poisondamage := 1;
+			basedamage *= 1 + (PoisonLevel( defender ) * poisondamage);
 		endif
 		if(DEBUG_MODE)
 			SendSysMessage( attacker, "Poison Bonus: "+basedamage, FONT_NORMAL, 2569 );
 		endif
 	// Melee
 	else
-		// Strength increases damage for players, npcs too often have 2k+STR!
+		//Strength increases damage for players, npcs too often have 2k+STR!
 		//Jan 2025 Changes
 		//Upped Str damage to 0.005 from 0.002
 		//Added Paladin damage based on INT to 0.002
@@ -417,8 +428,8 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 		    	var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
 				var averageSkill := ((CDbl(anatomySkillLevel + tacticsSkillLevel)) / 2.00);
 		    	basedamage *=  1 + (averageSkill * 0.00375);
-		    elseif(GetObjProperty( attacker, CLASSEID_THIEF) && (weapon.attribute == ATTRIBUTEID_FENCING))
-		    	basedamage *= 1 + avg_skill * 0.005;
+		    // elseif(GetObjProperty( attacker, CLASSEID_THIEF) && (weapon.attribute == ATTRIBUTEID_FENCING))
+		    // 	basedamage *= 1 + avg_skill * 0.005;
 		    elseif(GetObjProperty(attacker, CLASSEID_PALADIN))
 		        var evalIntSkillLevel := GetAttribute( attacker, ATTRIBUTEID_EVALINT );
 		    	var tacticsSkillLevel := GetAttribute( attacker, ATTRIBUTEID_TACTICS );
@@ -521,7 +532,7 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 		if( !attacker.isA(POLCLASS_NPC) && !defender.isA(POLCLASS_NPC))
 			//if( !defender.isA(POLCLASS_NPC))
 				//Print("Applying PvP Physical reduction. Basedamage is: " + basedamage);
-				basedamage := CInt( basedamage * 0.4 );
+				basedamage := CInt( basedamage * 0.5 );
 				//Print("Basedamage after PvP Physical reduction is: " + basedamage);
 			//endif
 		endif

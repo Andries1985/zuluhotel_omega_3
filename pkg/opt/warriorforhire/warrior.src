@@ -44,7 +44,8 @@ var lastskillgain := ReadGameClock();
 var lastmodwipe := ReadGameClock();
 var wasownerOnline := 0;
 
-var TRACKED_SKILLS := {1,5,17,26,27,31,40,41,42,43,57};
+var TRACKED_SKILLS := {1,5,17,27,31,40,41,42,43,57};
+const WFH_SKILL_CAP_TENTHS := 1300; //130.0 displayed -- hard ceiling regardless of the master's own skill
 
 program Warrior()
 
@@ -333,7 +334,6 @@ function SetMeUp()
 	SetBaseSkill(me, 40, 50);  //Swordsmanship
 	SetBaseSkill(me, 42, 50);  //Fencing
 	SetBaseSkill(me, 31, 50);  //Archery
-	SetBaseSkill(me, 26, 50);  //MagicResist
 	SetBaseSkill(me, 57, 50);  //Throwing
 
 	SetObjProperty(me,"WarriorForHire",1);
@@ -1166,8 +1166,6 @@ function ShowStatus(you)
 	y := y + 18;
 	GFTextLine(gump, 20, y, 0, "Healing: "+FmtSkill(17));
 	y := y + 18;
-	GFTextLine(gump, 20, y, 0, "Magic Resist: "+FmtSkill(26));
-	y := y + 18;
 	GFTextLine(gump, 20, y, 0, "Tactics: "+FmtSkill(27));
 	y := y + 18;
 	GFTextLine(gump, 20, y, 0, "Archery: "+FmtSkill(31));
@@ -1263,7 +1261,7 @@ function GainSkill()
 
 	var grew := 0;
 	foreach skillid in TRACKED_SKILLS
-		var mastercap := GetBaseSkillBaseValue(master, skillid);
+		var mastercap := Min(GetBaseSkillBaseValue(master, skillid), WFH_SKILL_CAP_TENTHS);
 		var curval := GetBaseSkillBaseValue(me, skillid);
 		if ( curval < mastercap )
 			if ( (Random(140)+1) > CInt(curval/10) )

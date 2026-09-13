@@ -148,6 +148,11 @@ const UOBJ_MINISOULFORGE_END		:= 0x44CA; // Mini Soulforge
 const UOBJ_LARGESOULFORGE_START := 0x4263; //Soulforge and Anvil
 const UOBJ_LARGESOULFORGE_END   := 0x4272; //Soulforge and Anvil
 
+const UOBJ_SOULFORGE    := 0x2DB0; // standalone Soulforge station (crafting-station rollout, 2026-09-12)
+
+const UOBJ_BLACKSMITH_MACHINE_START := 0x9A82; // Blacksmith Machine station, South (crafting-station rollout, 2026-09-12)
+const UOBJ_BLACKSMITH_MACHINE_END   := 0x9A83; // Blacksmith Machine station, East
+
 
 const UOBJ_COPPER_KEY   := 0x100E;
 const UOBJ_GOLD_KEY     := 0x100F;

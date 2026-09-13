@@ -1,0 +1,47 @@
+/////////////////
+// imbuing_stub.src
+//
+// Placeholder double-click entry point for the Amalgamator and Enchanter
+// stations. No Imbuing/Disenchant recipe system exists on this shard yet
+// (see project_crafting_station_rollout memory) -- this just shows a real
+// crafting-menu-styled gump with a single non-functional "Disenchant"
+// button, so the entry point already exists for when that system gets
+// designed. Crafting-station rollout, 2026-09-12.
+////////////////
+
+use uo;
+use os;
+
+include ":mdgumps:gumps";
+
+const IMBUE_BACKDROP := 5054;
+const IMBUE_PANEL_BG := 2624;
+const IMBUE_BTN_DISENCHANT := 1;
+
+program use_imbuing_stub( character, station )
+
+	if( !ReserveItem( station ) )
+		return;
+	endif
+
+	var gump := GFCreateGump(80, 80, 300, 160);
+	GFPage( gump, 0 );
+	GFResizePic( gump, 0, 0, IMBUE_BACKDROP, 300, 160 );
+	GFPicTiled( gump, 10, 10, 280, 22, IMBUE_PANEL_BG );
+	GFPicTiled( gump, 10, 37, 280, 90, IMBUE_PANEL_BG );
+	GFAddAlphaRegion( gump, 10, 10, 280, 117 );
+	GFTextLine( gump, 15, 13, 1153, "IMBUING" );
+	GFTextLine( gump, 20, 50, 1153, "Not yet available on this shard." );
+	GFAddButton( gump, 20, 80, 4005, 4007, GF_CLOSE_BTN, IMBUE_BTN_DISENCHANT );
+	GFTextLine( gump, 55, 80, 1153, "Disenchant" );
+
+	var result := GFSendGump( character, gump );
+	if( !result )
+		return;
+	endif
+
+	if( CInt(result[0]) == IMBUE_BTN_DISENCHANT )
+		SendSysmessage( character, "Disenchanting isn't available yet." );
+	endif
+
+endprogram

@@ -1072,8 +1072,11 @@ function RelinquishHouse(sign, who)
 
 	var omegacache_serial := FindStaticOmegaCacheSerial(sign);
 	if(omegacache_serial and !IsOmegaCacheEmpty(omegacache_serial))
-		SendSysMessage(who, "You cannot relinquish this house while Omega Cache contents are stored.", color := 33);
-		return 0;
+		if(!YesNo(who, "Your Omega Cache still contains stored items, which will be permanently lost. Relinquish anyway?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return 0;
+		endif
+		ForceEmptyOmegaCache(omegacache_serial);
 	endif
 
 	if(!YesNo(who, "Relinquish this house back for sale? All interior decorations will be deleted."))

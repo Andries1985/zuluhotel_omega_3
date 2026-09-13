@@ -1,7 +1,22 @@
 use uo;
 use os;
 
+include ":blacksmithy:blacksmithgump";
+include ":crafting:craftingfunctions";
+
 program Animate_Large_Forge_Items( mobile, forge )
+
+	if( !ReserveItem( forge ) )
+		return;
+	endif
+
+	if( !NearForgeAndAnvil(mobile) )
+		SendSysmessage( mobile , "You must be near a forge and an anvil to smith items!" );
+		return;
+	endif
+
+	RunBlacksmithGump( mobile );
+
 	var items := GetObjProperty( forge, "OtherItems" ),
 		i := 1,
 		j := 1,

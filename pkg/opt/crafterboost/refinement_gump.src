@@ -1,0 +1,276 @@
+/////////////////
+// refinement_gump.src
+//
+// Refinement Generator (0xAC74): the new station's real choice gump,
+// replacing the old Smithy Retort's Target()-chain (make_crafter_boosts.src,
+// left completely untouched -- already-placed retorts keep working exactly
+// as before). Uses the shared pkg/systems/crafting/include/craftmenu
+// category/detail gump the same way Bowcraft/Tailoring/etc. do, driven by
+// crafterboost_recipes.cfg. Crafting-station rollout, 2026-09-12.
+////////////////
+
+use uo;
+use cfgfile;
+use os;
+use math;
+
+include "include/client";
+include "include/itemutil";
+include "include/classes";
+include "include/autoloop";
+include "include/difficulty";
+include "include/math";
+include ":mdgumps:yesNo";
+include ":karmafame:karmafame";
+include ":crafting:craftmenu";
+
+const REFINE_APPEAR_AT		:= -10;
+const REFINE_MAT_DIVIDER	:= 3;
+const REFINE_POINTS_MULTIPLIER	:= 8;
+const REFINE_BASE_EXCEP_CHANCE	:= 10;
+const REFINE_BASE_EXCEP_DIFF	:= 40;
+const REFINE_FAME_BONUS	:= 10;
+
+var crafterboost_cfg := ReadConfigFile( ":crafterboost:crafterboost_recipes" );
+
+program use_refinement_generator( character, station )
+
+	if( !ReserveItem( station ) )
+		return;
+	endif
+
+	RunRefinementGump( character, station );
+
+endprogram
+
+
+// Category/detail loop, same shape as RunBowcraftGump -- no Options here
+// (Refinement Generator has no repair/etc. side-feature), just Alloy/
+// Varnish/Compound/Oil categories dispatching into MakeRefinementItem.
+function RunRefinementGump( character, station )
+
+	while( 1 )
+		var choice := CraftMenu_ShowCategoryGump( character, crafterboost_cfg, "Refinement", SKILLID_BLACKSMITHY, REFINE_APPEAR_AT, array{} );
+		if( !choice )
+			return;
+		endif
+
+		var element := crafterboost_cfg[choice];
+		if( !element )
+			continue;
+		endif
+
+		// Varnish/Compound/either non-Ingot Oil variant aren't really
+		// Blacksmithy -- the category gump only ever gates on one shared
+		// skill_id (Blacksmithy here), so the real gate for these is the
+		// CoSkillid check instead (see crafterboost_recipes.cfg's header
+		// comment). Flag that clearly in the detail gump so "Your
+		// Blacksmithy: N" doesn't read as the recipe's real requirement.
+		var extra_notes := array{};
+		if( element.CoSkillid )
+			extra_notes := array{ "* Governed by " + CraftMenu_SkillName(CInt(element.CoSkillid)) + ", not Blacksmithy" };
+		endif
+
+		var detail := CraftMenu_ShowDetailGump( character, crafterboost_cfg, choice, SKILLID_BLACKSMITHY, "Blacksmithy", extra_notes );
+		if( !detail )
+			continue;
+		endif
+
+		MakeRefinementItem( character, detail.slot1, detail.slot2, choice, station );
+		return;
+	endwhile
+
+endfunction
+
+
+function CraftMenu_SkillName( skillid )
+	case( skillid )
+		SKILLID_BLACKSMITHY:	return "Blacksmithy";
+		SKILLID_CARPENTRY:	return "Carpentry";
+		SKILLID_TAILORING:	return "Tailoring";
+		SKILLID_BOWCRAFT:	return "Bowcraft";
+		SKILLID_TINKERING:	return "Tinkering";
+		default:		return "that skill";
+	endcase
+endfunction
+
+
+// Same difficulty-scaling idea as craftmenu.inc's own
+// CraftMenu_GetFamilyQualityDifficulty, extended to cover Hide too (that
+// shared helper only implements Log/Ingot -- Tailoring's own TryToMakeItem
+// reads Hide difficulty directly from tailoring.cfg instead of going through
+// it, so this does the same for consistency).
+function RefinementMaterialDifficulty( materialType, objtype )
+	if( materialType == "Hide" )
+		var tailor_cfg := ReadConfigFile( ":tailoring:tailoring" );
+		return CInt( tailor_cfg[objtype].Difficulty );
+	endif
+	return CraftMenu_GetFamilyQualityDifficulty( materialType, objtype );
+endfunction
+
+
+// primaryRequest = the picked Ingot/Log/Hide (element.MaterialType);
+// secondaryRequest = the fixed Pagan reagent (Bloodspawn/Daemon Bone/Bat
+// Wing/Brimstone) -- both already resolved by CraftMenu_ShowDetailGump
+// exactly like Bowcraft's Fire Bow resolves its fixed Reagent slot. Math
+// ported from the original make_crafter_boosts.src's MakeUpgrade, just
+// driven off whichever skill (CoSkillid if set, else the nominal Skill/
+// skill_id) is this recipe's real one instead of always Blacksmithy.
+function MakeRefinementItem( character, primaryRequest, secondaryRequest, choice, station )
+
+	var element := FindConfigElem( crafterboost_cfg, choice );
+	if( !element )
+		return;
+	endif
+
+	var realSkillid := SKILLID_BLACKSMITHY;
+	var realSkill := CInt(element.Skill);
+	if( element.CoSkillid )
+		realSkillid := CInt(element.CoSkillid);
+		realSkill := CInt(element.CoSkill);
+	endif
+
+	var resultType := choice;
+	if( element.ResultObjtype )
+		resultType := CInt(element.ResultObjtype);
+	endif
+
+	var material_diff := RefinementMaterialDifficulty( element.MaterialType, CInt(primaryRequest.objtype) );
+	if( GetEffectiveSkill( character, realSkillid ) < material_diff )
+		sendDiff( character, material_diff );
+		SendSysmessage( character, "You aren't skilled enough to work with that yet." );
+		return;
+	endif
+
+	var mat1_qty := CInt(element.Material);
+	var mat2_qty := CInt(element.Material2);
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		mat1_qty := Cint(Ceil(mat1_qty/2));
+		mat2_qty := Cint(Ceil(mat2_qty/2));
+	endif
+
+	var final_diff := CInt( realSkill + material_diff / REFINE_MAT_DIVIDER );
+	if( final_diff < 1 )
+		final_diff := 1;
+	elseif( final_diff > 150 )
+		final_diff := 150;
+	endif
+	var points := CInt( (final_diff + mat1_qty) * REFINE_POINTS_MULTIPLIER );
+
+	var mat_name := CraftMenu_FamilyOptionDisplayName( element.MaterialType, CInt(primaryRequest.objtype) );
+	var mat_color := primaryRequest.color;
+
+	LeaseResource( character, primaryRequest, mat1_qty );
+	LeaseResource( character, secondaryRequest, mat2_qty );
+
+	while( AutoLoop_more() && GetAvailableResource(character, primaryRequest).total >= mat1_qty
+		and GetAvailableResource(character, secondaryRequest).total >= mat2_qty and !character.dead )
+
+		sendDiff( character, final_diff );
+
+		PlaySoundEffect(character, SFX_1C9);
+		PlayStationaryEffectEX(station.x, station.y, station.z-1, station.realm, 0x33F6, 2, 10, mat_color, 3);
+		Sleep(2);
+		PlaySoundEffect(character, SFX_1C9);
+		PlayStationaryEffectEX(station.x, station.y, station.z-1, station.realm, 0x33F6, 2, 10, mat_color, 3);
+		Sleep(2);
+		if( !GetObjProperty( character, CLASSEID_CRAFTER ))
+			PlaySoundEffect(character, SFX_1C9);
+			PlayStationaryEffectEX(station.x, station.y, station.z, station.realm, 0x33F6, 2, 10, mat_color, 3);
+			Sleep(2);
+		endif
+
+		if( CheckSkill(character, realSkillid, final_diff, points) )
+
+			var newitem := CreateItemInBackpack( character, resultType );
+			if( !newitem )
+				ConsumeResource( character, primaryRequest, mat1_qty );
+				ConsumeResource( character, secondaryRequest, mat2_qty );
+				SendSysmessage( character, "Your backpack is full." );
+				break;
+			endif
+
+			newitem.Color := mat_color;
+			newitem.Name := mat_name + " " + newitem.Name;
+
+			var excep_chance;
+			var excep_diff;
+			if( GetObjProperty( character, CLASSEID_CRAFTER ) )
+				excep_chance := CInt(REFINE_BASE_EXCEP_CHANCE * ClasseBonus( character, CLASSEID_CRAFTER ));
+				excep_diff := final_diff + REFINE_BASE_EXCEP_DIFF/2;
+			else
+				excep_chance := REFINE_BASE_EXCEP_CHANCE;
+				excep_diff := final_diff + REFINE_BASE_EXCEP_DIFF;
+			endif
+			excep_diff := Max(excep_diff, 90);
+
+			if( GetObjProperty(character, "ForceExceptional") or ((RandomInt(100) < excep_chance) and CheckSkill(character, realSkillid, excep_diff, 0)) )
+				var multiplier := 5 + Cint( GetEffectiveSkill( character, SKILLID_ARMSLORE ) / 10 );
+				if( GetObjProperty( character, CLASSEID_CRAFTER ) )
+					multiplier := Cint( multiplier * ClasseBonus( character, CLASSEID_CRAFTER ) );
+				endif
+				multiplier := (100.0 + multiplier);
+				newitem.Quality := Trunc((newitem.Quality * multiplier) / 100.0, 2);
+				newitem.Name := "Exceptional " + newitem.Name;
+
+				if(GetObjProperty(character, "ToggleBuildMark"))
+					if( YesNo( character, "Add Builder Mark?" ) )
+						SetObjProperty( newitem, "CraftedBy", character.name );
+					endif
+				else
+					SetObjProperty( newitem, "CraftedBy", character.name );
+				endif
+
+				SendSysmessage( character, "You make an exceptional item and put it in your pack." );
+				SetObjProperty( newitem, "IsExceptional", 1 );
+
+				if( excep_diff >= 130 )
+					SendSysmessage( character, "This masterpiece will make you famous around the world." );
+					AwardFame( character, REFINE_FAME_BONUS );
+				elseif( GetObjProperty( character, CLASSEID_CRAFTER ) and excep_diff >= 110 )
+					SendSysmessage( character, "This masterpiece will make you famous around the world." );
+					AwardFame( character, REFINE_FAME_BONUS );
+				endif
+			else
+				SendSysmessage( character, "You create the item and place it in your pack." );
+			endif
+
+			IncRevision(newitem);
+			ConsumeResource( character, primaryRequest, mat1_qty );
+			ConsumeResource( character, secondaryRequest, mat2_qty );
+
+		else
+			var destroy := 75 - CInt(GetEffectiveSkill( character, realSkillid ) / 2);
+			if( GetObjProperty( character, CLASSEID_CRAFTER ) )
+				destroy := CInt(destroy / ClasseBonus( character, CLASSEID_CRAFTER ));
+			endif
+			destroy := Min( destroy, 50 );
+
+			var destroy1 := CInt( mat1_qty * destroy / 100 );
+			var destroy2 := CInt( mat2_qty * destroy / 100 );
+			if( destroy1 < 1 )
+				destroy1 := 1;
+			endif
+			if( destroy2 < 1 )
+				destroy2 := 1;
+			endif
+
+			ConsumeResource( character, primaryRequest, destroy1 );
+			ConsumeResource( character, secondaryRequest, destroy2 );
+			SendSysmessage( character, "You destroyed " + destroy1 + " " + mat_name + " and " + destroy2 + " " + element.Material2Type + "." );
+		endif
+
+		if( !ExtendResourceLease( primaryRequest, character, mat1_qty ) )
+			break;
+		endif
+		if( !ExtendResourceLease( secondaryRequest, character, mat2_qty ) )
+			break;
+		endif
+
+	endwhile
+
+	ReleaseResourceLease( primaryRequest );
+	ReleaseResourceLease( secondaryRequest );
+	AutoLoop_finish();
+
+endfunction

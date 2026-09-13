@@ -33,20 +33,21 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
-        //var level := GetClass( mobile, MAGE );
-        var level := GetClasseLevel(mobile);
         if( RitualHasOtherImmunity( item, "PhysicalProtection" ))
 		SendSysMessage( mobile, "This "+item_desc+" already carries a different enchantment and cannot hold another." );
                 return 0;
-        elseif( GetObjProperty( item, "PhysicalProtection" ) >= level )
+        endif
+
+        var protection := CInt( GetObjProperty( item, "PhysicalProtection" ));
+        if( protection >= 6 )
 		SendSysMessage( mobile, "This "+item_desc+" already have a more powerful enchantment on it." );
                 return 0;
         endif
-        
-	SetObjProperty( item, "PhysicalProtection", level );
+
+	SetObjProperty( item, "PhysicalProtection", protection + 1 );
 	SetNameByEnchant( item );
- 
-	SendSysMessage( mobile, "This "+item_desc+" will now protect his wearer from physical attacks." );
- 
+
+	SendSysMessage( mobile, "This "+item_desc+" will now protect its wearer from physical attacks." );
+
         return 1;
 endfunction

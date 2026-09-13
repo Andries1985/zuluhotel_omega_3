@@ -10,6 +10,14 @@ include "include/random";
 
 const WFH_ESCROW_VENDOR_NAME := "Warrior for Hire";
 const WFH_ESCROW_STORAGE_NAME := "Merchant Escrow";
+const WFH_ESCROW_REGISTRY_DATAFILE := "wfhescrowregistry";
+const WFH_ESCROW_EXPIRE_SECONDS := 7776000; //90 days
+
+// ReadGameClock() is uptime-since-boot and resets to 0 on every restart --
+// fine for the short in-session cooldowns elsewhere in this package, but
+// useless for a 90-day expiry that will outlive many restarts. POLCORE().systime
+// is real wall-clock (same source pkg/opt/powerhour/powerhour.src uses for its
+// own weekly schedule), so that's what the registry's "created" is stamped with.
 
 function WFH_SaveToEscrow(payout_pack, ownerserial, sourceserial)
 
@@ -27,20 +35,32 @@ function WFH_SaveToEscrow(payout_pack, ownerserial, sourceserial)
 		return 0;
 	endif
 
+	var created := POLCORE().systime;
+
 	escrow_root.name := "Warrior for Hire Escrow";
 	SetObjProperty(escrow_root, "ownerserial", ownerserial);
 	SetObjProperty(escrow_root, "vendorserial", sourceserial);
 	SetObjProperty(escrow_root, "vendorname", WFH_ESCROW_VENDOR_NAME);
-	SetObjProperty(escrow_root, "created", ReadGameClock());
+	SetObjProperty(escrow_root, "created", created);
 
 	if (!MoveItemToContainer(payout_pack, escrow_root))
 		DestroyRootItemInStorageArea(area, escrow_name);
 		return 0;
 	endif
 
+	// Registered here, before the owner-resolution branch below, and
+	// unconditionally regardless of how the rest of this function goes --
+	// this is the only record WFH_SweepExpiredEscrow can find "every entry
+	// across every owner" through (the datafile below is per-owner only), so
+	// if this is skipped whenever the owner can't be resolved, exactly the
+	// entries the 90-day expiry exists to eventually clean up would never be
+	// swept at all.
+	var entry_id := CStr(ownerserial) + "-" + CStr(ReadGameClock()) + "-" + CStr(Random(100000));
+	WFH_RegisterEscrowEntry(entry_id, ownerserial, escrow_name, created);
+
 	var owner_obj := SystemFindObjectBySerial(CInt(ownerserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
 	if (!owner_obj)
-		return 1; //items are safely in escrow even if we can't index them by name below
+		return 1; //items are safely in escrow, and swept in 90 days regardless, even without a per-owner index entry below
 	endif
 
 	var owner_name := "Unknown Owner";
@@ -72,8 +92,7 @@ function WFH_SaveToEscrow(payout_pack, ownerserial, sourceserial)
 		return 1;
 	endif
 
-	var entry_id := CStr(ownerserial) + "-" + CStr(ReadGameClock()) + "-" + CStr(Random(100000));
-	var entry := entry_id+"|"+CStr(ownerserial)+"|"+escrow_name+"|"+WFH_ESCROW_VENDOR_NAME+"|"+CStr(sourceserial)+"|"+CStr(ReadGameClock())+"|"+owner_name;
+	var entry := entry_id+"|"+CStr(ownerserial)+"|"+escrow_name+"|"+WFH_ESCROW_VENDOR_NAME+"|"+CStr(sourceserial)+"|"+CStr(created)+"|"+owner_name;
 
 	var entries_str := vendor_elem.GetProp("entries");
 	if (entries_str)
@@ -86,6 +105,122 @@ function WFH_SaveToEscrow(payout_pack, ownerserial, sourceserial)
 	UnloadDataFile(df_name);
 
 	return 1;
+
+endfunction
+
+// Global index of every live WFH escrow entry (entry_id -> ownerserial,
+// created), separate from the per-owner datafiles above. Those are keyed by
+// owner, so there's no way to sweep "every WFH escrow entry across every
+// owner" without one of these -- this is the only thing WFH_SweepExpiredEscrow
+// reads from directly; the actual claim/destroy/index-removal logic below is
+// all reused as-is from the functions that already existed.
+function WFH_RegisterEscrowEntry(entry_id, ownerserial, escrow_name, created)
+
+	var df := OpenDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+	if (!df)
+		CreateDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+		df := OpenDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+		if (!df)
+			return 0;
+		endif
+	endif
+
+	var elem := df.FindElement(entry_id);
+	if (!elem)
+		elem := df.CreateElement(entry_id);
+	endif
+	if (!elem)
+		UnloadDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+		return 0;
+	endif
+
+	elem.SetProp("ownerserial", ownerserial);
+	elem.SetProp("escrow_name", escrow_name);
+	elem.SetProp("created", created);
+
+	UnloadDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+	return 1;
+
+endfunction
+
+function WFH_UnregisterEscrowEntry(entry_id)
+
+	var df := OpenDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+	if (!df)
+		return;
+	endif
+
+	df.DeleteElement(entry_id);
+	UnloadDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+
+endfunction
+
+// Called on a slow, indefinite loop by escrowsweep.src (started once at boot
+// via start.src). Finds every registry entry older than 90 real days and
+// destroys it. Destruction works straight off the registry's own
+// escrow_name -- it does NOT depend on a matching per-owner index entry
+// existing (WFH_SaveToEscrow registers here unconditionally, even when the
+// owner couldn't be resolved and no per-owner index entry was ever written,
+// so this has to be able to clean those up too). When the owner *can* be
+// resolved, this reuses the existing WFH_DestroyEscrowEntry (same path the
+// High Priest's "no, dispose of them" branch already uses) so the per-owner
+// index also gets pruned as a bonus; otherwise it destroys the storage-area
+// item directly.
+function WFH_SweepExpiredEscrow()
+
+	var df := OpenDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+	if (!df)
+		return;
+	endif
+
+	var now := POLCORE().systime;
+	var expired_names := dictionary;
+	var expired_owners := dictionary;
+
+	foreach entry_id in (df.Keys())
+		var elem := df.FindElement(entry_id);
+		if (!elem) continue; endif
+		var created := CInt(elem.GetProp("created"));
+		if (!created) continue; endif
+		if ((now - created) >= WFH_ESCROW_EXPIRE_SECONDS)
+			expired_names.insert(entry_id, elem.GetProp("escrow_name"));
+			expired_owners.insert(entry_id, CInt(elem.GetProp("ownerserial")));
+		endif
+	endforeach
+
+	// One open/delete-many/close pass for the registry itself, instead of a
+	// separate open+close per expired entry.
+	foreach entry_id in (expired_names.keys())
+		df.DeleteElement(entry_id);
+	endforeach
+
+	UnloadDataFile(WFH_ESCROW_REGISTRY_DATAFILE);
+
+	var area := FindStorageArea(WFH_ESCROW_STORAGE_NAME);
+
+	foreach entry_id in (expired_names.keys())
+		var escrow_name := expired_names[entry_id];
+		var ownerserial := expired_owners[entry_id];
+		var owner_obj := SystemFindObjectBySerial(ownerserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+
+		if (owner_obj and escrow_name)
+			// WFH_DestroyEscrowContents only (not the full WFH_DestroyEscrowEntry) --
+			// the registry side is already handled by the batched delete pass above,
+			// so calling the full version here would reopen/close the registry
+			// datafile once per entry, right back into the same I/O pattern this
+			// rewrite exists to avoid.
+			WFH_DestroyEscrowContents(owner_obj, {entry_id, CStr(ownerserial), escrow_name});
+		elseif (area and escrow_name)
+			var escrowroot := FindRootItemInStorageArea(area, escrow_name);
+			if (escrowroot)
+				foreach item in EnumerateItemsInContainer(escrowroot)
+					DestroyItem(item);
+				endforeach
+				DestroyItem(escrowroot);
+				DestroyRootItemInStorageArea(area, escrow_name);
+			endif
+		endif
+	endforeach
 
 endfunction
 
@@ -158,13 +293,19 @@ function WFH_ClaimEscrowEntry(who, entry)
 		DestroyItem(escrowroot);
 		DestroyRootItemInStorageArea(area, escrow_name);
 		WFH_RemoveEscrowEntryById(who, entry[1]);
+		WFH_UnregisterEscrowEntry(entry[1]);
 	endif
 
 	return moved;
 
 endfunction
 
-function WFH_DestroyEscrowEntry(who, entry)
+// Destroys the escrow item + per-owner index entry only -- does NOT touch
+// the global registry. Split out from WFH_DestroyEscrowEntry so
+// WFH_SweepExpiredEscrow (which already removed the registry row itself, in
+// a single batched pass across every expired entry) can reuse this without
+// each call reopening/closing the registry datafile a second time.
+function WFH_DestroyEscrowContents(who, entry)
 
 	var area := FindStorageArea(WFH_ESCROW_STORAGE_NAME);
 	if (area)
@@ -180,6 +321,13 @@ function WFH_DestroyEscrowEntry(who, entry)
 	endif
 
 	WFH_RemoveEscrowEntryById(who, entry[1]);
+
+endfunction
+
+function WFH_DestroyEscrowEntry(who, entry)
+
+	WFH_DestroyEscrowContents(who, entry);
+	WFH_UnregisterEscrowEntry(entry[1]);
 
 endfunction
 

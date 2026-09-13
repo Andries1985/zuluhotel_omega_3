@@ -1,0 +1,290 @@
+/////////////////
+// salvage.src
+//
+// Salvage Station: a universal bulk-salvage apparatus covering all 5 modern
+// crafting skills (Blacksmithy, Tailoring, Bowcraft, Carpentry, Tinkering).
+// Generalizes the existing single-item "melt/unstitch back to raw material"
+// tools -- Tongs (pkg/std/blacksmithy/meltdown.src) and Scissors
+// (pkg/std/tailoring/unstitch.src) -- into one shared refund engine driven
+// from a gump instead of a single Target(), with a bulk "Salvage All" and a
+// per-character toggle to skip exceptional items (protected by default, so
+// a bulk pass can't accidentally melt down a hard-earned exceptional item).
+// Crafting-station rollout, 2026-09-12.
+////////////////
+
+use uo;
+use cfgfile;
+use os;
+
+include "include/client";
+include "include/objtype";
+include "include/classes";
+include "include/autoloop";
+include "include/itemutil";
+include ":mdgumps:gumps";
+
+const SALVAGE_SOUND_1	:= 0x2c;
+const SALVAGE_SOUND_2	:= 0x22;
+const SALVAGE_DIVIDER	:= 3;
+const SALVAGE_BASE_SKILL := 60;
+
+const SALVAGE_BTN_ALL		:= 1;
+const SALVAGE_BTN_TYPE		:= 2;
+const SALVAGE_BTN_TOGGLE	:= 3;
+
+var blacksmithy_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
+var tailor_cfg       := ReadConfigFile( ":tailoring:tailoring" );
+var bowcraft_cfg      := ReadConfigFile( ":bowcraft:bowcraft" );
+var carpentry_cfg     := ReadConfigFile( ":carpentry:carpentry" );
+var tinker_cfg        := ReadConfigFile( ":tinkering:tinker" );
+
+program use_salvage_station( character, station )
+
+	if( !ReserveItem( station ) )
+		return;
+	endif
+
+	while( 1 )
+		var protect := SalvageProtectsExceptional( character );
+
+		var gump := GFCreateGump(80, 80, 300, 150);
+		GFPage( gump, 0 );
+		GFResizePic( gump, 0, 0, 5054, 300, 150 );
+		GFPicTiled( gump, 10, 10, 280, 22, 2624 );
+		GFPicTiled( gump, 10, 37, 280, 100, 2624 );
+		GFAddAlphaRegion( gump, 10, 10, 280, 127 );
+		GFTextLine( gump, 15, 13, 1153, "SALVAGE STATION" );
+
+		GFAddButton( gump, 20, 45, 4005, 4007, GF_CLOSE_BTN, SALVAGE_BTN_ALL );
+		GFTextLine( gump, 55, 45, 1153, "Salvage All" );
+
+		GFAddButton( gump, 20, 70, 4005, 4007, GF_CLOSE_BTN, SALVAGE_BTN_TYPE );
+		GFTextLine( gump, 55, 70, 1153, "Salvage All of Type" );
+
+		GFAddButton( gump, 20, 95, 4005, 4007, GF_CLOSE_BTN, SALVAGE_BTN_TOGGLE );
+		if( protect )
+			GFTextLine( gump, 55, 95, 1153, "Protect Exceptional: ON" );
+		else
+			GFTextLine( gump, 55, 95, 1153, "Protect Exceptional: OFF" );
+		endif
+
+		var result := GFSendGump( character, gump );
+		if( !result )
+			return;
+		endif
+
+		case( CInt(result[0]) )
+			SALVAGE_BTN_ALL:	SalvageAll( character, protect );
+						return;
+
+			SALVAGE_BTN_TYPE:	SalvageAllOfType( character, protect );
+						return;
+
+			SALVAGE_BTN_TOGGLE:	SetObjProperty( character, "SalvageProtectExceptional", !protect );
+						continue;
+
+			default:		return;
+		endcase
+	endwhile
+
+endprogram
+
+
+// Defaults to protected (1) the first time a character ever uses this --
+// a bulk "Salvage All" shouldn't be able to surprise-melt an exceptional
+// item just because the toggle was never touched.
+function SalvageProtectsExceptional( character )
+	var stored := GetObjProperty( character, "SalvageProtectExceptional" );
+	if( stored == 0 )
+		return 0;
+	endif
+	return 1;
+endfunction
+
+
+// Which of the 5 crafting cfgs (if any) this item's objtype is a recipe key
+// in, plus its skillid -- mirrors Tongs/Scissors' single-cfg lookup, just
+// tried across every modern craft instead of one hardcoded skill. Bound/
+// owned items (ownerserial set) are never salvageable, matching both
+// existing tools.
+function FindSalvageSkill( item )
+	if( GetObjProperty( item, "ownerserial" ) )
+		return 0;
+	endif
+
+	if( blacksmithy_cfg[item.objtype] )
+		return struct{ cfg := blacksmithy_cfg, skillid := SKILLID_BLACKSMITHY };
+	elseif( tailor_cfg[item.objtype] )
+		return struct{ cfg := tailor_cfg, skillid := SKILLID_TAILORING };
+	elseif( bowcraft_cfg[item.objtype] )
+		return struct{ cfg := bowcraft_cfg, skillid := SKILLID_BOWCRAFT };
+	elseif( carpentry_cfg[item.objtype] )
+		return struct{ cfg := carpentry_cfg, skillid := SKILLID_CARPENTRY };
+	elseif( tinker_cfg[item.objtype] )
+		return struct{ cfg := tinker_cfg, skillid := SKILLID_TINKERING };
+	endif
+
+	return 0;
+endfunction
+
+
+// Salvages every eligible item sitting directly in the character's
+// backpack (root level only, matching Tongs/Scissors' own
+// EnumerateItemsInContainer convention -- doesn't reach into sub-containers).
+function SalvageAll( character, protect )
+
+	var candidates := array{};
+	foreach thing in EnumerateItemsInContainer( character.backpack )
+		var match := FindSalvageSkill( thing );
+		if( match )
+			if( !protect or !GetObjProperty( thing, "IsExceptional" ) )
+				candidates.append( struct{ item := thing, cfg := match.cfg, skillid := match.skillid } );
+			endif
+		endif
+	endforeach
+
+	if( !candidates.Size() )
+		SendSysmessage( character, "You have nothing here that can be salvaged." );
+		return;
+	endif
+
+	var salvaged := 0,
+		skipped := 0;
+
+	AutoLoop_init( character );
+	var i := 0;
+	while( AutoLoop_more() and (i < candidates.Size()) and !character.dead )
+		i := i + 1;
+		var entry := candidates[i];
+		var outcome := DoSalvageOne( character, entry.item, entry.cfg, entry.skillid );
+		if( outcome )
+			salvaged := salvaged + 1;
+		else
+			skipped := skipped + 1;
+		endif
+	endwhile
+	AutoLoop_finish();
+
+	SendSysmessage( character, "Salvage complete: " + salvaged + " item(s) processed." );
+	if( skipped )
+		SendSysmessage( character, skipped + " item(s) couldn't be identified and were left alone." );
+	endif
+
+endfunction
+
+
+// Targets one item, then salvages every backpack item sharing its exact
+// display name -- direct port of Tongs/Scissors' own "same .desc" batching,
+// just auto-detecting which of the 5 skills it belongs to instead of being
+// hardcoded to one.
+function SalvageAllOfType( character, protect )
+
+	SendSysmessage( character, "What would you like to salvage?" );
+	var use_on := Target( character, TGTOPT_CHECK_LOS );
+	if( !use_on or !Accessible( character, use_on ) )
+		return;
+	endif
+
+	if( !IsInContainer( character.backpack, use_on ) )
+		SendSysmessage( character, "That item has to be in your backpack." );
+		return;
+	endif
+
+	var match := FindSalvageSkill( use_on );
+	if( !match )
+		SendSysMessage( character, "That can't be salvaged." );
+		return;
+	endif
+
+	if( !ReserveItem( use_on ) )
+		return;
+	endif
+
+	var candidates := array{};
+	foreach thing in EnumerateItemsInContainer( character.backpack )
+		if( thing.desc == use_on.desc )
+			if( !protect or !GetObjProperty( thing, "IsExceptional" ) )
+				candidates.append( thing );
+			endif
+		endif
+	endforeach
+
+	if( !candidates.Size() )
+		SendSysmessage( character, "That's protected from salvage -- it's exceptional." );
+		return;
+	endif
+
+	var salvaged := 0;
+
+	AutoLoop_init( character );
+	var i := 0;
+	while( AutoLoop_more() and (i < candidates.Size()) and !character.dead )
+		i := i + 1;
+		if( DoSalvageOne( character, candidates[i], match.cfg, match.skillid ) )
+			salvaged := salvaged + 1;
+		endif
+	endwhile
+	AutoLoop_finish();
+
+	SendSysmessage( character, "Salvage complete: " + salvaged + " item(s) processed." );
+
+endfunction
+
+
+// The actual per-item refund roll -- same math as Tongs'
+// SmeltToIngots/Scissors' UnstitchToHides (base skill 60, +difficulty/3,
+// capped 95% giveback, ClasseBonus-scaled), generalized off whichever cfg/
+// skillid the item resolved to instead of being hardcoded to Blacksmithy or
+// Tailoring specifically. Returns 1 if the item was handled (refunded OR
+// destroyed on a failed roll), 0 if it was skipped entirely (no CraftedWith
+// property -- can't tell what raw material to give back, so leave it alone
+// rather than guessing).
+function DoSalvageOne( character, item, cfg, skillid )
+
+	var element := FindConfigElem( cfg, item.objtype );
+	if( !element )
+		return 0;
+	endif
+
+	var rawtype := GetObjProperty( item, "CraftedWith" );
+	if( !rawtype )
+		return 0;
+	endif
+
+	var rawdiff := cfg[rawtype].Difficulty;
+	var skill := SALVAGE_BASE_SKILL + Cint( rawdiff / SALVAGE_DIVIDER );
+
+	var giveback := GetEffectiveSkill( character, skillid ) - rawdiff;
+	if( GetObjProperty( character, CLASSEID_CRAFTER ) )
+		skill := Cint( skill / ClasseBonus( character, CLASSEID_CRAFTER ) );
+		giveback := Cint( giveback * ClasseBonus( character, CLASSEID_CRAFTER ) );
+	endif
+
+	PlaySoundEffect( character, SALVAGE_SOUND_1 );
+	Sleep(1);
+	PlaySoundEffect( character, SALVAGE_SOUND_2 );
+
+	if( CheckSkill( character, skillid, skill, 0 ) )
+		if( giveback > 95 )
+			giveback := 95;
+		endif
+
+		giveback := Cint( giveback * element.Material / 100 );
+		if( giveback < 1 )
+			giveback := 1;
+		endif
+
+		var newitem := CreateItemInBackpack( character, rawtype, giveback );
+		if( newitem )
+			SendSysmessage( character, "You salvage " + item.desc + " into " + giveback + " " + cfg[rawtype].Name + "." );
+			DestroyItem( item );
+			return 1;
+		endif
+		return 0;
+	else
+		SendSysmessage( character, "You fail to salvage " + item.desc + " and destroy it." );
+		DestroyItem( item );
+		return 1;
+	endif
+
+endfunction

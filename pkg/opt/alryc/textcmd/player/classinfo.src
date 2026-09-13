@@ -31,10 +31,9 @@ program classinfo( who )
 	var musicianshipallowed    := flags[3];
 	var detectinghiddenallowed := flags[4];
 	var snoopingallowed        := flags[5];
-	var throwingallowed        := flags[6];
 
-	var level  := IsFromThatClasse( who, GetClasseSkills( classeid ), forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed, snoopingallowed, throwingallowed );
-	var counts := ClasseCounts( who, classeid, forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed, snoopingallowed, throwingallowed );
+	var level  := IsFromThatClasse( who, GetClasseSkills( classeid ), forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed, snoopingallowed );
+	var counts := ClasseCounts( who, classeid, forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed, snoopingallowed );
 
 	var classe  := counts.classe;
 	var total   := counts.total;
@@ -100,7 +99,7 @@ function GetLiveClasseId( who )
 
 	foreach classeid in GetClasseIds()
 		var flags := GetClasseFlags( classeid );
-		var level := IsFromThatClasse( who, GetClasseSkills( classeid ), flags[1], flags[2], flags[3], flags[4], flags[5], flags[6] );
+		var level := IsFromThatClasse( who, GetClasseSkills( classeid ), flags[1], flags[2], flags[3], flags[4], flags[5] );
 		if( level )
 			return classeid;
 		endif
@@ -114,19 +113,19 @@ endfunction
 function GetClasseFlags( classeid )
 
 	if( classeid == CLASSEID_RANGER )
-		return { 1, 0, 0, 0, 0, 0 };
+		return { 1, 0, 0, 0, 0 };
 	elseif( classeid == CLASSEID_CRAFTER )
-		return { 0, 1, 1, 0, 0, 0 };
+		return { 0, 1, 1, 0, 0 };
 	elseif( classeid == CLASSEID_THIEF )
-		return { 0, 0, 0, 1, 1, 1 };
+		return { 0, 0, 0, 1, 1 };
 	endif
 
-	return { 0, 0, 0, 0, 0, 0 };
+	return { 0, 0, 0, 0, 0 };
 
 endfunction
 
 
-function ClasseCounts( who, classeid, forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed := 0, snoopingallowed := 0, throwingallowed := 0 )
+function ClasseCounts( who, classeid, forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed := 0, snoopingallowed := 0 )
 
 	var skills := GetClasseSkills( classeid );
 	var number := Len( skills );
@@ -140,8 +139,7 @@ function ClasseCounts( who, classeid, forensicsallowed, mageryallowed, musicians
 			or (mageryallowed and i == SKILLID_MAGERY)
 			or (musicianshipallowed and i == SKILLID_MUSICIANSHIP)
 			or (detectinghiddenallowed and i == SKILLID_DETECTINGHIDDEN)
-			or (snoopingallowed and i == SKILLID_SNOOPING)
-			or (throwingallowed and i == SKILLID_THROWING) ) )
+			or (snoopingallowed and i == SKILLID_SNOOPING) ) )
 			total := total + amount;
 		endif
 

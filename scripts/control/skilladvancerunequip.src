@@ -195,6 +195,7 @@ function UndoImmunity( who , item )
 			 "FreeAction",
 			 "HolyProtection",
 			 "HealingIncrease" };
+	var elementalprots := { "FireProtection", "WaterProtection", "AirProtection", "EarthProtection", "HolyProtection" };
 	
 	if (GetObjProperty(item, "NecroProtection"))
 	
@@ -215,9 +216,17 @@ function UndoImmunity( who , item )
 			endif
 			
 		endforeach
-		
+
+		// Matches the WFH elemental/planar Protection cap in skilladvancerequip.src's
+		// DoImmunity() -- without this, unequipping a WFH's higher-tier item could
+		// recompute a lower-but-still->85 remaining item as the new value, sneaking
+		// back above the cap.
+		if( who.npctemplate == "warriorforhire" and necro > 85 )
+			necro := 85;
+		endif
+
 		SetObjProperty(who, "NecroProtection", necro);
-		
+
 	endif
 	
 	if (GetObjProperty(item, "PhysicalProtection"))
@@ -302,9 +311,12 @@ function UndoImmunity( who , item )
 			endif
 			
 		endforeach
+		if( who.npctemplate == "warriorforhire" and cprot > 85 and prots[i] in elementalprots )
+			cprot := 85;
+		endif
 		if(cprot)
 				SetObjProperty( who , prots[i] , cprot );
-		else 
+		else
 				equipped_matrix[i] := new_prot_vector;
 		endif
 

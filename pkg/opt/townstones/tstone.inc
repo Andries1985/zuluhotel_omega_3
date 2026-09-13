@@ -871,12 +871,17 @@ function GetCityRegionsFromConfig()
 			continue;
 		endif
 
-		var city_raw := GetConfigString(elem, "City");
-		if(city_raw.errortext)
+		// 2026-09-13: was checking for a "City 1" field, which no region in
+		// regions.cfg has ever actually had (every real city region uses
+		// "Type City" instead) -- this made .createtownstone/townbankstatus/
+		// playerruntowns see ZERO eligible regions ever, for every town, not
+		// just one. Fixed to check the field regions.cfg actually uses.
+		var type_raw := GetConfigString(elem, "Type");
+		if(type_raw.errortext)
 			continue;
 		endif
 
-		if(CInt(city_raw) != 1)
+		if(CStr(type_raw) != "City")
 			continue;
 		endif
 

@@ -162,6 +162,6 @@ program summon_creature( parms )
 		endforeach
 	endif
 	MoveObjectToLocation( thecritter, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-	ApplyRawDamage(thecritter, GetMaxHP(thecritter) + 3);
+	thecritter.kill(); // was ApplyRawDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP
 
 endprogram

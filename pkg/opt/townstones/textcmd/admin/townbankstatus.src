@@ -10,7 +10,7 @@ include ":townstone:tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 // PLAYERTOWNS_CFG moved to tstone.inc (2026-09-01)
-const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_OBJTYPE := 0x35006;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 // Player towns aren't confined to Britannia (playertowns.cfg configures
 // Zento, a Tokuno region) -- search every realm the shard defines instead
@@ -515,7 +515,7 @@ endfunction
 
 
 function IsTownstoneMatch(stone, region_name, town_id, region_range, lost_lands_range, use_lost_lands_fallback)
-	if(!stone or stone.objtype != 0xa320)
+	if(!stone or stone.objtype != 0x35006)
 		return 0;
 	endif
 

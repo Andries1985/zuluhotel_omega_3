@@ -16,6 +16,7 @@ include ":karmafame:karmafame";
 include "../pkg/opt/rituals/include/settings";
 include "include/spelldata";
 include "include/classes";
+include "include/string";
 
 var magic_circle := array{},
     captor;
@@ -150,6 +151,15 @@ function CheckRitualEquip( mobile, spell_id )
 endfunction
 
 function CheckRitualCircle( mobile )
+
+        // Gate 0 - a hard floor underneath every ritual's own Magery
+        // threshold (all of which sit at 100+ already), but the only check
+        // Demonstration itself is gated by, since it has no mana cost or
+        // Gate 1/2 of its own.
+        if( mobile.cmdlevel < 4 && GetEffectiveSkill( mobile, SKILLID_MAGERY ) < 75 )
+                SendSysMessage( mobile, "Your Magery isn't strong enough to even attempt drawing a magic circle." );
+                return 0;
+        endif
 
 	//Check if the caster want to use his personnal circle
         var existing_circle;
@@ -662,6 +672,14 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
 		item.movable := 1;
 		MoveObjectToLocation( item, x, y+5, z, realm, MOVEOBJECT_FORCELOCATION );
 		item.movable := 0;
+                // Excluded from every world save (periodic or otherwise) for as long as it
+                // sits out here immovable - without this, a save landing mid-ritual followed
+                // by a crash reloads the item stuck on the ground forever. Reset to 1 at every
+                // point the item returns to the backpack: the success path below and
+                // RITUAL_EndCircleSurvivingItem() (Fizzle/Backfire-survives). The
+                // Catastrophic/interrupted-chant paths destroy the item outright via
+                // DestroyDone(), so they need no reset.
+                item.SaveOnExit := 0;
         endif
         
 	if( YesNo( mobile, "Use mana crystals?" ))
@@ -698,8 +716,10 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
         // destroy+kill rather than the rung this ritual is actually supposed
         // to use. Running short on mana isn't a failed casting, so nothing
         // is destroyed and no one is hurt - the ritual is just called off.
-        var spell_elem := MS_GetSpellsCfgElem( spell_id );
-        if( mobile.cmdlevel < 4 && GetMana( mobile ) < spell_elem.ManaCost )
+        // Mana cost comes from gate_info[4] rather than spells.cfg's
+        // ManaCost - 9 of these rituals need it to scale with the target's
+        // current tier, which a single flat per-spell value can't express.
+        if( mobile.cmdlevel < 4 && GetMana( mobile ) < gate_info[4] )
                 SendSysMessage( mobile, "You don't have enough mana to continue this ritual!" );
                 RITUAL_EndCircleSurvivingItem( mobile, item, 0 );
                 return -1;
@@ -804,7 +824,8 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
 		SetMana( mobile, CInt( GetMana( mobile ) - mana_amount ));
   
 		PlayMovingEffect( mobile, mana_cloud, 0x3789, 0xa, 0xa );
-  
+		PlayObjectCenteredEffect( item, 0x79FD, 0xa, 0xa );
+
 		if( item )
 			PrintTextAbove( item, "*the mystic energy channels above the item*" );
 		endif
@@ -877,6 +898,7 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
         ChangeLightLevel( mobile, 0 );
 
 	item.movable := 1;
+        item.SaveOnExit := 1;
 	MoveItemToContainer( item, mobile.backpack );
 
 	return 1;
@@ -905,7 +927,7 @@ function RitualSkillCheck( mobile, item, gate_info )
 	PrintTextAbove( item, "The item absorbed the enchantment successfully!" );
 
         PlaySoundEffect( item, 0x1FB );
-        PlayObjectCenteredEffectEx( item, 0x373A, 4, 14 );
+        PlayObjectCenteredEffectEx( item, 0x7A06, 4, 0 );
 
 	AwardFame( mobile, CInt( gate_info[1] ));
 
@@ -945,6 +967,7 @@ function RITUAL_EndCircleSurvivingItem( mobile, item, kill_pct )
 
         if( item )
                 item.movable := 1;
+                item.SaveOnExit := 1;
                 MoveItemToContainer( item, mobile.backpack );
         endif
 
@@ -1009,14 +1032,19 @@ function RitualIsAlreadyMaxed( mobile, spell_id, item )
                                 SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
                                 return 1;
                         endif
-                147: // Quick Healing - single-shot; any existing value blocks a recast
-                        if( GetObjProperty( item, "HealingIncrease" ))
+                147: // Quick Healing - HealingIncrease cap, 6-tier ladder like Blood Seeking/Hardening
+                        if( CInt( GetObjProperty( item, "HealingIncrease" )) >= 6 )
                                 SendSysMessage( mobile, "This "+item_desc+" already have a powerful enchantment on it." );
                                 return 1;
                         endif
-                143: // Physical Ward - capped at the caster's own current class level
-                        if( CInt( GetObjProperty( item, "PhysicalProtection" )) >= GetClasseLevel( mobile ))
+                143: // Physical Ward - PhysicalProtection cap, 6-tier ladder like Blood Seeking/Hardening
+                        if( CInt( GetObjProperty( item, "PhysicalProtection" )) >= 6 )
                                 SendSysMessage( mobile, "This "+item_desc+" already have a more powerful enchantment on it." );
+                                return 1;
+                        endif
+                131: // Advanced Theurgy - Enchanted variant cap at Stygian, its final step
+                        if( CStr( GetObjProperty( item, "Enchanted" )) == "stygian" )
+                                SendSysMessage( mobile, "This "+item_desc+" is already in its strongest form." );
                                 return 1;
                         endif
         endcase
@@ -1026,17 +1054,27 @@ endfunction
 
 // Gate 1 + Gate 2 + consequence-rung lookup, computed per-ritual so a blank
 // item's first push gates low and a near-maxed item's last push gates at
-// the top of the scale. Returns array{ difficulty, success_pct, rung }.
+// the top of the scale. Returns array{ difficulty, success_pct, rung, mana }.
 // rung: 1 = Fizzle only, 2 = up to Backfire, 3 = always Catastrophic.
 function GetRitualGateInfo( spell_id, item )
 
         if( spell_id == 136 )
                 return RITUAL_CursingGateInfo( item );
+        elseif( spell_id == 131 )
+                return RITUAL_TheurgyGateInfo( item );
         endif
 
         var next_tier := RITUAL_GetNextTier( spell_id, item );
         if( next_tier >= 0 )
-                return RITUAL_TierGateInfo( next_tier );
+                case( spell_id )
+                        133: // Blood Seeking
+                        143: // Physical Ward
+                        147: // Quick Healing
+                        154: // Vital Infusion
+                                return RITUAL_SteepTierGateInfo( next_tier );
+                        default: // Hardening, Resilience, Elemental Ward, Planard Ward
+                                return RITUAL_TierGateInfo( next_tier );
+                endcase
         endif
 
         // Flat, non-tiered rituals - fixed risk band per ritual.
@@ -1044,24 +1082,23 @@ function GetRitualGateInfo( spell_id, item )
                 132: // Attunement
                 134: // Consecration
                 135: // Create Focus
+                146: // Purification
+                        return array{ 100, 98, 1, 500 };
                 140: // Mana Dissimal
                 141: // Mana Flux
-                146: // Purification
                 152: // Venom Bane
-                        return array{ 25, 98, 1 };
-                131: // Advanced Theurgy
                 138: // Free Movement
                 145: // Protective Aura
-                        return array{ 55, 90, 1 };
+                        return array{ 115, 90, 1, 500 };
                 150: // Spell Bouncing
                 151: // Spell Warding
                 153: // Venom Mastery
-                        return array{ 150, 27, 2 };
+                        return array{ 140, 27, 3, 2000 };
                 142: // Perilous Theurgy - locked at a flat 10%
                 148: // Racial Theurgy - locked at a flat 10%
-                        return array{ 150, 10, 3 };
+                        return array{ 150, 10, 3, 2500 };
                 default:
-                        return array{ 25, 98, 1 };
+                        return array{ 100, 98, 1, 500 };
         endcase
 
 endfunction
@@ -1084,9 +1121,9 @@ function RITUAL_GetNextTier( spell_id, item )
                                        CInt( GetObjProperty( item, "int" )) +
                                        CInt( GetObjProperty( item, "dex" ));
                         return ( statval / 2 ) + 1;
-                147: // Quick Healing - HealingIncrease: raw 0..6, upgrade-only to class level
+                147: // Quick Healing - HealingIncrease: 0/1/2/3/4/5/6, one full tier ladder like Hardening
                         return CInt( GetObjProperty( item, "HealingIncrease" )) + 1;
-                143: // Physical Ward - PhysicalProtection: raw 0..6, upgrade-only to class level
+                143: // Physical Ward - PhysicalProtection: 0/1/2/3/4/5/6, one full tier ladder like Hardening
                         return CInt( GetObjProperty( item, "PhysicalProtection" )) + 1;
                 137: // Elemental Ward - Fire/Water/Air/EarthProtection: 0/25/50/65/75/85/95
                         return RITUAL_ProtLevelToTier( Max( Max( CInt( GetObjProperty( item, "FireProtection" )), CInt( GetObjProperty( item, "WaterProtection" ))),
@@ -1115,20 +1152,22 @@ function RITUAL_ProtLevelToTier( level )
 
 endfunction
 
-// Gate info from the tier this cast would push the item to (1-6). A blank
-// item's first push (tier 1) gates low; the last push into tier 5-6 gates
-// at the top of the scale and can only ever be Catastrophic on a miss.
+// Gate info from the tier this cast would push the item to (1-6), on the
+// shared ladder used by Hardening/Resilience/Elemental Ward/Planard Ward. A
+// blank item's first push (tier 1) gates low; the last push into tier 5-6
+// gates at the top of the scale and can only ever be Catastrophic on a miss.
 function RITUAL_TierGateInfo( next_tier )
 
-        var difficulty, success_pct, rung;
+        var difficulty, mana, success_pct, rung;
 
-        if( next_tier <= 1 )
-                difficulty := 55;
-                success_pct := 90;
-        else
-                difficulty := 40 + ( 15 * next_tier );
-                success_pct := 95 - ( 7 * next_tier );
-        endif
+        case( next_tier )
+                1: difficulty := 100; mana := 500;  success_pct := 90;
+                2: difficulty := 110; mana := 800;  success_pct := 81;
+                3: difficulty := 120; mana := 1150; success_pct := 74;
+                4: difficulty := 130; mana := 1550; success_pct := 67;
+                5: difficulty := 140; mana := 2000; success_pct := 60;
+                default: difficulty := 150; mana := 2500; success_pct := 53;
+        endcase
 
         if( next_tier >= 5 )
                 rung := 3;
@@ -1138,13 +1177,54 @@ function RITUAL_TierGateInfo( next_tier )
                 rung := 1;
         endif
 
-        return array{ difficulty, success_pct, rung };
+        return array{ difficulty, success_pct, rung, mana };
+endfunction
+
+// Same Magery/mana per tier as RITUAL_TierGateInfo, but a steeper success
+// curve (odds fall a flat 10% per tier instead of ~7%) - used by Blood
+// Seeking, Physical Ward, Quick Healing, and Vital Infusion.
+function RITUAL_SteepTierGateInfo( next_tier )
+
+        var difficulty, mana, success_pct, rung;
+
+        case( next_tier )
+                1: difficulty := 100; mana := 500;  success_pct := 75;
+                2: difficulty := 110; mana := 800;  success_pct := 65;
+                3: difficulty := 120; mana := 1150; success_pct := 55;
+                4: difficulty := 130; mana := 1550; success_pct := 45;
+                5: difficulty := 140; mana := 2000; success_pct := 35;
+                default: difficulty := 150; mana := 2500; success_pct := 25;
+        endcase
+
+        if( next_tier >= 5 )
+                rung := 3;
+        elseif( next_tier >= 3 )
+                rung := 2;
+        else
+                rung := 1;
+        endif
+
+        return array{ difficulty, success_pct, rung, mana };
+endfunction
+
+// Advanced Theurgy's own 3-step curve, keyed off the item's current
+// Enchanted variant rather than a numeric tier - Magery and mana stay flat
+// across all 3 steps, only the risk changes, and unlike every other
+// reinforcement ritual there's no safe Fizzle-only step at all.
+function RITUAL_TheurgyGateInfo( item )
+
+        case( CStr( GetObjProperty( item, "Enchanted" )))
+                "mystical": return array{ 115, 60, 3, 500 }; // -> Swift
+                "swift":    return array{ 115, 40, 3, 500 }; // -> Stygian
+                default:    return array{ 115, 80, 2, 500 }; // blank -> Mystical
+        endcase
+
 endfunction
 
 // Cursing's difficulty scales with the target's own existing quality, not a
 // cast count - it's a one-shot curse, so there's no tier ladder of its own
-// to key off. isRare/isRareProt and isLegendary both carry Catastrophic
-// risk on a miss; only their odds differ.
+// to key off. Rare and Legendary both carry Catastrophic risk on a miss;
+// only their odds (and cost) differ.
 function RITUAL_CursingGateInfo( item )
 
         var is_legendary := GetObjProperty( item, "isLegendary" ),
@@ -1153,12 +1233,12 @@ function RITUAL_CursingGateInfo( item )
             skilladv := CInt( GetObjProperty( item, "skilladvamount" ));
 
         if( is_legendary )
-                return array{ 165, 2, 3 };
+                return array{ 150, 2, 3, 2500 };
         elseif( is_rare )
-                return array{ 150, 28, 3 };
+                return array{ 145, 28, 3, 2250 };
         elseif( is_uncommon || skilladv > 1 )
-                return array{ 85, 65, 2 };
+                return array{ 125, 65, 2, 1350 };
         endif
 
-        return array{ 55, 90, 1 };
+        return array{ 115, 90, 1, 500 };
 endfunction

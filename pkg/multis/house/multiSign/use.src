@@ -866,8 +866,11 @@ function demolish(house, sign, who, bank_region)
 		endforeach
 	endif
 	if(!IsOmegaCacheEmpty(house.serial))
-		SendSysMessage(who, "You cannot redeed this house while Omega Cache contents are stored.", color := 33);
-		return;
+		if(!ConfirmationSizable(who, "Your Omega Cache still contains stored items, which will be permanently lost. Demolish anyway?"))
+			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+			return;
+		endif
+		ForceEmptyOmegaCache(house.serial);
 	endif
 	var lists := GetObjProperty(sign, "footage");
 	var itemlist := {};

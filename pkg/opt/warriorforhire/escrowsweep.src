@@ -1,0 +1,15 @@
+use uo;
+use os;
+
+include "include/wfhescrow";
+
+const ESCROWSWEEP_INTERVAL := 86400; //once a day -- plenty for a 90-day window
+
+program escrowsweep()
+
+	while (1)
+		WFH_SweepExpiredEscrow();
+		Sleep(ESCROWSWEEP_INTERVAL);
+	endwhile
+
+endprogram

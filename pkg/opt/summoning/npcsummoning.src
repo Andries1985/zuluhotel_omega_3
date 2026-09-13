@@ -51,12 +51,12 @@ program summon_creature( parms )
 	RevokePrivilege( thecritter, "invul" );
 	SetObjProperty(thecritter,"guardkill",1);
 	MoveOBJECTToLocation( thecritter, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
-	ApplyRawDamage(thecritter, GetMaxHP(thecritter)+3);
+	thecritter.kill(); // was ApplyRawDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP
 
 	var count := 0;
 	repeat
 		SleepMS(1000);
-		ApplyRawDamage( thecritter, GetMaxHP(thecritter) + 3 );
+		thecritter.kill();
 		count := count + 1;
 	until(!thecritter || count >= 1000);
 

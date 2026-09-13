@@ -81,7 +81,7 @@ endprogram
 // entirely. The gump flow itself lives in the shared craftmenu.inc -- this
 // is just the carpentry-specific wiring: Repair/Keg/Oak Staff handling, and
 // dispatching a completed pick into TryToCreateItem below.
-function RunCarpentryGump( character )
+exported function RunCarpentryGump( character )
 
 	while( 1 )
 		var extra_options := array{
@@ -292,6 +292,17 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 	if( element.Category == "Ingot: Soulforge Crafting" )
 		if( !NearASoulforge(character) )
 			SendSysMessage(character,"You must be closer to a SoulForge!");
+			return;
+		endif
+	endif
+
+	// Necrotic Brazier (crafting-station rollout, 2026-09-12): a one-off
+	// third skill gate the standard Skill/CoSkillid schema can't express
+	// (only one CoSkillid slot exists) -- Carpentry 150 + Tinkering 150
+	// (via the normal CoSkillid) + Magery 150 on top.
+	if( element.Category == "Log: Light Sources" )
+		if( GetEffectiveSkill( character, SKILLID_MAGERY ) < 150 )
+			SendSysmessage( character , "You aren't skilled enough in Magery to make this yet." );
 			return;
 		endif
 	endif

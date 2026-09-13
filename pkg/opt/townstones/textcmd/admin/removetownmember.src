@@ -7,7 +7,7 @@ use cfgfile;
 include ":townstone:tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
-const TOWNSTONE_OBJTYPE := 0xa320;
+const TOWNSTONE_OBJTYPE := 0x35006;
 const VOTE_RUNE_OBJTYPE := 0xa321;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 // Player towns aren't confined to Britannia (playertowns.cfg configures

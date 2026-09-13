@@ -1,0 +1,53 @@
+// Synopsis: Force-destroy a targeted Omega Cache container, wiping its stored contents first
+//
+// destroycache.src (the container's DestroyScript) refuses to let the last
+// Omega Cache container for a house be destroyed while it still holds
+// stored items -- that's the right call for a normal .destroy, but leaves
+// staff with no way to clean up a cache someone can't or won't empty
+// themselves. This wipes the house's Omega Cache DataFile first, then runs
+// the normal DestroyItem() so the existing DestroyScript still handles all
+// the usual bookkeeping (re-crediting numomegacache on the house/sign).
+
+use uo;
+
+include ":staff:include/staff";
+include "include/omegacache_utils";
+
+program textcmd_destroyomegacache( who )
+	SendSysMessage(who, "Target the Omega Cache container to force-destroy.");
+	var tgt := Target(who);
+	if(!tgt)
+		SendSysMessage(who, "Cancelled.", color := 33);
+		return;
+	endif
+
+	if(!tgt.isa(POLCLASS_ITEM) or CInt(tgt.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var house_serial := CInt(GetObjProperty(tgt, "houseserial"));
+	var wiped := 0;
+	if(house_serial)
+		var df := OpenOmegaCacheStore(house_serial);
+		if(df)
+			foreach key in (df.Keys())
+				df.DeleteElement(key);
+				wiped := wiped + 1;
+			endforeach
+		endif
+	endif
+
+	LogCommand(who, GetProcess(GetPid()).name, tgt.desc+"/"+tgt.serial, "house="+house_serial+" wiped="+wiped);
+
+	if(!DestroyItem(tgt))
+		SendSysMessage(who, "Destruction was still blocked -- check that this is a valid Omega Cache container.", color := 33);
+		return;
+	endif
+
+	if(wiped == 1)
+		SendSysMessage(who, "Omega Cache container destroyed. Cleared 1 stored entry.");
+	else
+		SendSysMessage(who, "Omega Cache container destroyed. Cleared " + wiped + " stored entries.");
+	endif
+endprogram

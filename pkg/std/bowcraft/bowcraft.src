@@ -60,7 +60,7 @@ endprogram
 // wiring: Repair Item handling, the Log-only maker's-mark/color notice, and
 // dispatching a completed pick into the actual crafting-execution functions
 // below (CraftLogRecipe/CraftAmmoRecipe/CraftLogBulk/CraftAmmoBulk).
-function RunBowcraftGump( character )
+exported function RunBowcraftGump( character )
 
 	while( 1 )
 		var extra_options := array{ struct{ label := "Repair Item", value := BC_BTN_REPAIR } };
