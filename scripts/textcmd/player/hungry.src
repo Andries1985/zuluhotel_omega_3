@@ -11,6 +11,10 @@ program textcmd_hungry( who )
 var fame := "azzo!!!";
 var hunger := GetObjProperty( who, "hunger" );
 
+	// 2026-09-14: rescaled 0-9(+"over 9") to the new 0-15 hunger range
+	// (pkg/std/cooking/hunger.src) -- 10/12/14 are where stamina/mana/
+	// health respectively start draining in the background
+	// (hungerdamage.src), so those three tiers call that out explicitly.
 	if     (hunger == 0)
 		fame := "You are absolutely stuffed!";
 	elseif (hunger == 1)
@@ -20,18 +24,28 @@ var hunger := GetObjProperty( who, "hunger" );
 	elseif (hunger == 3)
 		fame := "You are a little hungry";
 	elseif (hunger == 4)
-		fame := "You are somewhat hungry";
+		fame := "You are getting hungry";
 	elseif (hunger == 5)
-		fame := "You are REALLY hungry";
+		fame := "You could use a bite to eat";
 	elseif (hunger == 6)
-		fame := "Your stomach hurts";
+		fame := "You are somewhat hungry";
 	elseif (hunger == 7)
-		fame := "Your stomach hurts and you feel dizzy";
+		fame := "You are REALLY hungry";
 	elseif (hunger == 8)
-		fame := "You are starving";
+		fame := "Your stomach hurts";
 	elseif (hunger == 9)
-		fame := "You are almost dying of hunger";
-	elseif (hunger > 9)
+		fame := "Your stomach hurts and you feel dizzy";
+	elseif (hunger == 10)
+		fame := "You are starving, and your strength is starting to fade";
+	elseif (hunger == 11)
+		fame := "You are starving, and growing weaker";
+	elseif (hunger == 12)
+		fame := "You're growing faint with hunger, and your mind is clouding";
+	elseif (hunger == 13)
+		fame := "You are nearly delirious with hunger";
+	elseif (hunger == 14)
+		fame := "You are absolutely famished, and wasting away";
+	elseif (hunger >= 15)
 		fame := "You are DYING of hunger...";
 	endif
  

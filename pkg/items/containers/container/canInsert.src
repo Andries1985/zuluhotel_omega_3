@@ -4,12 +4,20 @@
         2018-07-25
 */
 use uo;
+use os;
 use cliloc;
 
 include ":containers:checks";
 include "include/housing";
 
 program canInsert( mobile, container, move_type, unused inserttype, unused adding_item, unused existing_stack, unused amount_to_add )
+	// 2026-09-13: GetHouseSign() below reads mobile.x/.y, which error{} when
+	// mobile isn't currently connected (e.g. a system-initiated move on an
+	// offline character). Previously masked by old lenient operator
+	// semantics; the 09-05-2026 core update turned that into a hard
+	// "Operator - not supported for Error and Integer" error instead.
+	set_script_option( SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES, 1 );
+
 	if( move_type == MOVETYPE_COREMOVE )
 		return 1;
 	elseif( mobile.cmdlevel >= 2 )

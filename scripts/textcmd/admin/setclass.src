@@ -13,6 +13,25 @@ program textcmd_class(who, lvl)
 		lvl := 1;
 	endif
 
+	// .setclass 999 -- shortcut that resets all skills to 0 and skips the
+	// class picker/assignment entirely.
+	if( CInt(lvl) == 999 )
+		SendSysMessage(who, "Who do you want to reset to 0 skill?");
+		var resettarg := Target( who );
+		if( !resettarg )
+			return;
+		endif
+
+		var resetskill999;
+		foreach resetskill999 in GetSkillIds()
+			SetBaseSkill(resettarg, resetskill999, 0);
+		endforeach
+
+		IncRevision(resettarg);
+		SendSysMessage(resettarg, "Your skills have been reset to 0.", 3, 53);
+		return;
+	endif
+
 	SendSysMessage(who, "Who do you want to make spec "+lvl+"?");
 	var targ := Target( who );
 	if( !targ )
@@ -47,10 +66,27 @@ program textcmd_class(who, lvl)
 		SetBaseSkill(targ, resetskill, 0);
 	endforeach
 
+	var skillamount := 60 + (CInt(lvl) * 15);
 	foreach skill in GetClasseSkills( classid )
-		var skillamount := 60 + (CInt(lvl) * 15);
 		SetBaseSkill(targ, skill, skillamount);
 	endforeach
+
+	// Free coskills -- matches Testclassbooststone.src (pkg/opt/zuluitems):
+	// these ride along with their class without being part of
+	// GetClasseSkills() itself. IsFromThatClasse's forensicsallowed/
+	// mageryallowed/musicianshipallowed/detectinghiddenallowed/
+	// snoopingallowed params already treat these the same way so they don't
+	// dilute the class-spec-level calculation -- Throwing/Tactics need no
+	// extra handling here since they're already in Thief's own class list.
+	if( classid == CLASSEID_RANGER )
+		SetBaseSkill(targ, SKILLID_FORENSICS, skillamount);
+	elseif( classid == CLASSEID_CRAFTER )
+		SetBaseSkill(targ, SKILLID_MAGERY, skillamount);
+		SetBaseSkill(targ, SKILLID_MUSICIANSHIP, skillamount);
+	elseif( classid == CLASSEID_THIEF )
+		SetBaseSkill(targ, SKILLID_DETECTINGHIDDEN, skillamount);
+		SetBaseSkill(targ, SKILLID_SNOOPING, skillamount);
+	endif
 
 	AssignClasse( targ );
 	IncRevision(targ);

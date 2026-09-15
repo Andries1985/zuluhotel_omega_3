@@ -4,6 +4,7 @@ use math;
 use basic;
 
 include "include/spelldata";
+include "include/constants/cmdlevels";
 
 const BASE_SPELLID := 80;
 
@@ -12,6 +13,7 @@ program BookOfEarth( who, book )
 	if (GetObjProperty(who, CLASSEID_MAGE))
 	elseif (GetObjProperty(who, CLASSEID_POWERPLAYER))
 	elseif (GetObjProperty(who, CLASSEID_MYSTIC_ARCHER))
+	elseif (who.cmdlevel >= CMDLEVEL_COUNSELOR) // 2026-09-13: let staff open this for testing
 	else
 		SendSysMessage(who,"Only Mages, Mystic Archers and Powerplayers can use this!");
 		return;

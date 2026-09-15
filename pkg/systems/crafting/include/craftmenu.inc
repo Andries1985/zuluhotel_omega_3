@@ -161,13 +161,13 @@ function CraftMenu_GetFamilyTotal( character, materialType, byref cache )
 
 	var total := 0;
 	if( materialType == "Log" )
-		total := CraftMenu_GetLogFamilyTotal( character );
+		total := CraftMenu_GetLogFamilyTotal( character, cache );
 	elseif( materialType == "Hide" )
-		total := CraftMenu_GetHideFamilyTotal( character );
+		total := CraftMenu_GetHideFamilyTotal( character, cache );
 	elseif( materialType == "Cloth" )
-		total := CraftMenu_GetClothFamilyTotal( character );
+		total := CraftMenu_GetClothFamilyTotal( character, cache );
 	elseif( materialType == "Ingot" )
-		total := CraftMenu_GetIngotFamilyTotal( character );
+		total := CraftMenu_GetIngotFamilyTotal( character, cache );
 	endif
 
 	cache[cacheKey] := total;
@@ -175,29 +175,29 @@ function CraftMenu_GetFamilyTotal( character, materialType, byref cache )
 endfunction
 
 
-function CraftMenu_EnumerateFamilyOptions( character, materialType )
+function CraftMenu_EnumerateFamilyOptions( character, materialType, byref cache )
 	if( materialType == "Log" )
-		return CraftMenu_EnumerateLogOptions( character );
+		return CraftMenu_EnumerateLogOptions( character, cache );
 	elseif( materialType == "Hide" )
-		return CraftMenu_EnumerateHideOptions( character );
+		return CraftMenu_EnumerateHideOptions( character, cache );
 	elseif( materialType == "Cloth" )
-		return CraftMenu_EnumerateClothOptions( character );
+		return CraftMenu_EnumerateClothOptions( character, cache );
 	elseif( materialType == "Ingot" )
-		return CraftMenu_EnumerateIngotOptions( character );
+		return CraftMenu_EnumerateIngotOptions( character, cache );
 	endif
 	return array{};
 endfunction
 
 
-function CraftMenu_FamilyOptionToRequest( character, materialType, opt )
+function CraftMenu_FamilyOptionToRequest( character, materialType, opt, byref cache )
 	if( materialType == "Log" )
-		return CraftMenu_LogOptionToRequest( character, opt );
+		return CraftMenu_LogOptionToRequest( character, opt, cache );
 	elseif( materialType == "Hide" )
-		return CraftMenu_HideOptionToRequest( character, opt );
+		return CraftMenu_HideOptionToRequest( character, opt, cache );
 	elseif( materialType == "Cloth" )
-		return CraftMenu_ClothOptionToRequest( character, opt );
+		return CraftMenu_ClothOptionToRequest( character, opt, cache );
 	elseif( materialType == "Ingot" )
-		return CraftMenu_IngotOptionToRequest( character, opt );
+		return CraftMenu_IngotOptionToRequest( character, opt, cache );
 	endif
 	return 0;
 endfunction
@@ -242,15 +242,15 @@ function CraftMenu_GetFamilyQualityDifficulty( materialType, objtype )
 endfunction
 
 
-function CraftMenu_ResolveFamilyDefault( character, materialType )
+function CraftMenu_ResolveFamilyDefault( character, materialType, byref cache )
 	if( materialType == "Log" )
-		return CraftMenu_ResolveLogDefault( character );
+		return CraftMenu_ResolveLogDefault( character, cache );
 	elseif( materialType == "Cloth" )
-		return CraftMenu_ResolveClothDefault( character );
+		return CraftMenu_ResolveClothDefault( character, cache );
 	elseif( materialType == "Hide" )
-		return CraftMenu_ResolveHideDefault( character );
+		return CraftMenu_ResolveHideDefault( character, cache );
 	elseif( materialType == "Ingot" )
-		return CraftMenu_ResolveIngotDefault( character );
+		return CraftMenu_ResolveIngotDefault( character, cache );
 	endif
 
 	// Any future family without its own "plain" default just takes
@@ -262,11 +262,11 @@ function CraftMenu_ResolveFamilyDefault( character, materialType )
 	// exactly-tied runner-up hands the tie to that runner-up, which looks
 	// like "random" flip-flopping but is really just a real stock change
 	// reacted to correctly.
-	var options := CraftMenu_EnumerateFamilyOptions( character, materialType );
+	var options := CraftMenu_EnumerateFamilyOptions( character, materialType, cache );
 	var best;
 	var bestTotal := 0;
 	foreach opt in options
-		var req := CraftMenu_FamilyOptionToRequest( character, materialType, opt );
+		var req := CraftMenu_FamilyOptionToRequest( character, materialType, opt, cache );
 		var total := GetAvailableResource(character, req).total;
 		if( total > bestTotal )
 			bestTotal := total;
@@ -281,7 +281,28 @@ endfunction
 // Log family (bowcraft/carpentry raw material -- any color of Log).
 // ------------------------------------------------------------------
 
-function CraftMenu_GetLogFamilyTotal( character )
+// Shared memoized access lookup -- see the PERFORMANCE note at the top of
+// this file. Every family Get/Enumerate function below (and
+// CraftMenu_GetMaterialRequest) resolves the player's accessible Omega
+// Cache through here instead of calling FindAccessibleContainer directly,
+// so one gump build (category counting-pass OR one detail-gump session)
+// only ever does the nearby-scan/access-check once, no matter how many
+// material families/slots it touches. Safe because everything that shares
+// one `cache` dictionary runs within one synchronous call -- nothing can
+// move the player in between -- and callers that DO need a fresh look
+// (a new gump build, a new detail-gump session) simply pass in a new,
+// empty dictionary.
+function CraftMenu_GetCachedAccess( character, byref cache )
+	if( cache.Exists("access") )
+		return cache["access"];
+	endif
+	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	cache["access"] := access;
+	return access;
+endfunction
+
+
+function CraftMenu_GetLogFamilyTotal( character, byref cache )
 	var total := 0;
 	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
 		if( IsLog(item) )
@@ -289,7 +310,7 @@ function CraftMenu_GetLogFamilyTotal( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		total := total + GetStoredAmountByObjtype( access.df, UOBJ_LOGS, 0 );
 		total := total + GetStoredAmountByObjtype( access.df, UOBJ_LOGS_GODDESS, 0 );
@@ -303,7 +324,7 @@ function CraftMenu_GetLogFamilyTotal( character )
 endfunction
 
 
-function CraftMenu_EnumerateLogOptions( character )
+function CraftMenu_EnumerateLogOptions( character, byref cache )
 	var options := array{};
 	var seen := dictionary;
 
@@ -314,7 +335,7 @@ function CraftMenu_EnumerateLogOptions( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		var candidates := array{ UOBJ_LOGS, UOBJ_LOGS_GODDESS };
 		var c;
@@ -336,25 +357,25 @@ function CraftMenu_EnumerateLogOptions( character )
 endfunction
 
 
-function CraftMenu_LogOptionToRequest( character, opt )
+function CraftMenu_LogOptionToRequest( character, opt, byref cache )
 	if( opt.item )
 		return MakeBackpackRequest( character, opt.item );
 	endif
-	return CraftMenu_GetMaterialRequest( character, opt.objtype );
+	return CraftMenu_GetMaterialRequest( character, opt.objtype, cache );
 endfunction
 
 
-function CraftMenu_ResolveLogDefault( character )
-	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_LOGS );
+function CraftMenu_ResolveLogDefault( character, byref cache )
+	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_LOGS, cache );
 	if( GetAvailableResource(character, plainRequest).total > 0 )
 		return plainRequest;
 	endif
 
-	var options := CraftMenu_EnumerateLogOptions( character );
+	var options := CraftMenu_EnumerateLogOptions( character, cache );
 	var best;
 	var bestTotal := 0;
 	foreach opt in options
-		var req := CraftMenu_LogOptionToRequest( character, opt );
+		var req := CraftMenu_LogOptionToRequest( character, opt, cache );
 		var total := GetAvailableResource(character, req).total;
 		if( total > bestTotal )
 			bestTotal := total;
@@ -386,7 +407,7 @@ function CraftMenu_IngotObjtypeCandidates()
 endfunction
 
 
-function CraftMenu_GetIngotFamilyTotal( character )
+function CraftMenu_GetIngotFamilyTotal( character, byref cache )
 	var total := 0;
 	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
 		if( IsIngot(item) )
@@ -394,7 +415,7 @@ function CraftMenu_GetIngotFamilyTotal( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_IngotObjtypeCandidates()
 			total := total + GetStoredAmountByObjtype( access.df, ot, 0 );
@@ -405,7 +426,7 @@ function CraftMenu_GetIngotFamilyTotal( character )
 endfunction
 
 
-function CraftMenu_EnumerateIngotOptions( character )
+function CraftMenu_EnumerateIngotOptions( character, byref cache )
 	var options := array{};
 	var seen := dictionary;
 
@@ -416,7 +437,7 @@ function CraftMenu_EnumerateIngotOptions( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_IngotObjtypeCandidates()
 			if( !seen[CInt(ot)] )
@@ -433,28 +454,28 @@ function CraftMenu_EnumerateIngotOptions( character )
 endfunction
 
 
-function CraftMenu_IngotOptionToRequest( character, opt )
+function CraftMenu_IngotOptionToRequest( character, opt, byref cache )
 	if( opt.item )
 		return MakeBackpackRequest( character, opt.item );
 	endif
-	return CraftMenu_GetMaterialRequest( character, opt.objtype );
+	return CraftMenu_GetMaterialRequest( character, opt.objtype, cache );
 endfunction
 
 
 // Plain Iron first, since that's the "normal" material players expect by
 // default; otherwise fall back to whichever ingot the player has the most
 // of, same shape as CraftMenu_ResolveLogDefault.
-function CraftMenu_ResolveIngotDefault( character )
-	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_IRON_INGOT );
+function CraftMenu_ResolveIngotDefault( character, byref cache )
+	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_IRON_INGOT, cache );
 	if( GetAvailableResource(character, plainRequest).total > 0 )
 		return plainRequest;
 	endif
 
-	var options := CraftMenu_EnumerateIngotOptions( character );
+	var options := CraftMenu_EnumerateIngotOptions( character, cache );
 	var best;
 	var bestTotal := 0;
 	foreach opt in options
-		var req := CraftMenu_IngotOptionToRequest( character, opt );
+		var req := CraftMenu_IngotOptionToRequest( character, opt, cache );
 		var total := GetAvailableResource(character, req).total;
 		if( total > bestTotal )
 			bestTotal := total;
@@ -483,7 +504,7 @@ function CraftMenu_HideObjtypeCandidates()
 endfunction
 
 
-function CraftMenu_GetHideFamilyTotal( character )
+function CraftMenu_GetHideFamilyTotal( character, byref cache )
 	var total := 0;
 	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
 		if( IsHide(item.objtype) )
@@ -491,7 +512,7 @@ function CraftMenu_GetHideFamilyTotal( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_HideObjtypeCandidates()
 			total := total + GetStoredAmountByObjtype( access.df, ot, 0 );
@@ -502,7 +523,7 @@ function CraftMenu_GetHideFamilyTotal( character )
 endfunction
 
 
-function CraftMenu_EnumerateHideOptions( character )
+function CraftMenu_EnumerateHideOptions( character, byref cache )
 	var options := array{};
 	var seen := dictionary;
 
@@ -513,7 +534,7 @@ function CraftMenu_EnumerateHideOptions( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_HideObjtypeCandidates()
 			if( !seen[CInt(ot)] )
@@ -530,11 +551,11 @@ function CraftMenu_EnumerateHideOptions( character )
 endfunction
 
 
-function CraftMenu_HideOptionToRequest( character, opt )
+function CraftMenu_HideOptionToRequest( character, opt, byref cache )
 	if( opt.item )
 		return MakeBackpackRequest( character, opt.item );
 	endif
-	return CraftMenu_GetMaterialRequest( character, opt.objtype );
+	return CraftMenu_GetMaterialRequest( character, opt.objtype, cache );
 endfunction
 
 
@@ -543,22 +564,22 @@ endfunction
 // material players expect by default; otherwise fall back to whichever
 // hide the player has the most of, same shape as CraftMenu_ResolveLogDefault
 // and CraftMenu_ResolveClothDefault.
-function CraftMenu_ResolveHideDefault( character )
-	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_HIDE1 );
+function CraftMenu_ResolveHideDefault( character, byref cache )
+	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_HIDE1, cache );
 	if( GetAvailableResource(character, plainRequest).total > 0 )
 		return plainRequest;
 	endif
 
-	var altRequest := CraftMenu_GetMaterialRequest( character, UOBJ_HIDE2 );
+	var altRequest := CraftMenu_GetMaterialRequest( character, UOBJ_HIDE2, cache );
 	if( GetAvailableResource(character, altRequest).total > 0 )
 		return altRequest;
 	endif
 
-	var options := CraftMenu_EnumerateHideOptions( character );
+	var options := CraftMenu_EnumerateHideOptions( character, cache );
 	var best;
 	var bestTotal := 0;
 	foreach opt in options
-		var req := CraftMenu_HideOptionToRequest( character, opt );
+		var req := CraftMenu_HideOptionToRequest( character, opt, cache );
 		var total := GetAvailableResource(character, req).total;
 		if( total > bestTotal )
 			bestTotal := total;
@@ -599,7 +620,7 @@ function CraftMenu_ClothObjtypeCandidates()
 endfunction
 
 
-function CraftMenu_GetClothFamilyTotal( character )
+function CraftMenu_GetClothFamilyTotal( character, byref cache )
 	var total := 0;
 	foreach item in EnumerateItemsInContainer( character.backpack, ENUMERATE_ROOT_ONLY )
 		if( IsCloth(item) )
@@ -607,7 +628,7 @@ function CraftMenu_GetClothFamilyTotal( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_ClothObjtypeCandidates()
 			total := total + GetStoredAmountByObjtype( access.df, ot, 0 );
@@ -618,7 +639,7 @@ function CraftMenu_GetClothFamilyTotal( character )
 endfunction
 
 
-function CraftMenu_EnumerateClothOptions( character )
+function CraftMenu_EnumerateClothOptions( character, byref cache )
 	var options := array{};
 	var seen := dictionary;
 
@@ -629,7 +650,7 @@ function CraftMenu_EnumerateClothOptions( character )
 		endif
 	endforeach
 
-	var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+	var access := CraftMenu_GetCachedAccess( character, cache );
 	if( access )
 		foreach ot in CraftMenu_ClothObjtypeCandidates()
 			if( !seen[CInt(ot)] )
@@ -646,28 +667,28 @@ function CraftMenu_EnumerateClothOptions( character )
 endfunction
 
 
-function CraftMenu_ClothOptionToRequest( character, opt )
+function CraftMenu_ClothOptionToRequest( character, opt, byref cache )
 	if( opt.item )
 		return MakeBackpackRequest( character, opt.item );
 	endif
-	return CraftMenu_GetMaterialRequest( character, opt.objtype );
+	return CraftMenu_GetMaterialRequest( character, opt.objtype, cache );
 endfunction
 
 
 // Plain Cloth (0x1765) first, since that's what bolt-cutting actually
 // produces; otherwise fall back to whichever cloth graphic the player has
 // the most of, same shape as CraftMenu_ResolveLogDefault.
-function CraftMenu_ResolveClothDefault( character )
-	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_MUTLI_CLOTH );
+function CraftMenu_ResolveClothDefault( character, byref cache )
+	var plainRequest := CraftMenu_GetMaterialRequest( character, UOBJ_MUTLI_CLOTH, cache );
 	if( GetAvailableResource(character, plainRequest).total > 0 )
 		return plainRequest;
 	endif
 
-	var options := CraftMenu_EnumerateClothOptions( character );
+	var options := CraftMenu_EnumerateClothOptions( character, cache );
 	var best;
 	var bestTotal := 0;
 	foreach opt in options
-		var req := CraftMenu_ClothOptionToRequest( character, opt );
+		var req := CraftMenu_ClothOptionToRequest( character, opt, cache );
 		var total := GetAvailableResource(character, req).total;
 		if( total > bestTotal )
 			bestTotal := total;
@@ -680,9 +701,9 @@ endfunction
 
 // Lists every option in the given family currently available (backpack +
 // cache) with a total, lets the player pick which one to craft with.
-function CraftMenu_PickFamilyMaterial( character, materialType )
+function CraftMenu_PickFamilyMaterial( character, materialType, byref cache )
 
-	var options := CraftMenu_EnumerateFamilyOptions( character, materialType );
+	var options := CraftMenu_EnumerateFamilyOptions( character, materialType, cache );
 
 	if( len(options) == 0 )
 		SendSysMessage( character, "You don't have any of that available." );
@@ -719,7 +740,7 @@ function CraftMenu_PickFamilyMaterial( character, materialType )
 		var idx;
 		for( idx := startIdx; idx <= endIdx; idx := idx + 1 )
 			var opt := options[idx+1];
-			var req := CraftMenu_FamilyOptionToRequest( character, materialType, opt );
+			var req := CraftMenu_FamilyOptionToRequest( character, materialType, opt, cache );
 			var amt := GetAvailableResource(character, req).total;
 			var name := CraftMenu_FamilyOptionDisplayName( materialType, opt.objtype );
 			GFAddButton( gump, 16, y, 4005, 4007, GF_CLOSE_BTN, CRAFTMENU_BTN_MATERIAL_BASE + idx );
@@ -752,7 +773,7 @@ function CraftMenu_PickFamilyMaterial( character, materialType )
 		return 0;
 	endif
 
-	return CraftMenu_FamilyOptionToRequest( character, materialType, options[picked_idx+1] );
+	return CraftMenu_FamilyOptionToRequest( character, materialType, options[picked_idx+1], cache );
 
 endfunction
 
@@ -761,7 +782,7 @@ endfunction
 // Generic per-slot resolution (fixed-objtype slots + family slots alike).
 // ------------------------------------------------------------------
 
-function CraftMenu_GetMaterialRequest( character, objtype )
+function CraftMenu_GetMaterialRequest( character, objtype, byref cache )
 	var item := CraftMenu_FindTypeInBackpack( character, objtype );
 	if( item )
 		return MakeBackpackRequest( character, item );
@@ -769,7 +790,7 @@ function CraftMenu_GetMaterialRequest( character, objtype )
 
 	var dataFileHandle := 0;
 	if( !GetObjProperty(character, "omegacache_no_autodraw") )
-		var access := FindAccessibleContainer( character, array{REMOVE_FROM_SECURE} );
+		var access := CraftMenu_GetCachedAccess( character, cache );
 		if( access )
 			dataFileHandle := access.df;
 		endif
@@ -813,7 +834,7 @@ function CraftMenu_GetFixedMaterialTotal( character, objtype, byref cache )
 		return cache[cacheKey];
 	endif
 
-	var total := GetAvailableResource( character, CraftMenu_GetMaterialRequest(character, objtype) ).total;
+	var total := GetAvailableResource( character, CraftMenu_GetMaterialRequest(character, objtype, cache) ).total;
 
 	cache[cacheKey] := total;
 	return total;
@@ -830,11 +851,12 @@ endfunction
 
 
 // DescribeSlot only ever resolves the one recipe's own slot (not a loop over
-// many recipes), so it doesn't benefit from memoizing across calls -- it
-// still needs to pass a cache dictionary through (CraftMenu_GetFixedMaterialTotal
-// requires byref cache now, see the PERFORMANCE note at the top of this
-// file), so it just uses a fresh, single-use one each time.
-function CraftMenu_DescribeSlot( character, materialType, fixedObjtype, chosenRequest )
+// many recipes), so it doesn't benefit from memoizing its OWN fixed-material
+// total across calls -- but it's called up to 3x per single detail-gump
+// redraw (once per slot), so it still needs to share the caller's access
+// cache (byref cache, see the PERFORMANCE note at the top of this file)
+// rather than resolving FindAccessibleContainer fresh each time.
+function CraftMenu_DescribeSlot( character, materialType, fixedObjtype, chosenRequest, byref cache )
 	if( chosenRequest )
 		return GetItemDisplayName(CInt(chosenRequest.objtype)) + " (" + GetAvailableResource(character, chosenRequest).total + " available)";
 	endif
@@ -842,8 +864,7 @@ function CraftMenu_DescribeSlot( character, materialType, fixedObjtype, chosenRe
 		return "not chosen yet (click to pick one)";
 	endif
 	var resolved := CInt(fixedObjtype);
-	var scratch_cache := dictionary;
-	return GetItemDisplayName(resolved) + " (" + CraftMenu_GetFixedMaterialTotal(character, resolved, scratch_cache) + " available)";
+	return GetItemDisplayName(resolved) + " (" + CraftMenu_GetFixedMaterialTotal(character, resolved, cache) + " available)";
 endfunction
 
 
@@ -851,11 +872,11 @@ endfunction
 // default automatically: for a family slot, defer to
 // CraftMenu_ResolveFamilyDefault; for everything else there's only one
 // possible objtype anyway.
-function CraftMenu_ResolveDefaultSlot( character, materialType, fixedObjtype )
+function CraftMenu_ResolveDefaultSlot( character, materialType, fixedObjtype, byref cache )
 	if( !CraftMenu_IsPickableFamily(materialType) )
-		return CraftMenu_GetMaterialRequest( character, CInt(fixedObjtype) );
+		return CraftMenu_GetMaterialRequest( character, CInt(fixedObjtype), cache );
 	endif
-	return CraftMenu_ResolveFamilyDefault( character, materialType );
+	return CraftMenu_ResolveFamilyDefault( character, materialType, cache );
 endfunction
 
 
@@ -950,6 +971,7 @@ function CraftMenu_CanMakeElement( character, key, cfg, skill_id, appear_at, byr
 		diff := 150;
 	endif
 	if( effective_skill < ( diff + appear_at ) )
+		CraftMenu_Debug( "REJECT key=" + key + " -- primary skill " + effective_skill + " < needed " + (diff + appear_at) + " (diff=" + diff + " appear_at=" + appear_at + ")" );
 		return 0;
 	endif
 
@@ -961,24 +983,29 @@ function CraftMenu_CanMakeElement( character, key, cfg, skill_id, appear_at, byr
 			co_diff := 150;
 		endif
 		if( GetEffectiveSkill( character, CInt(cfg[key].CoSkillid) ) < ( co_diff + appear_at ) )
+			CraftMenu_Debug( "REJECT key=" + key + " -- CoSkillid " + cfg[key].CoSkillid + " skill " + GetEffectiveSkill(character, CInt(cfg[key].CoSkillid)) + " < needed " + (co_diff + appear_at) );
 			return 0;
 		endif
 	endif
 
 	if( !CraftMenu_HasEnoughOfSlot( character, cfg[key].MaterialType, cfg[key].Material, cfg[key].Material1Objtype, cache ) )
+		CraftMenu_Debug( "REJECT key=" + key + " -- slot1 " + cfg[key].MaterialType + " short of " + cfg[key].Material );
 		return 0;
 	endif
 	if( cfg[key].Material2Type )
 		if( !CraftMenu_HasEnoughOfSlot( character, cfg[key].Material2Type, cfg[key].Material2, cfg[key].Material2Objtype, cache ) )
+			CraftMenu_Debug( "REJECT key=" + key + " -- slot2 " + cfg[key].Material2Type + " short of " + cfg[key].Material2 );
 			return 0;
 		endif
 	endif
 	if( cfg[key].Material3Type )
 		if( !CraftMenu_HasEnoughOfSlot( character, cfg[key].Material3Type, cfg[key].Material3, cfg[key].Material3Objtype, cache ) )
+			CraftMenu_Debug( "REJECT key=" + key + " -- slot3 " + cfg[key].Material3Type + " short of " + cfg[key].Material3 );
 			return 0;
 		endif
 	endif
 
+	CraftMenu_Debug( "ACCEPT key=" + key + " cat=" + cfg[key].Category );
 	return 1;
 
 endfunction
@@ -1059,6 +1086,23 @@ function CraftMenu_ShowCategoryGump( character, cfg, title, skill_id, appear_at,
 	var all_keys := GetConfigStringKeys( cfg );
 	var total_cache := dictionary;
 
+	// Root-cause fix, not just a defensive guard: several crafting cfgs
+	// (carpentry.cfg's per-log-color Difficulty/Quality table, blacksmithy.cfg's
+	// ore-Difficulty table, tailoring.cfg's hide-Difficulty table, ...) reuse
+	// this same file's key namespace for pure lookup data consumed elsewhere
+	// (CraftMenu_GetFamilyQualityDifficulty) rather than real recipes -- those
+	// blocks have no Category/Skill/MaterialType at all, which is what was
+	// crashing CraftMenu_CanMakeElement on missing/Uninit fields. Filter them
+	// out here, once, so every loop below only ever sees genuine recipes.
+	var real_keys := array{};
+	foreach key in all_keys
+		if( cfg[key].Category )
+			real_keys.append(key);
+		endif
+	endforeach
+	all_keys := real_keys;
+	CraftMenu_Debug( "ShowCategoryGump(" + title + "): " + len(categories) + " categories, " + len(all_keys) + " real recipe keys after filter, skill_id=" + skill_id + " qualityDivider=" + qualityDivider );
+
 	// Blacksmithy/Tinkering/Carpentry-style quality scaling (qualityDivider >
 	// 0): each distinct MaterialType's Difficulty is resolved against its
 	// current default pick ONCE for this whole gump build (not once per
@@ -1070,7 +1114,7 @@ function CraftMenu_ShowCategoryGump( character, cfg, title, skill_id, appear_at,
 		foreach key in all_keys
 			var qualKey := cfg[key].MaterialType;
 			if( qualKey and !quality_by_type.Exists(qualKey) )
-				var defaultReq := CraftMenu_ResolveDefaultSlot( character, qualKey, cfg[key].Material1Objtype );
+				var defaultReq := CraftMenu_ResolveDefaultSlot( character, qualKey, cfg[key].Material1Objtype, total_cache );
 				var qualDiff := 0;
 				if( defaultReq )
 					qualDiff := CraftMenu_GetFamilyQualityDifficulty( qualKey, CInt(defaultReq.objtype) );
@@ -1098,7 +1142,17 @@ function CraftMenu_ShowCategoryGump( character, cfg, title, skill_id, appear_at,
 		foreach key in all_keys
 			var matQual := 0;
 			if( qualityDivider > 0 )
-				matQual := quality_by_type[cfg[key].MaterialType];
+				// Guard matches the populate loop above: a key with no
+				// MaterialType (e.g. carpentry.cfg's per-log-color
+				// Difficulty/Quality lookup blocks, which reuse this same
+				// file's key namespace but aren't real recipes) was never
+				// inserted into quality_by_type, so indexing it directly
+				// returns an error value that then blows up the division in
+				// CraftMenu_CanMakeElement.
+				var matType := cfg[key].MaterialType;
+				if( matType and quality_by_type.Exists(matType) )
+					matQual := quality_by_type[matType];
+				endif
 			endif
 			if( cfg[key].Category == cat and CraftMenu_CanMakeElement(character, key, cfg, skill_id, appear_at, total_cache, qualityDivider, matQual) )
 				keys.append(key);
@@ -1225,7 +1279,14 @@ function CraftMenu_ShowCategoryGump( character, cfg, title, skill_id, appear_at,
 					// can still push the real requirement higher than shown.
 					var displaySkill := CInt(cfg[key].Skill);
 					if( qualityDivider > 0 )
-						displaySkill := displaySkill + Cint( quality_by_type[cfg[key].MaterialType] / qualityDivider );
+						// Same guard as the counting pass above -- a key
+						// with no MaterialType was never inserted into
+						// quality_by_type, so skip the adjustment instead
+						// of indexing an error value.
+						var rowMatType := cfg[key].MaterialType;
+						if( rowMatType and quality_by_type.Exists(rowMatType) )
+							displaySkill := displaySkill + Cint( quality_by_type[rowMatType] / qualityDivider );
+						endif
 						if( displaySkill > 150 )
 							displaySkill := 150;
 						endif
@@ -1301,19 +1362,27 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 		return 0;
 	endif
 
+	// Shared for this whole detail-gump session (see the PERFORMANCE note at
+	// CraftMenu_GetCachedAccess) -- every slot resolution/redraw/Pick click
+	// below shares one Omega Cache access lookup instead of re-resolving it
+	// each time. A brand new session (recipe picked again from the category
+	// gump) gets its own fresh dictionary, so nothing here persists longer
+	// than one open-to-close pass through this gump.
+	var cache := dictionary;
+
 	// Pre-resolve a default for every slot up front (instead of only when
 	// Make is clicked) so the description line shows a real material and
 	// count right away -- e.g. "Log (140 available)" -- rather than
 	// "not chosen yet" for slots the player almost never needs to hand-pick.
 	// The Pick button still works for overriding to a specific variant.
-	var slot1Request := CraftMenu_ResolveDefaultSlot( character, element.MaterialType, element.Material1Objtype );
+	var slot1Request := CraftMenu_ResolveDefaultSlot( character, element.MaterialType, element.Material1Objtype, cache );
 	var slot2Request;
 	if( element.Material2Type )
-		slot2Request := CraftMenu_ResolveDefaultSlot( character, element.Material2Type, element.Material2Objtype );
+		slot2Request := CraftMenu_ResolveDefaultSlot( character, element.Material2Type, element.Material2Objtype, cache );
 	endif
 	var slot3Request;
 	if( element.Material3Type )
-		slot3Request := CraftMenu_ResolveDefaultSlot( character, element.Material3Type, element.Material3Objtype );
+		slot3Request := CraftMenu_ResolveDefaultSlot( character, element.Material3Type, element.Material3Objtype, cache );
 	endif
 
 	while( 1 )
@@ -1357,20 +1426,20 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 		CraftMenu_Text( gump, 16, y+10, 200, Upper("Materials") );
 		y := y + 30;
 
-		var slot1Name := CraftMenu_DescribeSlot( character, element.MaterialType, element.Material1Objtype, slot1Request );
+		var slot1Name := CraftMenu_DescribeSlot( character, element.MaterialType, element.Material1Objtype, slot1Request, cache );
 		GFAddButton( gump, 16, y, 4005, 4007, GF_CLOSE_BTN, CRAFTMENU_BTN_PICK_MATERIAL );
 		CraftMenu_Text( gump, 50, y, 460, element.MaterialType + " (" + element.Material + ") -- " + slot1Name );
 		y := y + 22;
 
 		if( element.Material2Type )
-			var slot2Name := CraftMenu_DescribeSlot( character, element.Material2Type, element.Material2Objtype, slot2Request );
+			var slot2Name := CraftMenu_DescribeSlot( character, element.Material2Type, element.Material2Objtype, slot2Request, cache );
 			GFAddButton( gump, 16, y, 4005, 4007, GF_CLOSE_BTN, CRAFTMENU_BTN_PICK_MATERIAL2 );
 			CraftMenu_Text( gump, 50, y, 460, element.Material2Type + " (" + element.Material2 + ") -- " + slot2Name );
 			y := y + 22;
 		endif
 
 		if( element.Material3Type )
-			var slot3Name := CraftMenu_DescribeSlot( character, element.Material3Type, element.Material3Objtype, slot3Request );
+			var slot3Name := CraftMenu_DescribeSlot( character, element.Material3Type, element.Material3Objtype, slot3Request, cache );
 			GFAddButton( gump, 16, y, 4005, 4007, GF_CLOSE_BTN, CRAFTMENU_BTN_PICK_MATERIAL3 );
 			CraftMenu_Text( gump, 50, y, 460, element.Material3Type + " (" + element.Material3 + ") -- " + slot3Name );
 			y := y + 22;
@@ -1411,7 +1480,7 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 
 		elseif( btn == CRAFTMENU_BTN_PICK_MATERIAL )
 			if( CraftMenu_IsPickableFamily(element.MaterialType) )
-				var picked := CraftMenu_PickFamilyMaterial( character, element.MaterialType );
+				var picked := CraftMenu_PickFamilyMaterial( character, element.MaterialType, cache );
 				if( picked )
 					slot1Request := picked;
 				endif
@@ -1421,7 +1490,7 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 
 		elseif( btn == CRAFTMENU_BTN_PICK_MATERIAL2 )
 			if( CraftMenu_IsPickableFamily(element.Material2Type) )
-				var picked2 := CraftMenu_PickFamilyMaterial( character, element.Material2Type );
+				var picked2 := CraftMenu_PickFamilyMaterial( character, element.Material2Type, cache );
 				if( picked2 )
 					slot2Request := picked2;
 				endif
@@ -1431,7 +1500,7 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 
 		elseif( btn == CRAFTMENU_BTN_PICK_MATERIAL3 )
 			if( CraftMenu_IsPickableFamily(element.Material3Type) )
-				var picked3 := CraftMenu_PickFamilyMaterial( character, element.Material3Type );
+				var picked3 := CraftMenu_PickFamilyMaterial( character, element.Material3Type, cache );
 				if( picked3 )
 					slot3Request := picked3;
 				endif
@@ -1442,13 +1511,13 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 		elseif( btn == CRAFTMENU_BTN_MAKE_MAX or btn == CRAFTMENU_BTN_MAKE_NUMBER or btn == CRAFTMENU_BTN_MAKE_NOW or btn == CRAFTMENU_BTN_MAKE_BULK )
 
 			if( !slot1Request )
-				slot1Request := CraftMenu_ResolveDefaultSlot( character, element.MaterialType, element.Material1Objtype );
+				slot1Request := CraftMenu_ResolveDefaultSlot( character, element.MaterialType, element.Material1Objtype, cache );
 			endif
 			if( element.Material2Type and !slot2Request )
-				slot2Request := CraftMenu_ResolveDefaultSlot( character, element.Material2Type, element.Material2Objtype );
+				slot2Request := CraftMenu_ResolveDefaultSlot( character, element.Material2Type, element.Material2Objtype, cache );
 			endif
 			if( element.Material3Type and !slot3Request )
-				slot3Request := CraftMenu_ResolveDefaultSlot( character, element.Material3Type, element.Material3Objtype );
+				slot3Request := CraftMenu_ResolveDefaultSlot( character, element.Material3Type, element.Material3Objtype, cache );
 			endif
 
 			if( !slot1Request or (element.Material2Type and !slot2Request) or (element.Material3Type and !slot3Request) )

@@ -1,0 +1,71 @@
+// 2026-09-14: background hunger-damage ticker, spawned by hunger.src via
+// Start_Script the moment a character's hunger first reaches 10. Runs
+// independently of hunger.src's hourly hunger-increment loop so hunger
+// keeps climbing toward the 14-level famine message/auto-eat trigger (and
+// the 15 ceiling) while this drains resources in the meantime, instead of
+// freezing hunger in place the way the old single-tier blocking design did.
+//
+// Tiers, checked against CURRENT hunger every tick (not just its value when
+// this script was spawned):
+//   hunger >= 10: stamina drains
+//   hunger >= 12: mana also drains
+//   hunger >= 14: health also drains
+//
+// Exits once hunger drops back under 10 (the character ate enough) or the
+// character is gone/dead/logged out and back in.
+
+use uo;
+use os;
+
+include "include/attributes";
+
+program hungerdamage( chr )
+
+	if (!chr)
+		return;
+	endif
+
+	// Guards against an orphaned instance surviving a relog -- hunger.src's
+	// own loop for THIS login already exits the same way.
+	var starttime := GetObjProperty(chr, "#logontime");
+
+	while ( chr and CInt(GetObjProperty(chr, "hunger")) >= 10 )
+
+		if ( starttime != GetObjProperty(chr, "#logontime") )
+			return;
+		endif
+
+		if ( chr.dead )
+			SetObjProperty(chr, "hunger", 0);
+			return;
+		endif
+
+		var hunger := CInt(GetObjProperty(chr, "hunger"));
+
+		if (GetStamina(chr) > 2)
+			SetStamina(chr, GetStamina(chr) - 2);
+		endif
+
+		if (hunger >= 12)
+			if (GetMana(chr) > 2)
+				SetMana(chr, GetMana(chr) - 2);
+			endif
+		endif
+
+		if (hunger >= 14)
+			if (GetHP(chr) > 2)
+				SetHP(chr, GetHP(chr) - 2);
+			endif
+		endif
+
+		sleep(6);
+
+		if (!chr)
+			return;
+		endif
+
+	endwhile
+
+	SendSysMessage(chr, "You're no longer starving.");
+
+endprogram

@@ -128,6 +128,10 @@ function CheckHitChance(attacker, defender)
 
 	var skill_factor := 214.285714285714;
 	var class_factor := 0.0238;
+	// 2026-09-14: kept at 0.05 (not rescaled) -- hunger's ceiling moved from
+	// 10 to 15 (pkg/std/cooking/hunger.src), so max hunger now gives a 75%
+	// hit-chance penalty (15 * 0.05) instead of the old 50% (10 * 0.05).
+	// Deliberate: being famished should hurt more now.
 	var hunger_factor := 0.05;
 	var min_hit_chance := 0.1;
 	var weapon := attacker.weapon;

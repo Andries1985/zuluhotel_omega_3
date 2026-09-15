@@ -32,7 +32,7 @@ var DELAY_BETWEEN_FISH := 20;
 
 function CheckIfCanUseFish(character)
 	if(GetObjProperty(character , "#magicfish") and GetObjProperty(character , "#magicfish") > ReadGameClock())
-        SendSysmessage(character , "You must wait until you can eat another magic fish!");
+        SendSysmessage(character , "You must wait before you can use another scroll of the depths!");
         return 0;
     else
         SetObjProperty(character , "#magicfish" , ReadGameClock() + DELAY_BETWEEN_FISH);   
@@ -226,8 +226,9 @@ program use_magicfish( who, fish )
 				who.hidden := 1;
 		endcase
 	else
-		// bad spellnum cprop on this fish, it is 0 (not valid)
-		SendSysMessage(who, "Yech, that was a rotten fish!");
+		// bad spellnum cprop on this scroll (0/unset) -- currently only
+		// reachable via 0x2279, the reserved future-Ranger-spell slot
+		SendSysMessage(who, "The scroll's magic has faded to nothing.");
 	endif
     Detach();
 	ReleaseItem( fish );

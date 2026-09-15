@@ -218,6 +218,12 @@ function destroy_all_ingredients(character, current_recipe)
 		elseif (current_ingredient[1] == "ITEM_GENERAL_CHEESE")
 			special_destroy_cheese(character, ingredient_quantity);
 
+		elseif (current_ingredient[1] == "ITEM_REGULAR_FISH")
+			special_destroy_regular_fish(character, ingredient_quantity);
+
+		elseif (current_ingredient[1] == "ITEM_RARE_FISH")
+			special_destroy_rare_fish(character, ingredient_quantity);
+
 		//otherwise, its just a normal ingredient
 		else
 			var req := struct{
@@ -362,10 +368,18 @@ function check_for_all_ingredients (character, current_recipe)
 		//Its kind of a messy hack but it's the best thing I can think of using the ingredient list
 		//method.  The !selected_ingredient is used when the recipe is looping (in case the original
 		//item was destroyed) since there could still be others of it's type.
-		if ( food_dictionary [ current_ingredient[1] ] == original_ingredient_objtype )
+		// 2026-09-14: family ingredients (ITEM_REGULAR_FISH/ITEM_RARE_FISH)
+		// match by tier membership, not a single fixed objtype -- the plain
+		// food_dictionary comparison below would never match a real fish's
+		// objtype for these two names.
+		if ( current_ingredient[1] == "ITEM_REGULAR_FISH" and IsRegularFishObjtype(original_ingredient_objtype) )
+			used_selected_ingredient := 1;
+		elseif ( current_ingredient[1] == "ITEM_RARE_FISH" and IsRareFishObjtype(original_ingredient_objtype) )
+			used_selected_ingredient := 1;
+		elseif ( food_dictionary [ current_ingredient[1] ] == original_ingredient_objtype )
 			used_selected_ingredient := 1;
 		endif
-		
+
 		//Setting variable to allow for Crafting Power Hour
 		var ingredient_quantity := CInt(current_ingredient[2]);
 		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
@@ -389,7 +403,15 @@ function check_for_all_ingredients (character, current_recipe)
 				return 0;
 			endif
 
+		elseif (current_ingredient[1] == "ITEM_REGULAR_FISH")
+			if (!special_find_regular_fish(character, ingredient_quantity))
+				return 0;
+			endif
 
+		elseif (current_ingredient[1] == "ITEM_RARE_FISH")
+			if (!special_find_rare_fish(character, ingredient_quantity))
+				return 0;
+			endif
 
 		else
 			var req := struct{

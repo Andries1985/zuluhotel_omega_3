@@ -70,7 +70,11 @@ program fill_glassware (character, used_item)
 			//check to see if the target was a valid source of water.  If so, create a pitcher of water
 			if (check_for_water(character, targetted))
 				playsoundeffect (character, SOUND_EFFECT_SPLASH);
-				created_item := CreateItemInBackpack (character, 0x1f9e, 1);
+				// 0x1f9e was removed as a duplicate of 0x1f9d (pitcherofwater)
+				// 2026-08-29 (see itemdesc.cfg's dedup note) but this literal
+				// creation call was never updated -- filling a pitcher with
+				// water was creating a dead objtype with no itemdesc entry.
+				created_item := CreateItemInBackpack (character, 0x1f9d, 1);
 
 			elseif (check_for_cows (character, targetted))
 				playsoundeffect (character, SOUND_EFFECT_MOO);
@@ -128,6 +132,12 @@ program fill_glassware (character, used_item)
 		//type of glass that should be created
 		var created_glass_objtype := 0;
 
+		// 0x1f9c/0x1f98/0x1f9e (wine/cider/water) were removed as duplicate
+		// objtypes 2026-08-29 in favor of 0x1f9b/0x1f97/0x1f9d -- this case
+		// was never updated, so pouring a glass from a real (live) pitcher
+		// of wine or cider matched nothing here and fell through to the
+		// error message below. Water happened to still work by accident via
+		// the check_for_water fallback further down.
 		case (targetted.item.objtype)
 			0x099b:		created_glass_objtype := 0x1F85;
 			0x099F:		created_glass_objtype := 0x09EE;
@@ -135,11 +145,11 @@ program fill_glassware (character, used_item)
 			0x09c8:		created_glass_objtype := 0x1F7D;
 			0x1f9a:		created_glass_objtype := 0x1F85;
 			0x1f96:		created_glass_objtype := 0x09EE;
-			0x1f9c:		created_glass_objtype := 0x1F8D;
-			0x1f98:		created_glass_objtype := 0x1F7D;
-			0x1f9e:		created_glass_objtype := 0x1F91;
+			0x1f9b:		created_glass_objtype := 0x1F8D;
+			0x1f97:		created_glass_objtype := 0x1F7D;
+			0x1f9d:		created_glass_objtype := 0x1F91;
 			0x09ad:		created_glass_objtype := 0x1F89;
-		endcase;			
+		endcase;
 
 		if (created_glass_objtype)
 			playsoundeffect (character, SOUND_EFFECT_POUR);

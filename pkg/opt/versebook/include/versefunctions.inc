@@ -65,7 +65,9 @@ function CanPlay(who, song)
 		return 0;
 	endif
 
-	if (!IsBard(who))
+	// 2026-09-13: let staff bypass this for testing (matches the
+	// !who.cmdlevel staff check already used above in this function)
+	if (!IsBard(who) && !who.cmdlevel)
 		SendSysMessage(who, "Only classed bards may perform the archaic verses.");
 		return 0;
 	endif

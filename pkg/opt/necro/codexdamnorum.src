@@ -5,6 +5,7 @@ use cfgfile;
 
 include "include/bitwise";
 include "include/spelldata";
+include "include/constants/cmdlevels";
 
 var layout := {
 	"page 0",
@@ -92,6 +93,7 @@ program codexdamnorum(who, tome)
 
 	if (GetObjProperty(who, CLASSEID_MAGE))
 	elseif (GetObjProperty(who, CLASSEID_POWERPLAYER))
+	elseif (who.cmdlevel >= CMDLEVEL_COUNSELOR) // 2026-09-13: let staff open this for testing
 	else
 		SendSysMessage(who,"Only Mages and Powerplayers can use this!");
 		return;

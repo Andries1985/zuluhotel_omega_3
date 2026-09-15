@@ -490,14 +490,23 @@ endfunction
 
 function IsFish( theobj )
 
+	// 2026-09-14: UOBJ_FISH_START/END and UOBJ_SFISH_START/END (0x09CC-0x09D0,
+	// 0x0DD6-0x0DD9) are the OLD, now-dead placeholder fish range -- nothing
+	// creates them anymore, but they're kept here in case any pre-rework
+	// item still exists somewhere. Real fish now use the tiered catch system
+	// in pkg/std/fishing/ (Regular/Rare/Legendary, 0x30300-0x30361) --
+	// crustaceans (0x30362-0x3037D) are a separate trap-only system, not
+	// carved by a blade, so deliberately not included here.
 	if( (theobj >= UOBJ_FISH_START) and (theobj <= UOBJ_FISH_END) )
 		return 1;
 	elseif( (theobj >= UOBJ_SFISH_START) and (theobj <= UOBJ_SFISH_END) )
 		return 1;
+	elseif( (theobj >= 0x30300) and (theobj <= 0x30361) )
+		return 1;
 	else
 		return 0;
 	endif
-		
+
 endfunction
 
 function IsIDable( item )

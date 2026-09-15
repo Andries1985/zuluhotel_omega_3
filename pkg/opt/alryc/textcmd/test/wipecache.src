@@ -1,0 +1,46 @@
+// Synopsis: Target an Omega Cache container and delete every stored entry (including leases) from it, for a clean testing slate
+use uo;
+
+include ":staff:include/staff";
+include "include/omegacache_utils";
+
+program wipecache(who)
+
+	// 2026-09-14: switched from FindAccessibleContainer's "nearest accessible
+	// cache" auto-detect to an explicit target, so a tester standing near
+	// multiple caches can't accidentally wipe the wrong one.
+	SendSysMessage(who, "Target the Omega Cache to wipe.");
+	var tgt := Target(who);
+	if(!tgt)
+		SendSysMessage(who, "Cancelled.", color := 33);
+		return;
+	endif
+
+	if(!tgt.isa(POLCLASS_ITEM) or CInt(tgt.objtype) != OMEGACACHE_OBJTYPE)
+		SendSysMessage(who, "That is not an Omega Cache container.", color := 33);
+		return;
+	endif
+
+	var house_serial := CInt(GetObjProperty(tgt, "houseserial"));
+	if(!house_serial)
+		SendSysMessage(who, "That Omega Cache isn't linked to a house -- nothing to wipe.", color := 33);
+		return;
+	endif
+
+	var df := OpenOmegaCacheStore(house_serial);
+	if(!df)
+		SendSysMessage(who, "Failed to open storage.");
+		return;
+	endif
+
+	var keys := df.Keys();
+	var deleted := 0;
+	foreach key in keys
+		df.DeleteElement(key);
+		deleted := deleted + 1;
+	endforeach
+
+	SendSysMessage(who, "Wiped " + deleted + " entries from the Omega Cache.");
+	LogCommand(who, GetProcess(GetPid()).name, tgt.desc+"/"+tgt.serial, "house="+house_serial+" wiped="+deleted);
+
+endprogram

@@ -8,8 +8,7 @@ use os;
 use math;
 use cfgfile;
 
-//include ":omegacache:omegacache";
-include "../pkg/opt/omegacache/omegacache";
+include ":omegacache:omegacache";
 
 program use_omegacache(who, item)
 

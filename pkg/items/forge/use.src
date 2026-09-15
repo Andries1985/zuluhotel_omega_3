@@ -15,34 +15,20 @@ program Animate_Large_Forge_Items( mobile, forge )
 		return;
 	endif
 
-	RunBlacksmithGump( mobile );
-
-	var items := GetObjProperty( forge, "OtherItems" ),
-		i := 1,
-		j := 1,
-		delay := 800,
-		forge_part := 0;
-
+	var items := GetObjProperty( forge, "OtherItems" );
 	if( !items || items.errortext )
 		SendSysMessage( mobile, "This forge appears to be broken, please page a gm.", 0x3, 0x22 );
 		return 0;
 	endif
 
-	for( i:=1; i<=8; i:=i+1 )
-		if( CInt( i % 2 ) == 1 )
-			delay := 800;
-		else
-			delay := 500;
-		endif
+	// 2026-09-15: bellows animation moved to a background script
+	// (animatebellows.src) instead of running inline here -- it used to run
+	// AFTER RunBlacksmithGump returned, so the ~5s bellows sequence only
+	// played once the player had already finished (or backed out of) the
+	// whole crafting session, and they couldn't do anything else until it
+	// ended. Now it plays concurrently with the gump being open instead.
+	Start_Script(":forge:animatebellows", {mobile, items});
 
-		SleepMS( delay );
-		for( j:=1; j<=items.Size(); j:=j+1 )
-			SleepMS( 5 );
-			forge_part := SystemFindObjectBySerial( items[j] );
-			forge_part.Animate();
-		endfor
-	endfor
-
-	SendSysMessage( mobile, "The forge appears to be extremely hot.", 0x3, 0x42 );
+	RunBlacksmithGump( mobile );
 	return 1;
 endprogram

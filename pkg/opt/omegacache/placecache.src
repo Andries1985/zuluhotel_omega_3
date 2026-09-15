@@ -12,8 +12,7 @@ include "include/omegacache_utils";
 include ":house:utility";
 include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
-//include ":omegacache:omegacache";
-include "../pkg/opt/omegacache/omegacache";
+include ":omegacache:omegacache";
 
 program place_omegacache(who, deed)
 

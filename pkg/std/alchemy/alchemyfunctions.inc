@@ -31,7 +31,14 @@ const ALCH_POINT_MULTIPLIER := 15;
 const NUM_PERFORM      := 4;
 const ANIM_DELAY_MS    := 1500;
 
-var conf := ReadConfigFile( "alchemy" );
+// 2026-09-15: package-qualified, NOT a bare name -- see the matching note in
+// pkg/std/blacksmithy/blacksmithgump.inc's smith_cfg. A bare "alchemy"
+// resolves against exec.prog()->pkg (the ACTUALLY EXECUTING program's
+// package), which is wrong for any cross-package station caller of this
+// shared .inc (e.g. alchemy_station_use.src's Thief-class dispatch) -- it
+// silently returned an error/empty cfg for those, showing zero categories/
+// recipes in the gump.
+var conf := ReadConfigFile( ":alchemy:alchemy" );
 
 
 // via_station (crafting-station rollout, 2026-09-12): a placed Alchemy

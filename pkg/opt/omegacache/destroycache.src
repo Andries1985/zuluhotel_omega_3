@@ -12,8 +12,7 @@ use os;
 
 include "include/client";
 include "include/omegacache_utils";
-//include ":omegacache:omegacache";
-include "../pkg/opt/omegacache/omegacache";
+include ":omegacache:omegacache";
 
 program destroy_omegacache(item)
 

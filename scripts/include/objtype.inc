@@ -178,8 +178,27 @@ const UOBJ_BARREL_TAP	:= 0x1004;
 const UOBJ_BARREL_LID	:= 0x1DB8;
 const UOBJ_BARREL_STAVE	:= 0x1EB1;
 const UOBJ_BARREL_HOOPS	:= 0x10E1;
+const UOBJ_CLOSED_BARREL	:= 0x0FAE;
+const UOBJ_WATER_BARREL	:= 0x154D;
 
 const UOBJ_POTION_KEG	:= 0x1940;
+
+// Multi-Item Crafting System (2026-09-15) -- the Artificer's Toolbox (tool)
+// and Cooper's Bench (station) both open the shared multicraft.inc gump.
+const UOBJ_ARTIFICERS_TOOLBOX_START	:= 0xA743;
+const UOBJ_ARTIFICERS_TOOLBOX_END	:= 0xA744;
+
+const UOBJ_COOPERS_BENCH_START	:= 0x19F9;
+const UOBJ_COOPERS_BENCH_END	:= 0x19FC;
+const UOBJ_COOPERS_BENCH_SOUTH_MAIN	:= 0x19F9;
+const UOBJ_COOPERS_BENCH_SOUTH_END	:= 0x19FA;
+const UOBJ_COOPERS_BENCH_EAST_MAIN	:= 0x19FB;
+const UOBJ_COOPERS_BENCH_EAST_END	:= 0x19FC;
+
+const UOBJ_POTION_VAT_SOUTH_CLOSED	:= 0xA84B;
+const UOBJ_POTION_VAT_SOUTH_OPEN	:= 0xA84C;
+const UOBJ_POTION_VAT_EAST_CLOSED	:= 0xA84D;
+const UOBJ_POTION_VAT_EAST_OPEN	:= 0xA84E;
 
 const UOBJ_LOOM_START   := 0x105F;
 const UOBJ_LOOM_END     := 0x1066;            

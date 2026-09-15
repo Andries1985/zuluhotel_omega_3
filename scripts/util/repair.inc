@@ -4,6 +4,7 @@ use polsys;
 include "include/client";
 include "include/classes";
 include "include/itemutil";
+include "include/random";
 
 const TEXT_COLOR 		:= 319;
 const TYPE_PENALTY 		:= 1;
@@ -21,11 +22,25 @@ function repair_item( character, item, skillid )
 		return 0;
 	endif
 
-	//The item should be broken already
-	if((item.hp < 2) || (item.hp > item.maxhp ) || (item.quality <= 0.1) || (!item.quality))
+	var crafter_level := IsCrafter(character);
+
+	//Corrupted/invalid item state -- always unrepairable
+	if((item.hp > item.maxhp ) || (item.quality <= 0.1) || (!item.quality))
 		SendSysMessage(character, "The brittle material breaks when you handle it!");
 		DestroyTheItem( character, item );
 		return 0;
+	endif
+
+	//Down to its last hit point: a C5/C6 crafter gets a 50/50 shot to save
+	//it instead of an automatic break (2026-09-15, user request -- previously
+	//any hp<2 item broke unconditionally regardless of crafter skill).
+	if(item.hp < 2)
+		if((crafter_level < 5) || (Random(2) == 0))
+			SendSysMessage(character, "The brittle material breaks when you handle it!");
+			DestroyTheItem( character, item );
+			return 0;
+		endif
+		SendSysMessage(character, "You carefully work with the fragile material, and it holds together!", FONT_NORMAL, TEXT_COLOR);
 	endif
 
 	var to_repair	:= item.maxhp - item.hp;
@@ -77,7 +92,6 @@ function repair_item( character, item, skillid )
 	endcase
 	// Begin changes to make repairing easier.
 	var diff := to_repair + 20;
-	var crafter_level := IsCrafter(character);
 	diff := CInt(diff - crafter_level*CRAFTER_REPAIR_DIFF_BONUS);
 	
 	if (diff < 0)

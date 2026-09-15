@@ -1,0 +1,37 @@
+// animatebellows.src -- background bellows-pumping animation for the Large
+// Forge, split out of use.src (2026-09-15) so it plays concurrently with the
+// crafting gump instead of blocking before/after it.
+use uo;
+use os;
+
+// Start_Script only ever pushes ONE argument -- {mobile, items} arrives here
+// as a single 2-element array in the first parameter, not spread across two
+// named parameters (confirmed 2026-09-15: mobile was receiving the whole
+// array and items came through uninitialized). Unpack it explicitly instead.
+program animatebellows( args )
+
+	var mobile := args[1];
+	var items := args[2];
+
+	var i, j, delay, forge_part;
+
+	for( i:=1; i<=8; i:=i+1 )
+		if( CInt( i % 2 ) == 1 )
+			delay := 800;
+		else
+			delay := 500;
+		endif
+
+		SleepMS( delay );
+		for( j:=1; j<=items.Size(); j:=j+1 )
+			SleepMS( 5 );
+			forge_part := SystemFindObjectBySerial( items[j] );
+			if( forge_part )
+				forge_part.Animate();
+			endif
+		endfor
+	endfor
+
+	SendSysMessage( mobile, "The forge appears to be extremely hot.", 0x3, 0x42 );
+
+endprogram

@@ -1,0 +1,21 @@
+// use.src -- Artificer's Toolbox double-click handler (2026-09-15). Opens the
+// shared multicraft.inc gump against barrelparts.cfg. Also the Script every
+// Cooper's Bench anchor piece points at (see pkg/items/coopersbench), so the
+// tool and the station share this exact entry point.
+
+use uo;
+use cfgfile;
+
+include ":crafting:multicraft";
+
+var toolbox_cfg := ReadConfigFile( ":toolbox:barrelparts" );
+
+program UseToolbox( character, item )
+
+	if( !ReserveItem( item ) )
+		return;
+	endif
+
+	MultiCraft_ShowGump( character, toolbox_cfg, "Multi-Item Crafting" );
+
+endprogram

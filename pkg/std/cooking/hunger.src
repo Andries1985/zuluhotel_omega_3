@@ -21,8 +21,9 @@ program Hunger( chr )
 
 		hunger := Cint(GetObjProperty(chr, "hunger"));
 
-		if (hunger >= 9)
-			hunger := 9;
+		// 2026-09-14: hunger scale stretched from 0-9(->10) to 0-14(->15).
+		if (hunger >= 14)
+			hunger := 14;
 		elseif (!hunger)
      			hunger :=0;
 		endif
@@ -31,17 +32,28 @@ program Hunger( chr )
 		SetObjProperty(chr, "hunger", hunger);
 
 		case (hunger)
-		4 :
+		5 :
 			SendSysMessage(chr, "You could use a bite to eat...");
 
-		8 :
+		10 :
 			SendSysMessage(chr, "You're getting pretty hungry...");
+			// Resource drain also starts here (stamina), well before the
+			// famine message/auto-eat attempt at 14 -- runs as an
+			// independent background script (hungerdamage.src) instead of a
+			// blocking inline call, so THIS loop keeps climbing hunger
+			// toward 12/14/15 instead of freezing at 10 like the old
+			// single-tier design did. hungerdamage.src re-checks current
+			// hunger each tick to add mana loss at 12 and health loss at 14.
+			Start_Script(":cooking:hungerdamage", {chr});
 
-		10 : 
+		12 :
+			SendSysMessage(chr, "You're growing faint with hunger...");
+
+		14 :
 			SendSysMessage(chr, "You're absolutely famished!");
-			if (!CanEat( chr ) )
-				HungerDamage( chr );
-			endif
+			// Side effect matters here, not the return value -- health loss
+			// is already covered by hungerdamage.src once hunger reaches 14.
+			CanEat( chr );
 		endcase
 
 		sleep( 60 * 60 );
@@ -107,33 +119,10 @@ if(!me.multi)
 endif
 endfunction
 
-function HungerDamage( chr )
-
-	var hunger := GetObjProperty(chr, "hunger");
-	while ( (chr) and (hunger > 9) )
-
-		if ( chr.dead )
-			SetObjProperty(chr, "hunger",0);
-			return;
-		else
-			if (GetHP(chr) > 2)
-				SetHP(chr, GetHP(chr) - 2);
-			endif
-			if (GetStamina(chr) > 2)
-				SetStamina(chr, GetStamina(chr) -2);
-			endif
-		endif
-		sleep(6);
-		if (!chr)
-			return;
-		else
-			hunger := GetObjProperty(chr, "hunger");
-		endif
-	endwhile
-
-	SendSysMessage(chr, "You're no longer starving.");
-
-endfunction
+// HungerDamage moved to hungerdamage.src (2026-09-14) -- now an independent
+// background script (spawned via Start_Script at hunger level 10 above)
+// instead of a blocking inline function, so this file's hourly loop can
+// keep climbing hunger toward the new 12/14/15 tiers while it runs.
 
 function CanFeed(me, mount)
 

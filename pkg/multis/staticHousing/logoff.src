@@ -15,11 +15,24 @@ const EVID_PLAYER_LOGOFF := 0x123458;
 //const EVID_DISCHARGE := 0x123457;
 
 program onlogoff(who)
+	// 2026-09-13: who is already disconnected (or, on a Ctrl-C shutdown,
+	// mid-teardown) by the time onlogoff fires, so GetObjProperty(who, ...)
+	// below can return error{} instead of the stored value. Previously
+	// masked by old lenient operator semantics (Integer - error{} silently
+	// gave the Integer back); the 09-05-2026 core update made that a hard
+	// "Operator - not supported" error instead, which is what surfaced this.
+	// The script option alone wasn't enough to stop it during shutdown
+	// teardown, so every GetObjProperty(who, ...) result used in an operator
+	// expression below is also explicitly cast (CInt/CStr) -- matching the
+	// sibling "time_online" line below, which already did this and never
+	// crashed.
+	set_script_option( SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES, 1 );
+
     var time_logged_in, real_life_time, time_online, dmy, month, timestring;
 	var acct := FindAccount(who.acctname);
 	acct.setprop("LastLogin", readGameclock());
-	var sessiontime := ReadGameClock() - GetObjProperty(who,"logontime");
-	var timer := GetObjProperty(who,"onlinetimer");
+	var sessiontime := ReadGameClock() - CInt(GetObjProperty(who,"logontime"));
+	var timer := CInt(GetObjProperty(who,"onlinetimer"));
 	if(!timer)
 		timer := 0;
 	endif
@@ -31,7 +44,7 @@ program onlogoff(who)
 
 	month := TIME_GetCurrentMonth();
     time_logged_in := GetObjProperty(who, "logontime");
-    real_life_time := GetObjProperty(who, "Real_Life_login_Time");
+    real_life_time := CStr(GetObjProperty(who, "Real_Life_login_Time"));
     time_online := ReadGameClock() - CInt(time_logged_in);
 	timestring := TIME_GetTimeDesc(time_online, 1);
     LogToFile("::log/activity_" + month + ".log", who.name +" on account " + who.acctname + " logged on at " + real_life_time +

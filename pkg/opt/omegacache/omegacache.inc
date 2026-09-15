@@ -127,6 +127,17 @@ function FormatNumber(num)
 	return result;
 endfunction
 
+// Zero-pads a non-negative integer to a fixed width so it sorts correctly as
+// a string (e.g. ZeroPad(7, 4) -> "0007"). Used to build sortable "weight|||
+// name" keys for the categories.cfg priority/order columns.
+function ZeroPad(num, width)
+	var s := CStr(CInt(num));
+	while(len(s) < width)
+		s := "0" + s;
+	endwhile
+	return s;
+endfunction
+
 // Parses a string as a base-10 integer, stripping leading zeros
 // to prevent CInt from interpreting "010000" as hex/octal.
 function ParseDecimal(s)
@@ -248,11 +259,27 @@ function LoadCategoryLookup()
 	var icon_colors_elem := FindConfigElem(cat_cfg, "IconColors");
 	var cat_names := array{};
 	var objtype_to_cat := dictionary;
+	var objtype_to_order := dictionary;
 	var cat_icons := dictionary;
 	var cat_icon_colors := dictionary;
 
+	// ListConfigElemProps() returns property names via POL's ConfigElem, which
+	// stores them in a std::multimap with a case-insensitive comparator -- so
+	// it always comes back alphabetical, never file/declaration order. The
+	// number next to each category in categories.cfg is the real ordering
+	// mechanism; sort by it here instead of using raw_names as-is.
 	if(categories_elem)
-		cat_names := ListConfigElemProps(categories_elem);
+		var raw_names := ListConfigElemProps(categories_elem);
+		var order_pairs := array{};
+		foreach cn in raw_names
+			var priority := CInt(GetConfigString(categories_elem, cn));
+			order_pairs.append(ZeroPad(priority, 10) + "|||" + cn);
+		endforeach
+		order_pairs.sort();
+		foreach pair in order_pairs
+			var sep := Find(pair, "|||", 1);
+			cat_names.append(pair[sep + 3, len(pair)]);
+		endforeach
 	endif
 
 	foreach cat_name in cat_names
@@ -261,6 +288,11 @@ function LoadCategoryLookup()
 			var objtypes := ListConfigElemProps(cat_elem);
 			foreach ot in objtypes
 				objtype_to_cat[CInt(ot)] := cat_name;
+				// Per-item weight for in-category ordering (ShowItemList).
+				// Every existing entry is "1" today, so they all tie and fall
+				// through to the alphabetical secondary sort -- identical to
+				// current behavior until someone deliberately edits a value.
+				objtype_to_order[CInt(ot)] := CInt(GetConfigString(cat_elem, ot));
 			endforeach
 		endif
 		if(icons_elem)
@@ -274,7 +306,7 @@ function LoadCategoryLookup()
 		endif
 	endforeach
 
-	return struct{ cat_names := cat_names, objtype_to_cat := objtype_to_cat, cat_icons := cat_icons, cat_icon_colors := cat_icon_colors };
+	return struct{ cat_names := cat_names, objtype_to_cat := objtype_to_cat, objtype_to_order := objtype_to_order, cat_icons := cat_icons, cat_icon_colors := cat_icon_colors };
 endfunction
 
 // Returns the set of objtypes (as CInt keys) for a given category name.
@@ -1624,31 +1656,28 @@ function ShowCategoryMenu(who, category_map, cat_icons, ordered_cat_names := 0, 
 			page_num := page_num + 1;
 			GFPage(gump, page_num);
 
-			// Page nav — balanced centering based on which buttons are visible
+			// Page nav — fixed-width Prev/label/Next slots so the buttons land
+			// in the same spot on every page, whether or not that page's own
+			// Prev/Next actually draws (a page-1 gump with no Prev used to
+			// center a narrower group, putting Next somewhere else on-screen
+			// than a middle page's Next).
 			if(total_pages > 1)
 				var has_prev := (page_num > 1);
 				var has_next := (page_num < total_pages);
 				var page_label := "Page " + page_num + "/" + total_pages;
-				var label_w := len(page_label) * 8;
+				var max_label_w := len("Page " + total_pages + "/" + total_pages) * 8;
 
-				var group_w := label_w;
-				if(has_prev)
-					group_w := group_w + 70;
-				endif
-				if(has_next)
-					group_w := group_w + 70;
-				endif
-
+				var group_w := max_label_w + 70 + 70;
 				var nav_x := (490 - group_w) / 2;
 
 				if(has_prev)
 					GFAddButton(gump, nav_x, 485, 9766, 9767, GF_PAGE_BTN, page_num - 1);
 					GFTextLine(gump, nav_x + 20, 485, TEXT_HUE, "Prev");
-					nav_x := nav_x + 70;
 				endif
+				nav_x := nav_x + 70;
 
 				GFTextLine(gump, nav_x, 485, TEXT_HUE, page_label);
-				nav_x := nav_x + label_w + 10;
+				nav_x := nav_x + max_label_w + 10;
 
 				if(has_next)
 					GFAddButton(gump, nav_x, 485, 9762, 9763, GF_PAGE_BTN, page_num + 1);
@@ -1710,7 +1739,7 @@ endfunction
 // Gump: Item List (per category)
 // ============================================================
 
-function ShowItemList(who, df, category_name, category_map, byref out_keys)
+function ShowItemList(who, df, category_name, category_map, byref out_keys, objtype_to_order := 0)
 	var keys := category_map[category_name];
 	if(!keys)
 		keys := array{};
@@ -1745,7 +1774,11 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys)
 			display_keys.append(key);
 		endif
 	endforeach
-	// Sort display keys alphabetically by item name
+	// Sort display keys by categories.cfg per-item weight (ascending), then
+	// alphabetically by item name as a tiebreak. Every existing weight is "1"
+	// today, so everything ties and the name tiebreak alone decides order --
+	// identical to the old pure-alphabetical behavior until a weight is
+	// deliberately edited away from the default.
 	var name_key_pairs := array{};
 	foreach key in display_keys
 		var ot := CInt(GetObjtypeFromKey(key));
@@ -1761,13 +1794,21 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys)
 		while(name[1] == " ")
 			name := name[2, len(name)];
 		endwhile
-		name_key_pairs.append(name + "|||" + key);
+		var weight := 1;
+		if(objtype_to_order and objtype_to_order[ot])
+			weight := CInt(objtype_to_order[ot]);
+		endif
+		name_key_pairs.append(ZeroPad(weight, 10) + "|||" + name + "|||" + key);
 	endforeach
 	name_key_pairs.sort();
 	display_keys := array{};
 	foreach pair in name_key_pairs
-		var sep := Find(pair, "|||", 1);
-		display_keys.append(pair[sep + 3, len(pair)]);
+		// Two "|||" separators now (weight|||name|||key) -- find the first
+		// one (end of the weight), then find the next one starting after it
+		// (end of the name), so the trailing DataFile key comes out whole.
+		var sep1 := Find(pair, "|||", 1);
+		var sep2 := Find(pair, "|||", sep1 + 3);
+		display_keys.append(pair[sep2 + 3, len(pair)]);
 	endforeach
 
 	out_keys := display_keys;
@@ -1799,32 +1840,29 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys)
 			GFTilePic(gump, 505, 32, 0x0E79);   // Target icon header
 			GFTilePic(gump, 548, 28, 0x0E75);   // Backpack icon header
 
-			// Page nav — balanced centering based on which buttons are visible
+			// Page nav — fixed-width Prev/label/Next slots so the buttons land
+			// in the same spot on every page, whether or not that page's own
+			// Prev/Next actually draws (a page-1 gump with no Prev used to
+			// center a narrower group, putting Next somewhere else on-screen
+			// than a middle page's Next).
 			if(total_pages > 1)
 				var has_prev := (page_num > 1);
 				var has_next := (page_num < total_pages);
 				var page_label := "Page " + page_num + "/" + total_pages;
-				var label_w := len(page_label) * 8;
+				var max_label_w := len("Page " + total_pages + "/" + total_pages) * 8;
 
-				// Total width of nav group: [Prev 60] [gap 10] [label] [gap 10] [Next 60]
-				var group_w := label_w;
-				if(has_prev)
-					group_w := group_w + 70;  // button + text + gap
-				endif
-				if(has_next)
-					group_w := group_w + 70;
-				endif
-
+				// Total width of nav group: [Prev 70] [label] [gap 10] [Next 70]
+				var group_w := max_label_w + 70 + 70;
 				var nav_x := (600 - group_w) / 2;
 
 				if(has_prev)
 					GFAddButton(gump, nav_x, 455, 9766, 9767, GF_PAGE_BTN, page_num - 1);
 					GFTextLine(gump, nav_x + 20, 455, TEXT_HUE, "Prev");
-					nav_x := nav_x + 70;
 				endif
+				nav_x := nav_x + 70;
 
 				GFTextLine(gump, nav_x, 455, TEXT_HUE, page_label);
-				nav_x := nav_x + label_w + 10;
+				nav_x := nav_x + max_label_w + 10;
 
 				if(has_next)
 					GFAddButton(gump, nav_x, 455, 9762, 9763, GF_PAGE_BTN, page_num + 1);
@@ -1857,7 +1895,10 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys)
 		foreach pname in propnames
 			if(pname[1,6] == "cprop_")
 				var cprop_name := pname[7, len(pname)];
-				if(cprop_name == "SpellID" or cprop_name == "BaseName")
+				// Undyable is on nearly every quest/special item (fishing
+				// shells, scrolls, etc.), always the same value, and never
+				// distinguishes one stack from another -- not worth showing.
+				if(cprop_name == "SpellID" or cprop_name == "BaseName" or cprop_name == "Undyable")
 					continue;
 				endif
 				var cprop_val := elem.GetProp(pname);
@@ -1937,7 +1978,7 @@ function RunOmegaCacheGump(who, access)
 			category_map := BuildCategoryMap(df, cat_lookup);
 			result := ShowCategoryMenu(who, category_map, cat_lookup.cat_icons, cat_lookup.cat_names, cat_display_order, cat_lookup.cat_icon_colors);
 		else
-			result := ShowItemList(who, df, view, category_map, current_keys);
+			result := ShowItemList(who, df, view, category_map, current_keys, cat_lookup.objtype_to_order);
 		endif
 
 		if(!result)

@@ -66,9 +66,9 @@ program lure_use(character, lure)
 	Print("[Lure] "+character.name+" attached "+lure_tier+" "+lure_kind+" lure to "+CStr(targetted.objtype)+" ("+CStr(lure_charges)+" charges)");
 	SendSysmessage(character, "You attach the lure. It should hold for "+CStr(lure_charges)+" more catches.");
 
-	//Fish Lures (graphic 0x4B44) are tiledata-stackable, so this may be one item out of a
-	//stack -- SubtractAmount consumes just this one instead of DestroyItem wiping the whole
-	//stack. No-op difference for a lone (amount 1) lure.
+	//All 6 lure tiers (fish hook graphics 0x4B44-0x4B47) are tiledata-stackable, so this
+	//may be one item out of a stack -- SubtractAmount consumes just this one instead of
+	//DestroyItem wiping the whole stack. No-op difference for a lone (amount 1) lure.
 	SubtractAmount(lure, 1);
 
 endprogram

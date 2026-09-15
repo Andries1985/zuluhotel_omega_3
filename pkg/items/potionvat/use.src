@@ -1,0 +1,12 @@
+// use.src -- Potion Vat double-click handler (2026-09-15). Open/closed is a
+// permanent placement-time choice (see the deed's BuildCFG), not a runtime
+// toggle, so double-click is free to open the Fill/Empty/Transfer gump
+// directly -- same shared gump the Potion Keg uses.
+
+use uo;
+
+include ":alchemyplus:kegvat";
+
+program UsePotionVat( who, vat )
+	KegVat_ShowOperateGump( who, vat );
+endprogram

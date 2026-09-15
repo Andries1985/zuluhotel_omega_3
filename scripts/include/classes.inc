@@ -255,7 +255,7 @@ function GetClasseSkills( classeid )
 						 SKILLID_SWORDSMANSHIP	,
 						 SKILLID_TACTICS	};
 
-		CLASSEID_CRAFTER:		
+		CLASSEID_CRAFTER:
 				return { SKILLID_ARMSLORE	,
 						 SKILLID_BLACKSMITHY	,
 						 SKILLID_BOWCRAFT	,
@@ -295,7 +295,7 @@ function GetClasseSkills( classeid )
 						 SKILLID_MAGICRESISTANCE,
 						 SKILLID_MACEFIGHTING	};
 
-		CLASSEID_RANGER:		
+		CLASSEID_RANGER:
 				return { SKILLID_ANIMALLORE	,
 						 SKILLID_TAMING		,
 						 SKILLID_ARCHERY	,

@@ -129,7 +129,27 @@ function CarveFish( user , use_on )
 		return;
 	endif
 
-	var num_steaks := use_on.amount * 4;
+	// 2026-09-14: steaks per fish now matches where/what it was caught (see
+	// fishing.inc:createfish's "DeepWaterCatch"/"FishTier" CProps) instead of
+	// a flat 4 -- shore catches give 1, deep-water catches give 4, same as if
+	// the fish had been auto-carved at catch time instead of kept whole. On
+	// top of that, Rare catches carve for double, Legendary for 10x -- a
+	// fish caught before this change (no CProps set) defaults to shore/
+	// Regular, the safest (lowest) assumption.
+	var steaks_per_fish := 1;
+	if (GetObjProperty(use_on, "DeepWaterCatch"))
+		steaks_per_fish := 4;
+	endif
+
+	var tier_multiplier := 1;
+	var fish_tier := GetObjProperty(use_on, "FishTier");
+	if (fish_tier == "Rare")
+		tier_multiplier := 2;
+	elseif (fish_tier == "Legendary")
+		tier_multiplier := 10;
+	endif
+
+	var num_steaks := use_on.amount * steaks_per_fish * tier_multiplier;
 
 	var des := DestroyItem( use_on );
 	if(!des)

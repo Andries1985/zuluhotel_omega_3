@@ -36,10 +36,26 @@ function createfish( who,fish,fish_amount, equipped, deepwater := 1, tier := "Re
 	//catch - players opt in via :togglerarecarve.
 	var protect_rare := (tier == "Rare" or tier == "Legendary") and !GetObjProperty(who, "AutoCarveRareFish");
 
-	if (equipped==1 or protect_rare or fish == 0xA84 or fish == 0xA85 or fish == 0xA86 or fish == 0xA87 or fish == 0xA88 or fish == 0xA89 or fish == 0xA8A or fish == 0xA8B or fish == 0xA8C )
+	// 2026-09-13: "Magic Fish" (0xA84-0xA8C) replaced by "Scroll of the
+	// Depths" (0x2270-0x2279, see itemdesc.cfg) -- range check instead of
+	// the old fixed OR chain so the reserved 0x2279 slot is covered too,
+	// even though it's never actually rolled by the creation code below.
+	if (equipped==1 or protect_rare or (fish >= 0x2270 and fish <= 0x2279))
 		//Returned so ResolveFishCatch can read .desc for the catch message; 0 (below) means
 		//it was carved into steaks instead.
-		return CreateItemInBackpack(who, cint(fish), cint(fish_amount));
+		var kept_whole := CreateItemInBackpack(who, cint(fish), cint(fish_amount));
+		if (kept_whole)
+			// 2026-09-14: remember whether this was a deep or shore catch, and
+			// its rarity tier, so a manual knife-carve later
+			// (bladed.src:CarveFish) yields the same steak count it would
+			// have if auto-carved right now instead of kept whole -- no
+			// penalty either way for the player's choice. Tier is separate
+			// from location: Rare/Legendary catches carve for more steaks
+			// regardless of where they were caught.
+			SetObjProperty(kept_whole, "DeepWaterCatch", CInt(deepwater));
+			SetObjProperty(kept_whole, "FishTier", tier);
+		endif
+		return kept_whole;
 	else
 		PlaySoundEffect(who, SFX_57);
 		PerformAction( who, ANIM_SALUTE );
@@ -211,7 +227,14 @@ function ResolveFishCatch(character, fish_amount, equipped, deep_water, location
 		if (tool_bon)
 			fish_amount := fish_amount * tool_bon;
 		endif
-		createfish(character, Random(9) + 0xA84, fish_amount, equipped, deep_water);
+		// 2026-09-13: "Magic Fish" (0xA84-0xA8C) -> "Scroll of the Depths"
+		// (0x2270-0x2278; 0x2279 is reserved and deliberately excluded from
+		// this roll). Matches the rare/legendary catch messages below in
+		// reusing .desc rather than hardcoding each name a second time.
+		var scroll_caught := createfish(character, Random(9) + 0x2270, fish_amount, equipped, deep_water);
+		if (scroll_caught)
+			SendSysmessage(character, "The depths yield up a "+scroll_caught.desc+"!", 3, 1153);
+		endif
 		return;
 	endif
 

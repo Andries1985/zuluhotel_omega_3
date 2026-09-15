@@ -29,9 +29,11 @@ program logon( who )
 	RecordAccountLoginIP(acc, who.ip);
 	SetObjProperty(who, "#logontime", ReadGameClock() );
 	var hunger := GetObjProperty( who, "hunger" );
-	
-	if (hunger > 9)
-		who.hunger := 9;
+
+	// 2026-09-14: ceiling raised from 9 to 15 along with the rest of the
+	// hunger rework (pkg/std/cooking/hunger.src).
+	if (hunger > 15)
+		who.hunger := 15;
 	endif
 
 	set_critical(1);

@@ -50,11 +50,19 @@ const FAME_BONUS	:= 10;
 
 // Non-objtype button-id sentinels for the category gump's Options. All real
 // recipe objtypes in tinker.cfg are well under this.
-const TK_BTN_POTIONKEG	:= 900021;
+// TK_BTN_POTIONKEG retired 2026-09-15 -- Potion Keg assembly moved to the
+// Multi-Item Crafting System (Artificer's Toolbox/Cooper's Bench), see
+// pkg/items/toolbox/config/barrelparts.cfg. TryToMakePotionKeg removed below.
 const TK_BTN_TOTEM	:= 900022;
 const TK_BTN_TRAP	:= 900023;
 
-var tinker_cfg	:= ReadConfigFile( "tinker" );
+// 2026-09-15: package-qualified, NOT a bare name -- see the matching note in
+// pkg/std/blacksmithy/blacksmithgump.inc's smith_cfg. A bare "tinker" resolves
+// against exec.prog()->pkg (the ACTUALLY EXECUTING program's package), which
+// is wrong for any cross-package station caller of this shared .inc (e.g.
+// Glassblowing's toggle-and-open wrapper) -- it silently returned an error/
+// empty cfg for those, showing zero categories/recipes in the gump.
+var tinker_cfg	:= ReadConfigFile( ":tinkering:tinker" );
 // tinker.cfg's own Category/MaterialType fields drive the gump now (see
 // craftmenu.inc) -- Log/Ingot Difficulty/Quality still live in Carpentry's
 // and Blacksmithy's own resource tables, the same ones Bowcraft/Blacksmithy
@@ -74,21 +82,11 @@ exported function RunTinkeringGump( character )
 
 	while( 1 )
 		var extra_options := array{
-			struct{ label := "Assemble Potion Keg", value := TK_BTN_POTIONKEG },
 			struct{ label := "Make Obsidian Totem", value := TK_BTN_TOTEM },
 			struct{ label := "Set a Trap", value := TK_BTN_TRAP }
 		};
 		var choice := CraftMenu_ShowCategoryGump( character, tinker_cfg, "Tinkering", SKILLID_TINKERING, APPEAR_AT, extra_options, DIVIDER );
 		if( !choice )
-			return;
-		endif
-
-		if( choice == TK_BTN_POTIONKEG )
-			SendSysmessage( character, "Select a keg, barrel tap, barrel lid, or empty bottles." );
-			var keg_part := Target( character, TGTOPT_CHECK_LOS );
-			if( keg_part and Accessible(character, keg_part) and ReserveItem(keg_part) )
-				TryToMakePotionKeg( character, keg_part );
-			endif
 			return;
 		endif
 
@@ -781,108 +779,6 @@ function MakeTotem( me , it )
 endfunction
 
 
-function TryToMakePotionKeg( character , use_on )
-
-	var needed_parts := { UOBJ_KEG	,
-				UOBJ_BARREL_TAP ,
-				UOBJ_BARREL_LID ,
-				UOBJ_EMPTY_BOTTLE };
-
-
-	var parts := { use_on };
-	var needed_bottles := 10;
-	var itemname;
-	var points;
-	var skill;
-	//Require half resources during Crafting PH
-	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		needed_bottles := CInt(Ceil(needed_bottles/2));
-	endif
-
-	if( use_on.objtype == UOBJ_EMPTY_BOTTLE )
-		if( use_on.amount < needed_bottles )
-			SendSysMessage( character , "You need at least 10 empty bottles." );
-			return;
-		endif
-
-	elseif( use_on.objtype == UOBJ_KEG )
-		if( len( EnumerateItemsInContainer( use_on ) ) )
-			SendSysMessage( character , "The keg must be empty" );
-			return;
-		endif
-	endif
-
-	foreach objtype in needed_parts
-		if( objtype != use_on.objtype )
-			var have_it := FindObjtypeInContainer( character.backpack , objtype );
-			if( !have_it )
-				SendSysMessage( character , "You miss some parts to make the potion keg." );
-				return;
-
-			elseif( have_it.objtype == UOBJ_EMPTY_BOTTLE and have_it.amount < needed_bottles )
-				SendSysMessage( character , "You need at least 10 empty bottles." );
-				return;
-
-			else
-				if( ReserveItem( have_it ) )
-					parts.append( have_it );
-				else
-					return;
-				endif
-			endif
-		endif
-	endforeach
-
-	//Integrity check
-	if( len( parts ) != len( needed_parts ) )
-		SendSysMessage( character , "You miss some parts to make the potion keg." );
-		return;
-	endif
-
-	var element := FindConfigElem( tinker_cfg , UOBJ_POTION_KEG );
-	if( element )
-	   	itemname := element.Name;
-		skill 	 := element.Skill;
-	else
-		return;
-	endif
-
-	points	:= Cint( skill * POINTS_MULTIPLIER );
-
-	_Play_Sound( character , CARPENTER_SOUND );
-
-	var result_color;
-	foreach item in parts
-		if( item.color != 0 )
-			result_color := item.color;
-		endif
-
-		if( item.objtype == UOBJ_EMPTY_BOTTLE )
-			SubtractAmount( item , needed_bottles );
-		else
-			DestroyItem( item );
-		endif
-	endforeach
-
-	sendDiff( character , skill );
-
-	if( CheckSkill( character , SKILLID_TINKERING , skill , points ) )
-
-		var theitem := CreateItemInBackpack( character , UOBJ_POTION_KEG );
-		if( !theitem )
-			SendSysMessage( character , "Error in creation process please report this bug." );
-			return;
-		endif
-
-		theitem.movable := 1;
-		if( result_color )
-			theitem.color := result_color;
-		endif
-		SetName( theitem , itemname );
-		SendSysmessage( character , "You create the potion keg and place it in your pack." );
-
-	else
-		SendSysmessage( character , "You fail to create the item and destroy the material." );
-	endif
-
-endfunction
+// TryToMakePotionKeg removed 2026-09-15 -- Potion Keg is now built straight
+// from barrel parts via the Multi-Item Crafting System, see
+// pkg/items/toolbox/config/barrelparts.cfg's PotionKeg recipe.

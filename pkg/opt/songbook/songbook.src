@@ -4,12 +4,14 @@ use math;
 use basic;
 
 include "include/spelldata";
+include "include/constants/cmdlevels";
 
 const BASE_SPELLID := 181;
 
 program SongBook( who, book )
-	
-	if(!GetObjProperty(who,"IsBard") && !GetObjProperty(who, "IsBladesinger"))	
+
+	// 2026-09-13: let staff open this for testing
+	if(!GetObjProperty(who,"IsBard") && !GetObjProperty(who, "IsBladesinger") && who.cmdlevel < CMDLEVEL_COUNSELOR)
 		SendSysMessage(who,"Only Bards or Bladesingers can use this!");
 		return;
 	endif

@@ -6,11 +6,11 @@
 
 use uo;
 use os;
+use basicio;
 
 include "include/client";
 include "include/omegacache_utils";
-//include ":omegacache:omegacache";
-include "../pkg/opt/omegacache/omegacache";
+include ":omegacache:omegacache";
 
 program cache_on_insert(who, container, movetype, inserttype, adding_item, existing_stack, amt_to_add)
 
@@ -31,14 +31,27 @@ program cache_on_insert(who, container, movetype, inserttype, adding_item, exist
 
 	var access := FindAccessibleContainer(who, array{ADD_TO_SECURE});
 	if(!access)
-		MoveItemToContainer(item, who.backpack);
+		var denyresult := MoveItemToContainer(item, who.backpack);
+		if(denyresult.errortext)
+			SendSysMessage(who, "Warning: could not return that item to your backpack (" + denyresult.errortext + "). Page a GM -- it's still inside the cache and not lost.");
+			Print("cacheinsert.src: MoveItemToContainer back to backpack failed for " + who.name + ", item serial " + Hex(item.serial) + " objtype " + Hex(item.objtype) + ": " + denyresult.errortext);
+		endif
 		SendSysMessage(who, "You don't have permission to deposit items.");
 		return;
 	endif
 
 	if(!DepositSingleItem(who, access.df, item))
-		// Item was ineligible — move back to backpack
-		MoveItemToContainer(item, who.backpack);
+		// Item was ineligible — move back to backpack. 2026-09-15: check the
+		// result -- this used to be fire-and-forget, and a non-movable item
+		// (e.g. Barrel Staves missing its Movable tiledata flag, since fixed
+		// in config/tiles.cfg) would silently fail this move and be left
+		// orphaned inside the cache's own backing container, invisible to
+		// the player via the cache gump -- looked exactly like item loss.
+		var moveresult := MoveItemToContainer(item, who.backpack);
+		if(moveresult.errortext)
+			SendSysMessage(who, "Warning: could not return that item to your backpack (" + moveresult.errortext + "). Page a GM -- it's still inside the cache and not lost.");
+			Print("cacheinsert.src: MoveItemToContainer back to backpack failed for " + who.name + ", item serial " + Hex(item.serial) + " objtype " + Hex(item.objtype) + ": " + moveresult.errortext);
+		endif
 	endif
 
 endprogram

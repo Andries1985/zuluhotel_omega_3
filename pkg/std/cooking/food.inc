@@ -21,9 +21,14 @@ function define_food_dictionary ()
 
 	food [ "ITEM_PITCHER_OF_LIQUOR" ]	:= 0x1f9a;
 	food [ "ITEM_PITCHER_OF_ALE" ]	:= 0x1f96;
-	food [ "ITEM_PITCHER_OF_WINE" ]	:= 0x1f9c;
-	food [ "ITEM_PITCHER_OF_CIDER" ]	:= 0x1f98;
-	food [ "ITEM_PITCHER_OF_WATER" ]	:= 0x1f9e;
+	// 2026-09-15: 0x1f9c/0x1f98/0x1f9e were removed as exact-duplicate
+	// objtypes 2026-08-29 (see itemdesc.cfg's dedup note) in favor of
+	// 0x1f9b/0x1f97/0x1f9d -- this dictionary was never updated to match,
+	// so recipes calling for wine/cider/water were resolving to dead
+	// objtypes with no itemdesc entry.
+	food [ "ITEM_PITCHER_OF_WINE" ]	:= 0x1f9b;
+	food [ "ITEM_PITCHER_OF_CIDER" ]	:= 0x1f97;
+	food [ "ITEM_PITCHER_OF_WATER" ]	:= 0x1f9d;
 	food [ "ITEM_PITCHER_OF_MILK" ]	:= 0x09ad;
 
 	food [ "ITEM_GLASS_OF_LIQUOR" ]	:= 0x1F85;
@@ -35,9 +40,17 @@ function define_food_dictionary ()
 
 	//These items are special.  If they're called for in a recipe, it will call a special function that will
 	//permit multiple forms of that item
-	food [ "ITEM_GENERAL_WATER" ]		:= 0x1f9e;
+	food [ "ITEM_GENERAL_WATER" ]		:= 0x1f9d;
 	food [ "ITEM_GENERAL_MILK" ]		:= 0x09ad;
 	food [ "ITEM_GENERAL_CHEESE" ]	:= 0x097d;
+	// 2026-09-14: same pattern -- any Regular/Rare-tier fish from
+	// pkg/std/fishing/catchtable.cfg satisfies these, not one fixed
+	// objtype. Fallback values below are just representative (the
+	// lowest objtype in each tier); the real resolution is
+	// IsRegularFishObjtype()/IsRareFishObjtype() and the
+	// special_find_/special_destroy_ functions further down this file.
+	food [ "ITEM_REGULAR_FISH" ]		:= 0x30300;
+	food [ "ITEM_RARE_FISH" ]		:= 0x3031D;
 
 	//primary food ingredients
 	food [ "ITEM_FLOUR" ]			:= 0x1045;
@@ -48,10 +61,9 @@ function define_food_dictionary ()
 	food [ "ITEM_RAW_HAM" ]			:= 0x09c9;
 	food [ "ITEM_BACON_SLAB" ]		:= 0x0976;
 	food [ "ITEM_RAW_SAUSAGE" ]		:= 0x09c0;
-	food [ "ITEM_GREEN_FISH" ]		:= 0x09cc;
-	food [ "ITEM_BROWN_FISH" ]		:= 0x09cd;
-	food [ "ITEM_BLUE_FISH" ]		:= 0x09ce;
-	food [ "ITEM_YELLOW_FISH" ]		:= 0x09cf;
+	// ITEM_GREEN_FISH/BROWN_FISH/BLUE_FISH/YELLOW_FISH (0x09cc-0x09cf)
+	// removed 2026-09-14 -- dead placeholder objtypes, nothing creates
+	// them anymore. Replaced by ITEM_REGULAR_FISH/ITEM_RARE_FISH above.
 	food [ "ITEM_LARD" ]			:= 0x1e8a;
 	food [ "ITEM_EGG" ]				:= 0x09b5;
 	food [ "ITEM_GARLIC" ]			:= 0x0f84;
@@ -138,6 +150,8 @@ function define_food_name_dictionary ()
 	food [ "ITEM_GENERAL_WATER" ]		:= "cup of water";
 	food [ "ITEM_GENERAL_MILK" ]		:= "cup of milk";
 	food [ "ITEM_GENERAL_CHEESE" ]	:= "wedge of cheese";
+	food [ "ITEM_REGULAR_FISH" ]		:= "regular fish";
+	food [ "ITEM_RARE_FISH" ]		:= "rare fish";
 
 	//primary food ingredients
 	food [ "ITEM_FLOUR" ]			:= "cup of flour";
@@ -148,10 +162,6 @@ function define_food_name_dictionary ()
 	food [ "ITEM_RAW_HAM" ]			:= "raw ham";
 	food [ "ITEM_BACON_SLAB" ]		:= "bacon slab";
 	food [ "ITEM_RAW_SAUSAGE" ]		:= "raw sausage";
-	food [ "ITEM_GREEN_FISH" ]		:= "green fish";
-	food [ "ITEM_BROWN_FISH" ]		:= "brown fish";
-	food [ "ITEM_BLUE_FISH" ]		:= "blue fish";
-	food [ "ITEM_YELLOW_FISH" ]		:= "yellow fish";
 	food [ "ITEM_LARD" ]			:= "glob of lard";
 	food [ "ITEM_EGG" ]				:= "egg";
 	food [ "ITEM_GARLIC" ]			:= "clove of garlic";
@@ -440,6 +450,104 @@ function special_destroy_cheese (character, amount)
 				endif
 			endif
 		endif
+	until (amount <= 0);
+endfunction
+
+
+///////////////////
+//  2026-09-14: fish-family ingredients -- same "special" pattern as water/
+//  milk/cheese above, but for "any Regular-tier fish" / "any Rare-tier
+//  fish" (pkg/std/fishing/catchtable.cfg) instead of a fixed objtype.
+//  Objtype lists below are every Regular/Rare Fish Objtype/ObjtypeEast/
+//  ObjtypeSouth value in that file (Legendary and Crustaceans intentionally
+//  excluded -- not part of any cooking recipe).
+///////////////////
+
+function IsRegularFishObjtype(objtype)
+	return objtype in {
+		0x30300, 0x30301, 0x30302, 0x30303, 0x30304, 0x30305, 0x30306, 0x30307,
+		0x30308, 0x30309, 0x3030A, 0x3030B, 0x3030C, 0x3030D, 0x3030E, 0x3030F,
+		0x30310, 0x30311, 0x30312, 0x30313, 0x30314, 0x30315, 0x30316, 0x30317,
+		0x30318, 0x30319, 0x3031A, 0x3031B, 0x3031C, 0x30325, 0x30326, 0x30327,
+		0x30328, 0x30329, 0x3032A, 0x3032B, 0x3032C, 0x30335, 0x30336, 0x30337,
+		0x30338, 0x30339
+	};
+endfunction
+
+function IsRareFishObjtype(objtype)
+	return objtype in {
+		0x3032D, 0x3032E, 0x3031D, 0x30321, 0x3031E, 0x30322, 0x3033A, 0x3033B,
+		0x3033C, 0x3033D, 0x30342, 0x30343, 0x30344, 0x30345, 0x30346, 0x30347,
+		0x3034C, 0x3034D, 0x3034E, 0x3034F, 0x30354, 0x30355, 0x30356, 0x30357,
+		0x30360, 0x30361
+	};
+endfunction
+
+function special_find_regular_fish(character, amount)
+	if (amount <= 0)
+		return 1;
+	endif
+	var found_count := 0;
+	foreach item in enumerateitemsincontainer(character.backpack)
+		if (IsRegularFishObjtype(item.objtype))
+			if (!ReserveItem(item)) return 0; endif
+			found_count := found_count + item.amount;
+			if (found_count >= amount)
+				return 1;
+			endif
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function special_find_rare_fish(character, amount)
+	if (amount <= 0)
+		return 1;
+	endif
+	var found_count := 0;
+	foreach item in enumerateitemsincontainer(character.backpack)
+		if (IsRareFishObjtype(item.objtype))
+			if (!ReserveItem(item)) return 0; endif
+			found_count := found_count + item.amount;
+			if (found_count >= amount)
+				return 1;
+			endif
+		endif
+	endforeach
+	return 0;
+endfunction
+
+function special_destroy_regular_fish(character, amount)
+	repeat
+		var found_ingredient := 0;
+		foreach item in enumerateitemsincontainer(character.backpack)
+			if (IsRegularFishObjtype(item.objtype))
+				found_ingredient := item;
+				break;
+			endif
+		endforeach
+		if (!found_ingredient)
+			return;
+		endif
+		SubtractAmount(found_ingredient, 1);
+		amount := amount - 1;
+	until (amount <= 0);
+endfunction
+
+function special_destroy_rare_fish(character, amount)
+	repeat
+		var found_ingredient := 0;
+		foreach item in enumerateitemsincontainer(character.backpack)
+			if (IsRareFishObjtype(item.objtype))
+				found_ingredient := item;
+				break;
+			endif
+		endforeach
+		if (!found_ingredient)
+			return;
+		endif
+		SubtractAmount(found_ingredient, 1);
+		amount := amount - 1;
 	until (amount <= 0);
 endfunction
 

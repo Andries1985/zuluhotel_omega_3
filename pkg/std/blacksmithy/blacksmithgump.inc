@@ -34,7 +34,18 @@ const BS_BTN_REPAIR	:= 900021;
 const POINTS_MULTIPLIER	:= 8;
 const FAME_BONUS	:= 10;
 
-var smith_cfg := ReadConfigFile( "blacksmithy" );
+// 2026-09-15: package-qualified, NOT a bare name. ReadConfigFile("blacksmithy")
+// resolves relative to exec.prog()->pkg -- the ACTUALLY EXECUTING program's own
+// package, not this .inc file's home package. That's fine for callers living in
+// pkg/std/blacksmithy itself (make_blacksmith_items.src), but this .inc is also
+// included cross-package (e.g. pkg/items/forge/use.src's Bellows animate
+// script, and every Blacksmithy station's Script field) -- for those, a bare
+// "blacksmithy" was resolving against THEIR package (forge, etc.), which has
+// no blacksmithy.cfg, silently returning an error/empty cfg object. That's why
+// the Blacksmithy gump opened fine (NearForgeAndAnvil doesn't touch this var)
+// but showed zero categories/recipes for every station except ones that
+// happen to live in pkg/std/blacksmithy itself.
+var smith_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
 
 // Top-level loop: category/selection gump -> detail gump -> back to top,
 // until the player crafts something, picks Repair, or closes out entirely.
@@ -75,7 +86,23 @@ exported function RunBlacksmithGump( character )
 			continue;
 		endif
 
-		MakeBlacksmithItems( character, detail.slot1, detail.slot2, choice );
+		// Smelting recipes are the only ones with a ResultObjtype field (their
+		// recipe key is the ORE's objtype, not the product -- see the SMELTING
+		// section header in blacksmithy.cfg) -- route those into the Mining-
+		// gated MakeSmeltedIngots instead of the normal Blacksmithy-gated path.
+		if( element.ResultObjtype )
+			// detail.qty is only set by "Make Bulk" (which smelting recipes
+			// don't offer -- no Bulk flag); Max/Now/Number all go through
+			// AutoLoop_initFixed/AutoLoop_init instead, which stash the real
+			// requested count in AL_number (include/autoloop.inc).
+			var smelt_qty := detail.qty;
+			if( !smelt_qty )
+				smelt_qty := AL_number;
+			endif
+			MakeSmeltedIngots( character, detail.slot1, choice, smelt_qty );
+		else
+			MakeBlacksmithItems( character, detail.slot1, detail.slot2, choice );
+		endif
 		return;
 	endwhile
 
@@ -242,5 +269,75 @@ function MakeBlacksmithItems( character, ingotRequest, boneRequest, product_type
 		ReleaseResourceLease( boneRequest );
 	endif
 	AutoLoop_finish();
+
+endfunction
+
+
+// Smelts ore into its matching ingot as ONE batch, not MakeBlacksmithItems's
+// per-unit AutoLoop. Smelting never grants Mining skill on this shard --
+// matches smelting.src's original CheckSkill(...,0) call (0 points = no
+// gain) -- so there's no mechanical reason to pace it out one unit at a
+// time with a sound/sleep between each. This instead mirrors how the
+// ORIGINAL hand-smelt flow already worked: SmeltOre rolls ONCE against the
+// whole ore stack (GetAmount(ore)), not once per unit -- qty here is just
+// however many the player chose via Make Max/Number/Now instead of always
+// being "the whole stack". On success the full qty converts; on failure,
+// only 1 ore is lost (same as the original), not the whole batch, so a bad
+// roll doesn't wipe out everything in one go.
+//
+// The success roll stays on Mining -- SKILLID_MINING against the ore's own
+// SmeltDiff (stored in the recipe's CoSkill field) -- instead of
+// Blacksmithy. CoSkillid/CoSkill on an ordinary recipe only gates
+// visibility, it doesn't change which skill the actual craft roll uses, so
+// this needed its own completion function rather than reusing
+// MakeBlacksmithItems as-is.
+function MakeSmeltedIngots( character, oreRequest, choice, qty )
+
+	var element := smith_cfg[choice];
+	if( !element )
+		return 0;
+	endif
+
+	if( qty < 1 )
+		SendSysMessage( character, "Nevermind." );
+		return 0;
+	endif
+
+	var resultObjtype := CInt(element.ResultObjtype);
+	var difficulty := CInt(element.CoSkill);
+	var orename := element.MaterialType;
+
+	var available := GetAvailableResource(character, oreRequest).total;
+	if( qty > available )
+		qty := available;
+	endif
+	if( qty < 1 )
+		SendSysMessage( character, "You don't have enough " + orename + "." );
+		return 0;
+	endif
+
+	LeaseResource( character, oreRequest, qty );
+
+	sendDiff( character, difficulty );
+	PlaySoundEffect(character, SFX_ANVIL);
+	Sleep(2);
+
+	if( CheckSkill( character, SKILLID_MINING, difficulty, 0 ) )
+		ConsumeResource( character, oreRequest, qty );
+		var ingots := CreateItemInBackpack( character, resultObjtype, qty );
+		if( !ingots )
+			ingots := CreateItemAtLocation( character.x, character.y, character.z, resultObjtype, qty, character.realm );
+			if( ingots )
+				SendSysmessage( character, "You create " + qty + " ingots, but as your backpack is full, you place them by your feet." );
+			endif
+		else
+			SendSysmessage( character, "You create " + qty + " ingots and place them in your pack." );
+		endif
+	else
+		ConsumeResource( character, oreRequest, 1 );
+		SendSysmessage( character, "You destroy some " + orename + "." );
+	endif
+
+	ReleaseResourceLease( oreRequest );
 
 endfunction

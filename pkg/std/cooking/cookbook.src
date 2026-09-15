@@ -277,6 +277,10 @@ function describe_ingredient (ingredient)
 			return_string := cstr ( ingredient_number + " heads of cabbage");
 		elseif (ingredient_string == "ITEM_RAW_LEG_OF_LAMB")
 			return_string := cstr ( ingredient_number + " raw legs of lamb");
+		elseif (ingredient_string == "ITEM_REGULAR_FISH")
+			return_string := cstr ( ingredient_number + " regular fish");
+		elseif (ingredient_string == "ITEM_RARE_FISH")
+			return_string := cstr ( ingredient_number + " rare fish");
 		//default
 		else
 			return_string := cstr ( ingredient_number + " " + food_name_dict[ingredient_string] + "s");

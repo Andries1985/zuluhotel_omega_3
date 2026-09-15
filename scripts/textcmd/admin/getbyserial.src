@@ -1,0 +1,35 @@
+// Synopsis: Find any item by hex serial and move it into your backpack
+use uo;
+
+program getbyserial( who, serialarg )
+	if(!serialarg)
+		SendSysMessage(who, "Usage: .getbyserial <hexserial>  (e.g. .getbyserial 0x40000324)");
+		return 0;
+	endif
+
+	var serial := CInt(serialarg);
+	if(!serial)
+		SendSysMessage(who, "Couldn't parse '" + serialarg + "' as a serial.");
+		return 0;
+	endif
+
+	var item := SystemFindObjectBySerial(serial);
+	if(!item)
+		SendSysMessage(who, "No object found with serial " + Hex(serial) + ".");
+		return 0;
+	endif
+
+	if(!item.isa(POLCLASS_ITEM))
+		SendSysMessage(who, "Serial " + Hex(serial) + " is not an item (mobile or other object).");
+		return 0;
+	endif
+
+	var result := MoveItemToContainer(item, who.backpack);
+	if(result.errortext)
+		SendSysMessage(who, "Move failed: " + result.errortext);
+		return 0;
+	endif
+
+	SendSysMessage(who, "Moved serial " + Hex(serial) + " (objtype " + Hex(item.objtype) + ", amount " + item.amount + ") into your backpack.");
+	return 1;
+endprogram

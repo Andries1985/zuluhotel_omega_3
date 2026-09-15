@@ -4,6 +4,8 @@ use uo;
 use polsys;
 
 include "include/client";
+include "include/itemutil";
+include "include/random";
 
 const TEXT_COLOR 		:= 319;
 const TYPE_PENALTY 		:= 1;
@@ -36,6 +38,20 @@ program mendingoil(who, mendingoil)
 		SendSysMessage( who, "That item is in perfect condition already.", FONT_NORMAL, TEXT_COLOR );
 		return 0;
 	endif
+
+	//Down to its last hit point: 50/50 chance the oil can't save it, matching
+	//repair_item's same-day change (2026-09-15) so mending oil isn't a
+	//risk-free bypass of that gauntlet.
+	if( item.hp < 2 )
+		if( Random(2) == 0 )
+			SendSysMessage( who, "The brittle material breaks when you handle it!" );
+			DestroyTheItem( who, item );
+			Releaseitem(mendingoil);
+			return 0;
+		endif
+		SendSysMessage( who, "You carefully work the oil into the fragile material, and it holds together!", FONT_NORMAL, TEXT_COLOR );
+	endif
+
 	var item_quality := item.quality;
 	if (GetObjProperty(item, "IsGMItem") || GetObjProperty(item, "Artifact"))
 		item_quality += TYPE_PENALTY;

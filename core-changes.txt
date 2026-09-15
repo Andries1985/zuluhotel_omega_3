@@ -1,4 +1,307 @@
 -- POL100.3.0 --
+09-13-2026 AsYlum, Turley:
+    Fixed: the shard could wedge when uo::SaveWorldState() was called again while the previous
+           save was still finishing - two scripts saving in the same pass is enough.
+    Added: pol.cfg WorldSaveThreads (default 0) sets how many threads a world save uses; 0 picks
+           a number from the cpus the server is allowed to use, which inside a container is not
+           what the machine has.
+    Added: pol.cfg LogWorldSaveDetails (default 0) logs where a save spent its time and what each
+           data file received.
+  Removed: objects.txt, written empty and read back empty since the world was split into the files
+           that replaced it.
+ Improved: world save speed - a large shard that used to freeze for seconds while it saved now
+           freezes for a fraction of one, and no single big data file decides how long that is.
+     Note: the data files hold the same data, but the elements inside storage.txt, items.txt,
+           multis.txt, datastore.txt, pcs.txt, npcs.txt and the equip files are no longer written
+           in a fixed order - two saves of an unchanged world can differ in block order.
+09-08-2026 Nando:
+  Changed: Runtime script errors now report the eScript call stack, each frame naming its source
+           file and line where the script was compiled with debug information, instead of a
+           program counter alone. Covers the no-rule operator report and the VM's fatal errors
+           in pol.log, and the wrong-parameter and "script can't be blocked" messages in
+           debug.log.
+    Fixed: "Return without GOSUB!" went to stderr only, so a shard run as a service never saw
+           it. It goes to pol.log now.
+09-05-2026 Nando:
+    Added: The compiler warns when both operands of an operator are literals and no rule exists
+           for the pair, so the ones that can be seen at build time are reported before the shard
+           runs at all.
+  Changed: `+` with a String on either side concatenates and spells the Boolean "true" or
+           "false", so `"abc" + true` stays "abctrue" and `true + "abc"` is now "trueabc"
+           instead of evaluating to `true` and dropping the string.
+    Fixed: An arithmetic or bitwise operator applied to an operand pair that neither type had a
+           rule for returned the left operand unchanged, silently. `2 + true` was 2 and
+           `true + 2` was true, so the answer depended on which side a value was written on, and
+           `2 + error{...}` was 2 - addition destroyed the error. Every such pair now produces an
+           error naming the operator and both types, and the first one in a script is written to
+           pol.log with the script and PC.
+    Fixed: A Boolean now counts as 1 or 0 in arithmetic, as it does in C, Python and JavaScript,
+           so `2 + true`, `true + 2` and `true + true` are 3, 3 and 2. `-true` is -1 and `~true`
+           is -2, where they were an uninitialized value and `true` itself.
+    Fixed: An eScript expression built from constants could compute a different answer than
+           the same expression written through variables: the compiler folded it with
+           arithmetic of its own instead of the arithmetic the VM runs. Folding now applies
+           the VM's own operators, so the two cannot disagree. This affected every comparison
+           mixing an Integer with a Real, and every operator on Booleans.
+    Fixed: `(-2147483647-1) / -1` and the matching modulus crashed ecompile outright, and
+           evaluating them at runtime killed the running script with no message on Windows.
+           Integer arithmetic is now defined in every case: overflow wraps, INT_MIN / -1 is
+           INT_MIN, INT_MIN % -1 is 0, and shift counts are taken modulo 32. These are the
+           answers the VM has always given on x86, so no working script changes.
+    Fixed: Comparing an Integer to a Real applied the documented tolerance of 0.00000001 only
+           when the Real was on the left, so `2 == 2.000000001` and `2.000000001 == 2`
+           disagreed. The tolerance now applies whichever side the Real is on, and `<`
+           excludes the band that `==` accepts, so `==`, `<`, `<=`, `>` and `>=` can no longer
+           contradict one another. Previously `2.0 == 2.000000001` was true while
+           `2.0 >= 2.000000001` was false.
+    Fixed: `<`, `<=`, `>` and `>=` on Booleans compared the addresses of the two objects
+           rather than their values, so `true < true` was as likely to be 1 as 0. false now
+           orders below true, and below any other value that is true.
+09-05-2026 Turley:
+    Fixed: inconsistency of ghost speech
+    Fixed: client.clientinfo it was partially garbage
+    Fixed: a one byte packet (0xFA) disconnected the client on some platforms
+09-05-2026 Ins:
+    Fixed: a client was left with a clear sky, or the wrong light level, after several
+           ordinary events: logging in, reconnecting, its own resync request, dying, being
+           resurrected, having its graphic, colour or facing set from a script, a gargoyle
+           toggling flight, and a boat carrying it between realms. Each of those resends
+           the character's position or a season packet, and the client stops drawing
+           weather when it gets either. Nothing sent it again, so the sky stayed wrong
+           until the character crossed into another weather region, teleported, or the
+           weather changed on its own.
+    Fixed: a character that logged in while dead came back in the wrong season once it
+           was resurrected. A season sent while the character is dead does not stick,
+           so the one login sent was gone, and resurrection sent no other.
+    Fixed: after a season packet the light level was only restored for weather regions
+           that carry a LightOverride. Everywhere else, and for a character holding a
+           light override of its own, the client kept whatever the packet had reset it to.
+    Fixed: a light override expiring inside a weather region that carries a LightOverride
+           never restored the region's level - the client stayed on the expired level
+           until it left the region. Both the timed expiry and uo::SetRegionLightLevel()
+           were affected.
+    Fixed: a character logging into a light region whose level is 0 was never sent a light
+           level at all, on the assumption that a fresh client already shows 0.
+  Changed: chr.setseason() and uo::SendOverallSeason() still leave resending the light
+           and weather to the script, as documented, but no longer leave the core
+           recording a light level and weather region that the client no longer has - so
+           the next weather or region change repairs a client whose script did not.
+  Changed: chr.facing :=, chr.setfacing() and npc::Face() no longer resend the
+           character's position to itself, or its movement to onlookers, when the facing
+           did not actually change. A script using a same-direction turn as a resync
+           nudge no longer gets one: uo::UpdateMobile() redraws a mobile for its
+           onlookers without a position packet, and MoveObjectToLocation() to the
+           character's own position resynchronises the character itself.
+     Note: a client older than 7.0.9.0 aboard a boat is sent its position on every step,
+           not only when the boat crosses realms, and only the crossing repaints. Those
+           clients still lose the weather while sailing within one realm. The repaint
+           belongs in do_tellmoves, where it would cost a weather packet per step, and
+           wants testing against a real client first.
+09-05-2026 Ins:
+    Fixed: an AOS tooltip with more than 65535 characters of text could shut the shard
+           down, since the length was narrowed to 16 bits before the range check. A
+           script can set a name that long, so it was script-reachable.
+09-03-2026 AsYlum:
+    Fixed: uo::Distance() returned 65535 for the contents of a container opened with
+           uo::SendOpenSpecialContainer(), a bank box for instance. It is 0 again.
+    Fixed: uo::DistanceEuclidean() ignored realms, so two objects in different realms
+           measured as if they stood in the same one, and one standing nowhere measured
+           from (0,0). It now answers as uo::Distance() does, 65535 when there is nothing
+           to measure between the two.
+    Fixed: both reported an item held on a cursor as impossibly far from the character
+           holding it.
+    Fixed: uo::GetRegionName() crashed the server when handed an object standing in no
+           realm - one in a storage area, on a cursor, or a worn container. It returns an
+           error now.
+08-23-2026 AsYlum:
+    Fixed: uo::Accessible() returned 0 for the contents of a container opened with
+           uo::SendOpenSpecialContainer(), a bank box for instance.
+08-22-2026 AsYlum:
+    Added: PolCore().log_memory_usage( sections := uninit ), PolCore().log_script_memory()
+           and PolCore().log_script_variables( script ), the memory reports that used to be
+           PolCore().internal(2), (5) and (6). sections is an optional array of section names
+           ("objects", "scripts", "realms", ...) limiting what is measured, so a report can
+           skip the parts you are not chasing - walking every object in the world and every
+           zone of every realm is the expensive part, and the server is stopped throughout.
+           The Performance Guide lists what each section covers and costs. The old selectors
+           PolCore().internal(2), (5) and (6) have been removed.
+  Changed: the two per-script memory reports now write one timestamped file per call under
+           log/memory/ (scripts-YYYYMMDD-HHMMSS.log and vars-<script>-YYYYMMDD-HHMMSS.log)
+           instead of appending to log/memoryusagescripts.log and log/scriptmemory.log. A
+           single snapshot of either runs to megabytes on a busy shard, so the old files
+           grew unusable within a day. log/memoryusage.log still accumulates one line per
+           snapshot, since it is a time series meant to be graphed; columns outside the
+           requested sections are written empty rather than dropped, because its header is
+           written once and has to keep describing the file - so an empty field means "not
+           measured", which is not the same as a measured zero.
+  Changed: PolCore().log_script_memory() ends its report with a totals line - "<n> scripts,
+           <n> bytes; <n> cached programs, <n> bytes". The per-script lines above it add up
+           to neither figure: the script total also covers the scheduler queues and the pid
+           list, and the cached-program store is not itemized at all, so summing the report
+           understated both.
+  Changed: the memory reports do less redundant work, which matters because they block the
+           server while they run. The object walk no longer counts the object hash in a
+           separate pass over it, and the per-script report measures each script once rather
+           than twice. The reported numbers are unchanged.
+    Fixed: PolCore().log_script_variables() reported each local variable's name next to a
+           different local's type and size, so the breakdown was misleading rather than just
+           coarse. The debugger's stacktrace command had the same fault.
+    Fixed: PolCore().log_script_variables() stopped at the first instance whose debug info
+           could not be loaded instead of skipping just that one, and never looked at scripts
+           held by the debugger.
+    Fixed: SizeOf() on a class instance that refers to itself - directly, or around a longer
+           loop - recursed until the stack overflowed and took the server down.
+    Fixed: memory estimates were too low for packets, for compiled scripts (the bytecode and
+           symbol pool were not counted at all) and for regular expressions.
+    Fixed: memory estimates counted every string of a compiled script's debug data twice - the
+           global and local variable names and the source filenames - and did the same for the
+           element names of an array and for the keys of the script storage index, while missing
+           the names of a script's exported and debug functions altogether.
+08-18-2026 Nando:
+    Added: The core now names a thread it depends on that has stopped, or that is still
+           running but no longer getting anywhere. Each thread that reports in publishes
+           when it expects to be back - the sleep it is about to take, plus 30 seconds - so
+           it is judged against its own schedule. When all of them are late at once the core
+           says so once and names the thread holding the world lock, instead of blaming each
+           in turn.
+  Changed: The thread status report gives the number of threads being watched and names any
+           that have stopped or are late.
+  Removed: The "No clock movement in 30 seconds" check. Its deadline was shared between four
+           threads, so any one of them still running kept it fresh for the rest, and a
+           stopped thread among live ones stayed invisible. The checks above replace it.
+08-16-2026 Nando:
+  Changed: when a C++ exception ends a script, the log now carries the eScript call
+           stack and the C++ call stack of the throw, instead of only the message and
+           the program counter. Both are innermost-first, and either is omitted if it
+           could not be collected.
+  Changed: an exception that kills a thread is reported the same way, with the thread's
+           name, the exception type and the stack of the throw. These reports go to
+           pol.log as well as the console; before, they only ever reached the console.
+  Changed: the thread status report - printed when the server's clock has not moved for
+           30 seconds, and by the [threadstatus] console command - now goes to pol.log
+           as well as the console, together with the "No clock movement in 30 seconds"
+           line that precedes it. Before, both only ever reached the console, so a
+           server started as a service, or with its output redirected, had no way to
+           recover the report afterwards.
+  Changed: that report lists the connected clients only if it can take the world lock
+           within half a second, and prints "Clients: (world lock held for 500ms, list
+           not read)" instead when it cannot. It previously read that list with no lock
+           at all, which risked crashing a server that was already in trouble.
+  Changed: a task failing in one of the core's worker pools no longer forces a crash
+           dump - a minidump file on Windows, a stack dump of every thread in the
+           process elsewhere. The failure is logged with the stack of the throw instead.
+           The whole-process dump is still available for a server that has stopped
+           responding, through pol.cfg ThreadStacktracesWhenStuck.
+  Changed: on Linux, a crash report and the per-thread stack dumps now name the script
+           the thread was last running, and the tid holding the world lock. Whether the
+           faulting thread held that lock decides how the rest of the report reads.
+           Windows crash reports have carried the script for some time.
+  Changed: a crash report writes out the thread, script and lock lines before it walks
+           the stack. Collecting a stack allocates, so a crash caused by a corrupted
+           heap used to die inside that walk having printed nothing at all.
+  Changed: an assertion failure now logs the script that was running, on every platform.
+08-16-2026 AsYlum:
+  Changed: the default system message text color is now 946 (was 1000).
+08-15-2026 Turley:
+    Fixed: polcore.memory_usage was always 0 on macOS
+08-15-2026 Nando:
+    Fixed: the server could hang on shutdown with a character still in combat. Clearing
+           its list of attackers relied on each attacker removing its own entry, which is
+           skipped once a character has left the world, so the loop never ended.
+    Fixed: a destroyed character now leaves its opponent's list of attackers as it is
+           destroyed, the way a destroyed item already did, instead of on its way out of
+           memory when it can no longer be found in that list.
+    Fixed: packet.GetString, packet.GetUnicodeString and packet.GetUnicodeStringFlipped
+           refused a zero-length read at the end of a packet with "Offset too high".
+           Reading no characters touches no byte, so it now returns an empty string;
+           only an offset past the end of the packet is still an error.
+08-14-2026 Nando:
+  Changed: pol.cfg LoginServerDisconnectUnknownPkts now defaults to 1 (was 0).
+           During the login phase, a connection that sends an unknown or non-allowed
+           message type is dropped. With the old default the core logged the type and
+           went back to reading the next byte as a fresh message type, so a peer sending
+           a block of arbitrary bytes had every one of them treated as a new message -
+           and any byte landing on an allowed type entered its handler with whatever
+           followed as the packet body.
+           Set it to 0 to restore the old behaviour, which is only needed if a client or
+           tool of yours legitimately sends message types the core does not know before
+           a character is attached.
+08-14-2026 Turley:
+    Fixed: leak when a character creation was refused
+    Fixed: item.hasexistingstack returns now uninit when no item was found
+    Fixed: splitting part of a force-stacked unstackable stack destroyed the remainder, item.splitstackat and item.splitstackinto now leave it behind
+    Fixed: an intrinsic NPC weapon took its string members (hitscript, name), which changed them for every mobile armed with it
+    Fixed: an intrinsic NPC shield took every member it was given, which changed it for every mobile carrying it
+    Fixed: multiple subscript assignment (a[x,y] := v) crashed on arrays and dicts and was silently ignored on other types, now returns an error
+    Fixed: uo::AssignRectToWeatherRegion was wrongly defined in the em file thus never usable.
+08-10-2026 Nando:
+  Changed: item.x, item.y and item.z on an equipped item now report where its wearer is
+           standing, and follow that character as they move. They used to report the
+           coordinates the wearer happened to be standing on at the moment the item was
+           equipped, frozen from then on - so a worn sword reported where you put it on
+           rather than where you are. The saved X/Y/Z for equipped items changes to
+           match; nothing reads it back, because equipping recomputes the position when
+           the world is loaded.
+  Changed: item.realm now answers with the realm the item can be reached in, rather than
+           with a copy of its holder's realm kept on the item itself. An item in a
+           container, worn, or on a cursor answers exactly as before - the realm of
+           whatever ultimately holds it. What changes is an item that is in no realm
+           at all: one filed in a storage area used to answer "britannia", a value
+           invented when it was created and never meaningful, and now returns an
+           error. The same applies to uo::CheckLineOfSight(), uo::CheckLosAt(),
+           uo::PlayMovingEffect(), uo::PlayMovingEffectEx() and
+           cliloc::PrintTextAbovePrivate() when handed such an object; passing one an
+           item held by a character is unaffected.
+  Changed: uo::ListMobilesInLineOfSight() called on an item a character is carrying or
+           wearing now looks out from that character. It previously looked out from the
+           character's equipment as if that were a separate object standing in the same
+           spot, so the character was reported as being within its own line of sight, and
+           its ability to see past obstacles was not taken into account.
+  Changed: item.multi now returns an error for an item that has no place of its own in
+           the world - one in a container, worn, on a cursor, or in a storage area.
+           It used to look up whichever multi stood at the item's stored coordinates,
+           which for a contained item are its column and row in the container gump, so
+           the answer depended on whether anything happened to be built near the corner
+           of the map. Scripts testing "if ( item.multi )" or reading item.multi.serial
+           are unaffected; only a comparison against 0 changes. To ask which multi an
+           item is really inside, walk up .container first.
+  Changed: map.insertpin() and map.appendpin() now check the pin against the area the map
+           covers, given by its xwest, ynorth, xeast and ysouth bounds. They used to check
+           it against whichever realm the map was being carried in, which asks a different
+           question - a map depicts a region rather than standing in one - so the same pin
+           was accepted or refused depending on who happened to be holding the map, and a
+           map kept in a storage area was not checked at all. A map whose bounds have no
+           extent yet still accepts any pin, so pins may be placed before the bounds are.
+           Pins already saved are untouched, and pins a player places through the client
+           were always checked against the map gump instead.
+    Fixed: The items death leaves in a dead character's backpack - newbie, no-drop and
+           insured ones - came back in reverse order, because the whole pack was emptied
+           and those items were then put back one at a time. They are no longer taken out
+           of it at all, so they keep the order and the container slot they already had.
+    Fixed: A container opened with uo::SendOpenSpecialContainer(), a bank box for instance,
+           stayed reachable after the character was moved by anything other than walking. A
+           gate, a teleport spell, being carried by a boat, a step taken while editing a
+           house and logging back in all left it open and usable from wherever the character
+           ended up - including from another realm, since such a container is also granted
+           line of sight - until they took a single walking step. It now stops being
+           reachable whenever the character's position changes, which is what the core
+           always intended.
+    Fixed: An item removed from a container that stands nowhere - a bank box opened with
+           uo::SendOpenSpecialContainer(), a vendor's stock, a secure trade window - was
+           not announced to the clients being shown it, so a destroyed item stayed drawn
+           in the window. Everyone shown the container is now told, including when the
+           container itself stands in the world but was shown to a character too far
+           away to see it.
+    Fixed: uo::SendOpenSpecialContainer() moved the container onto the character, so that
+           the checks made when a client reaches for it would measure a distance of zero. A
+           container standing in the world was silently dragged to the player's feet while
+           still recorded in the map region it came from, and one filed in a storage area
+           was given coordinates it has no business having. It is no longer moved: having
+           been shown it is what puts it within reach, which is how line of sight has
+           always treated these containers. uo::SendBuyWindow() did the same to the two
+           containers behind a vendor window, and the secure trade window to its own, so
+           item.x, item.y and item.realm read on any of them now report that it is nowhere
+           rather than repeating where its owner stands.
 08-10-2026 Nando:
     Added: polsys::CheckItemIntegrity(), which checks that every item agrees with whatever
            is holding it - the container, corpse layer, storage area, cursor or world zone
@@ -9,20 +312,20 @@
     Added: corpse.equipped_items, the items a corpse is shown wearing, in layer order. This
            is the same set the client is sent, so a script and a player looking at the corpse
            see the same thing.
-    Changed: An EquipScript now sees item.layer as 0 for the item it is asked about, until
-             the item is actually worn. uo::EquipItem and the world load used to set the
-             layer before running the script, while the client's own equip and re-equip
-             paths never did, so all four behave the same way now. A script that needs the
-             layer an item would be worn on should read item.tile_layer.
-    Changed: An item that is not being worn no longer reports a layer, and no longer saves
-             one. It could pick one up and keep it two ways: an item that could not be worn
-             while the world was being read went into the backpack still reporting the
-             layer it had failed to reach, and uo::CreateItemCopyAtLocation on an equipped
-             item gave the copy the original's layer.
-    Changed: A corpse now shows what its owner was wearing when it died and has kept on it
-             since. Taking one of those items off the corpse ends that, so putting it back
-             leaves it as ordinary loot instead of dressing the corpse again. Moving an item
-             around inside the corpse's own window is unchanged - it stays on its layer.
+  Changed: An EquipScript now sees item.layer as 0 for the item it is asked about, until
+           the item is actually worn. uo::EquipItem and the world load used to set the
+           layer before running the script, while the client's own equip and re-equip
+           paths never did, so all four behave the same way now. A script that needs the
+           layer an item would be worn on should read item.tile_layer.
+  Changed: An item that is not being worn no longer reports a layer, and no longer saves
+           one. It could pick one up and keep it two ways: an item that could not be worn
+           while the world was being read went into the backpack still reporting the
+           layer it had failed to reach, and uo::CreateItemCopyAtLocation on an equipped
+           item gave the copy the original's layer.
+  Changed: A corpse now shows what its owner was wearing when it died and has kept on it
+           since. Taking one of those items off the corpse ends that, so putting it back
+           leaves it as ordinary loot instead of dressing the corpse again. Moving an item
+           around inside the corpse's own window is unchanged - it stays on its layer.
     Fixed: The character race changer could shut the shard down when a client sent a hair
            or beard id that the core accepts but the shard's tiledata does not have.
     Fixed: A worn item whose EquipScript refused it while the world was being read shut
@@ -726,8 +1029,8 @@
            See the Racalac Escript Guide for additional details.
 07-28-2024 Kevin:
     Added: Array script method `filter(FunctionObject testFn)`.
-    Added: The compiler now supports any expression as the callee for a function call,
-           eg: `var func := @FunctionObject; func( 1, 2, 3 )` or `func( 1 )( 2 )( 3 )`.
+    Added: The compiler now supports any expression as the callee for a function call, eg:
+           `var func := @FunctionObject; func( 1, 2, 3 )` or `func( 1 )( 2 )( 3 )`.
            For now, only function references (ie. a variable that holds or a function
            that returns a `@FunctionObject`) can be called in this manner.
 07-21-2024 Kukkino:
@@ -1093,7 +1396,7 @@
            Returns array{ExportScript, return value} return value is the return value of the program or 1 if nothing was returned.
     Added: ExportScript object
            the script will remain loaded as long as the object exists.
-           member: .exported_functions array of exported function names
+           member .exported_functions array of exported function names
            method .call(functionname, args:={})
            Calls and blocks current script a exported function and returns the return value or 1 if no return value was given.
            Like LoadExportedScript critical state depends on the caller's script.

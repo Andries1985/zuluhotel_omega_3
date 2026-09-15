@@ -182,10 +182,20 @@ function NearForgeAndAnvil(me)
 	var have_forge := 0;
 
 	foreach item in ListItemsNearLocation( me.x, me.y, me.z, 2, me.realm )
+		// Blacksmith Machine is a single self-contained apparatus -- every tile
+		// in its whole graphic range (0x9A82-0x9A91, 0x9AA8-0x9AA9) is tiledata-
+		// labeled "Machine Blacksmith" with no separate matching anvil piece
+		// anywhere in the set (unlike Large Forge/Soulforge, which each have a
+		// real distinct anvil companion) -- so it satisfies both requirements
+		// by itself instead of needing a second object placed next to it.
+		if (item.objtype >= UOBJ_BLACKSMITH_MACHINE_START and item.objtype <= UOBJ_BLACKSMITH_MACHINE_END)
+			have_anvil := 1;
+			have_forge := 1;
+		endif
 		if (item.objtype == UOBJ_ANVIL1 or item.objtype == UOBJ_ANVIL2 or item.objtype == UOBJ_ELVEN_ANVIL1 or item.objtype == UOBJ_ELVEN_ANVIL2 or (item.objtype >= UOBJ_SOULFORGE_ANVIL_START and item.objtype <= UOBJ_SOULFORGE_ANVIL_END))
 			have_anvil := 1;
 		endif
-		if ((item.objtype >= UOBJ_FORGE_START and item.objtype <= UOBJ_FORGE_END) or item.objtype == UOBJ_ELVEN_FORGE or item.objtype == UOBJ_SOULFORGE or (item.objtype >= UOBJ_MINISOULFORGE_START and item.objtype <= UOBJ_MINISOULFORGE_END) or (item.objtype >= UOBJ_LARGESOULFORGE_START and item.objtype <= UOBJ_LARGESOULFORGE_END) or (item.objtype >= UOBJ_BLACKSMITH_MACHINE_START and item.objtype <= UOBJ_BLACKSMITH_MACHINE_END))
+		if (item.objtype == UOBJ_SMALL_FORGE or (item.objtype >= UOBJ_FORGE_START and item.objtype <= UOBJ_FORGE_END) or item.objtype == UOBJ_ELVEN_FORGE or item.objtype == UOBJ_SOULFORGE or (item.objtype >= UOBJ_MINISOULFORGE_START and item.objtype <= UOBJ_MINISOULFORGE_END) or (item.objtype >= UOBJ_LARGESOULFORGE_START and item.objtype <= UOBJ_LARGESOULFORGE_END))
 			have_forge := 1;
 		endif
 	endforeach
