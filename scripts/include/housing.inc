@@ -19,6 +19,22 @@ Const HOUSE_DISPLAY_ITEM		:= 7;
 
 function GetHouseSign( who )
 
+	// 2026-09-16: some system-initiated container moves call the canInsert/
+	// canRemove hooks with `who` as a bare 0 rather than a real character --
+	// confirmed via the engine source (bobjectimp.cpp's default get_member
+	// falls back to BError("Object does not support members") for a type
+	// with no member-access override, which Integer is one of). Comparisons
+	// like `who.cmdlevel >= 2` tolerate that silently, but 09-05-2026's core
+	// update made arithmetic on an Error operand (who.x - 32 below) a hard
+	// crash instead of the old silent no-op. The 2026-09-13 fix in
+	// canInsert.src/canRemove.src (SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES)
+	// doesn't touch this at all -- that flag only affects module functions
+	// that convert a character parameter, not raw member access -- so guard
+	// here directly instead.
+	if( !who )
+		return 0;
+	endif
+
 	// Fast path: resolve the sign directly from the multi the player is standing on.
 	// This works for any custom house multi (small tower, etc.) regardless of sign objtype.
 	if ( who.multi )
