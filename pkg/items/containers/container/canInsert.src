@@ -11,12 +11,20 @@ include ":containers:checks";
 include "include/housing";
 
 program canInsert( mobile, container, move_type, unused inserttype, unused adding_item, unused existing_stack, unused amount_to_add )
-	// 2026-09-13: GetHouseSign() below reads mobile.x/.y, which error{} when
-	// mobile isn't currently connected (e.g. a system-initiated move on an
-	// offline character). Previously masked by old lenient operator
-	// semantics; the 09-05-2026 core update turned that into a hard
-	// "Operator - not supported for Error and Integer" error instead.
+	// 2026-09-13: kept as a defensive no-op -- doesn't actually cover the
+	// crash below (that flag only affects module functions that convert a
+	// character parameter, not raw member access like mobile.x).
 	set_script_option( SCRIPTOPT_CAN_ACCESS_OFFLINE_MOBILES, 1 );
+
+	// 2026-09-16: some system-initiated moves call this hook with `mobile`
+	// as a bare 0, not a real character -- confirmed via engine source, see
+	// GetHouseSign's own comment in scripts/include/housing.inc for the
+	// full trace. Real root cause of the "Operator - not supported for
+	// Error and Integer" crash; guard it the same way MOVETYPE_COREMOVE
+	// already fails open below.
+	if( !mobile )
+		return 1;
+	endif
 
 	if( move_type == MOVETYPE_COREMOVE )
 		return 1;
