@@ -52,7 +52,8 @@ program textcmd_redeed( mobile )
 	endif
 
 	// Trash Can Redeed -- unrelated to the deed mechanism itself, folded in
-	// here from the retired carpentry .redeed command.
+	// here from the retired carpentry .redeed command (this file has since
+	// been renamed from redeednew.src back to redeed.src, 2026-09-16).
 	if( targ.objtype == 0x7007 )
 		if( !IsCowner( mobile, house ))
 			SendSysMessage( mobile, "You need to be the owner or co-owner to do that!" );
