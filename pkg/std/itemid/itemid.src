@@ -11,7 +11,7 @@ var BASE_DELAY := 0;
 
 program do_itemid( who )
 
-	var lastid := GetObjProperty(who, "#LastID");
+	var lastid := CInt(GetObjProperty(who, "#LastID"));
 	var delay := BASE_DELAY;
 
 	if ( ( lastid + delay ) > ReadGameClock() )
