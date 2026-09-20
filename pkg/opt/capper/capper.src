@@ -57,12 +57,15 @@ program capper()
 
 				var skill;
 				var matrix := GetObjProperty(chr, "pScrollMatrix");
-	 			for( skill:= 0 ; skill <= SKILLID__HIGHEST ; skill := skill + 1 )
+				// Iterate the real skill roster (GetSkillIds()), not the raw
+				// 0..SKILLID__HIGHEST range -- ids 49-56 are dummy AOS-era
+				// skills with no matrix slot, and Alchemy(0)/Throwing(57) live
+				// at matrix slots 49/50, not their own skillid. See
+				// NormalizeSkillAndSlot()'s comment in attributes.inc.
+	 			foreach skill in GetSkillIds()
 					if(matrix)
-						var pscrollSkillCap := SKILLCAP+matrix[skill];
-						if(skill == 0)
-							pscrollSkillCap := SKILLCAP+matrix[49];
-						endif
+						var norm := NormalizeSkillAndSlot(skill);
+						var pscrollSkillCap := SKILLCAP+matrix[norm.slot];
 						if(pscrollSkillCap > 150);
 							pscrollSkillCap := 150;
 						endif
@@ -76,7 +79,7 @@ program capper()
 							RecalculateEquippedSkillBonus(chr, skill);
 						endif
 					endif
-	 			endfor
+	 			endforeach
 	 			
 	 			set_critical(0);
 			endif
