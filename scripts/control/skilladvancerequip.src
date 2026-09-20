@@ -22,6 +22,22 @@ include ":attributes:include/regen";
 
 program equip( who, it )
 
+	// Defensive guard: the layer this item is about to occupy should never already hold a
+	// different item -- normal equip flow guarantees that. But an abnormal character history
+	// (eg. a race that got force-corrected after creation, or a client that doesn't follow the
+	// usual wear-item sequence) can leave a character in a state that slips past those normal
+	// guarantees, letting two items land on the same layer (see Xarafax's Axe double-equip,
+	// 2026-09-19). item.layer reads as 0 here since it isn't actually worn yet, so tile_layer
+	// (the layer it would be worn on) is what to check against.
+	if( it.tile_layer )
+		var layer_occupant := GetEquipmentByLayer( who, it.tile_layer );
+		if( layer_occupant and layer_occupant != it )
+			SendSysMessage( who, "That spot is already in use." );
+			MoveItemToContainer( it, who.backpack );
+			return 0;
+		endif
+	endif
+
 	// Ownership enforcement for the rituals package's Attunement and
 	// Consecration - added 2026-08-26. Both properties only exist on
 	// items that have actually gone through one of those two rituals, so

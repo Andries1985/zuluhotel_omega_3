@@ -8,7 +8,6 @@ program reconnect(who)
     var animal := SystemFindObjectBySerial(CInt(GetObjProperty(mount,"serial")));
     EraseObjProperty(animal,"onhold");
   endif
-  run_script_to_completion( ":motd:textcmd/player/motd", who );
   var ppl := EnumerateOnlineCharacters();
   if (GetObjProperty(who, "StealthLogin") )
     return;
