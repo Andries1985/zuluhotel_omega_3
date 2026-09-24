@@ -1,5 +1,7 @@
-# Latest Changes
-Always check Discord announcements for all the patch notes.
+# Patch Notes - v3.1.2
+**Zuluhotel Omega 3 | Beta Shard**
+
+**Date: September 24, 2026**
 
 ---
 
