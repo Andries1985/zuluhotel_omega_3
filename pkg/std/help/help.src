@@ -173,6 +173,7 @@ program help( who2 )
 
 			if(GetObjProperty(who, "cwarring"))
 				SendSysMessage(who, "Can't use that while you're having a color war!");
+				EraseObjProperty( who, PROPID_MOBILE_PAGING ); // 2026-09-21: was left set, so Help stayed "already paging" until relog
 				return 0;
 			endif
 

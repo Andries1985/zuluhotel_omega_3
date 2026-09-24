@@ -58,6 +58,12 @@ if(!ReserveItem(item)) return; endif
 
         	SetObjProperty(item, "charges", charges);
         	Detach();
+        	// 2026-09-22: classic wands (your pick): the charge is the cost. The spell
+        	// script's TryToCast consumes these options (CASTINGOPT_NO_REAGENTS / NO_MANA /
+        	// NO_SKILL_CHECK in spelldata.inc), and #WandCast lets can_cast() skip the
+        	// circle limit for the next 30 s, so any character can use any wand.
+        	SetObjProperty( who, "CastingOpts", {"NOREGS", "NOMANA", "NOSKILL"} );
+        	SetObjProperty( who, "#WandCast", ReadGameClock() + 30 );
         	start_script( ":spells:"+scriptis(spellid) , who );
         	
 		if (charges == 0)

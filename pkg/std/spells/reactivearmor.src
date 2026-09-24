@@ -23,10 +23,12 @@ program reactivearmor( caster, spell_id )
 			EraseObjProperty(caster, "#Casting");
 			return 0;
 		endif
-   	var cast_on := Target( caster );
+	// 2026-09-21: the same helpful targeting the other buffs use. This was a bare
+	// Target( caster ): no line of sight, no range, not even a check that the
+	// target was a mobile, and moving or taking damage didn't break the cast.
+   	var cast_on := CanTargetSpell( caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
 
     	if (!cast_on)
-      		SendSysMessage( caster, "Canceled.");
 		return;
     	endif
 
@@ -45,9 +47,18 @@ program reactivearmor( caster, spell_id )
 	endif
 
 	SetObjProperty( cast_on , "ReactiveArmor" , power );
+	// 2026-09-21: each cast stamps its pid and only clears the armor if the
+	// stamp is still its own. It used to erase "ReactiveArmor" unconditionally
+	// after the sleep, so a recast (after the first armor was used up by a hit)
+	// had its NEW armor removed early by the OLD cast's timer.
+	var my_pid := GetPid();
+	SetObjProperty( cast_on , "#ReactiveArmorPid" , my_pid );
 	SendBoostMessage( caster, cast_on, "reactive armor", power, duration, 0 );
 	Detach();
 	Sleep( duration );
-	EraseObjProperty( cast_on , "ReactiveArmor" );
+	if( CInt( GetObjProperty( cast_on , "#ReactiveArmorPid" ) ) == my_pid )
+		EraseObjProperty( cast_on , "ReactiveArmor" );
+		EraseObjProperty( cast_on , "#ReactiveArmorPid" );
+	endif
 
 endprogram

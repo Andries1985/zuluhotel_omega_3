@@ -470,11 +470,13 @@ function ModifyPCSellList(merchanttype, customer)
                             endif
                             // Here is where we can add price mods for vendor friendlies, city reputation or merchant guilds
                             // or mods based on criminal status or whatever we want.
-							foreach item in EnumerateItemsInContainer(backpackitems)
-							if (GetObjProperty(item, "LFucker"))
-								item.buyprice := 0;
-							endif
-					endforeach
+                    endif
+            endforeach
+            // 2026-09-23: the staff-mark sweep was a foreach over EnumerateItemsInContainer(backpackitems),
+            // an enumerate of an array, nested inside the pricing loop: it errored and never ran.
+            foreach packitem in backpackitems
+                    if (GetObjProperty(packitem, "LFucker"))
+                            packitem.buyprice := 0;
                     endif
             endforeach
 	endif

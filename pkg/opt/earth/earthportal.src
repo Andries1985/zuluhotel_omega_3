@@ -16,7 +16,10 @@ program cast_earth_portal( caster )
 	var circle := GetCircle( SPELLID_EARTH_PORTAL );
 
 	if( IsForbiddenAreaToGateFrom( caster ) )
+		// 2026-09-22: the book waits on #Casting; returning without clearing it
+		// left every double-click refused until relog.
 		SendSysMessage( caster, "You can't gate from there." );
+		EraseObjProperty( caster , "#Casting" );
 		return 0;
 	endif
 	
@@ -24,6 +27,7 @@ program cast_earth_portal( caster )
 	foreach item in antigate
 		if (item.objtype == 0xa3c9)
 			SendSysMessage( caster, "You can't gate from here." );
+			EraseObjProperty( caster , "#Casting" );
 			return;
 		endif
 	endforeach
@@ -155,6 +159,11 @@ program cast_earth_portal( caster )
 		DestroyItem(gate2);
         return;
 	endif
+
+	// 2026-09-22: a save inside the 60 s window brought the far gate (0x7012 was
+	// SaveOnExit 1) back after a restart with nobody left to remove it.
+	gate1.saveonexit := 0;
+	gate2.saveonexit := 0;
 
 	SetObjProperty( gate1 , "GateDestX" , gate2.x );
 	SetObjProperty( gate1 , "GateDestY" , gate2.y );

@@ -17,29 +17,35 @@ program use_scroll(who, scroll)
 	endif
 	set_critical(1);
 	if (scroll.amount)
-		var SpellID := GetObjProperty(scroll, "SpellID");
-		SpellID := Cint(SpellID);
-		SubtractAmount(scroll, 1);
-		
-		// Do a skill check to not even try to cast if we can't
-		SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_SCROLL_SKILL_GAIN, CASTINGOPT_USE_SCROLL});
-		
-		var spell := GetScript( SpellID );
-
-		if(!GetObjProperty(who, "#Casting"))
-			SetObjProperty( who , "#Casting" , 1 );
-		else
+		// 2026-09-22: refuse before the scroll is spent (it vanished with no cast
+		// when another cast was pending), clear the flag if the spell script cannot
+		// start, and clear the scroll casting options afterwards -- a spell that
+		// stopped before TryToCast left them on the character and the next book
+		// cast was reagent-free (songscroll.src already did the last part).
+		if(GetObjProperty(who, "#Casting"))
 			SendSysMessage(who,"You are already casting something!");
 			return;
 		endif
-		
-		SetObjProperty(who,"CastingNecro",1);
-	
-		Start_Script( spell , who );
-		
+
+		var SpellID := Cint(GetObjProperty(scroll, "SpellID"));
+		var spell := GetScript( SpellID );
+		SubtractAmount(scroll, 1);
+
+		SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_SCROLL_SKILL_GAIN, CASTINGOPT_USE_SCROLL});
+		SetObjProperty( who , "#Casting" , 1 );
+
+		var spell_process := Start_Script( spell , who );
+		if( spell_process.errortext )
+			EraseObjProperty( who , "#Casting" );
+			EraseObjProperty( who , CASTINGOPT_PROP_NAME );
+			return;
+		endif
+
 		while( GetObjProperty( who , "#Casting" ) )
 			Sleepms( 250 );
 		endwhile
+
+		EraseObjProperty( who , CASTINGOPT_PROP_NAME );
 	endif
 	
 endprogram

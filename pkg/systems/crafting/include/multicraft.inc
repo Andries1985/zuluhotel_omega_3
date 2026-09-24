@@ -83,7 +83,8 @@ endfunction
 // inc, the old TryToMakePotionKeg this replaces).
 function MultiCraft_PHQty( character, qty )
 	if( GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC") )
-		return CInt(Ceil(qty/2));
+		// 2026-09-21: /2.0 -- int/int is whole-number division, so 1 became 0.
+		return CInt(Ceil(qty/2.0));
 	endif
 	return qty;
 endfunction
@@ -242,9 +243,34 @@ function MultiCraft_TryMake( character, cfg, key )
 		endforeach
 		SendSysMessage( character, "You fail and waste some materials." );
 	else
+		// 2026-09-21: re-check EVERY part, then consume and honour each result
+		// (consume-first pattern, see HasCraftingResources in
+		// resourcemanager.inc). The results used to be ignored, so parts lifted
+		// out of the pack during the Sleep(1) above still produced the item.
+		var charged := 1;
 		foreach req in requests
-			ConsumeResource( character, req, quantities[_req_iter] );
+			if( CInt(GetAvailableResource(character, req).total) < quantities[_req_iter] )
+				charged := 0;
+			endif
 		endforeach
+		if( !charged )
+			SendSysMessage( character, "You no longer have the materials for that." );
+		else
+			foreach req in requests
+				if( charged )
+					if( !ConsumeResource( character, req, quantities[_req_iter] ) )
+						charged := 0;
+					endif
+				endif
+			endforeach
+		endif
+		if( !charged )
+			// Same lease release as the normal exit at the bottom.
+			foreach req in requests
+				ReleaseResourceLease( req );
+			endforeach
+			return 0;
+		endif
 
 		var resultobjtype := CInt(element.ResultObjtype);
 		var makedeed := CInt(element.MakeDeed);

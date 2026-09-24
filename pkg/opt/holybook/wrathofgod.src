@@ -90,7 +90,10 @@ program cast_shifting_earth( parms )
 	if (casterkarma > castonkarma)
 		ApplyPlanarDamage( caster , cast_on , circle , dmg , plane );
 	else
-		ApplyPlanarDamage( cast_on , caster , circle , dmg , plane );
+		// 2026-09-22: was ApplyPlanarDamage( cast_on , caster , ... ), which put the
+		// target on the caster's hitlist as aggressor and, if the reflect killed,
+		// named them the killer. Self-inflicted damage carries no attribution.
+		ApplyPlanarDamage( caster , caster , circle , dmg , plane );
 		SendSysmessage( caster , "Their superior Karma reflects the spell!" );
    	endif
 	EraseObjProperty( caster , "#Casting" );

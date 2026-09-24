@@ -170,71 +170,100 @@ function AcctHackChecks( username, password, ip )
 
 	/*
 	 * This is just a little password protection, so someone doesn't go around
-	 * trying to steal peoples accounts trying 100's of passwords. It doesn't
-	 * really stop someone, but it slows them down a lot and may lead them off
-	 * from trying to steal the account.
+	 * trying to steal peoples accounts trying 100's of passwords.
 	 *
+	 * 2026-09-21 rework:
+	 *  - The lockout is checked BEFORE the password. It used to be looked at
+	 *    only when the password was WRONG, so a locked-out address that sent
+	 *    the right password got straight in -- guessing was slowed, never
+	 *    blocked.
+	 *  - FailureInterval is still SECONDS, as settings.cfg documents, but its
+	 *    value there went 3 -> 180: failures only add up inside that window,
+	 *    so at 3 seconds one guess every 4 seconds never reached
+	 *    MaxLoginFailures.
+	 *  - DisableGrace now does what settings.cfg says: an attempt during a
+	 *    lockout re-arms it to DisableLength only while MORE than DisableGrace
+	 *    minutes remain. The old test compared the lock's clock time to that
+	 *    duration, which is always true, so every attempt re-armed the lock.
+	 *  - The lock is per account AND per address, so someone guessing from
+	 *    elsewhere can't lock the real owner out.
 	 */
 
 	var account := FindAccount( username );
 	if( !account )
 		ACCT_DebugPrint( "AcctHackChecks: account lookup failed for user=" + username );
 		return ACCT_NOT_EXIST;
-	elseif( !account.CheckPassword( password ))
-		var settings := ACCT_GetSettingsCfgElem( "Settings" );
-		var failure_interval := GetConfigInt( settings, "FailureInterval" );
-		var failed_login := account.GetProp( "#FailedLogin" );
+	endif
 
-		// First attempt at failing the password check.
-		if( !failed_login[ip] )
-			if( Lower( TypeOf( failed_login )) != "dictionary" )
-				failed_login := dictionary{};
-			endif
+	var settings := ACCT_GetSettingsCfgElem( "Settings" );
+	var max_failures := GetConfigInt( settings, "MaxLoginFailures" );
+	var failure_interval := GetConfigInt( settings, "FailureInterval" );
+	var disable_length := GetConfigInt( settings, "DisableLength" ) * 60;
+	var disable_grace := GetConfigInt( settings, "DisableGrace" ) * 60;
+	var time_now := POLCore().systime;
 
-			failed_login.insert( ip, array{1, POLCore().systime+failure_interval} );
-			account.SetProp( "#FailedLogin", failed_login );
-			ACCT_DebugPrint( "AcctHackChecks: first bad password for user=" + username + " ip=" + ip );
-			ReportText( "Invalid login credentials for account: "+username+" IP: "+ip, REPORT_SYSLOG );
-			return ACCT_LOGIN_FAIL; // Let pol tell the user it's an incorrect password.
-		else
-			var max_failures := GetConfigInt( settings, "MaxLoginFailures" );
-			var disable_length := GetConfigInt( settings, "DisableLength" ) * 60;
-			var disable_grace := GetConfigInt( settings, "DisableGrace" ) * 60;
+	var failed_login := account.GetProp( "#FailedLogin" );
+	if( Lower( TypeOf( failed_login )) != "dictionary" )
+		failed_login := dictionary{};
+	endif
 
-			if( failed_login[ip][1] >= max_failures && ( failed_login[ip][2] >= POLCore().systime ))
-		  	    // Too many failure attempts. Leave the user hanging at login for the next
-		  	    // disable_length minutes if disable timer is greater than disable_grace.
-		 		failed_login[ip][1] += 1;
-		 		if( failed_login[ip][2] > disable_grace )
-					failed_login[ip][2] := POLCore().systime+disable_length;
-					ReportText( "Disabling account ["+username+"] - IP ["+ip+"] for "+disable_length+" seconds. Invalid logins >= "+max_failures+"." , REPORT_SYSLOG );
-		 		endif
-				account.SetProp( "#FailedLogin", failed_login );
-				ACCT_DebugPrint( "AcctHackChecks: lockout threshold reached for user=" + username + " ip=" + ip );
-	  		    return ACCT_LOGIN_HACK; // Leave user hanging.
-		 	elseif( failed_login[ip][1] >= max_failures && ( failed_login[ip][2] <= POLCore().systime ))
-		  	    // User attempted to login with the wrong password after disable_length minutes.
-		 		// Reset user's wait time.
-		 		ReportText( "Resetting disable timer on account ["+username+"] - IP ["+ip+"]", REPORT_SYSLOG );
-		 		failed_login.Erase( ip );
-		 		account.SetProp( "#FailedLogin", failed_login );
-				ACCT_DebugPrint( "AcctHackChecks: reset lockout timer for user=" + username + " ip=" + ip );
-		  	    return ACCT_LOGIN_FAIL;
-		 	elseif( failed_login[ip][1] <= max_failures )
-		  	    ReportText( "Invalid login credentials for account: "+username+" IP: "+ip, REPORT_SYSLOG );
-
-		 		if( failed_login[ip][2] >= POLCore().systime )
-					failed_login[ip][1] += 1;
-				else
-					failed_login[ip][1] := 1;
+	// Nested ifs on purpose: this repo compiles with ShortCircuitEvaluation=0,
+	// so "exists(ip) and failed_login[ip][1]..." would index a missing entry.
+	// max_failures < 1 means the lockout is switched off in settings.cfg.
+	if( max_failures >= 1 )
+		if( failed_login.exists( ip ) )
+			if( failed_login[ip][1] >= max_failures )
+				if( failed_login[ip][2] >= time_now )
+					if( ( failed_login[ip][2] - time_now ) > disable_grace )
+						failed_login[ip][2] := time_now + disable_length;
+						account.SetProp( "#FailedLogin", failed_login );
+					endif
+					ACCT_DebugPrint( "AcctHackChecks: locked out user=" + username + " ip=" + ip );
+					return ACCT_LOGIN_HACK; // Leave user hanging, right password or not.
 				endif
 
-				failed_login[ip][2] := POLCore().systime+failure_interval;
+				// The lock has run out -- clean slate for this address.
+				ReportText( "Lockout expired on account ["+username+"] - IP ["+ip+"]", REPORT_SYSLOG );
+				failed_login.erase( ip );
 				account.SetProp( "#FailedLogin", failed_login );
-				ACCT_DebugPrint( "AcctHackChecks: repeated bad password for user=" + username + " ip=" + ip + " count=" + CStr( failed_login[ip][1] ) );
-		  	    return ACCT_LOGIN_FAIL;
 			endif
 		endif
+	endif
+
+	if( !account.CheckPassword( password ))
+		// Failures only add up while they keep arriving inside failure_interval
+		// of each other; a gap longer than that starts the count again.
+		var fail_count := 1;
+		if( failed_login.exists( ip ) )
+			if( failed_login[ip][2] >= time_now )
+				fail_count := CInt( failed_login[ip][1] ) + 1;
+			endif
+		endif
+
+		var locked_now := 0;
+		if( max_failures >= 1 )
+			if( fail_count >= max_failures )
+				locked_now := 1;
+			endif
+		endif
+
+		if( locked_now )
+			failed_login[ip] := array{ fail_count, time_now + disable_length };
+			ReportText( "Disabling account ["+username+"] - IP ["+ip+"] for "+disable_length+" seconds. Invalid logins >= "+max_failures+"." , REPORT_SYSLOG );
+		else
+			failed_login[ip] := array{ fail_count, time_now + failure_interval };
+			ReportText( "Invalid login credentials for account: "+username+" IP: "+ip, REPORT_SYSLOG );
+		endif
+
+		account.SetProp( "#FailedLogin", failed_login );
+		ACCT_DebugPrint( "AcctHackChecks: bad password for user=" + username + " ip=" + ip + " count=" + CStr( fail_count ) );
+		return ACCT_LOGIN_FAIL; // Let pol tell the user it's an incorrect password.
+	endif
+
+	// Right password: forget this address's earlier failures.
+	if( failed_login.exists( ip ) )
+		failed_login.erase( ip );
+		account.SetProp( "#FailedLogin", failed_login );
 	endif
 
 	if( !ACCT_NormalizeDiscordID( account.GetProp( "DiscordID" )))

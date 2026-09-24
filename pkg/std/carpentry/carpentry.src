@@ -323,10 +323,12 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 	endif
 
 	//Require half resources during Crafting PH
+	// 2026-09-21: /2.0, not /2 -- int/int is whole-number division in the engine,
+	// so Ceil had nothing left to round: 1 became 0 (a free craft) and 25 became 12.
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
+		material := CInt(Ceil(material/2.0));
 		if( secondaryRequest )
-			material2 := CInt(Ceil(material2/2));
+			material2 := CInt(Ceil(material2/2.0));
 		endif
 	endif
 
@@ -430,7 +432,18 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 	// if first check goes OK then GO ON
 	else
 
-		if( ( skillid2 ) &&  !CheckSkill( character , cint(skillid2) , cint(skill2) , cint(points2) )  )
+		// 2026-09-21: was "( skillid2 ) && !CheckSkill(...)" in one condition.
+		// Nothing short-circuits in this repo (ShortCircuitEvaluation=0), so a
+		// craft with NO co-skill still ran CheckSkill on skill id 0 -- Alchemy --
+		// at difficulty 0: a free stat-gain roll, or a lost point for anyone
+		// with Alchemy set to drop.
+		var second_check_failed := 0;
+		if( skillid2 )
+			if( !CheckSkill( character , cint(skillid2) , cint(skill2) , cint(points2) ) )
+				second_check_failed := 1;
+			endif
+		endif
+		if( second_check_failed )
 			var the_skill	:= GetEffectiveSkill( character , skillid2 );
 			var destroy	:= 75 - Cint( the_skill / 2 );
 
@@ -462,6 +475,23 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 
 		// if second check goes ok as well or there is no second check GO ON
 	else
+		// 2026-09-21: consume first and honour the result (see
+		// HasCraftingResources in resourcemanager.inc). This used to create the
+		// item, then consume with the result ignored, so materials lifted out of
+		// the pack during the craft delay gave a free item.
+		if( !HasCraftingResources( character, primaryRequest, material, secondaryRequest, material2 ) )
+			SendSysMessage( character, "You no longer have the materials for that." );
+			break;
+		endif
+		if( !ConsumeResource( character, primaryRequest, material ) )
+			break;
+		endif
+		if( secondaryRequest )
+			if( !ConsumeResource( character, secondaryRequest, material2 ) )
+				break;
+			endif
+		endif
+
 		var excep_ch := 10;
 		itemname := element.Name;
 
@@ -480,30 +510,46 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 		var theitem;
 		var item_cfg := ReadConfigFile( ":*:itemdesc" );
 
-		if( element.Exceptional and (GetObjProperty(character, "ForceExceptional") or (randomchance < excep_ch)) )
-			if( GetObjProperty(character, "ForceExceptional") or CheckSkill( character , cint(skillid) , cint(skill) , 0 ) )
-				//Made something Exceptional
-				if( give_deed )
-					var product_desc := GetItemDescriptor(CInt(give_deed));
-					ApplyMaterialPropertiesDeed(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY, deedname);
-					theitem := CreateItemInBackpack( character , product_desc );
-					itemname := GetObjProperty( theitem , "DeedName" );
-					SetName( theitem , itemname );
-					IncRevision(theitem);
-				else
-					//Non Deed Item
-					var product_desc := GetItemDescriptor(CInt(item));
-					ApplyMaterialProperties(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY);
-					theitem := CreateItemInBackpack( character , product_desc );
-					IncRevision(theitem);
+		// 2026-09-21: decided up front. This was two nested ifs with the "make a
+		// normal item" else hanging off the OUTER one, so when the chance roll
+		// came up but the exceptional CheckSkill failed, NO item was made: the
+		// player got a false "Your backpack is full.", lost the materials, and
+		// the loop stopped. A failed exceptional check makes the normal item
+		// now, like tailoring/tinkering. Nested (not one "and"/"or" condition)
+		// so CheckSkill only rolls when the chance roll actually came up.
+		var make_excep := 0;
+		if( element.Exceptional )
+			if( GetObjProperty(character, "ForceExceptional") )
+				make_excep := 1;
+			elseif( randomchance < excep_ch )
+				if( CheckSkill( character , cint(skillid) , cint(skill) , 0 ) )
+					make_excep := 1;
 				endif
-				if( skill >= 130 )
-					SendSysmessage( character , "This masterpiece will make you famous around the world." );
-					AwardFame( character , FAME_BONUS );
-				elseif( GetObjProperty( character , CLASSEID_CRAFTER ) and skill >= 110 )
-					SendSysmessage( character , "This masterpiece will make you famous around the world." );
-					AwardFame( character , FAME_BONUS );
-				endif
+			endif
+		endif
+
+		if( make_excep )
+			//Made something Exceptional
+			if( give_deed )
+				var product_desc := GetItemDescriptor(CInt(give_deed));
+				ApplyMaterialPropertiesDeed(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY, deedname);
+				theitem := CreateItemInBackpack( character , product_desc );
+				itemname := GetObjProperty( theitem , "DeedName" );
+				SetName( theitem , itemname );
+				IncRevision(theitem);
+			else
+				//Non Deed Item
+				var product_desc := GetItemDescriptor(CInt(item));
+				ApplyMaterialProperties(product_desc, primaryRequest, 1, character, SKILLID_CARPENTRY);
+				theitem := CreateItemInBackpack( character , product_desc );
+				IncRevision(theitem);
+			endif
+			if( skill >= 130 )
+				SendSysmessage( character , "This masterpiece will make you famous around the world." );
+				AwardFame( character , FAME_BONUS );
+			elseif( GetObjProperty( character , CLASSEID_CRAFTER ) and skill >= 110 )
+				SendSysmessage( character , "This masterpiece will make you famous around the world." );
+				AwardFame( character , FAME_BONUS );
 			endif
 		else
 			//Failed to make Exceptional, make normal item
@@ -523,11 +569,8 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 			endif
 		endif
 
+		// Materials were already charged once above.
 		if( !theitem )
-			ConsumeResource( character, primaryRequest, material );
-			if( secondaryRequest )
-				ConsumeResource( character, secondaryRequest, material2 );
-			endif
 			SendSysmessage( character, "Your backpack is full." );
 			break;
 		endif
@@ -545,11 +588,6 @@ function TryToCreateItem( character , primaryRequest , secondaryRequest , item )
 
 		if( result_color )
 			theitem.color := result_color;
-		endif
-
-		ConsumeResource( character , primaryRequest , material );
-		if( secondaryRequest )
-			ConsumeResource( character , secondaryRequest , material2 );
 		endif
 
 
@@ -583,7 +621,7 @@ function MakeYoungOakStaff( character , oak )
 	var oakRequest := MakeBackpackRequest( character, oak );
 	//Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		ammount_required := CInt(Ceil(ammount_required/2));
+		ammount_required := CInt(Ceil(ammount_required/2.0)); // 2026-09-21: /2.0, see TryToCreateItem
 	endif
 
 	if( GetAvailableResource(character, oakRequest).total < ammount_required )
@@ -600,7 +638,11 @@ function MakeYoungOakStaff( character , oak )
 
 	var diff := 100;
 	SendSysmessage( character , "Difficulty: "+diff );
-	ConsumeResource( character , oakRequest , ammount_required );
+	// 2026-09-21: result honoured -- oak lifted out of the pack during the
+	// Sleep()s above used to still produce the staff.
+	if( !ConsumeResource( character , oakRequest , ammount_required ) )
+		return;
+	endif
 	if( CheckSkill( character , cint(SKILLID_CARPENTRY) , cint(diff) , cint(diff * POINTS_MULTIPLIER) ) )
 		CreateItemInBackpack( character , 0xBA28 );
 		SendSysMessage( character , "You successfully crafted a young oak staff." );

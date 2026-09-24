@@ -20,6 +20,7 @@ endif
   endif
   if (!CheckLineOfSight(who, npc))
     SendSysMessage(who, "You can't see that!");
+    return; // 2026-09-21: it said so and then herded anyway
   endif
   SetObjProperty( who , "#lastherd" , ReadGameClock() );	
 

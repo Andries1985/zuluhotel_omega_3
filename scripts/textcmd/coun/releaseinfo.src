@@ -132,10 +132,27 @@ var data := GFSendGump( who, gump );
 
 // Teleport who to hatched or released location
 case (data[0])
-5: 	MoveObjectToLocation(who, CInt(SplitWords(relinfo)[4]), CInt(SplitWords(relinfo)[5]), CInt(SplitWords(relinfo)[6]), MOVEOBJECT_FORCELOCATION);
-	SendSysMessage(who, "Moved to where the creature went wild.");
-10:	MoveObjectToLocation(who, CInt(SplitWords(hatinfo)[4]), CInt(SplitWords(hatinfo)[5]), CInt(SplitWords(hatinfo)[6]), MOVEOBJECT_FORCELOCATION);
-	SendSysMessage(who, "Moved to where the creature was hatched.");
+5: 	if( ReleaseInfoGoTo( who, relinfo ) )
+		SendSysMessage(who, "Moved to where the creature went wild.");
+	else
+		SendSysMessage(who, "Could not move there.");
+	endif
+10:	if( ReleaseInfoGoTo( who, hatinfo ) )
+		SendSysMessage(who, "Moved to where the creature was hatched.");
+	else
+		SendSysMessage(who, "Could not move there.");
+	endif
 endcase
 
 endprogram
+
+// 2026-09-23: the realm is the seventh word of the recorded "Player: <serial> XYZR: x y z realm" line;
+// the old calls passed the force-location flag as the realm and no flag, so the engine rejected every move.
+function ReleaseInfoGoTo( who, record )
+	var parts := SplitWords( record );
+	var realmname := parts[7];
+	if( !realmname )
+		realmname := who.realm;
+	endif
+	return MoveObjectToLocation( who, CInt(parts[4]), CInt(parts[5]), CInt(parts[6]), realmname, MOVEOBJECT_FORCELOCATION );
+endfunction

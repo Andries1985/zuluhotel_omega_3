@@ -41,6 +41,7 @@ function LookAround( who )
 	var wfh;
 	var crimMaster := 0;
 	foreach mobile in ListMobilesNearLocation( who.x, who.y, who.z, SEARCH_RANGE, who.realm )
+		crimMaster := 0; // 2026-09-23: was set once per call and never reset, so every tamed creature scanned after a criminal owner's pet got a guard too
 		wfh := GetObjProperty(mobile,"WarriorForHire");
 		if( mobile.IsA(POLCLASS_NPC) )
 			if(mobile.script == "tamed")

@@ -20,8 +20,19 @@ exported function ShilCheckSkill( who, skillid, difficulty, points )
 
     var skills_state_array   := GetObjProperty( who, "SkillsState" );
 	var skill_state := skills_state_array[skillid+1];
+
+	// 2026-09-21: was "return AwardSkillPoints(who, skillid, 0);" -- that call
+	// returns 0 for an arrow-down skill, so EVERY check on a skill being
+	// dropped failed, however high it still was. It still drops once per use
+	// (the original intent: "should drop on skill fail"), but the normal roll
+	// below now decides success. For an arrow-down skill every AwardSkillPoints
+	// call is another -1, so "dropping" keeps the checks below from calling it
+	// a second time, and points is zeroed so nothing else awards either.
+	var dropping := 0;
 	if( skill_state == "d" )
-		return AwardSkillPoints(who, skillid, 0); // fixed here, should drop on skill fail
+		AwardSkillPoints(who, skillid, 0);
+		dropping := 1;
+		points := 0;
     endif
 
 	if( who.IsA(POLCLASS_NPC) && skillid != SKILLID_DETECTINGHIDDEN )
@@ -29,10 +40,12 @@ exported function ShilCheckSkill( who, skillid, difficulty, points )
 	elseif( who.cmdlevel )
 		return 1;
 	elseif( difficulty == 0 )
-		AwardSkillPoints(who, skillid, 0); // In case they have the skill arrow down. no work 
+		if( !dropping )
+			AwardSkillPoints(who, skillid, 0); // In case they have the skill arrow down. no work
+		endif
 		return 1;
 	elseif( difficulty < 0 )
-		return SkillAsPercentSkillCheck( who, skillid, difficulty, points );
+		return SkillAsPercentSkillCheck( who, skillid, difficulty, points, dropping );
 	else
 		return DifficultySkillCheck( who, skillid, difficulty, points );
 	endif
@@ -103,7 +116,10 @@ endfunction
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-function SkillAsPercentSkillCheck( who, skillid, difficulty, points )
+// dropping (2026-09-21): 1 when the skill's arrow is down -- ShilCheckSkill
+// has already applied this use's -1, so the two unguarded half-point awards
+// below must not call AwardSkillPoints again (each call is another -1).
+function SkillAsPercentSkillCheck( who, skillid, difficulty, points, dropping := 0 )
 
 	var skill	:= GetEffectiveSkill( who, skillid );
 	if( skill == 0 )
@@ -136,7 +152,7 @@ function SkillAsPercentSkillCheck( who, skillid, difficulty, points )
 			check := RandomInt(100);
 			if( check >= chance )
 				// less than 10 skill points, give them half?
-				if( chance < 10 )
+				if( chance < 10 and !dropping )
 					AwardSkillPoints( who, skillid, Cint(points/2) );
 				endif
 				return 0;
@@ -144,7 +160,7 @@ function SkillAsPercentSkillCheck( who, skillid, difficulty, points )
 				points := 0;
 			endif
 		else
-			if( chance < 10 )
+			if( chance < 10 and !dropping )
 				AwardSkillPoints( who, skillid, Cint(points/2) );
 			endif
 			return 0;

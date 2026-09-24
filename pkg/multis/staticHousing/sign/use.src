@@ -271,11 +271,21 @@ sign := sgn;
 			return 0;
 		endif
 
+		// 2026-09-22: the "buy?" question above blocks with the sign still for
+		// sale, so two buyers could both confirm and both be charged, the second
+		// write of ownerserial winning. Re-checked here, and the whole payment
+		// and hand-over below runs critical (no yields until the sign is marked
+		// sold) so a second buyer's script cannot slip in between.
+		if(!GetObjProperty(sign, "NewHouse"))
+			SendSysMessage(who, "This house has just been sold to someone else.", 3, 40);
+			return 0;
+		endif
+
 		set_critical( 1 );
 		var created := CreateBuiltDeed(who, sign, bankbox);
-		set_critical( 0 );
 
 		if (!created)
+			set_critical( 0 );
 			SendSysMessage( who, "ERROR: Unable to create built deed!", color := 33 );
 			SendSysMessage(who, "Your bank box might be too full. Try removing some items from it.", 1, 33);
 			SendSysMessage(who, "Then come back and try buying this house again.", 1, 33);
@@ -286,6 +296,7 @@ sign := sgn;
 		var packkey := CreateItemInBackpack( who, UOBJ_GOLD_KEY );
 
 		if (!packkey)
+			set_critical( 0 );
 			SendSysMessage( who, "Your backpack is too full! Cannot create the key.", 1, 33);
 			SendSysMessage(who, "Aborting. You must make room before buying this house.", 1, 33);
 			DestroyItem(created);
@@ -295,6 +306,7 @@ sign := sgn;
 		var bankkey := CreateItemInContainer( bankbox, UOBJ_GOLD_KEY );
 
 		if (!bankkey)
+			set_critical( 0 );
 			SendSysMessage( who, "Your bankbox is too full! Cannot create the extra key!", 1, 33);
 			SendSysMessage(who, "Aborting. You must make room before buying this house.", 1, 33);
 			DestroyItem(created);
@@ -310,8 +322,10 @@ sign := sgn;
 		if (!who.spendgold (price))
 			SendSysMessage(who, "You don't have enough money in your backpack to buy it.", 1, 33);
 			SendSysMessage(who, "Checking your bank box...", color := 56);
-			Sleep(2);
+			// 2026-09-22: the Sleep(2) that sat here was the one yield inside the
+			// purchase; removed so the section stays critical.
 			if(!SpendCoin(who, price, bankbox, UOBJ_GOLD_COIN))
+				set_critical( 0 );
 				SendSysMessage(who, "You don't have enough in the bank to buy it either. Sorry.", 1, 33);
 				DestroyItem(created);
 				DestroyItem(packkey);
@@ -319,6 +333,11 @@ sign := sgn;
 				return 0;
 			endif
 		endif
+
+		// Paid: the house is sold from this point on (see the re-check above).
+		EraseObjProperty(sign, "NewHouse");
+		SetObjProperty(sign, "ownerserial", who.serial);
+		set_critical( 0 );
 
 		var LockID := CInt(GetObjProperty( sign, "LockID" ));
 		SetObjProperty( packkey, "LockID", LockID );
@@ -373,7 +392,10 @@ sign := sgn;
     endif
 
 
-	sign.RefreshHouse();
+	// 2026-09-22: the abandonment timer used to be refreshed for WHOEVER
+	// double-clicked the sign (here and again further down), so a static house
+	// never decayed while it had visitors. Owner and co-owners only now, as the
+	// settings file describes and as the classic sign does (your pick).
 	EnsureBaseResaleTemplate(sign);
 	NormalizeLegacySecuresForSign(sign);
 	Detach();
@@ -405,7 +427,9 @@ sign := sgn;
 		endif
 	endif
 
-	sign.RefreshHouse();
+	if(sign.IsCoOwnerOrOwner(who))
+		sign.RefreshHouse();
+	endif
 	if(who.serial == ownerserial)
 		SendSysMessageCL(who, 1043293, color := 66);
 	endif
@@ -1169,7 +1193,12 @@ function Eject(who)
 		SendSysMessage(who, "You cannot eject staff!", 3, 40);
 	elseif(targ.npctemplate == "playervendor")
 		SendSysMessage(who, "You cannot eject player vendors.", 3, 40);
-	elseif(!IsInHouse(who))
+	elseif(sign.IsCoOwnerOrOwner(targ))
+		SendSysMessage(who, "You cannot eject the owner or a co-owner of the house.", 3, 40);
+	// 2026-09-22: was "!IsInHouse(who)" -- it checked that the EJECTOR stood in
+	// a house, not that the target was in this one, so anyone in view could be
+	// dropped onto the sign.
+	elseif(!sign.IsObjectInsideHouse(targ))
 		SendSysMessage(who, "You can only eject people in your house.", 3, 40);
 	else
 		MoveObjectToLocation(targ, sign.x, sign.y, GetWorldHeight(sign.x, sign.y, targ.realm), targ.realm, MOVEOBJECT_FORCELOCATION);

@@ -1029,7 +1029,7 @@ function FillInArrays( item )
 	
 	//OnUseScript
 	if( item.usescript )
-		var usecfg := ReadConfigFile( ":magic:usescriptdesc" );
+		var usecfg := ReadConfigFile( ":shilitems:usescriptdesc" ); // 2026-09-23: was :magic:, a package that does not exist, so this section never showed
 		var usescripts := GetConfigStringKeys( usecfg );
 		
 		foreach usescript in usescripts
@@ -2485,7 +2485,7 @@ endfunction
 
 function GetMiscPropForUseScript( item )
 
-	var usecfg := ReadConfigFile( ":usescripts:usescriptdesc" );
+	var usecfg := ReadConfigFile( ":shilitems:usescriptdesc" ); // 2026-09-23: was :usescripts:, no such package
 	var elem := FindConfigElem( usecfg , TruncPkgName( item.usescript ) );
 	if( elem )
 		return elem.MiscProp;

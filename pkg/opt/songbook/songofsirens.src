@@ -73,6 +73,10 @@ program cast_songofsirens( player )
 		PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
 		PrintTextAbovePrivate( player, "Out of Stamina!",player );
 		PlaySoundEffect( player , sfx_failure );
+		// 2026-09-22: this branch had no return and the paralysis loop sits after
+		// the endif, so an out-of-stamina bard paralyzed everyone for free.
+		EraseObjProperty( player , "#Casting" );
+		return;
 	else		
 		ps := GetStamina( player ) -drain;
 		if (ps < 0 )

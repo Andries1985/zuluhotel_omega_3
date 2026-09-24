@@ -23,6 +23,18 @@ var location := TargetCoordinates( who );
 
 if (!location) SendSysMessage( who, "Canceled."); return; endif
 
+// 2026-09-22: the clamp only held to the east and south; a target far west
+// or north was used as sent. Now +-10 in every direction, and the shooter
+// must see the impact point.
+if( location.x > handle.x + 10 ) location.x := handle.x + 10; endif
+if( location.x < handle.x - 10 ) location.x := handle.x - 10; endif
+if( location.y > handle.y + 10 ) location.y := handle.y + 10; endif
+if( location.y < handle.y - 10 ) location.y := handle.y - 10; endif
+if( !CheckLosAt( who, location.x, location.y, location.z ) )
+	SendSysMessage( who, "You cannot see where that would land." );
+	return 0;
+endif
+
 destroyitem(rock);
 
 var item := handle.graphic;
@@ -47,17 +59,8 @@ function fireworks(who, catapult, location)
 
    var locationx, locationy;
    
-   if (location.x > (catapult.x+10))
-   locationx := catapult.x +10;
-   else
-   locationx := location.x;
-   endif
-
-   if (location.y > (catapult.y+10))
-   locationy := catapult.y+10;
-   else
+   locationx := location.x; // 2026-09-22: clamped and sight-checked by the caller
    locationy := location.y;
-   endif
 
    var dmg := RandomDiceRoll("10d5+40"),
        range := 2,

@@ -6,6 +6,7 @@ include "include/attributes";
 include ":mdgumps:yesNo";
 include "include/areas";
 include "include/constants/locations";
+include ":donator:include/playertown";
 
 const MONEY := 0xeed;
 
@@ -102,35 +103,8 @@ function mountostard( who, item )
 
 endfunction
 
-function IsInPlayerCity( who )
-
-	var items := ListItemsNearLocationOfType( who.x, who.y, 0, 250, 0x7566, who.realm );
-	var stone;
-	var minx;
-	var maxx;
-	var miny;
-	var maxy;
-	if( !items )
-		items := ListItemsNearLocationOfType( who.x, who.y, 1, 250, 0x7566, who.realm );
-		if( !items )
-			items := ListItemsNearLocationOfType( who.x, who.y, 2, 250, 0x7566, who.realm );
-		endif
-	endif
-	foreach item in items
-		stone := item;
-		minx := GetObjProperty( stone, "MinX" );
-		maxx := GetObjProperty( stone, "MaxX" );
-		miny := GetObjProperty( stone, "MinY" );
-		maxy := GetObjProperty( stone, "MaxY" );
-		if( (who.x >= minx) AND (who.x <= maxx) AND (who.y >= miny) AND (who.y <= maxy) )
-			return 1;
-		endif
-	endforeach
-
-	return 0;
-	
-
-endfunction
+// 2026-09-22: IsInPlayerCity() moved to include/playertown.inc (the old copy
+// looked for a stone objtype this repo never had; see the include).
 
 function colormount( who, item )
 

@@ -7,7 +7,14 @@ include ":ArtifactSystem:artifact";
 program dblclick_artifactbox( player, box )
 
 	var item := getItemArtifactBox();
-	MoveItemToContainer(item, player.backpack);
+	// 2026-09-22: the box was destroyed before the move was known to work;
+	// a full backpack left the artifact in the store and the player with nothing.
+	if (item)
+		if (!MoveItemToContainer(item, player.backpack))
+			SendSysMessage(player, "You cannot carry what is inside the box.", FONT_NORMAL, ARTIFACT_FONT_COLOR);
+			return 0;
+		endif
+	endif
 	DestroyItem( box );
 	
 	if (item)

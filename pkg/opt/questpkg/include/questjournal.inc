@@ -16,7 +16,7 @@ const QJ_ABANDON_OFFSET := 2000;
 
 function ShowQuestJournal(who)
 
-	Print("[QuestPkg] ShowQuestJournal: opening for "+who.name);
+	QP_Debug("[QuestPkg] ShowQuestJournal: opening for "+who.name);
 
 	while(1)
 		var active_ids := QP_GetActiveQuestIds(who);

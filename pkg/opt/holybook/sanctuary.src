@@ -5,6 +5,7 @@ use os;
 include "include/spelldata";
 include "include/dotempmods";
 include "include/client";
+include "include/spellgrants";
 
 const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_SANCTUARY;
 const SPELL_EFFECT_ID		:= FX_SPELL_SANCTUARY;
@@ -69,9 +70,10 @@ program cast_antidote( parms )
 		power := power + 1;
 		if( duration and power )
 			SetObjProperty( caster, "PermPoisonImmunity" , power );
+			SetObjProperty( caster, "SpellPoisonImmunity" , 1 ); // 2026-09-22: marks the grant so login can take it back after a restart
 			SendSysmessage( caster , "You are now protected from poisonous effects." );	
 			Sleep( duration );
-			EraseObjProperty( caster, "PermPoisonImmunity" );
+			ReclaimSpellPoisonImmunity( caster ); // 2026-09-22: back to what worn items give (spellgrants.inc)
 		endif
 	endif
 endprogram

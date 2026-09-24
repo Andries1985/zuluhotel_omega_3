@@ -3,6 +3,8 @@ use datafile;
 
 include "include/NameChecker";
 include ":accounts:accounts";
+include ":areas:include/areafunctions"; // 2026-09-23: safe-zone flags re-checked on reconnect too
+include "include/areas";
 
 // Toadstool ADD
 const BANNED_IPS := ":ipban:bannedips";
@@ -17,6 +19,17 @@ program reconnect( who )
         endif
 
 	CheckIPBan(who);
+
+	RemoveSafeAreaProperties(who, 1);
+	// 2026-09-23: decide the safe-zone and no-PK flags here instead of racing the region
+	// enter script the engine fires at login (it hands off to a delayed script).
+	if (IsInSafeArea(who))
+		SetSafeAreaProperties(who);
+	elseif (IsInNOPKArea(who))
+		SetNOPK(who);
+	else
+		RemoveNOPK(who);
+	endif
 
 	var temp := GetObjProperty(who, "#ViewingBeast");
 	if (temp)

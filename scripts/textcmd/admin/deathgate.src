@@ -96,7 +96,6 @@ endif
 		gateprops[1] := location;
 		gateprops[2] := timer;
 		gateprops[3] := colour;
-		Print(gateprops);
 		SetObjProperty(npc, "GateOnDeath", gateprops);
 		
 		SendSysMessage(who, "Gate on death saved.");

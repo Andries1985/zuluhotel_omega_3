@@ -191,7 +191,10 @@ Program areas(who, text)
 		var result := GFSendGump(who, gump);
 		DebugPrint("CLOSE realm="+realm+" page="+CStr(page)+" button="+CStr(result[0])+" keycount="+CStr(result.keys.size())+" keys="+DebugSummarizeData(result.keys));
 		DebugLogPageMasksFromArrays(realm, areas, page, perpage, "BEFORE_SAVE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
-		var has_page_input := HasCurrentPageCheckboxInput(result.keys, page, perpage);
+		// 2026-09-23: was "only if some box on this page came back ticked", which dropped the
+		// change when the last ticked box on a page was cleared. Any real button press (page
+		// turn or commit) now applies the page as drawn; a closed gump applies nothing.
+		var has_page_input := (result[0] == BTN_PAGE_PREV || result[0] == BTN_PAGE_NEXT || result[0] == BTN_COMMIT);
 		if (has_page_input)
 			ApplyPageCheckboxesToArrays(result.keys, page, perpage, guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
 			DebugLogPageMasksFromArrays(realm, areas, page, perpage, "AFTER_STAGE", guarded, norecallto, norecallfrom, disabledmarking, disablemagic, forbiddenarea, nolooting, safearea, nopk, rparea);
@@ -448,7 +451,9 @@ function RefreshOnlineAreaStateForRealm(realm)
 		var had_safe := GetObjProperty(online_char, PROPID_INSAFEAREA);
 		var should_be_safe := IsInSafeArea(online_char);
 		if (should_be_safe)
-			if (!had_safe)
+			// 2026-09-23: grant only inside a scripted region, whose leave script can take it
+			// back again; an areas.cfg box that is not a region has no leave script.
+			if (!had_safe && GetRegionName(online_char))
 				SetSafeAreaProperties(online_char);
 				refreshed := refreshed + 1;
 			endif
@@ -460,7 +465,7 @@ function RefreshOnlineAreaStateForRealm(realm)
 		var had_nopk := GetObjProperty(online_char, PROPID_NOPKAREA);
 		var should_be_nopk := IsInNOPKArea(online_char);
 		if (should_be_nopk)
-			if (!had_nopk)
+			if (!had_nopk && GetRegionName(online_char))
 				SetNOPK(online_char);
 				refreshed := refreshed + 1;
 			endif
@@ -558,26 +563,6 @@ function DebugLogPageMasksFromArrays(realm, areas, page, perpage, tag, guarded, 
 	endforeach
 
 	return 1;
-endfunction
-
-function HasCurrentPageCheckboxInput(data, page, perpage)
-	if (!data || !data.size())
-		return 0;
-	endif
-
-	var min_index := (page-1)*perpage;
-	var max_index := min_index+perpage-1;
-	var min_key := min_index*10+1;
-	var max_key := max_index*10+10;
-
-	foreach key in data
-		var key_val := CInt(key);
-		if (key_val >= min_key && key_val <= max_key)
-			return 1;
-		endif
-	endforeach
-
-	return 0;
 endfunction
 
 function EnsureAreaArray(data, areas)

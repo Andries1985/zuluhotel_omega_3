@@ -48,6 +48,10 @@ program skill_hide ( hider )
 		if(!hider.hidden)
 			hider.hidden := 1;
 		endif
+		// 2026-09-21: a skill hide takes the hide over from any Invisibility
+		// spell still counting down, so that spell's timer (spells/invisibility.src)
+		// can't un-hide the player when it runs out.
+		EraseObjProperty( hider , "#InvisPid" );
 		PrintTextAbovePrivate( hider, "You have hidden yourself well" , hider );
 	else
 		if(hider.hidden)

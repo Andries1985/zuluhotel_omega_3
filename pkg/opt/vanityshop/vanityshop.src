@@ -248,13 +248,21 @@ function ConfirmItemPurchase(who, item)
 			// Unpack the bundle into the backpack directly instead of moving
 			// temp_bag itself in -- moving the bag left the purchased items
 			// nested inside an extra pouch instead of loose in the backpack.
+			// 2026-09-22: a bundle that stops fitting part-way is undone -- the
+			// pieces already moved are destroyed with the bag. They used to stay
+			// in the pack while the purchase aborted before the tokens were taken.
+			var delivered_items := array{};
 			foreach bundle_contents in EnumerateItemsInContainer( temp_bag, ENUMERATE_ROOT_ONLY )
 				if (!MoveItemToContainer( bundle_contents, who.backpack ))
+					foreach delivered in delivered_items
+						DestroyItem(delivered);
+					endforeach
 					DestroyItem(temp_bag);
 					SendSysMessage(who, "You need more room in your backpack.");
 					EraseObjProperty( who, PROPID_MOBILE_BROWSING );
 					return 0;
 				endif
+				delivered_items.append(bundle_contents);
 			endforeach
 			DestroyItem(temp_bag);
 		else

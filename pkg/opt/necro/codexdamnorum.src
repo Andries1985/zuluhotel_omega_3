@@ -150,8 +150,17 @@ program codexdamnorum(who, tome)
 
 	set_critical(1);
 
-	var CastMe := (res[0] - 100);
+	var CastMe := CInt(res[0]) - 100;
+	// 2026-09-22: a reply outside the 16 slots, or an unlearned slot (0), gave
+	// GetScript nothing to start and left the player waiting on #Casting.
+	if( CastMe < 1 or CastMe > 16 )
+		return;
+	endif
 	CastMe := BookArray[CastMe];
+	if( !CastMe )
+		SendSysMessage( who, "That chant is not in this codex." );
+		return;
+	endif
 
 	var spell := GetScript( CastMe );
 	
@@ -166,9 +175,14 @@ program codexdamnorum(who, tome)
 		return;
 	endif
 	
-	SetObjProperty(who,"CastingNecro",1);
 	
-	Start_Script( spell , who );
+	// 2026-09-22: a spell script that cannot start (unknown id, script error)
+	// would leave #Casting set and this loop spinning until relog.
+	var spell_process := Start_Script( spell , who );
+	if( spell_process.errortext )
+		EraseObjProperty( who , "#Casting" );
+		return 0;
+	endif
 		
 	while( GetObjProperty( who , "#Casting" ) )
 		Sleepms( 250 );

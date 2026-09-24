@@ -54,6 +54,9 @@ program cast_summon( parms, spell_id )
 
 	var thecreature := "vortex";
 	var thecritter := CreateNPCfromTemplate(thecreature, cast_loc.x, cast_loc.y, cast_loc.z, 0, cast_loc.realm);
+	// 2026-09-21: never written to the world save, so a restart during the
+	// sleep below can't leave a permanent energy vortex behind.
+	thecritter.saveonexit := 0;
 	PlaySoundEffect(thecritter, SFX_SPELL_ENERGY_VORTEX );
 
 	setobjproperty(thecritter, "summoned",1);

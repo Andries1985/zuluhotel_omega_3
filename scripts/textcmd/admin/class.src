@@ -1,4 +1,4 @@
-// Synopsis: Display or set the class of a targeted player
+// Synopsis: Choose a class from a gump and set your own skills: the class skills to N (default 150), all others to 0
 use uo;
 use os;
 

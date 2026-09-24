@@ -13,7 +13,7 @@ program unparalyze( gm )
 		else
 			res.frozen := 0;
 			res.paralyzed := 0;
-			SetObjProperty( res , "frozen" , 1 );
+			EraseObjProperty( res , "frozen" ); // 2026-09-23: was SetObjProperty 1; the AI scripts re-freeze on start while this cprop is set
 			PrintTextAbovePrivate( res, res.name + " is now movable again", gm );
 		endif
 	endif

@@ -33,18 +33,27 @@ if (guild)
 // Not in a guild, remove any recruit props from guilds though
 else
 
+	// 2026-09-22: was a scan of the legacy "Recruits" property nothing writes;
+	// the live join-request lists kept the deleted serial (a blank applicant
+	// in the master's gump). Drop it from every guild's JoinGuildRequest.
 	var guilds := ListGuilds();
-	var recruits;
-	var recruits2;
 	foreach thing in guilds
-		recruits := thing.getprop("Recruits");
-		recruits2 := recruits;
-		foreach recruit in recruits
-			if (who.serial == recruit[1])
-				recruits2.erase(_recruit_iter);
-				thing.setprop("Recruits", recruits2);
+		var requests := thing.getprop("JoinGuildRequest");
+		if (requests and !requests.errortext)
+			var kept := {};
+			foreach req in requests
+				if (req != who.serial)
+					kept.append(req);
+				endif
+			endforeach
+			if (kept.size() != requests.size())
+				if (kept.size())
+					thing.setprop("JoinGuildRequest", kept);
+				else
+					thing.eraseprop("JoinGuildRequest");
+				endif
 			endif
-		endforeach
+		endif
 	endforeach
 endif
 

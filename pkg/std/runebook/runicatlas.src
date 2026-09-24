@@ -153,23 +153,26 @@ function DisplayRunicAtlasGump( who, book )
 
 		ATLAS_GATE_TRAVEL:
 			if( sel.selected )
-				reopen := 0;
 				ReleaseItem( book );
+				// 2026-09-21: return without the RuneDefs save below -- the book is
+				// released and the gate takes ~38 s, so that save wrote back a list
+				// read before the gate (see runebook.src). DestroyRune saves its own.
 				if( !GateWithoutCharges( who, book, runes_def, sel.selected ) )
 					SendSysMessage( who, "Gate Failed." );
 				endif
 				EraseAtlasSelection( who );
+				return 1;
 			endif
 			break;
 
 		ATLAS_GUILD_TRAVEL:
 			if( sel.selected )
-				reopen := 0;
 				ReleaseItem( book );
 				if( !GateWithoutCharges( who, book, runes_def, sel.selected, 1 ) )
 					SendSysMessage( who, "Gate Failed." );
 				endif
 				EraseAtlasSelection( who );
+				return 1; // 2026-09-21: same as ATLAS_GATE_TRAVEL
 			endif
 			break;
 

@@ -73,6 +73,12 @@ program UseWood( character, wood )
 
         Detach();
         var campfire := CreateItematLocation( x, y, z, UOBJ_CAMPFIRE, 1, realm );
+        // 2026-09-21: the fire and its ashes live 60 s and 10 s and are destroyed by
+        // this script, so they must not reach the save -- a restart inside that
+        // window left them in the world for good.
+        if( campfire )
+            campfire.saveonexit := 0;
+        endif
     	SetObjProperty( character, "#lastcamp", ReadGameClock() );
         SubtractAmount(wood,1);
 
@@ -84,6 +90,9 @@ program UseWood( character, wood )
         // todo: really need to turn to embers, etc
 
         campfire := CreateItemAtLocation(x,y,z,UOBJ_ASHES,1, realm);
+        if( campfire )
+            campfire.saveonexit := 0;
+        endif
         sleep(10);
         DestroyItem(campfire);
 

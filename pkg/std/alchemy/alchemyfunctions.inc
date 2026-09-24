@@ -166,7 +166,7 @@ function TryToMakePotion( user, mortar, potion := 0, reg := 0, mage := 0, regReq
 		if( mage )
 			amount_needed := CInt(ceil( amount_needed / ClasseBonus( user, CLASSEID_MAGE ) ));
 			if(GetGlobalProperty("PHC") || GetObjProperty(user, "#PPHC"))
-				amount_needed := CInt(ceil(amount_needed/2));
+				amount_needed := CInt(ceil(amount_needed/2.0)); // 2026-09-21: /2.0 (int/int rounds down)
 			endif
 			if( amount_needed < 1 )
 				amount_needed := 1;
@@ -195,7 +195,14 @@ function TryToMakePotion( user, mortar, potion := 0, reg := 0, mage := 0, regReq
 
 				if( CheckSkill( user, SKILLID_ALCHEMY, difficulty, difficulty * ALCH_POINT_MULTIPLIER ) )
 					if( GetBottle( user.backpack, user, regRequest ) )
-						CreateItemInContainer( mortar.container, product, 1 );
+						// 2026-09-21: was CreateItemInContainer( mortar.container, ... ) with
+						// the result ignored. A placed station has no container (the engine
+						// returns 0 for a world item), so the create failed silently and the
+						// reagents, bottle and skill roll were spent for nothing.
+						if( !AlchemyCreatePotion( user, mortar, product ) )
+							SendSysMessage( user, "Your backpack is full." );
+							break;
+						endif
 						PlaySoundEffect( user, ALCH_SFX_POUR );
 					else
 						SendSysMessage( user, "With no bottles, you are forced to store the mixture in your mortar" );
@@ -240,7 +247,12 @@ function TryToMakePotion( user, mortar, potion := 0, reg := 0, mage := 0, regReq
 				product := ReturnTruePotion(product, bonus);
 			endif
 
-			CreateItemInContainer( mortar.container, product, 1 );
+			// 2026-09-21: same station case as in the loop above -- and the stored
+			// mixture is only erased once the potion really exists.
+			if( !AlchemyCreatePotion( user, mortar, product ) )
+				SendSysMessage( user, "Your backpack is full." );
+				return;
+			endif
 			PlaySoundEffect( user, ALCH_SFX_POUR );
 			SendSysMessage( user, "You pour the content of your mortar in a bottle." );
 			EraseObjProperty( mortar, "contents" );
@@ -263,7 +275,7 @@ function CanMake( user, potion, reg, mage, usereg := 0, regRequest := 0 )
 		amount_needed := CInt(ceil( amount_needed / ClasseBonus( user, CLASSEID_MAGE ) ));
 		//Require half resources during Crafting PH
 		if(GetGlobalProperty("PHC") || GetObjProperty(user, "#PPHC"))
-			amount_needed := CInt(ceil(amount_needed/2));
+			amount_needed := CInt(ceil(amount_needed/2.0)); // 2026-09-21: /2.0 (int/int rounds down)
 		endif
 		if( amount_needed < 1 )
 			amount_needed := 1;
@@ -298,6 +310,17 @@ function GetPotionName( product )
 	var alchemcfg := ReadConfigFile(":alchemy:itemdesc");
 	return alchemcfg[product].sname;
 
+endfunction
+
+
+// 2026-09-21: where a finished potion goes. A carried mortar's own container
+// (the bag it sits in) as before; a placed Alchemy station has no container,
+// so its potions go to the brewer's backpack. Returns the item or 0.
+function AlchemyCreatePotion( user, mortar, product )
+	if( mortar.container )
+		return CreateItemInContainer( mortar.container, product, 1 );
+	endif
+	return CreateItemInBackpack( user, product, 1 );
 endfunction
 
 

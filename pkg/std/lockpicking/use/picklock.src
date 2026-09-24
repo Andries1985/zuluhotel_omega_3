@@ -12,9 +12,23 @@ include "include/skillpoints";
 //include "include/difficulty";
 include "include/chestunlock";	// NotifyChestUnlocked - nudges areaspawner's refill early on a legit pick; spawnpoint is notified separately, at actual destroy time (see chestunlock.inc)
 
+// 2026-09-21: per-character wait between attempts, in seconds. The old script
+// (kept as a comment at the bottom) meant to have a 10 s wait after a failure
+// but set it on the player and checked it on the chest, so it never applied;
+// this script had none, so a chest could be picked once a second.
+const LOCKPICK_DELAY_SUCCESS := 5;
+const LOCKPICK_DELAY_FAILURE := 10;
+
 program picklock( who, lockpick )
 
 	If (!ReserveItem(lockpick)) return; endif
+
+	// Checked before the target prompt so a waiting player doesn't waste a click.
+	var wait_left := CInt( GetObjProperty( who, "#LockpickDelay" ) ) - ReadGameClock();
+	if( wait_left > 0 )
+		SendSysMessage( who, "You must wait " + wait_left + " more seconds before picking another lock.", FONT_NORMAL, 43 );
+		return;
+	endif
 
 	SendSysMessageCL( who, 502068, color := 4 ); // What do you want to pick?
 	SendSysMessageCL( who, 502067 ); // Remember!  Locked chests may also be trapped!
@@ -115,13 +129,17 @@ function PickTreasureChest(who, lockpick, chest)
 		SetObjProperty( chest, "LastPickedBySerial", who.serial );
 		chest.locked := 0;
 		SubtractAmount( lockpick, 1 );
+		SetLockpickDelay( who, LOCKPICK_DELAY_SUCCESS );
 		SendSysMessage( who, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43 );
 		Start_Script( "::misc/deleter", {chest, 30} );
 		NotifyChestUnlocked( chest );
 		return;
 	else
 		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
-		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+		SetLockpickDelay( who, LOCKPICK_DELAY_FAILURE );
+		// 2026-09-21: 0 points -- this second roll only decides whether the pick
+		// breaks, but it used to award skill gain like the real attempt above.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, 0) )
 			PlaySoundEffect( who, 0xef );
 			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
 			SubtractAmount( lockpick, 1 );
@@ -171,10 +189,14 @@ function PickMLockedItem(who, lockpick, chest, diff)
 		SetObjProperty( chest, "LastPickedBySerial", who.serial );
 		chest.locked := 0;
 		SubtractAmount( lockpick, 1 );
+		SetLockpickDelay( who, LOCKPICK_DELAY_SUCCESS );
 		return;
 	else
 		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
-		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+		SetLockpickDelay( who, LOCKPICK_DELAY_FAILURE );
+		// 2026-09-21: 0 points -- this second roll only decides whether the pick
+		// breaks, but it used to award skill gain like the real attempt above.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, 0) )
 			PlaySoundEffect( who, 0xef );
 			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
 			SubtractAmount( lockpick, 1 );
@@ -220,10 +242,14 @@ function PickLockedItem(who, lockpick, chest, diff)
 		SetObjProperty( chest, "LastPickedBySerial", who.serial );
 		chest.locked := 0;
 		SubtractAmount( lockpick, 1 );
+		SetLockpickDelay( who, LOCKPICK_DELAY_SUCCESS );
 		return;
 	else
 		PrintTextAbovePrivateCL(who, chest, 502075, color := 33 ); // You are unable to pick the lock.
-		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, skillpoints) )
+		SetLockpickDelay( who, LOCKPICK_DELAY_FAILURE );
+		// 2026-09-21: 0 points -- this second roll only decides whether the pick
+		// breaks, but it used to award skill gain like the real attempt above.
+		if (!Checkskill( who, SKILLID_LOCKPICKING, lvl, 0) )
 			PlaySoundEffect( who, 0xef );
 			SendSysMessageCL( who, 502074, color := 33 ); // You broke the lockpick.
 			SubtractAmount( lockpick, 1 );
@@ -232,6 +258,14 @@ function PickLockedItem(who, lockpick, chest, diff)
 		endif
 		return;
 	endif
+endfunction
+
+// 2026-09-21: starts the per-character wait that program picklock() checks.
+// "#"-prefixed on purpose: a runtime-only flag, fine to lose on a restart.
+function SetLockpickDelay( who, seconds )
+
+	SetObjProperty( who, "#LockpickDelay", ReadGameClock() + seconds );
+
 endfunction
 
 

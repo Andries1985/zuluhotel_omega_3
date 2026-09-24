@@ -28,7 +28,10 @@ if (character.cmdlevel)
       var bytes := CInt(triggers*1.5 + 2);
       speechstart := CInt(speechstart + bytes);
       var speechlen := packet.GetInt16(1) - 1 - speechstart;
-      speech := SendSysMessage(character, CStr(packet.GetString(speechstart, speechlen)));
+      // 2026-09-22: was speech := SendSysMessage(character, CStr(...)) -- a
+      // debugging echo folded into the assignment, so keyword speech was sent
+      // back to the speaker and logged as "1".
+      speech := CStr(packet.GetString(speechstart, speechlen));
    else
       var speechlen := (packet.GetInt16(1) - 13)/2;
       speech := CChrZ(packet.GetUnicodeString(speechstart, speechlen));
@@ -52,6 +55,12 @@ var filename := CStr(who.acctname);
 var file := OpenDataFile(":staff:"+filename);
 if (!file)
 	CreateDataFile( ":staff:"+filename, flags := DF_KEYTYPE_STRING );
+	// 2026-09-22: re-open after creating; the first line for a new staff
+	// account went through the failed handle and was lost.
+	file := OpenDataFile(":staff:"+filename);
+endif
+if (!file)
+	return;
 endif
 
 var currentelement := file.FindElement(date);

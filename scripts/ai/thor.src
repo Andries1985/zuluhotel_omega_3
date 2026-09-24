@@ -24,9 +24,6 @@ include "ai/setup/modsetup";
 const HALT_THRESHOLD := 10; // how close before he attacks?
 
 var runaway := 0;
-var neger := 0;
-var bajs := 0;
-var weapontwo;
 
 program KillPlayers()
 
@@ -38,46 +35,31 @@ endprogram
 
 function CloseDistance( opponent )
 
-	var mypack := 0;
 	if (!getobjproperty(me,"serial"))
 		setobjproperty(me, "serial", me.serial);
 	endif
 
-	var weaponone := GetEquipmentByLayer( me,  LAYER_HAND1 );
+	// 2026-09-23: used to pre-create one melee weapon and one bow in the pack on the first call
+	// and then create fresh copies to equip on every swap, so one pre-made copy was never used
+	// and went to the corpse as a spare boss weapon. Now swaps by what is in hand.
+	var inhand := GetEquipmentByLayer( me, LAYER_HAND1 );
+	var inbow := GetEquipmentByLayer( me, LAYER_HAND2 );
 
-			if (bajs == 0)
-				weaponone := CreateItemInInventory(me.backpack,0x9ed3,1);
-				bajs := 1;
-			endif
-
-			if (neger == 0)
-				weapontwo := CreateItemInInventory(me.backpack,0x7cd9,1);
-				neger := 1;
-			endif
-
-
-
-    	if (distance(me, opponent) <= 7)
-		if (weapontwo)		
-			moveitemtocontainer(weapontwo,me.backpack);
-			DestroyItem(weapontwo);
-			weaponone := CreateItemInInventory(me.backpack,0x9ed3,1);
-			EquipItem(me,weaponone);
+	if (distance(me, opponent) <= 7)
+		if (!inhand || inhand.objtype != 0x9ed3)
+			if (inhand) DestroyItem(inhand); endif
+			if (inbow) DestroyItem(inbow); endif
+			EquipItem(me, CreateItemInInventory(me.backpack,0x9ed3,1));
 		endif
 		RunToward(opponent);
 		return 0;
 	endif
 
-    	if (distance(me, opponent) > 7)
-		if (weaponone)
-		moveitemtocontainer(weaponone,mypack);
-		DestroyItem(weaponone);
-		weapontwo := CreateItemInInventory(me.backpack,0x7cd9,1);
-		EquipItem(me,weapontwo);
-		endif
-		return 1;
+	if (!inbow || inbow.objtype != 0x7cd9)
+		if (inhand) DestroyItem(inhand); endif
+		if (inbow) DestroyItem(inbow); endif
+		EquipItem(me, CreateItemInInventory(me.backpack,0x7cd9,1));
 	endif
-
-return 0;
+	return 1;
 
 endfunction

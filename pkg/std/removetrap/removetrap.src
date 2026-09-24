@@ -28,11 +28,24 @@ include ":traps:traps";
 program remove_trap( character )
 var thepoints := get_default_points(SKILLID_REMOVETRAP);
      SendSysmessage( character , "Select Target." );
-     var item := Target( character );
+     // 2026-09-21: TGTOPT_CHECK_LOS plus the range and reach checks below. There
+     // were none, so a trapped chest could be disarmed from across the screen,
+     // including one inside a house the player couldn't enter.
+     var item := Target( character , TGTOPT_CHECK_LOS );
    var trap_type;
 
      if( !item )
         SendSysmessage( character , "canceled." );
+        return;
+     endif
+
+     if( Distance( character , item ) > 2 )
+        SendSysmessage( character , "That is too far away." );
+        return;
+     endif
+
+     if( !Accessible( character , item ) )
+        SendSysmessage( character , "You can't reach that." );
         return;
      endif
 

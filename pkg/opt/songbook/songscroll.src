@@ -35,7 +35,14 @@ program use_scroll( who , scroll )
 			return;
 		endif
 		
-		Start_Script( spell , who );
+		// 2026-09-22: a spell script that cannot start would leave #Casting set
+		// and this loop spinning until relog.
+		var spell_process := Start_Script( spell , who );
+		if( spell_process.errortext )
+			EraseObjProperty( who , "#Casting" );
+			EraseObjProperty( who , CASTINGOPT_PROP_NAME );
+			return;
+		endif
 		
 		while( GetObjProperty( who , "#Casting" ) )
 			Sleepms( 250 );

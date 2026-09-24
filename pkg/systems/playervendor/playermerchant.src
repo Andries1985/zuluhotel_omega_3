@@ -1075,7 +1075,13 @@ function CashOut(force_escrow := 0)
 	endif
 
 	for i := 1 to len(packs)
-		DeliverPackToOwnerOrEscrow(packs[i], owner, ownerserial, vendor_name, force_escrow);
+		// 2026-09-21: result checked. When the bank box AND escrow both failed,
+		// the pack just stayed where CreatePayoutPack made it (5288,1176) with
+		// the gold pool already zeroed above, and nobody was told.
+		var pack_serial := packs[i].serial;
+		if(!DeliverPackToOwnerOrEscrow(packs[i], owner, ownerserial, vendor_name, force_escrow))
+			QueueGMPageReport("CashOut payout pack UNDELIVERED (bank and escrow both failed). Vendor=" + me.name + "(" + me.serial + ") Owner=" + ownerserial + " PackSerial=" + pack_serial + " left at 5288,1176 Realm=" + me.realm);
+		endif
 		packs[i] := 0;
 	endfor
 	packs := 0;
@@ -1104,7 +1110,11 @@ function CashCheque(byref who)
 	SetObjProperty(me, "g", remaining_gold);
 
 	for i := 1 to len(packs)
-		DeliverPackToOwnerOrEscrow(packs[i], who, who.serial, vendor_name, 0);
+		// 2026-09-21: result checked, same as CashOut above.
+		var pack_serial := packs[i].serial;
+		if(!DeliverPackToOwnerOrEscrow(packs[i], who, who.serial, vendor_name, 0))
+			QueueGMPageReport("CashCheque payout pack UNDELIVERED (bank and escrow both failed). Vendor=" + me.name + "(" + me.serial + ") Owner=" + who.serial + " PackSerial=" + pack_serial + " left at 5288,1176 Realm=" + me.realm);
+		endif
 		packs[i] := 0;
 	endfor
 	packs := 0;
@@ -1407,7 +1417,10 @@ function AddThingsToBuy()
 	var price := SendTextEntryGump(master, "How much shall I pay for this item?",
 			TE_CANCEL_ENABLE, TE_STYLE_NORMAL);
 	price := CINT(price);
-	if(!price)
+	// 2026-09-21: was if(!price) -- only 0 was rejected, so a NEGATIVE buy price
+	// got stored, and BuyItem's "mygold - theprice" then ADDED to the gold pool
+	// (paid back out via "cheque"). Same rule StockItem uses for sell prices.
+	if(price <= 0)
 		Say("OK, never mind then.");
 		return;
 	endif
@@ -1585,17 +1598,30 @@ function BuyItem(byref you, byref it)
 		return;
 	endif
 
+	// 2026-09-21: total worked out as a double and sanity-checked first. A
+	// negative price already stored on an old vendor (accepted before today), or
+	// an int overflow on price * amount, used to PASS the affordability check
+	// below and then grow the gold pool instead of draining it.
+	var unitprice := CINT(buyprice[index]);
+	var total_cost := CDbl(unitprice) * CDbl(it.amount);
+	if(unitprice <= 0 or total_cost < 1 or total_cost > 2000000000.0)
+		Say("Sorry, I can't buy that right now.");
+		NotifyMaster("I couldn't buy " + it.desc + " from " + you.name + ": its buy price is invalid, please set it again.");
+		MoveItemToContainer(it, you.backpack);
+		return;
+	endif
+	total_cost := CINT(total_cost);
+
 	var mygold := CINT(GetObjProperty(me, "g"));
-	if((mygold-250) <(buyprice[index]*it.amount))
+	if((mygold-250) < total_cost)
 		Say("Sorry, I can't afford that right now.");
 		MoveItemToContainer(it,you.backpack);
 		return;
 	endif
 
-	var itamount := it.amount;
 	var itdesc := it.desc;
 	if( GrabItem(it, me.backpack) )
-		var goldamount := buyprice[index]*itamount;
+		var goldamount := total_cost;
 		Say("Thank you!  Here's your " + goldamount + " gold.");
 		while(goldamount > 60000)
 			CreateItemInBackpack(you, UOBJ_GOLD_COIN, 60000);
@@ -1609,8 +1635,7 @@ function BuyItem(byref you, byref it)
 		return;
 	endif
 
-	var theprice := buyprice[index]*itamount;
-	mygold := mygold - theprice;
+	mygold := mygold - total_cost;
 	SetObjProperty(me, "g", mygold);
 	CollectDebtFromPool();
 endfunction

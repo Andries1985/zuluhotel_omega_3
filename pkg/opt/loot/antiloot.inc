@@ -66,24 +66,27 @@ function antilooting( who, corpse, item )
 		SendSysMessage( who, "Only RPers may loot each other.", FONT_NORMAL, 2595  );
 		return 0;
 	else
-		var guild1 := GetObjProperty( who, "guild_id" );
-		if( guild1 )
-			var guild2 := GetObjProperty( who, "guild_id" );
-			if( guild2 )
-				if( guild1 == guild2 )
-					return AddLooter( who, corpse, item );
-				else
-					guild1 := FindGuild( guild1 );
-					guild2 := FindGuild( guild2 );
-					if( guild1.IsEnemyGuild(guild2) )
+		// 2026-09-22: was a "guild_id" property nothing sets, read from the
+		// looter for both sides -- the exemption never applied. Now the looter's
+		// guild against the corpse owner's: the same guild, at war or allied
+		// loot each other without the criminal flag, the report or the jail.
+		var looter_guild := who.guild;
+		if( looter_guild )
+			var victim_char := SystemFindObjectBySerial( serial, SYSFIND_SEARCH_OFFLINE_MOBILES );
+			if( victim_char )
+				var victim_guild := victim_char.guild;
+				if( victim_guild )
+					if( looter_guild.guildid == victim_guild.guildid )
 						return AddLooter( who, corpse, item );
-					elseif( guild1.IsAllyGuild(guild2) )
+					elseif( looter_guild.IsEnemyGuild( victim_guild ) )
+						return AddLooter( who, corpse, item );
+					elseif( looter_guild.IsAllyGuild( victim_guild ) )
 						return AddLooter( who, corpse, item );
 					endif
 				endif
 			endif
 		endif
-		
+
 		if( IsInAntiLootingArea(who) )
 			SendSysMessage( who, "You can't loot here." );
 			return 0;

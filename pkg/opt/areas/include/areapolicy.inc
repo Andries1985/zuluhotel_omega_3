@@ -14,6 +14,12 @@ const AREA_POLICY_TRACE_HASPOLICY := 0;
 const AREA_POLICY_META_ELEMENT := "__meta__";
 const AREA_POLICY_MASK_PROP := "Mask";
 
+// 2026-09-23: per-realm mask cache in a global property (in memory, saved with the
+// world). GetPolicyMask used to open the realm datafile from disk on every area check
+// (per victim of an area spell, per cast, per swing, per recall); now the datafile is
+// read only when the property is missing, and every save below rewrites it.
+const AREA_POLICY_CACHE_PREFIX := "AreaPolicyCache_";
+
 const AREA_POLICY_GUARDED := 1;
 const AREA_POLICY_NO_RECALL_TO := 2;
 const AREA_POLICY_NO_RECALL_FROM := 4;
@@ -135,6 +141,7 @@ function SaveRealmPolicies(realm, policy_struct, updated_by := "")
 	endif
 
 	UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	RefreshRealmPolicyCache(realm); // 2026-09-23
 	return LoadRealmPolicies(realm);
 endfunction
 
@@ -151,14 +158,35 @@ function GetPolicyMask(realm, area_key)
 	realm := Lower(realm);
 	area_key := CStr(area_key);
 
-	var file_ref := OpenAreaPolicyFile(realm, DF_CREATE);
-	if (file_ref == error)
-		return file_ref;
+	// 2026-09-23: memory first; the datafile only when the cache has never been built
+	var cache := GetGlobalProperty(AREA_POLICY_CACHE_PREFIX+realm);
+	if (Lower(TypeOf(cache)) != "dictionary")
+		cache := RefreshRealmPolicyCache(realm);
+		if (cache == error)
+			return cache;
+		endif
 	endif
 
-	var mask := GetPolicyMaskFromElement(file_ref, area_key);
-	UnloadDataFile(GetRealmPolicyDescriptor(realm));
-	return mask;
+	if (cache.exists(area_key))
+		return CInt(cache[area_key]);
+	endif
+
+	return 0;
+endfunction
+
+// 2026-09-23: rebuilds the realm cache from the datafile; called by every save and
+// by GetPolicyMask when the global property is missing. Returns the dictionary.
+function RefreshRealmPolicyCache(realm)
+	realm := Lower(realm);
+
+	var policies := LoadRealmPolicies(realm);
+	if (policies == error)
+		return policies;
+	endif
+
+	var entries := GetPolicyEntriesDictionary(policies);
+	SetGlobalProperty(AREA_POLICY_CACHE_PREFIX+realm, entries);
+	return entries;
 endfunction
 
 function SetPolicyMask(realm, area_key, mask, updated_by := "")
@@ -193,6 +221,7 @@ function SetPolicyMask(realm, area_key, mask, updated_by := "")
 	endif
 
 	UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	RefreshRealmPolicyCache(realm); // 2026-09-23
 	return mask;
 endfunction
 
@@ -359,6 +388,9 @@ function PruneStaleRealmPolicyEntries(realm, file_ref := 0)
 
 	if (opened_here)
 		UnloadDataFile(GetRealmPolicyDescriptor(realm));
+	endif
+	if (removed > 0 && opened_here)
+		RefreshRealmPolicyCache(realm); // 2026-09-23: keep the in-memory cache in step
 	endif
 	return removed;
 endfunction

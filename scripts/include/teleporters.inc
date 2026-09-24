@@ -2181,10 +2181,11 @@ var teleporters := {
     { 442, 153, -38, 850, 273, -11, "termur", "termur" },
     { 442, 166, -38, 850, 286, -11, "termur", "termur" },
     { 442, 167, -38, 850, 287, -11, "termur", "termur" },
-    { 511, 584, 11, 6992, 1367, -15, "termur", "Felucca" },
-    { 512, 584, 11, 6992, 1367, -15, "termur", "Felucca" },
-    { 513, 584, 11, 6993, 1367, -15, "termur", "Felucca" },
-    { 514, 584, 11, 6993, 1367, -15, "termur", "Felucca" },
+    // 2026-09-23: these four had the destination realm "Felucca", which does not exist here; they are Ter Mur links.
+    { 511, 584, 11, 6992, 1367, -15, "termur", "termur" },
+    { 512, 584, 11, 6992, 1367, -15, "termur", "termur" },
+    { 513, 584, 11, 6993, 1367, -15, "termur", "termur" },
+    { 514, 584, 11, 6993, 1367, -15, "termur", "termur" },
     { 519, 919, 39, 1125, 1075, -117, "termur", "termur" },
     { 519, 919, 39, 1125, 1076, -117, "termur", "termur" },
     { 520, 919, 39, 1125, 1075, -117, "termur", "termur" },
@@ -2306,7 +2307,7 @@ function CreateTeleporters()
            teleporter := CreateItemAtLocation( fromX, fromY, fromZ, "systemteleporter", 1, fromR );
            if(!teleporter)
               var count := 0;
-              while(!teleporter || count >= 100)
+              while(!teleporter && count < 100) // 2026-09-23: was "|| count >= 100", which never ended once count reached 100
                   if(count % 2 == 0)
                      fromZ := GetWorldHeight( fromX, fromY, fromR );
                   else
@@ -2328,7 +2329,7 @@ function CreateTeleporters()
               nbrOfTeleporters := nbrOfTeleporters + 1;
               teleporter.decayat := 0;
               var count := 0;
-              while(teleporter.decayat != 0 || count >= 100)
+              while(teleporter.decayat != 0 && count < 100) // 2026-09-23: same shape as above
                   teleporter.decayat := 0;
                   count := count + 1;
                   sleepms(10);

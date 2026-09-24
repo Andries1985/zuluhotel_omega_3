@@ -24,6 +24,9 @@ program summon_creature( parms )
 	Detach();
 	
 	var thecritter := CreateNPCfromTemplate( npctemplate , cint(caster.x + Random(1)) , cint(caster.y + Random(1)) , cint(caster.z), 0, caster.realm );
+	// 2026-09-21: never written to the world save -- see summoning.src. A
+	// restart used to outlive this script's cleanup and leave the summon behind.
+	thecritter.saveonexit := 0;
 	SetObjProperty( thecritter , "summoned" , 1 );
 
 	var ev := {};

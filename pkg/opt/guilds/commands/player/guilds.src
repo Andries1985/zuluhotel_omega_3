@@ -670,7 +670,10 @@ function DisplayGuildInfo(who, guild, startat)
 
 	var guildname := guild.getprop("GuildName");
 	var guildabv := guild.getprop("GuildAbv");
-	var guildmaster := SystemFindObjectBySerial(guild.getprop("GuildMaster"), SYSFIND_SEARCH_OFFLINE_MOBILES).name;
+	// 2026-09-22: keep the master object; the serial compare below was made
+	// against a name string, so the master was listed among the members too.
+	var master_obj := SystemFindObjectBySerial(guild.getprop("GuildMaster"), SYSFIND_SEARCH_OFFLINE_MOBILES);
+	var guildmaster := master_obj.name;
 	var guildcolour := guild.getprop("GuildColour");
 
 	if (!guildcolour)
@@ -680,7 +683,7 @@ function DisplayGuildInfo(who, guild, startat)
 	var guildmembers := "";
 
 	foreach member in (guild.members)
-		if (member.serial != guildmaster.serial)
+		if (member.serial != master_obj.serial)
 			guildmembers := guildmembers+"<br>"+member.name;
 		endif
 	endforeach
@@ -2022,14 +2025,17 @@ endforeach
 
 var recruits := "<BASEFONT COLOR=DARKBLUE>Recruits/Applicants:<BaseFont COLOR=black>";
 
-foreach recruit in (guild.getprop("Recruits"))
-	recruits := recruits+"<br>"+SystemFindObjectBySerial(recruit[1], SYSFIND_SEARCH_OFFLINE_MOBILES).name;
-	if (recruit[2])
-		recruits := recruits+" - Recruited";
-	else
-		recruits := recruits+" - Applicant";
-	endif
-endforeach
+// 2026-09-22: read the live JoinGuildRequest list (serials); the legacy
+// "Recruits" property it read before is written by nothing.
+var requests := guild.getprop("JoinGuildRequest");
+if (requests and !requests.errortext)
+	foreach req in requests
+		var applicant := SystemFindObjectBySerial(CInt(req), SYSFIND_SEARCH_OFFLINE_MOBILES);
+		if (applicant)
+			recruits := recruits+"<br>"+applicant.name+" - Applicant";
+		endif
+	endforeach
+endif
 	
 members := members+online+"<br><br>"+offline+"<br><br>"+recruits;
 return members;
@@ -2115,10 +2121,15 @@ if (who.guild.getprop("GuildMaster") == who.serial)
 	
 // A normal guild member recruiting someone
 elseif (YesNoguild(what, "Join Recruit List?", who.guild.getprop("GuildName")+" want to recruit you.  If their GM accepts, you will become a member. You can be a recruit in multiple guilds.", -10))
-	JoinGuildRequest(what, who.guild);
-	SendSysMessage(who, what.name+" is now a recruit in your guild!", 3, 67);
-	SendSysMEssage(what, "You are now a recruit in "+who.guild.getprop("GuildName")+".", 3, 67);
-	SendSysMEssage(what, "The guild master will either accept or reject you for membership.", 3, 67);
+	// 2026-09-22: no guild-list gump on the recruit, and the "now a recruit"
+	// messages only when the request was actually registered.
+	if (JoinGuildRequest(what, who.guild, 0))
+		SendSysMessage(who, what.name+" is now a recruit in your guild!", 3, 67);
+		SendSysMEssage(what, "You are now a recruit in "+who.guild.getprop("GuildName")+".", 3, 67);
+		SendSysMEssage(what, "The guild master will either accept or reject you for membership.", 3, 67);
+	else
+		SendSysMessage(who, what.name+" did not complete the recruitment.");
+	endif
 else
 	SendSysMessage(who,what.name+" did not accept to become a recruit of your guild.");
 	SendSysMessage(what, "You turn down the offer of recruitment.");
@@ -2128,32 +2139,9 @@ return GuildGump(who);
 	
 endfunction
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Toadstool
-//
-// AddRecruit() - Simply adds the player into recruit array
-//
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function AddRecruit(guild, who, recruiter := 0);
+// 2026-09-22: AddRecruit() removed -- it was never called, and wrote the
+// legacy "Recruits" list nothing reads.
 
-var recruits := guild.getprop("JoinGuildRequest");
-
-if (!recruits);
-	recruits := {};
-endif
-
-foreach recruit in recruits
-	if (recruit[1] == who.serial)
-		EraseObjProperty( who, PROPID_MOBILE_BROWSING );
-		return 0;
-	endif
-endforeach
-
-recruits.append({who.serial, recruiter.serial});
-
-guild.setprop("JoinGuildRequest", recruits);
-
-endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool
 //
@@ -2165,21 +2153,8 @@ function AddGuildMember(guild, who)
 		// Erasing this here as there are a lot of way a guild can end, player can leave. Only 1 way someone can join :P
 		EraseObjProperty(who, "GuildTitle");
 
-		var guilds := ListGuilds();
-
-		// Remove player from any recruit array in any guild he may be a recruit in
-		var recruits;
-		var recruits2;
-		foreach thing in guilds
-			recruits := thing.getprop("Recruits");
-			recruits2 := recruits;
-			foreach recruit in recruits
-				if (who.serial == recruit[1])
-					recruits2.erase(_recruit_iter);
-					thing.setprop("Recruits", recruits2);
-				endif
-			endforeach
-		endforeach
+		// 2026-09-22: the legacy "Recruits" scan is gone (nothing writes that
+		// list); ClearJoinGuildRequest below handles the live one.
 
 		// Tell the members of a joining player
 		foreach member in (guild.members)
@@ -2295,6 +2270,22 @@ elseif (house == 0)
 	return 0;
 endif
 
+// 2026-09-22: ownership is checked with the same rule the house list used
+// (character or account owner) and BEFORE any gold moves; a house another
+// guild already holds is refused. The old order spent the 120,000 first and
+// then compared ownerserial only, so a house owned by a sibling character on
+// the account passed the list, cost the gold and formed nothing.
+if (!IsGuildHouseOwner(who, house))
+	SendSysMessage(who, "Error: You do not own that house.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+if (GetObjProperty(house, "GuildHouse"))
+	SendSysMessage(who, "That house already belongs to a guild.");
+	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
+	return 0;
+endif
+
 var guildname := GFExtractData(data, TEXT_ENTRY_GUILDNAME);
 var guildabv := GFExtractData(data, TEXT_ENTRY_GUILDABV);
 
@@ -2317,13 +2308,15 @@ if (!CheckGuildName(who, guildname, guildabv))
 	return 0;
 endif
 
-// Take players gold and double check the house is still valid
-if (!who.spendgold(GUILD_PRICE))
-	SendSysMessage(who, "You don't have enough gold!");
+// Re-check the house after the confirmation (it could have changed hands or
+// been claimed while the question was open), then take the gold.
+if (!IsGuildHouseOwner(who, house) or GetObjProperty(house, "GuildHouse"))
+	SendSysMessage(who, "Troubles at home?");
 	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
 	return 0;
-elseif (GetObjProperty(house, "ownerserial") != who.serial)
-	SendSysMessage(who, "Troubles at home?");
+endif
+if (!who.spendgold(GUILD_PRICE))
+	SendSysMessage(who, "You don't have enough gold!");
 	EraseObjProperty( who, PROPID_MOBILE_BROWSING );
 	return 0;
 endif
@@ -3143,7 +3136,11 @@ endfunction
 // JoinGuildRequest() - Request to join a guild.
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////
-function JoinGuildRequest(who, guild)
+// 2026-09-22: show_list := 0 for the recruit path -- RecruitMember called this
+// for the TARGET and the closing GuildListGump opened the guild list on them.
+// Returns 1 when a request was registered, 0 otherwise.
+function JoinGuildRequest(who, guild, show_list := 1)
+	var requested := 0;
 	if(who.getprop("JoinGuildRequest"))
 		if(YesNoguild(who, "Already Requesting.", "Do you wish to remove your previous request to join a guild?"))
 			ClearJoinGuildRequest(who);
@@ -3152,24 +3149,30 @@ function JoinGuildRequest(who, guild)
 			SendSysMessage(who, "Cancelled.");
 		endif
 	else
+		var banned := 0;
 		var banlist := guild.getprop("BanReq");
 		if(banlist)
 			foreach player in banlist
 				if(player == who.serial)
-					SendSysMessage(who, "The guild has banned you from requesting to them again.");
-					return GuildListGump(who);	
+					banned := 1;
 				endif
 			endforeach
 		endif
-				
-		if(YesNoguild(who, "Request to join?", "!WARNING! This will allow ("+guild.getprop("GuildName")+") to accept you at any time and do whatever they want with you. !WARNING!"))
+
+		if(banned)
+			SendSysMessage(who, "The guild has banned you from requesting to them again.");
+		elseif(YesNoguild(who, "Request to join?", "!WARNING! This will allow ("+guild.getprop("GuildName")+") to accept you at any time and do whatever they want with you. !WARNING!"))
 			SendSysMessage(who, "You sent a request to join ("+guild.getprop("GuildName")+").");
 			RequestJoinGuild(who, guild);
+			requested := 1;
 		else
 			SendSysMessage(who, "Cancelled.");
 		endif
 	endif
-	return GuildListGump(who);
+	if(show_list)
+		return GuildListGump(who);
+	endif
+	return requested;
 endfunction
 
 

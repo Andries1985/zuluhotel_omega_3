@@ -22,7 +22,7 @@ function QP_ProcessFishCatch(character, kind, tier, weight := 0)
 
 	var cfg := QP_GetQuestsCfg();
 
-	Print("[QuestFishing] "+character.name+" kind="+kind+" tier="+tier+" weight="+CStr(weight)+" checking "+CStr(len(ids))+" active quest(s)");
+	QP_Debug("[QuestFishing] "+character.name+" kind="+kind+" tier="+tier+" weight="+CStr(weight)+" checking "+CStr(len(ids))+" active quest(s)");
 
 	foreach questid in ids
 		var elem := QP_GetQuestElem(questid, cfg);
@@ -41,7 +41,7 @@ function QP_ProcessFishCatch(character, kind, tier, weight := 0)
 				var weight_ok := (!obj_min_weight or weight >= obj_min_weight);
 
 				if(tier_ok and weight_ok)
-					Print("[QuestFishing] advancing quest "+CStr(questid)+" objective "+CStr(i)+" for "+character.name);
+					QP_Debug("[QuestFishing] advancing quest "+CStr(questid)+" objective "+CStr(i)+" for "+character.name);
 					QP_AdvanceObjective(character, questid, i);
 				endif
 			endif

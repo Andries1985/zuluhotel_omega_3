@@ -27,6 +27,17 @@ program ApplyTrap(who, trap)
 			SendSysMessage(who, "You cannot set a physical trap on leather containers.", color := 33);
 			SendSysMessage(who, "Choose a different container.", color := 88);
 			continue;
+		// 2026-09-21: range, reach and ownership checks added. There were none,
+		// so a trap item could be set on ANY container in view -- a chest inside
+		// someone else's house from the doorway, a public container in town --
+		// and whoever opened it took the hit. Same rules as the Magic Trap spell
+		// (pkg/std/spells/magictrap.src) and tinkering's SetTrap now.
+		elseif(Distance(who, trap_cont) > 2)
+			SendSysMessage(who, "That is too far away.", color := 33);
+		elseif(!Accessible(who, trap_cont))
+			SendSysMessage(who, "You can't reach that.", color := 33);
+		elseif(!CanSetTrapHere(who, trap_cont))
+			SendSysMessage(who, "Choose a different container.", color := 88);
 		else
 			check := 1;
 			break;
@@ -50,3 +61,46 @@ program ApplyTrap(who, trap)
 	SendSysMessage(who, "The trap is set!", color := 66);
 
 endprogram
+
+// 2026-09-21: what the Magic Trap spell already refuses, mirrored here -- its
+// four untrappable special containers, a PLAYER's corpse, and any container
+// inside a house unless you are its owner, a co-owner or a friend. Sends its
+// own message; returns 1 when the trap may be set.
+function CanSetTrapHere(who, trap_cont)
+
+	if(trap_cont.objtype == 0x7100 or trap_cont.objtype == 0xefa or trap_cont.objtype == 0x9c16 or trap_cont.objtype == 0x9c17)
+		SendSysMessage(who, "That can't be trapped!", color := 33);
+		return 0;
+	endif
+
+	if(trap_cont.isa(POLCLASS_CORPSE))
+		if(!GetObjProperty(trap_cont, "npctemplate"))
+			SendSysMessage(who, "That can't be trapped!", color := 33);
+			return 0;
+		endif
+	endif
+
+	var house := trap_cont.multi;
+	if(!house)
+		return 1;
+	endif
+	if(GetObjProperty(house, "ownerserial") == who.serial)
+		return 1;
+	endif
+
+	var i;
+	for(i := 1; i <= 5; i := i + 1)
+		if(GetObjProperty(house, "Co-owner" + i) == who.serial)
+			return 1;
+		endif
+	endfor
+	for(i := 1; i <= 20; i := i + 1)
+		if(GetObjProperty(house, "friend" + i) == who.serial)
+			return 1;
+		endif
+	endfor
+
+	SendSysMessage(who, "You can't trap something that isn't in your house!", color := 33);
+	return 0;
+
+endfunction

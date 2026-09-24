@@ -26,7 +26,9 @@ const TRACK_CATS_PER_PAGE	:= 10;	// categories column -- 20 fixed categories, ev
 
 program track(who)
 
-	unloadconfigfile("::npcdesc");
+	// 2026-09-21: the unloadconfigfile("::npcdesc") that was here is gone. It
+	// dropped the cached 1.15 MB file on EVERY use of the skill and forced a
+	// re-read, while running NPC scripts kept the old copy alive beside it.
 
 	var ranger := GetObjProperty( who , CLASSEID_RANGER );
 	var mysticarcher := GetObjProperty( who , CLASSEID_MYSTIC_ARCHER );

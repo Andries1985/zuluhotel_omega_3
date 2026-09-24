@@ -25,13 +25,26 @@ program switchguildleader(who)
 	var guild := mobile.guild;
 
 	if (!mobile.connected)
-		guild.setprop("GuildMaster", guild.members[1].serial);
+		// 2026-09-22: same fix as guilds.inc's ChangeGuildMaster -- members[1]
+		// could be the master being replaced; first member who is not them.
+		var successor := 0;
+		foreach candidate in (guild.members)
+			if (candidate.serial != mobile.serial)
+				successor := candidate;
+				break;
+			endif
+		endforeach
+		if (!successor)
+			SendSysMessage(who, "No other member to hand the guild to.", FONT_NORMAL, 43);
+			return 0;
+		endif
+		guild.setprop("GuildMaster", successor.serial);
 
 		foreach member in (guild.members)
-			if (member.serial != mobile.serial)
-				SendSysMessage(member, member.name+" is now the Guild Master!", 3, 53);
-			else
+			if (member.serial == successor.serial)
 				SendSysMessage(member, "You are now the Guild Master!", 3, 53);
+			elseif (member.serial != mobile.serial)
+				SendSysMessage(member, successor.name+" is now the Guild Master!", 3, 53);
 			endif
 		endforeach
 		return 1;
@@ -80,6 +93,11 @@ program switchguildleader(who)
 			// selected a member
 			if (data.keys[2] != 999)
 				newmaster := guild.members[data.keys[2]];
+			endif
+			// 2026-09-22: OK with nobody selected wrote an error value as the master
+			if (!newmaster)
+				SendSysMessage(who, "No member selected.", FONT_NORMAL, 43);
+				return 0;
 			endif
 
 			guild.setprop("GuildMaster", newmaster.serial);

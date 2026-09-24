@@ -94,7 +94,7 @@ function MakeAndProcessGumpPlayer( character, found, numcharsonline )
 
 		GFTextLine(gump, 96, y, 0, found[i].name);
 
-		var time := GetObjProperty(character, "CreatedAt");
+		var time := GetObjProperty(found[i], "CreatedAt"); // 2026-09-23: the row's character, not the viewer
 		var timenow := ReadGameClock();
 		if(!time)
 			time := 0;
@@ -166,7 +166,7 @@ function MakeAndProcessGumpStaff( character, found, numstaff, numplayer )
 		else
 			GFTextLine(gump, 40, y, 0, found[i].name);
 		endif
-		var time := GetObjProperty(character, "CreatedAt");
+		var time := GetObjProperty(found[i], "CreatedAt"); // 2026-09-23: the row's character, not the viewer
 		var timenow := ReadGameClock();
 		if(!time)
 			time := 0;

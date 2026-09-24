@@ -103,7 +103,9 @@ program OnUse_RPerFactionStone(who, newstone)
             600:    selectedclass := SetObjProperty(who, "RPerStartClass", "Crafter" );
                     classid := CLASSEID_CRAFTER;
                     createRPerCrafterBag(who.backpack);
-            default: selectedclass := "The player must have canceled the gump without doing anything";
+            default: // 2026-09-23: OKAY with no class ticked fell through and wiped every skill below
+                     SendSysMessage( who, "Pick a starting class first.", FONT_NORMAL, 2595 );
+                     return;
         endcase
 
         var skillid;

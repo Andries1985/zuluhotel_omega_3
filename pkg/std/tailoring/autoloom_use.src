@@ -1,0 +1,56 @@
+// autoloom_use.src -- Autoloom station: unlike every other Tailoring
+// station, this one has real client art for a stored/open/weaving state per
+// facing (confirmed 2026-09-20 by rendering mul/art.mul and by the user's
+// own in-game reference), so it can't just reuse
+// :tailoring:make_cloth_items directly like the plain Loom/Spinning Wheel/
+// Sewing Machine do.
+//
+// South (objtype 0xA82D): stored 0xA82D, open 0xA82E, weaving 0xA81D.
+// East  (objtype 0xA82F): stored 0xA82F, open 0xA830, weaving 0xA825.
+// 0xA81D/0xA825 are client-animated tiles -- the client cycles the 8 weave
+// frames (0xA81D-0xA824 / 0xA825-0xA82C) itself from one graphic write.
+// The lookup (GetAutoloomGraphics) and the per-craft weave toggle
+// (AutoloomSetWeaving) live in tailoringfunctions.inc, not here, since
+// RunTailoringGump needs to toggle weaving itself on every Make action.
+//
+// 2026-09-21: THIS script is the only one that writes station.graphic while
+// a session is live (open here, weaving/open per craft via
+// AutoloomSetWeaving on this same thread, stored at the end). The old
+// background autoloom_animate.src raced this script's revert and itself.
+use uo;
+use os;
+
+include ":tailoring:tailoringfunctions";
+
+program use_autoloom( character, station )
+
+	if( !ReserveItem( station ) )
+		return;
+	endif
+
+	// Facing comes from the objtype, never the graphic -- see
+	// GetAutoloomGraphics.
+	var loom := GetAutoloomGraphics( station );
+	if( !loom )
+		return;
+	endif
+
+	// Item-use scripts are attached to the character and get killed outright
+	// on disconnect/logout, which used to leave the loom open forever (the
+	// graphic is saved with the world). "#AutoloomOwner" marks this session;
+	// the watchdog folds the loom back up if this script dies before its own
+	// revert below. "#"-prefixed on purpose: runtime-only, meaningless after
+	// a restart.
+	SetObjProperty( station, "#AutoloomOwner", GetPid() );
+	Start_Script( ":tailoring:autoloom_watchdog", {station.serial, GetPid(), loom.stored_graphic} );
+
+	station.graphic := loom.open_graphic;
+
+	RunTailoringGump( character, station );
+
+	// Revert FIRST, clear the marker second -- killed in between, the watchdog
+	// still sees its own session and just repeats the (idempotent) revert.
+	station.graphic := loom.stored_graphic;
+	EraseObjProperty( station, "#AutoloomOwner" );
+
+endprogram

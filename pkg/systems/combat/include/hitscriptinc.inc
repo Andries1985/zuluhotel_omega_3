@@ -62,6 +62,45 @@ function GetSlayMultiplier(weapon, defender)
 
 endfunction
 
+// 2026-09-21: the same player-vs-player area test RecalcDmg/DealDamage apply
+// to DAMAGE, as one call, for hit scripts that apply an EFFECT of their own
+// (paralysis, poison, a struck spell) before they call RecalcDmg -- those
+// effects used to land in No-PK and safe areas even though the damage didn't.
+// Read-only: unlike RecalcDmg it never drops anyone out of war mode.
+// Returns 1 when the effect must NOT be applied.
+function IsPvPBlockedByArea( attacker, defender )
+
+	if( attacker.cmdlevel )
+		return 0;
+	endif
+	if( attacker.isa(POLCLASS_NPC) )
+		return 0;
+	endif
+	if( defender.isa(POLCLASS_NPC) )
+		return 0;
+	endif
+	if( defender == attacker )
+		return 0;
+	endif
+
+	if( GetObjProperty(attacker, "NOPKAREA") )
+		return 1;
+	endif
+	if( GetObjProperty(defender, "NOPKAREA") )
+		return 1;
+	endif
+	if( GetObjProperty(attacker, "InSafeArea") )
+		return 1;
+	endif
+	if( GetObjProperty(defender, "InSafeArea") )
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+
 function RecalcDmg( attacker, defender, weapon, armor, byref basedamage, piercing := 0 )
 
 	var noPKatk := GetObjProperty(attacker, "NOPKAREA");
@@ -744,39 +783,49 @@ function DealDamage( attacker, defender, weapon, armor, basedamage, rawdamage )
 				var charges := CInt( GetObjProperty( weapon, "PoisonCharges" ));
 
 				if( !charges )
+					// 2026-09-21: was "return 0" -- the swing that found the
+					// poison used up dealt NO damage at all and skipped reactive
+					// armor/on-hit below, once per poison application. Clear the
+					// spent poison and carry on with the hit.
 					EraseObjProperty( weapon, "PoisonCharges" );
 					EraseObjProperty( weapon , "SkillPoisoned" );
-					return 0;
-				endif
-				
-				if(GetObjProperty( weapon, "Cursed"))
-					defender := attacker;
-				endif
-
-				if(!GetObjProperty( defender , "poison"))
-					if( charges >= 1 )
-						SetObjProperty( weapon, "PoisonCharges", charges - 1 );
-					else
-						EraseObjProperty( weapon, "PoisonCharges" );
-						EraseObjProperty( weapon , "SkillPoisoned" );
-					endif
-				endif
-				IncRevision(weapon);
-				if( GetObjProperty( attacker , CLASSEID_THIEF ) )
-					if( defender.isa(POLCLASS_NPC) )
-						SetObjProperty( defender , "poisonnpc" , 1 );
-					endif
-				endif
-					
-				var maxx := plvl + psnboost;
-				if(maxx >= 9)
-					maxx := 9;
-				endif
-				
-				if( !GetObjProperty( attacker , CLASSEID_THIEF ) ) 
-					SetPoison( defender, plvl, "You have been poisoned by " + attacker.name + ".", attacker );
+					IncRevision(weapon);
 				else
-					SetPoison( defender, maxx, "You have been poisoned by " + attacker.name + ".", attacker );
+					// 2026-09-21: own variable for who gets poisoned. A Cursed
+					// weapon used to do "defender := attacker" here, and since
+					// defender is reused below for reactive armor, the on-hit
+					// script and ApplyTheDamage, the wielder took the WHOLE swing
+					// and the real target took nothing. Only the poison backfires.
+					var poison_target := defender;
+					if(GetObjProperty( weapon, "Cursed"))
+						poison_target := attacker;
+					endif
+
+					if(!GetObjProperty( poison_target , "poison"))
+						if( charges >= 1 )
+							SetObjProperty( weapon, "PoisonCharges", charges - 1 );
+						else
+							EraseObjProperty( weapon, "PoisonCharges" );
+							EraseObjProperty( weapon , "SkillPoisoned" );
+						endif
+					endif
+					IncRevision(weapon);
+					if( GetObjProperty( attacker , CLASSEID_THIEF ) )
+						if( poison_target.isa(POLCLASS_NPC) )
+							SetObjProperty( poison_target , "poisonnpc" , 1 );
+						endif
+					endif
+
+					var maxx := plvl + psnboost;
+					if(maxx >= 9)
+						maxx := 9;
+					endif
+
+					if( !GetObjProperty( attacker , CLASSEID_THIEF ) )
+						SetPoison( poison_target, plvl, "You have been poisoned by " + attacker.name + ".", attacker );
+					else
+						SetPoison( poison_target, maxx, "You have been poisoned by " + attacker.name + ".", attacker );
+					endif
 				endif
 			endif
 		else

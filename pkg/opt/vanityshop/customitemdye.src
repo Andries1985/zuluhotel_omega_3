@@ -18,6 +18,7 @@ program CustomItemDye (who, omegadye)
 		SendSysMessage(who, "The Omega Dye disintegrates in your hands!", color:= 814);
 		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, omegadye.color, 3);
 		DestroyItem(omegadye);
+		return; // 2026-09-22: was carrying on through both targets and the confirm with the dye gone
 	endif
 
 	SendSysMessage(who, "Select the color you'd like to use.", color:= 319);

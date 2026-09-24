@@ -19,11 +19,18 @@ use os;
 
 include "include/attributes";
 
+// 2026-09-21: chr is the character itself. hunger.src used to pass {chr}, a
+// one-item list, so every property read here hit the list, came back 0, and
+// the loop below never ran once -- the drain has never actually worked.
+// The pid stamp lets hunger.src see that a drain is alive (EnsureHungerDrain)
+// and stop a stale one at login (StopHungerDrain).
 program hungerdamage( chr )
 
 	if (!chr)
 		return;
 	endif
+
+	SetObjProperty(chr, "#HungerDrainPid", GetPid());
 
 	// Guards against an orphaned instance surviving a relog -- hunger.src's
 	// own loop for THIS login already exits the same way.
@@ -32,11 +39,13 @@ program hungerdamage( chr )
 	while ( chr and CInt(GetObjProperty(chr, "hunger")) >= 10 )
 
 		if ( starttime != GetObjProperty(chr, "#logontime") )
+			HungerDrainDone(chr);
 			return;
 		endif
 
 		if ( chr.dead )
 			SetObjProperty(chr, "hunger", 0);
+			HungerDrainDone(chr);
 			return;
 		endif
 
@@ -66,6 +75,17 @@ program hungerdamage( chr )
 
 	endwhile
 
+	HungerDrainDone(chr);
 	SendSysMessage(chr, "You're no longer starving.");
 
 endprogram
+
+// Clears the pid stamp, but only if it is still ours -- a newer drain may
+// already have replaced it.
+function HungerDrainDone(chr)
+
+	if (CInt(GetObjProperty(chr, "#HungerDrainPid")) == GetPid())
+		EraseObjProperty(chr, "#HungerDrainPid");
+	endif
+
+endfunction

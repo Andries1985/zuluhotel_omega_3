@@ -19,6 +19,11 @@ program cast_earth_portal( caster )
 	endif
 
 	var gate1 := CreateItemAtLocation( caster.x , caster.y , caster.z , "moongatea" , 1, caster.realm );
+	// 2026-09-22: a save inside the window left a permanent public
+	// resurrection gate wherever this was cast.
+	if( gate1 )
+		gate1.saveonexit := 0;
+	endif
 
 	PlaySoundEffect( caster, SFX_SPELL_ANGELIC_GATE );
 	EraseObjProperty( caster , "#Casting" );

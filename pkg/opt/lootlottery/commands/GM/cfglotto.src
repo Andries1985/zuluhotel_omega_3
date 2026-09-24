@@ -98,7 +98,7 @@ program textcmd_cfglotto(who)
 
 	//Single Winner
 	GFTextLine(LottoLotteryGump, 124, 264, 51, "Single Winner");
-	GFCheckBox(LottoLotteryGump, 93, 263, 210, 211, Lotto_item, 5);
+	GFCheckBox(LottoLotteryGump, 93, 263, 210, 211, Lotto_single, 5); // 2026-09-22: was Lotto_item (a string, always ticked)
 
 	//Loot Bag
 	GFTextLine(LottoLotteryGump, 124, 296, 51, "Loot in a Bag");
@@ -122,8 +122,17 @@ program textcmd_cfglotto(who)
 		SetObjProperty(thing, "LottoQuantity", GFExtractData(ret,2));
 		SetObjProperty(thing, "LottoChance", CInt(GFExtractData(ret,3)));	
 		SetObjProperty(thing, "LottoItem", GFExtractData(ret,4));
-		SetObjProperty(thing, "LottoSingle", ret[5]);
-		SetObjProperty(thing, "LottoLootBag", ret[6]);
+		// 2026-09-22: store 0/1, not the raw gump value (an unticked box came back as an error value)
+		var single_winner := 0;
+		if (ret[5])
+			single_winner := 1;
+		endif
+		var loot_in_bag := 0;
+		if (ret[6])
+			loot_in_bag := 1;
+		endif
+		SetObjProperty(thing, "LottoSingle", single_winner);
+		SetObjProperty(thing, "LottoLootBag", loot_in_bag);
 		return 0;
 	elseif (ret[0] == 2) //Cancel
 		SendSysmessage(who, "Canceled.");

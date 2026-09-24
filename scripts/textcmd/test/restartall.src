@@ -1,24 +1,31 @@
 // Synopsis: Restart the AI script on all NPC mobiles on the server
 use uo;
 use os;
+use polsys;
 
-var number := 0;
 program npcres( you )
 
-set_critical(0);
+	set_critical(0);
 
-var x, y, z;
-for( x := 6144 ; x > 16 ; x := x  - 32)
-   SendSysMessage (You, "Restarting NPCs, X=" + x );
-    for( y := 16; y < 4096; y := y + 32 )
-        for( z := -60; z <= 60; z := z + 30 )
-            foreach npc in ListMobilesNearLocation( x, y, z, 32, you.realm )
-		RestartScript( npc );
-		number := number + 1;
-            endforeach
-        endfor
-    endfor
-    SendSysMessage(you, "Total NPCs restarted:" + number);
-endfor
+	// 2026-09-23: was a sweep of the caller's realm in 32-tile squares at five heights (about
+	// 123,000 list calls); one box list per realm finds every mobile on every map in one pass.
+	var number := 0;
+	var realmtable := Realms();
+	var realmnames := realmtable.keys();
+	foreach realmname in realmnames
+		var rinfo := realmtable[realmname];
+		var mobs := ListMobilesInBox( 0, 0, -128, rinfo.width - 1, rinfo.height - 1, 127, realmname );
+		SendSysMessage( you, "Restarting NPCs on " + realmname + " (" + len(mobs) + " mobiles)..." );
+		foreach mob in mobs
+			if( mob.npctemplate )
+				RestartScript( mob );
+				number := number + 1;
+				if( number % 100 == 0 )
+					sleepms( 1 );
+				endif
+			endif
+		endforeach
+	endforeach
+	SendSysMessage( you, "Total NPCs restarted: " + number );
 
 endprogram

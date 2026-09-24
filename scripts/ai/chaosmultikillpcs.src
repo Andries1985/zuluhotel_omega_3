@@ -175,7 +175,7 @@ if (GetHP(me) < (GetMaxHP(me)/5))
 		ReadyStaff(me);
 	endif
 	sleep (1);
-	me.mana := me.mana + 50;
+	SetMana(me, GetMana(me) + 50); // 2026-09-23: was me.mana := me.mana + 50; mana is not a member on mobiles (no-op)
 	CastSpell(me,me,"naturestouch");
 	SetHP(me, GetHP(me)+50);
 	sleep(1);
@@ -203,7 +203,7 @@ if (gank > 1)
 	if (omfg > 29)
 		ReadySword ();
 		turntoward( opponent );
-		me.mana := me.mana + 30;
+		SetMana(me, GetMana(me) + 30); // 2026-09-23: same, was me.mana
 		CastSpell(me,opponent,"teleport");
 	endif
 endif
@@ -262,7 +262,7 @@ endif
 
 //EBLESS
 safe :=1;
-if (me.ar <= 30 and Random(3) == 1 and me.mana > 20)
+if (me.ar <= 30 and Random(3) == 1 and GetMana(me) > 20) // 2026-09-23: was me.mana > 20, always false
 	foreach critter in ListMobilesInLineOfSight( me, 4 )
 		if (critter.name != me.name)
 			safe := 0;
@@ -442,7 +442,7 @@ if (notgts3 > 2 and Random (5) == 1 and !crazymode)
 		endwhile
 		saywords := 1;
 		if (CheckLineOfSight( me, opponent) )
-			me.mana := me.mana + 30;
+			SetMana(me, GetMana(me) + 30); // 2026-09-23: same, was me.mana
 			CastSpell(me, opponent, "mindblast");	
 			sleep(1);
 		endif
@@ -464,7 +464,7 @@ var amethod := 0;
 var ow1;
 var ow2;
 	if (omage or opala)
-		if (opponent.mana > 20)
+		if (GetMana(opponent) > 20) // 2026-09-23: was opponent.mana > 20, always false, so mages were met in melee
 			amethod := "arch";
 		else
 			amethod := "melee";

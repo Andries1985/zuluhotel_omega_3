@@ -731,7 +731,6 @@ function SummonsRisingFire(caster, cast_on)
 
 	if(IsInSafeArea(caster))
 			EraseObjProperty( caster, "#Casting" );
-			Print("Cant cast in safe area");
             return;
     endif
 
@@ -814,7 +813,6 @@ function SummonsSpectreTouch(caster, cast_on)
 
 	if(IsInSafeArea(caster))
 			EraseObjProperty( caster, "#Casting" );
-			Print("Cant cast in safe area");
             return;
     endif
 

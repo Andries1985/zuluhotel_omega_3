@@ -36,7 +36,9 @@ const CRAFTER_REPAIR_DIFF_BONUS := 2.5; // used in util/repair.inc
 function ClasseBonus( who , classeid )
 
 	var level := CInt( GetObjProperty( who , classeid ) );
-	unequipRestrictedItems(who);
+	// 2026-09-23: the paperdoll sweep (unequipRestrictedItems) used to run here on every lookup,
+	// with two 5 ms pauses per worn item, from 127 call sites; it stays in AssignClasse,
+	// the class-check loop and .showclasse, where the class is actually (re)assigned.
 	if( level )
 		return( 1.0 + BONUS_PER_LEVEL * level );
 	else
@@ -61,7 +63,9 @@ endfunction
 
 function ClasseBonusBySkillId( who, skillid )
 
-	unequipRestrictedItems(who);
+	// 2026-09-23: the paperdoll sweep (unequipRestrictedItems) used to run here on every lookup,
+	// with two 5 ms pauses per worn item, from 127 call sites; it stays in AssignClasse,
+	// the class-check loop and .showclasse, where the class is actually (re)assigned.
 	return( ClasseBonusByLevel( IsSpecialisedIn( who , skillid ) ) );
 
 endfunction

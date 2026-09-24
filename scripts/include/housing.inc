@@ -279,6 +279,91 @@ function GetHouseZoneBaseZLevel(targ, sign)
 
 endfunction
 
+// 2026-09-22: house secure containers, for the container insert/remove/use
+// hooks (pkg/items/containers/container/*.src). Those hooks used to look for
+// a "secured" struct with a ".level" that no housing package writes any more
+// (classic and static mark a secure with "secure 1", custom housing with
+// "secured" = the sign's serial), so they never refused anything: a secure was
+// guarded only at the moment it was opened, and an item could be dragged out
+// by anyone in reach who knew its serial, or by a friend whose access was
+// removed while the chest was still open.
+//
+// FindHouseSecureContainer walks up from the container (a bag inside a secure
+// chest counts) and returns the secure container, or 0.
+function FindHouseSecureContainer( container )
+	var cont := container;
+	var depth := 0;
+	while( cont and depth < 16 )
+		if( GetObjProperty( cont, "secure" ) or GetObjProperty( cont, "secured" ) )
+			return cont;
+		endif
+		cont := cont.container;
+		depth := depth + 1;
+	endwhile
+	return 0;
+endfunction
+
+// The same rule each package's own secure-open script applies: staff always;
+// a static house (per-container "SecuredLevel" letter) by its owner/co-owner/
+// friend ladder; a classic or custom house by the sign's "secure" permission.
+// A ban refuses everything. A secure whose house cannot be found refuses
+// everyone but staff, as the open scripts do.
+function HouseSecureAccessAllowed( mobile, secure_cont )
+	if( mobile.cmdlevel >= 3 )
+		return 1;
+	endif
+
+	var hsign := 0;
+	var secured_to := GetObjProperty( secure_cont, "secured" );
+	if( secured_to )
+		hsign := SystemFindObjectBySerial( CInt( secured_to ) );
+	endif
+	if( !hsign )
+		var holder := SystemFindObjectBySerial( CInt( GetObjProperty( secure_cont, "houseserial" ) ) );
+		if( holder )
+			if( holder.IsA( POLCLASS_MULTI ) )
+				hsign := SystemFindObjectBySerial( CInt( GetObjProperty( holder, "signserial" ) ) );
+			else
+				hsign := holder; // static housing stores the sign's own serial
+			endif
+		endif
+	endif
+	if( !hsign )
+		return 0;
+	endif
+	if( !hsign.IsHouseSign() )
+		return 0;
+	endif
+	if( hsign.IsBanned( mobile ) )
+		return 0;
+	endif
+
+	var level := GetObjProperty( secure_cont, "SecuredLevel" );
+	if( level )
+		var needed := 4; // "A": every affiliate
+		case( level )
+			"O": needed := 1;
+			"C": needed := 2;
+			"F": needed := 3;
+			"A": needed := 4;
+		endcase
+		var mine := 0;
+		if( hsign.IsOwner( mobile ) or ( GetObjProperty( hsign, "owneracct" ) == mobile.acctname ) )
+			mine := 1;
+		elseif( hsign.IsACoOwner( mobile ) )
+			mine := 2;
+		elseif( hsign.IsAFriend( mobile ) )
+			mine := 3;
+		endif
+		if( !mine )
+			return 0;
+		endif
+		return ( mine <= needed );
+	endif
+
+	return hsign.HasHousePermission( mobile, "secure" );
+endfunction
+
 // Fixed for multis.
 function SetLockdownInfo( sign, mobile, item, type := "lockeddown" )
 	type := type;

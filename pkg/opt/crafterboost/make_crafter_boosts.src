@@ -116,8 +116,9 @@ function MakeUpgrade(character, start_material, smithyretort)
 
 	//Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		mat1_qty := Cint(Ceil(mat1_qty/2));
-		mat2_qty := Cint(Ceil(mat2_qty/2));
+		// 2026-09-21: /2.0 -- int/int is whole-number division, so 1 became 0.
+		mat1_qty := Cint(Ceil(mat1_qty/2.0));
+		mat2_qty := Cint(Ceil(mat2_qty/2.0));
 	endif
 
 	var item_diff := item_elem.Skill;

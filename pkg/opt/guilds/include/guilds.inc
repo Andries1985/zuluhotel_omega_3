@@ -406,6 +406,12 @@ function GetOwnedGuildCandidateHouses(who)
 				continue;
 			endif
 
+			// 2026-09-22: a house another guild already holds is not offered
+			// (Change guild house filtered these itself; guild creation did not).
+			if (GetObjProperty(house, "GuildHouse"))
+				continue;
+			endif
+
 			owned.append(house);
 		endforeach
 	endforeach
@@ -578,13 +584,27 @@ function ChangeGuildMaster(who)
 	var guild := who.guild;
 
 	if (!who.connected)
-		guild.setprop("GuildMaster", guild.members[1].serial);
+		// 2026-09-22: was members[1], which can be the master being removed
+		// (character deletion runs this for the offline master) -- the guild
+		// was then left with a deleted serial as its master. First member who
+		// is not who; the messages also named each member as the new master.
+		var successor := 0;
+		foreach candidate in (guild.members)
+			if (candidate.serial != who.serial)
+				successor := candidate;
+				break;
+			endif
+		endforeach
+		if (!successor)
+			return 0;
+		endif
+		guild.setprop("GuildMaster", successor.serial);
 
 		foreach member in (guild.members)
-			if (member.serial != who.serial)
-				SendSysMessage(member, member.name+" is now the Guild Master!", 3, 53);
-			else
+			if (member.serial == successor.serial)
 				SendSysMessage(member, "You are now the Guild Master!", 3, 53);
+			elseif (member.serial != who.serial)
+				SendSysMessage(member, successor.name+" is now the Guild Master!", 3, 53);
 			endif
 		endforeach
 		return 1;

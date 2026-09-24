@@ -96,7 +96,10 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
 		return 0;
 	endif*/
 
-	if(!GetObjProperty( caster, "betatest" ))
+	// 2026-09-21: from_charge (the argument) replaces the saved "betatest" flag
+	// -- see RecallWithCharges in runebookactions.inc. A charged recall still
+	// costs no reagents, mana or skill check; an uncharged one pays all three.
+	if(!from_charge)
         	if(!ConsumeReagents( caster, SPELLID_RECALL ))
 		   	PrintTextAbovePrivate(caster,"*No reagents*", caster);
 			PlayObjectCenteredEffect(caster, FX_SPELL_FIZZLE, SPEED_SPELL_FIZZLE,LOOP_SPELL_FIZZLE );
@@ -120,7 +123,7 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
         	endif
         endif
 
-	EraseObjProperty( caster, "betatest" );
+	EraseObjProperty( caster, "betatest" ); // 2026-09-21: clears the old saved flag if a character still carries one
 	if( !can_cast( caster , circle ) )
 		return 0;
 	endif

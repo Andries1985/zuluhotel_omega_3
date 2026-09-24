@@ -61,6 +61,7 @@ program Shadows(parms)
 		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
 		if (ReadGameClock() >= last_played)
 			if (!PlayBardicMusic(who, diff, instrument))
+				EndVerse(who);
 				return 0;
 			endif
 			last_played := ReadGameClock()+7;
@@ -101,5 +102,6 @@ program Shadows(parms)
 		sleep(1);
 
 	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+	EndVerse(who); // 2026-09-22: clear #Casting on every exit, see versefunctions.inc
 	
 endprogram

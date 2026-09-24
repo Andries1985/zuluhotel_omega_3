@@ -159,12 +159,14 @@ function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
 	var logs_color := logRequest.color;
 
 	var material := element.Material;
+	// 2026-09-21: /2.0, not /2 -- int/int is whole-number division in the engine,
+	// so Ceil had nothing left to round: 1 shaft/arrow became 0 (free) in a Power Hour.
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
+		material := CInt(Ceil(material/2.0));
 	endif
 	var material2 := element.Material2;
 	if( reagentRequest and material2 and (GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC")) )
-		material2 := CInt(Ceil(material2/2));
+		material2 := CInt(Ceil(material2/2.0));
 	endif
 
 	var bowcraft := GetEffectiveSkill( character, SKILLID_BOWCRAFT );
@@ -212,7 +214,31 @@ function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
 
 		if( CheckSkill( character, SKILLID_BOWCRAFT, skill, points ) and coSkillOk )
 
+			// 2026-09-21: consume first and honour the result (see
+			// HasCraftingResources in resourcemanager.inc). This used to create
+			// the item, then consume with the result ignored, so logs lifted out
+			// of the pack during the Sleep()s above gave a free item.
+			if( !HasCraftingResources( character, logRequest, material, reagentRequest, material2 ) )
+				SendSysMessage( character, "You no longer have the materials for that." );
+				break;
+			endif
+			if( !ConsumeResource( character, logRequest, material ) )
+				break;
+			endif
+			if( reagentRequest )
+				if( !ConsumeResource( character, reagentRequest, material2 ) )
+					break;
+				endif
+			endif
+
 			var theitem := CreateItemInBackpack( character, what );
+			if( !theitem )
+				// Charged once, same as carpentry/tailoring -- CheckSkill has
+				// already paid out the skill gain, so a free failure would be a
+				// no-cost training loop.
+				SendSysMessage( character, "Your backpack is full." );
+				break;
+			endif
 			if( theitem )
 
 				var excep_ch := 10;
@@ -276,10 +302,6 @@ function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
 				theitem.hp := theitem.maxhp;
 				SetObjProperty( theitem, "BaseName", itemname );
 				SetName( theitem, itemname );
-			endif
-			ConsumeResource( character, logRequest, material );
-			if( reagentRequest )
-				ConsumeResource( character, reagentRequest, material2 );
 			endif
 
 		else
@@ -380,13 +402,20 @@ function CraftLogBulk( character, what, element, logRequest, reagentRequest, qty
 	endif
 	var logs_color := logRequest.color;
 
+	// 2026-09-21: the engine refuses to create more than 60000 of anything in
+	// one call -- a bigger batch used to be charged in full and make nothing.
+	if( qty > 60000 )
+		qty := 60000;
+	endif
+
 	var material := CInt(element.Material) * qty;
+	// 2026-09-21: /2.0 so an odd total rounds up, not down (see CraftLogRecipe).
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
+		material := CInt(Ceil(material/2.0));
 	endif
 	var material2 := CInt(element.Material2) * qty;
 	if( reagentRequest and material2 and (GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC")) )
-		material2 := CInt(Ceil(material2/2));
+		material2 := CInt(Ceil(material2/2.0));
 	endif
 
 	var bowcraft := GetEffectiveSkill( character, SKILLID_BOWCRAFT );
@@ -409,18 +438,38 @@ function CraftLogBulk( character, what, element, logRequest, reagentRequest, qty
 	Sleep(2);
 
 	if( CheckSkill( character, SKILLID_BOWCRAFT, skill, points ) )
-		var theitem := CreateItemInBackpack( character, what, qty );
+		// 2026-09-21: consume first and honour the result (see
+		// HasCraftingResources in resourcemanager.inc). qty was capped against
+		// materials counted BEFORE the "Make how many" prompt and never
+		// re-checked, so moving them away while it was open made a free batch.
+		if( !HasCraftingResources( character, logRequest, material, reagentRequest, material2 ) )
+			SendSysMessage( character, "You no longer have the materials for that." );
+			return;
+		endif
+		if( !ConsumeResource( character, logRequest, material ) )
+			return;
+		endif
+		if( reagentRequest )
+			if( !ConsumeResource( character, reagentRequest, material2 ) )
+				return;
+			endif
+		endif
+
+		// 2026-09-21: colour goes on the descriptor, not on the item afterwards.
+		// The engine only merges into an existing stack of the SAME colour, so a
+		// coloured batch created plain used to merge into a plain stack and then
+		// repaint all of it. Same fix as tailoring's CraftClothBulk.
+		var bulk_desc := GetItemDescriptor( CInt(what) );
+		bulk_desc.Color := logs_color;
+		var theitem := CreateItemInBackpack( character, bulk_desc, qty );
 		if( theitem )
 			itemname := logs_name + " " + itemname;
-			theitem.color := logs_color;
 			theitem.hp := theitem.maxhp;
 			SetObjProperty( theitem, "BaseName", itemname );
 			SetName( theitem, itemname );
 			SendSysMessage( character, "You place " + qty + " " + itemname + " in your pack." );
-		endif
-		ConsumeResource( character, logRequest, material );
-		if( reagentRequest )
-			ConsumeResource( character, reagentRequest, material2 );
+		else
+			SendSysMessage( character, "Your backpack is full." );
 		endif
 	else
 		var destroy := 75 - Cint( bowcraft / 2 );
@@ -464,19 +513,43 @@ function CraftAmmoBulk( character, what, element, shaftsRequest, feathersRequest
 		sendDiff( character, skill );
 	endif
 
+	// 2026-09-21: the engine refuses to create more than 60000 of anything in
+	// one call -- a bigger batch used to make nothing.
+	if( qty > 60000 )
+		qty := 60000;
+	endif
+
 	var checkResult := CheckSkill( character, SKILLID_BOWCRAFT, skill, thepoints );
 
 	if( checkResult )
+		// 2026-09-21: consume first and honour the result (see
+		// HasCraftingResources in resourcemanager.inc). qty was capped against
+		// materials counted BEFORE the "Make how many" prompt and never
+		// re-checked, so moving them away while it was open made a free batch.
+		var shafts_needed := CInt(element.Material) * qty;
+		var feathers_needed := CInt(element.Material2) * qty;
+		var reagents_needed := CInt(element.Material3) * qty;
+		if( !HasCraftingResources( character, shaftsRequest, shafts_needed, feathersRequest, feathers_needed, reagentRequest, reagents_needed ) )
+			SendSysMessage( character, "You no longer have the materials for that." );
+			return;
+		endif
+		if( !ConsumeResource( character, shaftsRequest, shafts_needed ) )
+			return;
+		endif
+		if( !ConsumeResource( character, feathersRequest, feathers_needed ) )
+			return;
+		endif
+		if( reagentRequest )
+			if( !ConsumeResource( character, reagentRequest, reagents_needed ) )
+				return;
+			endif
+		endif
+
 		var made := CreateItemInBackpack( character, what, qty );
 		if( made )
-			ConsumeResource( character, shaftsRequest, CInt(element.Material) * qty );
-			ConsumeResource( character, feathersRequest, CInt(element.Material2) * qty );
-			if( reagentRequest )
-				ConsumeResource( character, reagentRequest, CInt(element.Material3) * qty );
-			endif
 			SendSysMessage( character, "You create " + qty + " " + element.Name + " and put them in your pack." );
 		else
-			SendSysMessage( character, "Something went wrong creating that -- nothing was made or consumed." );
+			SendSysMessage( character, "Your backpack is full." );
 		endif
 	else
 		ConsumeResource( character, shaftsRequest, element.Material );

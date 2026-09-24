@@ -119,7 +119,7 @@ function look_around()
 		endif
 	endforeach
 
-	var hiders := ListMobilesNearLocationEx( me.x , me.y , me.z , HALT_THRESHOLD , LISTEX_FLAG_HIDDEN );
+	var hiders := ListMobilesNearLocationEx( me.x , me.y , me.z , HALT_THRESHOLD , LISTEX_FLAG_HIDDEN, me.realm ); // 2026-09-23: no realm searched britannia
 	if( len(hiders) )
 		foreach mobile in hiders
 			var hiding := GetEffectiveSkill( mobile , SKILLID_HIDING );

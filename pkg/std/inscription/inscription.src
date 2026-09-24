@@ -1027,7 +1027,15 @@ function CreateRunebook( character , item )
 		manacost     := Cint( manacost / ClasseBonus( character , CLASSEID_MAGE ) );
 		needed_blank := Cint( needed_blank / ClasseBonus( character , CLASSEID_MAGE ) );
 	endif
-	
+
+	// 2026-09-21: mana is checked before anything is consumed -- it used to be
+	// checked after the scrolls were already gone, so a short mage lost them
+	// for nothing. It is deducted further down, once the components are paid.
+	if( GetMana(character) < manacost )
+		SendSysMessage( character , "You don't have enough mana." );
+		return;
+	endif
+
 	foreach thing in needed
 		var amount := 1;
 		if( CInt(thing) == UOBJ_BLANK_SCROLL )
@@ -1057,20 +1065,23 @@ function CreateRunebook( character , item )
 		requests.append( struct{ req := req, amount := amount } );
 	endforeach
 
+	// 2026-09-21: the targeted blank rune (item) is a component again. It fell
+	// off the list when this moved to the resource manager, so a runebook cost
+	// no rune at all (POL2.5 still charges it). The program reserved it above.
+	if( !SubtractAmount( item, 1 ) )
+		SendSysMessage( character , "You don't have all needed components." );
+		return;
+	endif
+
 	foreach consume_entry in requests
 		if( !ConsumeResource( character , consume_entry.req , consume_entry.amount ) )
 			SendSysMessage( character , "You don't have all needed components." );
 			return;
 		endif
 	endforeach
-	
-	if( GetMana(character) < manacost )
-		SendSysMessage( character , "You don't have enough mana." );
-		return;
-	else
-		SetMana(character, GetMana(character)- manacost);
-	endif
-	
+
+	SetMana(character, GetMana(character)- manacost);
+
 	if(!GetObjProperty(character, "toggleDiff"))
 		SendSysmessage( character , "Inscription Difficulty: "+idifficulty );
 		SendSysmessage( character , "Magery Difficulty: "+mdifficulty );
@@ -1187,11 +1198,20 @@ function CreateScroll( character , skill , points , blankscroll , scrollobjtype 
 		SendSysmessage( character , "You fail and destroy the scroll" );
 		ConsumeResource( character, blankRequest, 1 );		
 	else
-	/*** That's ok ***/		
-		CreateItemInBackpack( character , scrollobjtype );
-		PlaySoundEffect( character , SOUND_EFFECT_INSCRIPTION ); 
-		SendSysmessage( character , "You create the scroll and put it in your backpack" );
-		ConsumeResource( character, blankRequest, 1 );
+	/*** That's ok ***/
+		// 2026-09-21: consume first and honour the result (consume-first
+		// pattern, see HasCraftingResources in resourcemanager.inc) -- the blank
+		// used to be charged after the scroll existed, result ignored.
+		if( !ConsumeResource( character, blankRequest, 1 ) )
+			break;
+		endif
+		if( CreateItemInBackpack( character , scrollobjtype ) )
+			PlaySoundEffect( character , SOUND_EFFECT_INSCRIPTION );
+			SendSysmessage( character , "You create the scroll and put it in your backpack" );
+		else
+			SendSysmessage( character , "Your backpack is full." );
+			break;
+		endif
 	endif
 
 	if( !ExtendResourceLease(blankRequest, character, 1) )

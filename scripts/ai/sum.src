@@ -96,7 +96,7 @@ function CloseDistance( opponent )
 			endif
 		endif
 	endforeach
-	var sleepdelay := 300 - (CInt(me.dexterity) * 1.5);
+	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5); // 2026-09-23: was me.dexterity, not a member (always 0)
 	if (sleepdelay < 0) sleepdelay := 0; endif
 
 	var d:=distance(me,opponent);

@@ -42,11 +42,13 @@ program canInsert( mobile, container, move_type, unused inserttype, unused addin
 endprogram
 
 function ContainerIsSecured( mobile, container )
-	var house_sign := GetHouseSign( mobile );
-	if ( !container.IsSecured() )
+	// 2026-09-22: see canRemove.src -- the shared check in housing.inc replaces
+	// the "secured" struct lookup that never matched a real house secure.
+	var secure_cont := FindHouseSecureContainer( container );
+	if ( !secure_cont )
 		// Nothing to worry about.
 		return 0;
-	elseif ( house_sign.IsAffiliated(mobile) >= container.GetSecureLevel() )
+	elseif ( HouseSecureAccessAllowed( mobile, secure_cont ) )
 		return 0;
 	else
 		return 1;

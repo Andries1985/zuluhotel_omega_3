@@ -15,7 +15,7 @@ program resetph( who )
         return 0;
     endif
 
-    if (mobile == POLCLASS_NPC)
+    if (mobile.isa(POLCLASS_NPC)) // 2026-09-22: was == POLCLASS_NPC (a number), never true
         SendSysMessage(who, "You cannot reset Powerhour on NPCs.", FONT_NORMAL, 43);
         return 0;
     endif

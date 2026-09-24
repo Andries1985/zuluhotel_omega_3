@@ -532,6 +532,13 @@ function DonateTownCheque(who, item)
 		return;
 	endif
 
+	// 2026-09-22: was any targetable cheque (a trade window, a vendor, a house
+	// table) -- DestroyItem needs no reach. Must be in the donor's own backpack.
+	if(!IsInDonorBackpack(who, cheque))
+		SendSysMessage(who, "The cheque must be in your backpack.");
+		return;
+	endif
+
 	if(!DestroyItem(cheque))
 		SendSysMessage(who, "Failed to consume that cheque.");
 		return;
@@ -542,6 +549,18 @@ function DonateTownCheque(who, item)
 	SetTownBankGold(city, new_total);
 	TouchTownstoneRegionEntry(item, city);
 	SendSysMessage(who, "You donated " + amount + " gold to " + city + ". New town balance: " + new_total + " gold.");
+endfunction
+
+// 2026-09-22: walks the container chain up to the donor's backpack.
+function IsInDonorBackpack(who, item)
+	var cont := item.container;
+	while(cont)
+		if(cont.serial == who.backpack.serial)
+			return 1;
+		endif
+		cont := cont.container;
+	endwhile
+	return 0;
 endfunction
 
 function IsPlayerCandidate(who)
@@ -562,6 +581,12 @@ function OpenVoteSelectionGump(who, item)
 	const BTN_CLOSE_SEL := 7003;
 	const BTN_VOTE_BASE_SEL := 8000;
 	const TXT_COLOR_SEL := 1153;
+
+	// 2026-09-22: voteto() checks too; refuse before the list is even shown.
+	if(!IsTownCitizen(who))
+		SendSysMessage(who, "Only citizens of " + city + " can vote here.");
+		return;
+	endif
 
 	var size := (candidatos.size() / 2);
 	if(size <= 0)
@@ -1004,6 +1029,13 @@ endprogram
 
 function CanselCityzenship(who, item)
 
+// 2026-09-22: see IsTownCitizen in tstone.inc -- "give up citizenship" was
+// reachable by anyone and took one off the population every time.
+if(!IsTownCitizen(who))
+	SendSysMessage(who, "You are not a citizen of " + city + ".");
+	return;
+endif
+
 var i;
 
 if(eleicoes or pleibicito)			
@@ -1034,11 +1066,10 @@ if(eleicoes or pleibicito)
 	endforeach
 endif
 
-var result := find(who.name, "of "+city, 1);
-var name := who.name;
-result := result-2;
-name := name[1,result];
-who.name := name;
+// 2026-09-22: was find()-and-cut arithmetic that went negative whenever the
+// suffix was not in the name (renamed since, or a town name with an
+// apostrophe: the join strips it, this did not). StripTownSuffix handles both.
+who.name := StripTownSuffix(who.name, city);
 
 set_critical(1);
 
@@ -1050,6 +1081,9 @@ for(i:=1; i<=citizen.size(); i:=i+1)
 endfor
 		
 populacao := populacao -1;
+if(populacao < 0)
+	populacao := 0;
+endif
 SetObjProperty(item, "populacao", populacao);
 SetObjProperty(item, "citizen", citizen);
 EraseObjProperty(who, "town");
@@ -1060,6 +1094,14 @@ endfunction
 
 
 function Citizenship(who, item)
+
+// 2026-09-22: the join button is only drawn for someone with no town, but a
+// reply can name it anyway; a citizen elsewhere joining here overwrote their
+// town and inflated this one's population.
+if(user)
+	SendSysMessage(who, "You are already a citizen of a town.");
+	return;
+endif
 
 set_critical(1);
 

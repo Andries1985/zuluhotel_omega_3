@@ -30,18 +30,22 @@ program paralyzehit( attacker, defender, weapon, armor, basedamage, rawdamage )
 		endif
 		
         var chance := GetObjProperty(weapon, "ChanceOfEffect");
-        if(RandomDiceStr("1d100") <= chance)
+        // 2026-09-21: area check added -- the paralysis used to land between
+        // players in No-PK/safe areas, where only the DAMAGE below was blocked.
+        if( !IsPvPBlockedByArea( attacker, defender ) )
+            if(RandomDiceStr("1d100") <= chance)
 
-            var targ;
-            if( GetObjProperty( weapon , "Cursed" ) )
-                targ := attacker;
-            else
-                targ := defender;
-            endif
+                var targ;
+                if( GetObjProperty( weapon , "Cursed" ) )
+                    targ := attacker;
+                else
+                    targ := defender;
+                endif
 
-            if( CanMod( targ , "p" ) )
-                if( !GetObjProperty( targ , "FreeAction" ) )
-                    DoTempMod( targ , "p" , 1 , 15 );
+                if( CanMod( targ , "p" ) )
+                    if( !GetObjProperty( targ , "FreeAction" ) )
+                        DoTempMod( targ , "p" , 1 , 15 );
+                    endif
                 endif
             endif
         endif

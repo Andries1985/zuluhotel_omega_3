@@ -66,6 +66,7 @@ program Corpse_Distention(parms)
 		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
 		if (ReadGameClock() >= last_played)
 			if (!PlayBardicMusic(who, diff, instrument))
+				EndVerse(who);
 				return 0;
 			endif
 			last_played := ReadGameClock()+7;
@@ -98,6 +99,7 @@ program Corpse_Distention(parms)
 		sleep(1);
 
 	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+	EndVerse(who); // 2026-09-22: clear #Casting on every exit, see versefunctions.inc
 
 endprogram
 
@@ -110,6 +112,7 @@ function BloatCorpse(who, corpse, damage)
 	if (!bloat)	
 
 		if (NotSuitable(corpse))
+			set_critical(0); // 2026-09-22: was left on across the return
 			return 0;
 		endif
 		

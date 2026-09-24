@@ -145,8 +145,9 @@ function MakeRefinementItem( character, primaryRequest, secondaryRequest, choice
 	var mat1_qty := CInt(element.Material);
 	var mat2_qty := CInt(element.Material2);
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		mat1_qty := Cint(Ceil(mat1_qty/2));
-		mat2_qty := Cint(Ceil(mat2_qty/2));
+		// 2026-09-21: /2.0 -- int/int is whole-number division, so 1 became 0.
+		mat1_qty := Cint(Ceil(mat1_qty/2.0));
+		mat2_qty := Cint(Ceil(mat2_qty/2.0));
 	endif
 
 	var final_diff := CInt( realSkill + material_diff / REFINE_MAT_DIVIDER );
@@ -182,10 +183,24 @@ function MakeRefinementItem( character, primaryRequest, secondaryRequest, choice
 
 		if( CheckSkill(character, realSkillid, final_diff, points) )
 
+			// 2026-09-21: consume first and honour the result (see
+			// HasCraftingResources in resourcemanager.inc). This used to create
+			// the item, then consume with the result ignored, so materials
+			// lifted out of the pack during the Sleep()s above gave a free item.
+			if( !HasCraftingResources( character, primaryRequest, mat1_qty, secondaryRequest, mat2_qty ) )
+				SendSysMessage( character, "You no longer have the materials for that." );
+				break;
+			endif
+			if( !ConsumeResource( character, primaryRequest, mat1_qty ) )
+				break;
+			endif
+			if( !ConsumeResource( character, secondaryRequest, mat2_qty ) )
+				break;
+			endif
+
+			// Materials were already charged once above.
 			var newitem := CreateItemInBackpack( character, resultType );
 			if( !newitem )
-				ConsumeResource( character, primaryRequest, mat1_qty );
-				ConsumeResource( character, secondaryRequest, mat2_qty );
 				SendSysmessage( character, "Your backpack is full." );
 				break;
 			endif
@@ -236,8 +251,6 @@ function MakeRefinementItem( character, primaryRequest, secondaryRequest, choice
 			endif
 
 			IncRevision(newitem);
-			ConsumeResource( character, primaryRequest, mat1_qty );
-			ConsumeResource( character, secondaryRequest, mat2_qty );
 
 		else
 			var destroy := 75 - CInt(GetEffectiveSkill( character, realSkillid ) / 2);

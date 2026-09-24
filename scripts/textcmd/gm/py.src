@@ -1,4 +1,4 @@
-// Synopsis: Print the Y coordinate of a targeted object to console
+// Synopsis: Move a targeted object N tiles along the Y axis (default 1, negative allowed)
 use uo;
 
 program  z(who, howfar)

@@ -18,7 +18,7 @@ const QNPC_SELECT_OFFSET := 1000;
 function HandleQuestGiverSpeech(me, event)
 
 	if(event.text["quest"] || event.text["Quest"] || event.text["QUEST"])
-		Print("[QuestPkg] HandleQuestGiverSpeech: "+event.source.name+" said 'quest' to "+me.name);
+		QP_Debug("[QuestPkg] HandleQuestGiverSpeech: "+event.source.name+" said 'quest' to "+me.name);
 		TurnToward(event.source);
 		ShowQuestGiverGump(me, event.source);
 	endif
@@ -30,7 +30,7 @@ function ShowQuestGiverGump(npc, who)
 
 	var giver_tag := GetObjProperty(npc, "QuestGiverTag");
 	if(!giver_tag)
-		Print("[QuestPkg] ShowQuestGiverGump: "+npc.name+" has no QuestGiverTag CProp, nothing to offer");
+		QP_Debug("[QuestPkg] ShowQuestGiverGump: "+npc.name+" has no QuestGiverTag CProp, nothing to offer");
 		return 0;
 	endif
 
@@ -128,10 +128,10 @@ function ShowQuestOfferGump(who, questid, byref cfg_file := 0)
 
 	var data := GFSendGump(who, gump);
 	if(data && data[0] == QNPC_BTN_ACCEPT)
-		Print("[QuestPkg] ShowQuestOfferGump: "+who.name+" accepted quest "+CStr(questid));
+		QP_Debug("[QuestPkg] ShowQuestOfferGump: "+who.name+" accepted quest "+CStr(questid));
 		QP_StartQuest(who, questid);
 	else
-		Print("[QuestPkg] ShowQuestOfferGump: "+who.name+" declined/closed quest "+CStr(questid)+" offer");
+		QP_Debug("[QuestPkg] ShowQuestOfferGump: "+who.name+" declined/closed quest "+CStr(questid)+" offer");
 	endif
 
 	return 1;
@@ -158,7 +158,7 @@ function ShowQuestTurnInGump(who, questid, byref cfg_file := 0)
 
 	var data := GFSendGump(who, gump);
 	if(data && data[0] == QNPC_BTN_ACCEPT)
-		Print("[QuestPkg] ShowQuestTurnInGump: "+who.name+" turned in quest "+CStr(questid));
+		QP_Debug("[QuestPkg] ShowQuestTurnInGump: "+who.name+" turned in quest "+CStr(questid));
 		QP_CompleteQuest(who, questid, elem);
 	endif
 

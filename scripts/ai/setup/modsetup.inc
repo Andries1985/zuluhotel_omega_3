@@ -163,6 +163,14 @@ endif
 
 
 if( GetProperty( "Anchor" ) )
+	// 2026-09-23: the live spawner (:spawnpoint:checkpoint) stores this as a six-slot array
+	// {x, y, range, psub, z, realm}; only the treasure-map guardians use the named-field struct.
+	// Reading array slots as struct fields gave 0s, and SetAnchor with a range of 0 switches the
+	// anchor off, so spawned NPCs were never leashed to their point.
 	var anchor := GetProperty( "Anchor" );
-	SetAnchor( cint(anchor.x), cint(anchor.y), cint(anchor.range), cint(anchor.psub) );
+	if( anchor.x )
+		SetAnchor( cint(anchor.x), cint(anchor.y), cint(anchor.range), cint(anchor.psub) );
+	else
+		SetAnchor( cint(anchor[1]), cint(anchor[2]), cint(anchor[3]), cint(anchor[4]) );
+	endif
 endif

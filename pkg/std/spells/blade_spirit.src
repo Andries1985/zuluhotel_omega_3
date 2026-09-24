@@ -56,6 +56,9 @@ program cast_summon( parms, spell_id )
 
 	var thecreature := "bladespirit";
 	var thecritter := CreateNPCfromTemplate(thecreature, cast_loc.x, cast_loc.y, cast_loc.z, 0, cast_loc.realm);
+	// 2026-09-21: never written to the world save, so a restart during the
+	// sleep below can't leave a permanent blade spirit behind.
+	thecritter.saveonexit := 0;
 
 	setobjproperty(thecritter, "summoned",1);
 	setobjproperty(thecritter, "master",caster.serial);

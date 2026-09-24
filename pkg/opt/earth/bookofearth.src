@@ -88,6 +88,20 @@ program BookOfEarth( who, book )
 		return 0;
 	endif
 
+	// 2026-09-22: the gump only DRAWS the buttons for the spells this book holds;
+	// the reply can name any id. Check the Lesser/Greater bit server-side.
+	spellid := CInt(spellid);
+	var known_bit := 0;
+	if( spellid >= 1 and spellid <= 8 )
+		known_bit := lesser & bits[spellid];
+	elseif( spellid >= 9 and spellid <= 16 )
+		known_bit := greater & bits[spellid-8];
+	endif
+	if( !known_bit )
+		SendSysMessage( who, "That spell is not in this book." );
+		return 0;
+	endif
+
 	var spell := GetScript( BASE_SPELLID+spellid );
 	
 	if( GetObjProperty( book , "CastingOpts" ) )
@@ -101,7 +115,13 @@ program BookOfEarth( who, book )
 		return;
 	endif
 	
-	Start_Script( spell , who );
+	// 2026-09-22: a spell script that cannot start (unknown id, script error)
+	// would leave #Casting set and this loop spinning until relog.
+	var spell_process := Start_Script( spell , who );
+	if( spell_process.errortext )
+		EraseObjProperty( who , "#Casting" );
+		return 0;
+	endif
 		
 	while( GetObjProperty( who , "#Casting" ) )
 		Sleepms( 500 );

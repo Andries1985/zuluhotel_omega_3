@@ -64,63 +64,10 @@ function TryPartialStack(char, item, target_serial)
 	return 1;
 endfunction
 
-Exported Function CheckDrop(char, ByRef packet)
-	/* if(char.cmdlevel && char.cmdlevel < 3)
-		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
-		var parms := {item, char};
-		LogCommand(char, GetProcess(GetPid()).name, "Tried to drop "+item.name+"/"+item.serial+" at location xyz: "+item.x+" "+item.y+" "+item.z);
-		start_script("ForceMove", parms);
-		SendSysMessage(char, "You can't drop any items.");
-		return CORE_OK;
-	endif */
-
-	if(!char.cmdlevel && IsInBox(char, 5125, 7167, 0, 2303) && packet.GetInt32(10) == -1)
-		var item := SystemFindObjectBySerial( packet.GetInt32(1) );
-		var conf := ReadConfigFile( "::tiles" );
-		var element := FindConfigElem( conf , item.objtype );
-		if( element )
-			var material := element.Blocking;
-			if(!material)
-				return CORE_OK;				
-			endif
-		endif
-		var parms := {item, char};
-		start_script("ForceMove", parms);
-		SendSysMessage(char, "You can't drop items inside of a dungeon.", FONT_NORMAL, 2595 );
-		return CORE_OK;
-	endif
-
-  var serial := packet.getint32(1);
-  var inhand := char.getgottenitem();
-  If (serial and inhand and inhand.serial == serial)
-    var target_serial := packet.GetInt32(10);
-    if(TryPartialStack(char, inhand, target_serial))
-        return CORE_IGNORE;
-    endif
-    return CORE_OK;
-  EndIf
-
-	// Check if "Character 0x{:X} tried to drop item 0x{:X}, but had not gotten an item.\n"
-	var badpackets := GetObjProperty(char, "badpackets");
-	if (!badpackets)
-		SetObjProperty(char, "badpackets", 1);
-		return CORE_OK;
-	elseif(badpackets > 3)
-		SendSysMessage(char, "You have been disconnected for excessive macro with an item that have not picked up.", FONT_NORMAL, 2595 );
-		SetObjProperty(char, "badpackets", 0);
-		DisconnectClient(char);
-		return CORE_IGNORE;
-	else
-		badpackets += 1;
-		SetObjProperty(char, "badpackets", badpackets);
-		return CORE_OK;
-	endif
-
-//  IncrementScriptErrorCounter(char);
-
-  return CORE_IGNORE;
-EndFunction
-
+// 2026-09-22: the 14-byte pre-6.0.1.7 CheckDrop hook that sat here was
+// removed with its uopacket.cfg block: the version gate only admits
+// 7.0.115.0, so it never ran, and its bad-packet counter had no time window.
+// Clients older than 6.0.1.7 now get the core's own drop handling.
 Exported Function CheckDrop6017(char, ByRef packet)
 	//Debug stuff
 	/*print("checkdrop6017");

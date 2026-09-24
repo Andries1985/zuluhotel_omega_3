@@ -205,12 +205,12 @@ function ApplyTheAstralDamage( who, by_who, dmg, attack_type := DMGID_ASTRAL )
 		factor := factor * VALUE_MULTIPLIER_FOR_TAMED;
 	endif
 	
-	if( dmg <= who.mana )
+	if( dmg <= GetMana(who) ) // 2026-09-23: was who.mana, which is not a member here (always false)
 		factor := factor * VALUE_MULTIPLIER_FOR_ALLIES;
 		SetMana(who, GetMana(who)-dmg); 
 	else
 		dmg := dmg - GetMana(who);
-		who.mana := 0;
+		SetMana( who, 0 ); // 2026-09-23: was who.mana := 0, a no-op
 		
 		if( dmg <= GetStamina(who) )
 			factor := factor * VALUE_MULTIPLIER_FOR_ALLIES;
@@ -220,7 +220,7 @@ function ApplyTheAstralDamage( who, by_who, dmg, attack_type := DMGID_ASTRAL )
 				TryToInflictFinalDeath( who, attack_type );
 			endif
 		
-			who.stamina := 0;
+			SetStamina( who, 0 ); // 2026-09-23: was who.stamina := 0, a no-op
 			SetAstralIncapacity( who );
 		endif
 	endif

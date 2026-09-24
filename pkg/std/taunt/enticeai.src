@@ -21,16 +21,8 @@ program Enticed_AI()
 PeaceMade(); // Sets the npc to peacemade, function below
 
 // Setting up the vars
-var who := GetObjProperty(me, "#EnticedBy");
-if(who)
-	who := SystemFindObjectBySerial(who, SYSFIND_SEARCH_OFFLINE_MOBILES);
-else
-	return;
-endif
 var mainaiscript := GetObjProperty(me, "AiScript");
 var endtime := CInt(GetObjProperty(me, "#Duration"));
-var x := who.x;
-var y := who.y;
 var myhp := GetHP(me);
 
 // Important check.
@@ -40,25 +32,38 @@ if (!mainaiscript)
 	mainaiscript := elem.script;
 endif
 
+// 2026-09-21: no bard -- a restart wiped the # markers, or the player is
+// gone -- used to `return` right here, leaving the NPC parked on this script
+// with no AI for good. It now skips the daze and gets its real script back
+// below like any other exit.
+var who := GetObjProperty(me, "#EnticedBy");
+if(who)
+	who := SystemFindObjectBySerial(who, SYSFIND_SEARCH_OFFLINE_MOBILES);
+endif
 
-/* Check if player isn't dead
-   time hasn't been reached
-   player hasn't moved
-   player isn't hidden or concealed
-*/
-while ( (ReadGameClock() < endtime) && (!who.dead) && (who.x == x && who.y == y) && (!who.hidden && !who.concealed) )
+if (who)
+	var x := who.x;
+	var y := who.y;
+
+	/* Check if player isn't dead
+	   time hasn't been reached
+	   player hasn't moved
+	   player isn't hidden or concealed
+	*/
+	while ( (ReadGameClock() < endtime) && (!who.dead) && (who.x == x && who.y == y) && (!who.hidden && !who.concealed) )
 
 
-	if (GetHp(me) < myhp)
-		break;
-	endif
+		if (GetHp(me) < myhp)
+			break;
+		endif
 
-	// Only walk tendif owards player if needed, otherwise stand still
-	if (Distance(me, who) > 1)
-		WalkToward(who);
-	endif
-	sleepms(250);
-endwhile
+		// Only walk tendif owards player if needed, otherwise stand still
+		if (Distance(me, who) > 1)
+			WalkToward(who);
+		endif
+		sleepms(250);
+	endwhile
+endif
 
 PrintTextAbove(me, "*"+me.name +" has snapped out of the daze!*");
 me.script := mainaiscript;

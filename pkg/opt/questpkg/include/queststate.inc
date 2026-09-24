@@ -15,6 +15,19 @@ include "include/objtype";
 const QUESTPKG_DATAFILE := ":questpkg:queststate";
 const QUESTPKG_STATE_PROP := "QuestState";
 
+// 2026-09-23: the package printed every journal open, tagged kill, fish catch and
+// giver conversation to the console; now only when QUESTPKG_DEBUG is 1.
+const QUESTPKG_DEBUG := 0;
+
+function QP_Debug(msg)
+
+	if(QUESTPKG_DEBUG)
+		Print(msg);
+	endif
+
+	return 1;
+endfunction
+
 function QP_OpenDataFile()
 
 	var df := OpenDataFile(QUESTPKG_DATAFILE);
@@ -139,11 +152,11 @@ endfunction
 function QP_FormatCooldown(seconds)
 
 	if(seconds >= 86400)
-		return CStr(CInt(seconds/86400)+1)+"d";
+		return CStr(CInt((seconds + 86399)/86400))+"d"; // 2026-09-23: round up; the old +1 read 3600 s as "2h"
 	elseif(seconds >= 3600)
-		return CStr(CInt(seconds/3600)+1)+"h";
+		return CStr(CInt((seconds + 3599)/3600))+"h";
 	else
-		return CStr(CInt(seconds/60)+1)+"m";
+		return CStr(CInt((seconds + 59)/60))+"m";
 	endif
 
 endfunction
@@ -199,34 +212,34 @@ endfunction
 function QP_StartQuest(who, questid)
 
 	if(QP_IsQuestActive(who, questid))
-		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" already active for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" already active for "+who.name+", ignoring");
 		return 0;
 	endif
 
 	var elem := QP_GetQuestElem(questid);
 	if(elem.errortext)
-		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" not found in quests.cfg -->"+elem.errortext);
+		QP_Debug("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" not found in quests.cfg -->"+elem.errortext);
 		return 0;
 	endif
 
 	if(QP_IsQuestCompleted(who, questid) && !CInt(GetConfigString(elem, "Repeatable")))
-		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" already completed and not repeatable for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" already completed and not repeatable for "+who.name+", ignoring");
 		return 0;
 	endif
 
 	if(QP_IsQuestOnCooldown(who, questid))
-		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" still on cooldown for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" still on cooldown for "+who.name+", ignoring");
 		SendSysMessage(who, "That's not ready again yet.", 3, 73);
 		return 0;
 	endif
 
 	if(!QP_MeetsSkillGate(who, elem))
-		Print("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" skill gate not met by "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_StartQuest: quest "+CStr(questid)+" skill gate not met by "+who.name+", ignoring");
 		SendSysMessage(who, "You're not skilled enough for that yet.", 3, 73);
 		return 0;
 	endif
 
-	Print("[QuestPkg] QP_StartQuest: starting quest "+CStr(questid)+" for "+who.name);
+	QP_Debug("[QuestPkg] QP_StartQuest: starting quest "+CStr(questid)+" for "+who.name);
 
 	var qstate := dictionary;
 	qstate["Started"] := 1;
@@ -258,7 +271,7 @@ endfunction
 function QP_AbandonQuest(who, questid)
 
 	if(!QP_IsQuestActive(who, questid))
-		Print("[QuestPkg] QP_AbandonQuest: quest "+CStr(questid)+" not active for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_AbandonQuest: quest "+CStr(questid)+" not active for "+who.name+", ignoring");
 		return 0;
 	endif
 
@@ -286,7 +299,7 @@ function QP_ResetQuest(who, questid)
 	state[CInt(questid)] := 0;
 	QP_SaveState(who, state);
 
-	Print("[QuestPkg] QP_ResetQuest: reset quest "+CStr(questid)+" for "+who.name);
+	QP_Debug("[QuestPkg] QP_ResetQuest: reset quest "+CStr(questid)+" for "+who.name);
 	if(!elem.errortext)
 		SendSysMessage(who, "Quest reset: "+GetConfigString(elem, "Name"), 3, 73);
 	endif
@@ -335,19 +348,19 @@ endfunction
 function QP_AdvanceObjective(who, questid, obj_index, amount := 1)
 
 	if(!QP_IsQuestActive(who, questid))
-		Print("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" is not active for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" is not active for "+who.name+", ignoring");
 		return 0;
 	endif
 
 	var elem := QP_GetQuestElem(questid);
 	if(elem.errortext)
-		Print("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" not found in quests.cfg -->"+elem.errortext);
+		QP_Debug("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" not found in quests.cfg -->"+elem.errortext);
 		return 0;
 	endif
 
 	var need := CInt(GetConfigString(elem, "ObjCount"+CInt(obj_index)));
 	if(!need)
-		Print("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" has no ObjCount"+CStr(obj_index)+", ignoring");
+		QP_Debug("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" has no ObjCount"+CStr(obj_index)+", ignoring");
 		return 0;
 	endif
 
@@ -357,7 +370,7 @@ function QP_AdvanceObjective(who, questid, obj_index, amount := 1)
 
 	var current := CInt(objectives[CInt(obj_index)]);
 	if(current >= need)
-		Print("[QuestPkg] QP_AdvanceObjective: objective "+CStr(obj_index)+" on quest "+CStr(questid)+" already at target ("+CStr(current)+"/"+CStr(need)+"), no-op");
+		QP_Debug("[QuestPkg] QP_AdvanceObjective: objective "+CStr(obj_index)+" on quest "+CStr(questid)+" already at target ("+CStr(current)+"/"+CStr(need)+"), no-op");
 		return 0;
 	endif
 
@@ -370,7 +383,7 @@ function QP_AdvanceObjective(who, questid, obj_index, amount := 1)
 	state[CInt(questid)] := qstate;
 	QP_SaveState(who, state);
 
-	Print("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" objective "+CStr(obj_index)+" now "+CStr(current)+"/"+CStr(need)+" for "+who.name);
+	QP_Debug("[QuestPkg] QP_AdvanceObjective: quest "+CStr(questid)+" objective "+CStr(obj_index)+" now "+CStr(current)+"/"+CStr(need)+" for "+who.name);
 	SendSysMessage(who, "Quest progress: "+GetConfigString(elem, "ObjText"+CInt(obj_index))+" ("+CStr(current)+"/"+CStr(need)+")", 3, 73);
 
 	var obj_total := QP_GetObjectiveCount(elem);
@@ -384,7 +397,7 @@ function QP_AdvanceObjective(who, questid, obj_index, amount := 1)
 	endfor
 
 	if(all_done)
-		Print("[QuestPkg] QP_AdvanceObjective: all objectives satisfied for quest "+CStr(questid)+", ready to turn in");
+		QP_Debug("[QuestPkg] QP_AdvanceObjective: all objectives satisfied for quest "+CStr(questid)+", ready to turn in");
 		SendSysMessage(who, "All objectives complete for \""+GetConfigString(elem, "Name")+"\" -- return to the quest giver to turn it in.", 3, 73);
 	endif
 
@@ -456,7 +469,7 @@ function QP_CompleteQuest(who, questid, byref elem_in := 0)
 	var state := QP_GetState(who);
 	var qstate := state[CInt(questid)];
 	if(!qstate || CInt(qstate["Completed"]) == 1)
-		Print("[QuestPkg] QP_CompleteQuest: quest "+CStr(questid)+" not active or already completed for "+who.name+", ignoring");
+		QP_Debug("[QuestPkg] QP_CompleteQuest: quest "+CStr(questid)+" not active or already completed for "+who.name+", ignoring");
 		return 0;
 	endif
 
@@ -474,7 +487,34 @@ function QP_CompleteQuest(who, questid, byref elem_in := 0)
 		endif
 	endif
 
-	Print("[QuestPkg] QP_CompleteQuest: completing quest "+CStr(questid)+" for "+who.name);
+	// 2026-09-23: rewards used to be created with unchecked calls AFTER the quest was
+	// recorded complete and the trophy destroyed, so a full pack lost them for good.
+	// Create the rewards first (pack, else at the feet); only then complete the quest.
+	var rewards := array;
+	var reward_gold := CInt(GetConfigString(elem, "RewardGold"));
+	if(reward_gold)
+		var gold := QP_CreateReward(who, UOBJ_GOLD_COIN, reward_gold);
+		if(!gold)
+			SendSysMessage(who, "Make room in your pack first.", 3, 73);
+			return 0;
+		endif
+		rewards.append(gold);
+	endif
+
+	var reward_item := CInt(GetConfigString(elem, "RewardItem"));
+	if(reward_item)
+		var reward := QP_CreateReward(who, reward_item, 1);
+		if(!reward)
+			foreach made in rewards
+				DestroyItem(made);
+			endforeach
+			SendSysMessage(who, "Make room in your pack first.", 3, 73);
+			return 0;
+		endif
+		rewards.append(reward);
+	endif
+
+	QP_Debug("[QuestPkg] QP_CompleteQuest: completing quest "+CStr(questid)+" for "+who.name);
 	qstate["Completed"] := 1;
 	qstate["LastCompleted"] := ReadGameClock();
 	state[CInt(questid)] := qstate;
@@ -482,16 +522,6 @@ function QP_CompleteQuest(who, questid, byref elem_in := 0)
 
 	if(turnin_item)
 		DestroyItem(turnin_item);
-	endif
-
-	var reward_gold := CInt(GetConfigString(elem, "RewardGold"));
-	if(reward_gold)
-		CreateItemInContainer(who.backpack, UOBJ_GOLD_COIN, reward_gold);
-	endif
-
-	var reward_item := CInt(GetConfigString(elem, "RewardItem"));
-	if(reward_item)
-		CreateItemInContainer(who.backpack, reward_item);
 	endif
 
 	SendSysMessage(who, "Quest complete: "+GetConfigString(elem, "Name"), 3, 73);
@@ -502,6 +532,20 @@ function QP_CompleteQuest(who, questid, byref elem_in := 0)
 	endif
 
 	return 1;
+endfunction
+
+// 2026-09-23: a reward goes into the pack, else onto the ground at the feet.
+function QP_CreateReward(who, objtype, amount)
+
+	var made := CreateItemInContainer(who.backpack, objtype, amount);
+	if(!made)
+		made := CreateItemAtLocation(who.x, who.y, who.z, objtype, amount, who.realm);
+		if(made)
+			SendSysMessage(who, "Your pack is full; the reward lies at your feet.", 3, 73);
+		endif
+	endif
+
+	return made;
 endfunction
 
 // True if `npc` (identified by its "QuestGiverTag" CProp) offers at least one

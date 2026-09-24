@@ -331,6 +331,21 @@ function BOD_CombineWithContainedItem(byref who, byref deed)
 		return;
 	endif
 
+	// 2026-09-21: the Small must be the player's own -- in their backpack, or in
+	// a Book (or any container) inside it, as the header comment always said.
+	// There was no check at all here (BOD_CombineWithItem has one), so ANY
+	// completed Small that could be targeted -- on the ground, locked down on
+	// display, for sale on a player vendor -- was consumed into this Large
+	// without being bought. Reserved too, so two scripts can't use one deed.
+	if( !BOD_IsInOwnBackpack(who, small) )
+		SendSysMessage(who, "That deed must be in your own backpack, or in a Book in your backpack.", color := 33);
+		return;
+	endif
+	if( !ReserveItem(small) )
+		SendSysMessage(who, "That deed is in use.", color := 33);
+		return;
+	endif
+
 	var result := BOD_TryFillLargeSlot(deed, small);
 	if( !result.ok )
 		SendSysMessage(who, result.reason, color := 33);
@@ -344,4 +359,23 @@ function BOD_CombineWithContainedItem(byref who, byref deed)
 	endif
 
 	BOD_ShowLargeGump(who, deed);
+endfunction
+
+// 2026-09-21: true when the item sits in the player's backpack at any depth --
+// directly, or inside a Book or other container in it. Walks up the container
+// chain; the depth cap only guards against a loop that should never exist.
+function BOD_IsInOwnBackpack(byref who, byref item)
+	var holder := item.container;
+	var depth := 0;
+	while( holder )
+		if( holder == who.backpack )
+			return 1;
+		endif
+		holder := holder.container;
+		depth := depth + 1;
+		if( depth > 16 )
+			return 0;
+		endif
+	endwhile
+	return 0;
 endfunction

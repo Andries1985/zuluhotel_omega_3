@@ -11,12 +11,25 @@ var changetime:=getobjproperty(me, "recalltotem");
     SendSysMessage(me, "You can only recall your totem once a day",3,34);
     return;
   endif  
-	thecritter := getobjproperty ( me, "humuc");
+	// 2026-09-23: "humuc" holds the totem's serial; it used to be used as if it were the
+	// creature, so nothing below ever worked and the daily cooldown was stamped anyway.
+	thecritter := SystemFindObjectBySerial( CInt( getobjproperty( me, "humuc" ) ) );
+	if( !thecritter )
+		SendSysMessage(me, "You have no totem.",3,34);
+		return;
+	endif
+	if( thecritter.dead )
+		SendSysMessage(me, "Your totem is dead.",3,34);
+		return;
+	endif
 
 if (!(getobjproperty (thecritter, "looting")))
 	thecritter.hidden := 0;
 	sleepms(250);
-	MoveObjectToLocation( thecritter, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION );
+	if( !MoveObjectToLocation( thecritter, me.x, me.y, me.z, me.realm, MOVEOBJECT_FORCELOCATION ) )
+		SendSysMessage(me, "Your totem cannot reach you here.",3,34);
+		return;
+	endif
     PrintTextAbove(thecritter,"Kal Ort Por");
   	setobjproperty(me, "recalltotem",ReadGameClock()+(24*3600));
 else

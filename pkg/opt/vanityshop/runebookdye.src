@@ -18,6 +18,7 @@ program runebookdyecheck( who, runicdyetub)
 		SendSysMessage(who, "The Runic Dye Tub disintegrates in your hands!", color:= 319);
 		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, runicdyetub.color, 3);
 		DestroyItem(runicdyetub);
+		return; // 2026-09-22: same flow as the Omega Dye -- was dyeing with the tub already gone
 	endif
 
 	SendSysMessage(who, "Select the Runebook to dye", color:= 319);

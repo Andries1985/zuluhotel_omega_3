@@ -48,8 +48,14 @@ program snoop(who)
 	//var snoopstorage := CP_GetStorageArea( CP_SNOOPING_AREA, CP_CREATE );
 	//var snoopingcontainer := CP_CreateStorageAreaContainer( )
 	//var container_id := CP_GetMobileContainerID( who, snoopstorage );
+	// 2026-09-21: keyed by serial. It was who.name + " Snooping", so two
+	// characters with the same name shared one container and each new snoop
+	// wiped the other's loot. The first line also clears any old name-keyed
+	// container left behind from before this change.
 	CP_RemoveStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA );
-	var snoop_container := CP_GetStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA, CP_CREATE );
+	var snoop_key := Hex( who.serial ) + " Snooping";
+	CP_RemoveStorageAreaContainer( snoop_key, CP_SNOOPING_AREA );
+	var snoop_container := CP_GetStorageAreaContainer( snoop_key, CP_SNOOPING_AREA, CP_CREATE );
 
 	var newpack := snoop_container;
 
@@ -248,7 +254,7 @@ program snoop(who)
 			endforeach
 
 			//DestroyRootItemInStorageArea(storage, "temp " + who.serial);
-			CP_RemoveStorageAreaContainer( who.name+ " Snooping", CP_SNOOPING_AREA );
+			CP_RemoveStorageAreaContainer( snoop_key, CP_SNOOPING_AREA );
 
 			eraseobjproperty(who, "snooping");
 			MoveObjectToLocation(who, who.x, who.y, who.z, who.realm);

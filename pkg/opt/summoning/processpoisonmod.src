@@ -102,8 +102,23 @@ program processtempmods( parms )
 		endif
 	endif
 	//PvP slowdown
-	if(!who.IsA(POLCLASS_NPC) && GetGlobalProperty("ReducePoison") && DEBUG_MODE)
-		newPsnDmg *= GetGlobalProperty("ReducePoison");
+	// 2026-09-21: always applied to a player victim now. This was
+	// "... && GetGlobalProperty("ReducePoison") && DEBUG_MODE": poison ticks are
+	// dealt with ApplyRawDamage (below), so they never get ApplyTheDamage's 0.6
+	// or melee's 0.5, and this line -- the ONLY scaling poison has -- needed
+	// debug mode on. With debug off, poison hit players at full strength and the
+	// .reducepoison GM command silently did nothing. hitscriptinc.inc's physical
+	// block shows the pattern this was copied from: a GM-tunable global in debug
+	// mode, a FIXED value otherwise -- poison never got its fixed value.
+	// Now: the GM's .reducepoison number if one is set, else 0.6 (the same
+	// factor ApplyTheDamage uses). Same victim-based condition as before, so it
+	// covers monster poison on a player too, exactly as the old line did.
+	if(!who.IsA(POLCLASS_NPC))
+		var psn_pvp_mult := GetGlobalProperty("ReducePoison");
+		if(!psn_pvp_mult)
+			psn_pvp_mult := 0.6;
+		endif
+		newPsnDmg *= psn_pvp_mult;
 	endif
 	if(DEBUG_MODE)
 		PrintTextAbovePrivate( caster , "My Poison damage is: " + newPsnDmg, caster );

@@ -93,7 +93,8 @@ program cast_songofcloaking( player )
 			PrintTextAbove(player,"Velo Ipse Attritus Iniquus");
 		endif
 
-		var bardhid := 0;
+		// 2026-09-22: proped = the people this song actually cloaked; the reveal
+		// below used to run over everyone in sight behind one shared flag.
 		dmod := (peace/10) + spec*2;
 		duration := dmod*10;
 		//sleep(1);
@@ -110,17 +111,17 @@ program cast_songofcloaking( player )
 			SetObjProperty(cast_near, "StealthCD", ReadGameClock()+10);
 			cast_near.hidden := 1;
 			SetObjProperty(cast_near,"cloaked",1);
-			bardhid := 1;
+			proped.append( cast_near );
 		endforeach
 	
     	EraseObjProperty( player , "#Casting" );
 		
 		detach();
 		sleep(duration);
-		foreach cast_near in affected
-			if (bardhid == 1)
+		foreach cast_near in proped
+			if( GetObjProperty( cast_near , "cloaked" ) )
 				cast_near.hidden := 0;
-				SetObjProperty(cast_near,"cloaked",0);
+				SetObjProperty( cast_near , "cloaked" , 0 );
 			endif
 		endforeach
 	endif

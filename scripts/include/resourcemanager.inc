@@ -145,6 +145,33 @@ function ConsumeResource(who, byref resourceRequest, amount)
 	return 1;
 endfunction
 
+// Availability re-check for the consume-first crafting pattern (2026-09-21).
+// Crafting scripts must charge materials BEFORE creating the product and
+// honour ConsumeResource's result: backpack stacks are not reserved, so they
+// can be lifted out during a craft delay or an open quantity prompt, and a
+// create-then-consume order with the result ignored handed out free items.
+// Call this immediately before the ConsumeResource call(s), with no blocking
+// call (Sleep, gump, Target) in between, so EVERY material is confirmed
+// present before the FIRST one is charged -- there is no refund path.
+// req2/req3 may be 0. Nested ifs on purpose: this repo compiles with
+// ShortCircuitEvaluation=0, so "req2 and GetAvailable..." would still call it.
+function HasCraftingResources(who, req1, amt1, req2 := 0, amt2 := 0, req3 := 0, amt3 := 0)
+	if(GetAvailableResource(who, req1).total < amt1)
+		return 0;
+	endif
+	if(req2)
+		if(GetAvailableResource(who, req2).total < amt2)
+			return 0;
+		endif
+	endif
+	if(req3)
+		if(GetAvailableResource(who, req3).total < amt3)
+			return 0;
+		endif
+	endif
+	return 1;
+endfunction
+
 // Consumes from physical backpack items via SubtractAmount.
 // Returns remaining amount (0 = fully consumed).
 function ConsumeFromBackpack(backpack_items, amount)

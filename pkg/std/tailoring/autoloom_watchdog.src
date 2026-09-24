@@ -1,0 +1,42 @@
+// autoloom_watchdog.src -- folds an Autoloom back to its stored pose when its
+// use script dies without doing so itself (2026-09-21, replaces
+// autoloom_animate.src). autoloom_use.src is attached to the character, so
+// a disconnect/logout kills it mid-session before its own revert runs; this
+// script is detached (Start_Script), so it survives that.
+//
+// It never writes while the owner script is alive, so autoloom_use.src stays
+// the only writer of station.graphic during a session.
+//
+// Start_Script only ever pushes ONE argument -- {station.serial, owner pid,
+// stored graphic} arrives here as a single 3-element array in the first
+// parameter (see pkg/items/forge/animatebellows.src's own note on this).
+use uo;
+use os;
+
+program autoloom_watchdog( args )
+
+	var station_serial := args[1];
+	var owner_pid      := CInt( args[2] );
+	var stored_graphic := CInt( args[3] );
+
+	// GetProcess returns an error once the owner script has exited or been
+	// killed.
+	while( GetProcess( owner_pid ) )
+		Sleep( 2 );
+	endwhile
+
+	// Only revert if no newer session has claimed the loom since -- the owner
+	// clears "#AutoloomOwner" on a normal exit, and a new session overwrites it
+	// with its own pid. Critical so a new session can't start between the
+	// check and the write.
+	Set_Critical( 1 );
+	var station := SystemFindObjectBySerial( station_serial );
+	if( station )
+		if( CInt( GetObjProperty( station, "#AutoloomOwner" ) ) == owner_pid )
+			station.graphic := stored_graphic;
+			EraseObjProperty( station, "#AutoloomOwner" );
+		endif
+	endif
+	Set_Critical( 0 );
+
+endprogram

@@ -85,11 +85,21 @@ program textcmd_gorealm( who, text )
 	endif
   else
 	var params := SplitWords( text );
-    if (len(params) < 3) // didn't pass Z
-        params[3] := GetMapInfo( CInt(params[1]), CInt(params[2]) ,CInt(params[3]));
-    endif
+	// 2026-09-23: with two words the whole map-info record was stored as the z and no realm was
+	// passed; with three the realm was still missing. Default the realm to the caller's and take
+	// the z from the map at that spot.
+	var go_x := CInt(params[1]);
+	var go_y := CInt(params[2]);
+	var go_realm := params[4];
+	if( !go_realm )
+		go_realm := who.realm;
+	endif
+	var go_z := params[3];
+	if( !go_z )
+		go_z := GetMapInfo( go_x, go_y, go_realm ).z;
+	endif
 
-	var res := MoveObjectToLocation( who, CInt(params[1]), CInt(params[2]), CInt(params[3]), params[4], MOVEOBJECT_FORCELOCATION );
+	var res := MoveObjectToLocation( who, go_x, go_y, CInt(go_z), go_realm, MOVEOBJECT_FORCELOCATION );
 
     if (!res)
         SendSysMessage( who, "Unable to go there: " + res.errortext );

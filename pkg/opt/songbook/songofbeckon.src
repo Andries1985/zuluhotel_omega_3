@@ -115,6 +115,11 @@ program cast_songofbeckon( player )
 			return;
 		endif
 		thecritter := CreateNPCfromTemplate( "beckon" , player.x , player.y , player.z , 0, player.realm);
+		// 2026-09-22: never written to the world save (like summoning.src); a restart
+		// inside the sleep below left a permanent 300-hp pet (tamed AI keeps summons).
+		if( thecritter )
+			thecritter.saveonexit := 0;
+		endif
 		SetObjProperty( thecritter , "master" , player.serial );
 		SetObjProperty( thecritter , "script" , thecritter.script );
 		SetObjProperty( thecritter , "noloot" , 1 );
@@ -127,7 +132,9 @@ program cast_songofbeckon( player )
 	Detach();
 	if (thecritter)
 		Sleep( duration );
-		ApplyRawDamage( thecritter, Cint( GetHp( thecritter ) + 3 ) );
+		PlaySoundEffect( thecritter , 0x01fa );
+		PlayStationaryEffect( thecritter.x, thecritter.y, thecritter.z, 0x3728, 10, 10, 0, thecritter.realm );
+		thecritter.kill(); // 2026-09-22: was ApplyRawDamage(hp+3), which the engine drops above 65535 hp
 	endif
 	
 

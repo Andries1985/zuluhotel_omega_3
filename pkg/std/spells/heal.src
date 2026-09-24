@@ -80,7 +80,11 @@ program cast_heal( parms, spell_id )
 	endif
 	
 	if( GetObjProperty(cast_on , "Type" ) == "Undead" )
-		ApplyTheDamage( cast_on , caster , healed , DMGID_MAGIC );
+		// 2026-09-21: area rule added -- see IsSpellPvPBlockedByArea in
+		// spelldata.inc (a Liche-form PLAYER also has Type "Undead").
+		if( !IsSpellPvPBlockedByArea( caster , cast_on ) )
+			ApplyTheDamage( cast_on , caster , healed , DMGID_MAGIC );
+		endif
 	else
 		HealDamage( cast_on , healed );
 		SendSysMessage( caster, "You healed " + healed + " damage." );

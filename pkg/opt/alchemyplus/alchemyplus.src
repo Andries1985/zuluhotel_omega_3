@@ -23,6 +23,20 @@ var original_reagent_objtype := 0;
 var basicregs := {0xf79, 0xf7a, 0xf7b, 0xf7c, 0xf84,0xf85, 0xf86, 0xf88, 0xf8c, 0xf8d};
 var basicpots := {0xDC02, 0xDC03,0xDC05, 0xDC06, 0xDC07, 0xDC09, 0xDC0c, 0xDC0d, 0xDC0f, 0xDC11, 0xDC12, 0xDC15, 0xDC16, 0xDC17, 0xDCE6};
 
+// True Mage bonus-tier Tamla Heal potions (0xff87-0xff8b) are worth 2 base Tamlas (0xff86)
+// each toward any recipe calling for 0xff86, matching what DoFullHeal() hands back when one
+// is drunk (the dose itself, plus a leftover base Tamla so the bonus isn't wasted).
+var tamlafamily := {0xff86, 0xff87, 0xff88, 0xff89, 0xff8a, 0xff8b};
+
+function TamlaUnitWorth(objtype)
+	if( cint(objtype) == 0xff86 )
+		return 1;
+	elseif( cint(objtype) in tamlafamily )
+		return 2;
+	endif
+	return 0;
+endfunction
+
 program alchemyplus ( character, myburner )
 
 	set_script_option( SCRIPTOPT_NO_RUNAWAY , 1 );
@@ -347,8 +361,12 @@ function CanMakePotion( character , current_potion )
 
 		var findAll := {};
 		var amount := 0;
+		var reagent_is_tamla := ( cint(current_reagent[1]) == 0xff86 );
 		foreach reagent in EnumerateItemsInContainer( character.backpack )
-			if( reagent.objtype == cint(current_reagent[1]) )
+			if( reagent_is_tamla && reagent.objtype in tamlafamily )
+				findAll.append(reagent);
+				amount := amount + ( reagent.amount * TamlaUnitWorth(reagent.objtype) );
+			elseif( !reagent_is_tamla && reagent.objtype == cint(current_reagent[1]) )
 				findAll.append(reagent);
 				amount := amount + reagent.amount;
 			endif
@@ -405,18 +423,9 @@ function destroy_all_reagents (character, current_potion)
 		//contains the type of reagent that is being called for by the potion.  The second part, current_reagent[2],
 		//is the number of that ingredien needed
 		current_reagent := splitwords(reagent_array[reagent_counter]);
-		
-		var the_reagent := FindItemInContainer( character.backpack , Cint(current_reagent[1]) );
-	
-		if (!the_reagent)
-			//if (cint(current_reagent[1]) in basicpots)
-			foreach reg in basicpots
-				if (Hex(reg) == current_reagent[1])
-					the_reagent := GetNewPotionFromBasic(character, current_reagent[1]);
-					break;
-				endif
-			endforeach
-		endif
+
+		var wanted_type := Cint(current_reagent[1]);
+		var reagent_is_tamla := ( wanted_type == 0xff86 );
 
 		//Then, we subtract what we need from the stack
 		var amount_needed := Cint(current_reagent[2]);
@@ -427,14 +436,58 @@ function destroy_all_reagents (character, current_potion)
 			endif
 		endif
 
+		var the_reagent := FindItemInContainer( character.backpack , wanted_type );
+
+		if (!the_reagent)
+			foreach reg in basicpots
+				if (Hex(reg) == current_reagent[1])
+					the_reagent := GetNewPotionFromBasic(character, current_reagent[1]);
+					break;
+				endif
+			endforeach
+		endif
+
+		// Tamla family - a True Mage bonus-tier Tamla (0xff87-0xff8b) is worth 2 base
+		// Tamlas (0xff86) toward this requirement (see TamlaUnitWorth()), so it can be
+		// spent directly on a Rebirth Potion without drinking it first.
+		if( !the_reagent && reagent_is_tamla )
+			foreach reagent in EnumerateItemsInContainer( character.backpack )
+				if( reagent.objtype in tamlafamily )
+					the_reagent := reagent;
+					break;
+				endif
+			endforeach
+		endif
+
 		var count := 0;
 		repeat
-			if(the_reagent.amount < amount_needed)
-				amount_needed := amount_needed - the_reagent.amount;
+			var unit_worth := 1;
+			if( reagent_is_tamla )
+				unit_worth := TamlaUnitWorth( the_reagent.objtype );
+			endif
+
+			var units_needed := amount_needed / unit_worth;
+			if( (units_needed * unit_worth) < amount_needed )
+				units_needed := units_needed + 1;
+			endif
+
+			if(the_reagent.amount < units_needed)
+				amount_needed := amount_needed - ( the_reagent.amount * unit_worth );
+				if( amount_needed < 0 )
+					amount_needed := 0;
+				endif
 				SubtractAmount( the_reagent , the_reagent.amount );
-				the_reagent := FindItemInContainer( character.backpack , Cint(current_reagent[1]) );
+				the_reagent := FindItemInContainer( character.backpack , wanted_type );
+				if( !the_reagent && reagent_is_tamla )
+					foreach reagent in EnumerateItemsInContainer( character.backpack )
+						if( reagent.objtype in tamlafamily )
+							the_reagent := reagent;
+							break;
+						endif
+					endforeach
+				endif
 			else
-				SubtractAmount( the_reagent , amount_needed );
+				SubtractAmount( the_reagent , units_needed );
 				amount_needed := 0;
 			endif
 			count := count+1;

@@ -3,6 +3,14 @@ use uo;
 include "include/attributes";
 include "include/random";
 
+// 2026-09-22: cosmetic hue per skill category so tomes aren't all identical.
+const POWERTOME_HUE_COMBAT	:= 0x021;	// weapon & combat-support skills
+const POWERTOME_HUE_MAGIC	:= 0x486;	// arcane casting & resist
+const POWERTOME_HUE_CRAFTING	:= 0x1BB;	// production/crafting skills
+const POWERTOME_HUE_NATURE	:= 0x044;	// outdoor & animal skills
+const POWERTOME_HUE_ROGUE	:= 0x3B2;	// stealth & subterfuge skills
+const POWERTOME_HUE_LORE	:= 0x059;	// bard & knowledge skills
+
 program createpowerscroll(scroll)
 	// Rolls from the full real skill-id space (0-SKILLID__HIGHEST) and re-rolls
 	// on ids 49-56 -- the AOS-era skills dummy-wired in for client protocol
@@ -18,5 +26,71 @@ program createpowerscroll(scroll)
 		skill := "Discordance";
 	endif
 	scroll.name := "Ancient Tome of "+skill;
+	scroll.color := GetPowerTomeHue(skillid);
 	SetObjProperty(scroll, "skill", skillName);
 endprogram
+
+// Groups the real skills into six color families so a tome's hue hints at
+// what kind of skill it holds. Exact hue values are just a starting point --
+// easy to retune here without touching the roll logic above.
+function GetPowerTomeHue(skillid)
+	case(skillid)
+		SKILLID_PARRY:
+		SKILLID_ARCHERY:
+		SKILLID_SWORDSMANSHIP:
+		SKILLID_MACEFIGHTING:
+		SKILLID_FENCING:
+		SKILLID_WRESTLING:
+		SKILLID_THROWING:
+		SKILLID_TACTICS:
+		SKILLID_ANATOMY:
+		SKILLID_HEALING:
+		SKILLID_POISONING:
+		SKILLID_ARMSLORE:		return POWERTOME_HUE_COMBAT;
+
+		SKILLID_MAGERY:
+		SKILLID_MAGICRESISTANCE:
+		SKILLID_MEDITATION:
+		SKILLID_SPIRITSPEAK:
+		SKILLID_EVALINT:		return POWERTOME_HUE_MAGIC;
+
+		SKILLID_ALCHEMY:
+		SKILLID_BLACKSMITHY:
+		SKILLID_BOWCRAFT:
+		SKILLID_CARPENTRY:
+		SKILLID_CARTOGRAPHY:
+		SKILLID_COOKING:
+		SKILLID_INSCRIPTION:
+		SKILLID_TAILORING:
+		SKILLID_TINKERING:		return POWERTOME_HUE_CRAFTING;
+
+		SKILLID_ANIMALLORE:
+		SKILLID_CAMPING:
+		SKILLID_FISHING:
+		SKILLID_HERDING:
+		SKILLID_LUMBERJACKING:
+		SKILLID_MINING:
+		SKILLID_TAMING:
+		SKILLID_VETERINARY:
+		SKILLID_TRACKING:		return POWERTOME_HUE_NATURE;
+
+		SKILLID_BEGGING:
+		SKILLID_DETECTINGHIDDEN:
+		SKILLID_HIDING:
+		SKILLID_LOCKPICKING:
+		SKILLID_SNOOPING:
+		SKILLID_STEALING:
+		SKILLID_STEALTH:
+		SKILLID_REMOVETRAP:
+		SKILLID_ITEMID:
+		SKILLID_FORENSICS:
+		SKILLID_TASTEID:		return POWERTOME_HUE_ROGUE;
+
+		SKILLID_PEACEMAKING:
+		SKILLID_PROVOCATION:
+		SKILLID_MUSICIANSHIP:
+		SKILLID_ENTICEMENT:		return POWERTOME_HUE_LORE;
+
+		default:			return 0;
+	endcase
+endfunction

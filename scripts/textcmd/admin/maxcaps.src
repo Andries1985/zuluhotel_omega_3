@@ -1,22 +1,36 @@
-// Synopsis: Display the current maximum stat and skill cap values
+// Synopsis: Raise every skill cap of a targeted player to 150 by filling their power scroll matrix
 use uo;
 use os;
 
-include "include/client";
-include ":mdgumps:include/gumps";
-include ":mdgumps:include/gumps_ex";
-include "include/spelldata";
+include "include/attributes";
+include ":staff:include/staff";
 
-program maxcaps(who)
-	var player;
-	player := Target( who );
-	var matrix := GetObjProperty(player, "pScrollMatrix");
-	var x := 40, y := 30;
-	var skill, cap, i, count := 0;
-	for(i:=0; i<49; i:=i+1)
-        matrix[i] := 20;
+// 2026-09-23: the old version filled a local copy of the matrix in slots 0..48 and then saved the
+// number 20 as the whole matrix, which collapsed every cap on the target to the base cap
+// (attributes.inc reads a slot from it; a slot read on a number is an error and CInt makes it 0).
+// The matrix has SKILLID_MAX (50) slots and 20 in a slot is +20, the shard's 150 cap.
+program maxcaps( who )
+
+	SendSysMessage( who, "Target the player whose skill caps you want to raise to 150." );
+	var player := Target( who );
+	if( !player.IsA( POLCLASS_MOBILE ) )
+		SendSysMessage( who, "Cancelled." );
+		return;
+	endif
+	if( player.npctemplate )
+		SendSysMessage( who, "That is an NPC." );
+		return;
+	endif
+
+	var matrix := {};
+	var capslot;
+	for( capslot := 1; capslot <= SKILLID_MAX; capslot := capslot + 1 )
+		matrix.append( 20 );
 	endfor
-    SetObjProperty(player, "pScrollMatrix", 20);
-return;
+	SetObjProperty( player, "pScrollMatrix", matrix );
+
+	SendSysMessage( who, "Every skill cap of " + player.name + " is now 150." );
+	SendSysMessage( player, "All your skill caps have been raised to 150." );
+	LogCommand( who, GetProcess(GetPid()).name, player.name + "/" + player.serial, "All caps to 150" );
 
 endprogram

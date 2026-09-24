@@ -5,7 +5,7 @@ include "include/constants";
 
 program spawntriggerwalkon(who, triggertile)
 
-	if(who.isa(POLCLASS_NPC) && !who.dead)
+	if(who.isa(POLCLASS_NPC) || who.dead) // 2026-09-23: was "NPC and alive", so dead NPCs and ghosts fired the trigger; living players only
 		return 0;
 	endif
 

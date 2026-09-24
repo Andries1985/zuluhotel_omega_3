@@ -361,7 +361,7 @@ function TryToMakeItem( character , resourceRequest , item )
 		secondaryRequest := MakeBackpackRequest( character, use_with );
 
 		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-			material2 := CInt(Ceil(material2/2));
+			material2 := CInt(Ceil(material2/2.0)); // 2026-09-21: /2.0, see the note below
 		endif
 
 		skill2 := element.CoSkill + CInt( use_with_diff / DIVIDER );
@@ -393,8 +393,11 @@ function TryToMakeItem( character , resourceRequest , item )
 	var points	:= CInt( (skill + element.Material) * POINTS_MULTIPLIER );
 
 	//Require half resources during Crafting PH
+	// 2026-09-21: /2.0, not /2 -- int/int is whole-number division in the engine,
+	// so Ceil had nothing left to round: 1 became 0 (lockpicks, cutlery and mugs
+	// were free in a Power Hour) and 25 became 12.
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := CInt(Ceil(material/2));
+		material := CInt(Ceil(material/2.0));
 	endif
 
 	var excep_ch := 10;
@@ -466,6 +469,23 @@ function TryToMakeItem( character , resourceRequest , item )
 
 		if( CheckSkill( character , SKILLID_TINKERING , skill , points ) )
 
+			// 2026-09-21: consume first and honour the result (see
+			// HasCraftingResources in resourcemanager.inc). This used to create
+			// the item, then consume with the result ignored, so materials
+			// lifted out of the pack during _Play_Sound gave a free item.
+			if( !HasCraftingResources( character, resourceRequest, material, secondaryRequest, material2 ) )
+				SendSysMessage( character, "You no longer have the materials for that." );
+				break;
+			endif
+			if( !ConsumeResource( character, resourceRequest, material ) )
+				break;
+			endif
+			if( material2 )
+				if( !ConsumeResource( character, secondaryRequest, material2 ) )
+					break;
+				endif
+			endif
+
 			var theitem;
 			var cprops := GetConfigStringArray( tinker_cfg[resourceRequest.objtype], "CProp" );
 			var randomchance := Random(150);
@@ -515,11 +535,8 @@ function TryToMakeItem( character , resourceRequest , item )
 				SendSysmessage( character, "You create the item and place it in your pack." );
 			endif
 
+			// Materials were already charged once above.
 			if( !theitem )
-				ConsumeResource( character, resourceRequest, material );
-				if( material2 )
-					ConsumeResource( character, secondaryRequest, material2 );
-				endif
 				SendSysmessage( character, "Your backpack is full." );
 				break;
 			endif
@@ -538,10 +555,6 @@ function TryToMakeItem( character , resourceRequest , item )
 				elseif(theitem.ar)
 					// maybe something for armor too?
 				endif
-			endif
-			ConsumeResource( character, resourceRequest, material );
-			if( material2 )
-				ConsumeResource( character, secondaryRequest, material2 );
 			endif
 		else
 			var tink := GetEffectiveSkill( character , SKILLID_TINKERING );
@@ -730,7 +743,7 @@ function MakeTotem( me , it )
 	var material := 100;
 	//Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(me, "#PPHC"))
-		material := CInt(Ceil(material/2));
+		material := CInt(Ceil(material/2.0)); // 2026-09-21: /2.0, see MakeTinkerItems
 	endif
 
 	if( it.amount < material )

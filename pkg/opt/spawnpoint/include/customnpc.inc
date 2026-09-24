@@ -94,7 +94,7 @@ o.+script := npc.script;
 o.+criminal := npc.criminal;
 o.+murderer := npc.murderer;
 
-o.+objtype :=  GetStrength(npc);
+o.+objtype := npc.objtype; // 2026-09-23: was GetStrength(npc); CreateNpcFromTemplate overrides replace the template objtype
 o.+trueobjtype := npc.objtype;
 o.+color := npc.color;
 o.+truecolor := npc.color;

@@ -1,15 +1,14 @@
+// Synopsis: Refresh the tooltip of an object you target.
 use uo;
 use polsys;
 
-
 program textcmd_updatetp(who)
-
-    SendSysmessage( who , "Select an Item." );
-	var what :=  TargetCoordinates( who );
+	// 2026-09-22: was TargetCoordinates() (a position struct) handed to
+	// IncRevision(), which needs an object, so the command never did anything.
+	SendSysmessage( who , "Select the object whose tooltip should refresh." );
+	var what := Target( who );
 	if( !what )
 		return;
 	endif
-
-    IncRevision(what);
-    
+	IncRevision( what );
 endprogram

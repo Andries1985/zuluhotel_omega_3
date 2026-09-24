@@ -66,7 +66,7 @@ if (old < new)
 else
 
 	foreach priv in (currprivs.keys())
-		who.disable(who, priv);
+		who.disable(priv); // 2026-09-23: was disable(who, priv), one argument too many
 		RevokePrivilege(who, priv);
 	endforeach
 
