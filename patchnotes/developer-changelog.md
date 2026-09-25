@@ -1,15 +1,15 @@
 # Developer Changelog - v3.1.2
 
-Range: Patch-3.1.1..Patch-3.1.2 (commit `9aa5216`..`cdd3ef2`)
+Range: Patch-3.1.1..Patch-3.1.2 (commit `9aa5216`..`470d49d`; themes 1-21 were written at `cdd3ef2`, theme 22 is `470d49d`)
 Branch: Patch-3.1.2
-Date: 2026-09-24
+Date: 2026-09-24, updated 2026-09-25
 
 ---
 
 ## Scope Summary
 
-- Total files changed: 299 (9 added, 281 modified, 8 deleted, 1 renamed)
-- Net textual delta: 21,832 insertions, 3,363 deletions. Of that, 16,887 insertions are the two review record files under `ainotes/` (the fix log and its regenerated diff) and the 3.1.1 release notes landing in this range; the game content itself is 287 files, +4,945 / -2,898. Six rebuilt binaries (`pol.exe`, `poltool.exe`, `uoconvert.exe`, `uotool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`) are counted as files but not as lines.
+- Total files changed: 304 (10 added, 285 modified, 8 deleted, 1 renamed). Five of those (four modified, one added) enter the range only with `470d49d` on 2026-09-25; the other seven files in that commit were already in the inventory.
+- Net textual delta: 21,832 insertions, 3,363 deletions. Of that, 16,887 insertions are the two review record files under `ainotes/` (the fix log and its regenerated diff) and the 3.1.1 release notes landing in this range; the game content itself is 287 files, +4,945 / -2,898. Six rebuilt binaries (`pol.exe`, `poltool.exe`, `uoconvert.exe`, `uotool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`) are counted as files but not as lines. `470d49d` adds +145 / -109 across 12 files on top of these figures (94 of the deletions are the three uniform functions leaving `guilds.inc`, 108 of the insertions are the new `guilduniform.inc`).
 - Largest shifts:
   - `ainotes/code-review-fixlog-20260921.diff` (+13,646, new) and `ainotes/code-review-fixlog-20260921.md` (+1,355, new) — the line-level record of the whole-codebase review (18 sections, 172 numbered entries); not game content
   - `patchnotes/developer-changelog-v3.1.1.md` (+856, new), `patchnotes/patch-v3.1.1.md` (+159, new), `patchnotes/developer-changelog.md` (+751/-428), `patchnotes/launchernotes.md` (+120/-37) — the 3.1.1 release notes, committed after the 3.1.1 range closed
@@ -26,12 +26,13 @@ Date: 2026-09-24
   - `e6a8b79` Add latest nightly (engine binaries, `core-changes.txt`, `pol.cfg.example`, `scripts/ecompile.cfg.example`)
   - `e632446` PH Fixes (`pkg/opt/powerhour/textcmd/player/{ph,setph}.src`)
   - `cdd3ef2` Fable 5.1 fixes (everything else: the review fixes, the Autoloom rework, the alchemyplus Tamla work, `pol.cfg`, the review records, the docs)
-- Merge commits: `cd19f9d` (PR #107, brings `12a9981`), `a453686` (PR #108) and `48ee9c8` (PR #109) (both bring `e6a8b79`) carry nothing beyond those commits. `4f8e46f`, `629d485`, `4705aea` (PR #104-106) appear in the log because they are on the main line, but their content was already in the `9aa5216` tree; a tree diff `9aa5216..cdd3ef2` reconciles against the four non-merge commits above.
+  - `470d49d` Guild colors fix (2026-09-25: the guild colour table's per-script-start build and the slim guild uniform include, theme 22; also turns four `pol.cfg` debug options back to 0, theme 2)
+- Merge commits: `cd19f9d` (PR #107, brings `12a9981`), `a453686` (PR #108) and `48ee9c8` (PR #109) (both bring `e6a8b79`) carry nothing beyond those commits. `4f8e46f`, `629d485`, `4705aea` (PR #104-106) appear in the log because they are on the main line, but their content was already in the `9aa5216` tree; a tree diff `9aa5216..cdd3ef2` reconciles against the first four non-merge commits above; `9ce7c32` (the 3.1.2 notes, `patchnotes/` only) and `470d49d` follow it.
 - Almost everything in `cdd3ef2` comes from the whole-codebase review run between 2026-09-20 and 2026-09-23. The review read every file under `pkg/systems`, `pkg/std`, `pkg/multis`, `pkg/packethooks`, `pkg/opt` and `scripts/` and applied 172 numbered fixes chosen item by item; `ainotes/code-review-fixlog-20260921.md` is the line-level companion to the themes below (each theme names the fix-log sections it covers), and every edit site in the code carries a dated `// 2026-09-2x:` comment. The themes are by subsystem, not by commit.
 
 **Two things a reviewer of this release should know first:**
-- `pol.cfg` is in this range with eight debug options switched from 0 to 1: `WatchRPM`, `WatchSysLoad`, `LogSysLoad`, `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo`, `ProfileCProps`, `EnforceMountObjtype`. These were the local diagnostics kept on during the review and were meant to stay out of the commit; they add console/log volume and, for `ProfileCProps`, a per-property-access cost. Turn them back off before this build goes live unless they are wanted.
-- Nothing in `cdd3ef2` was compiled or tested in game by the reviewer; `ecompile` on the whole tree and a smoke pass over the "Expected impact" lines below are still owed.
+- `pol.cfg` is in this range with eight debug options switched from 0 to 1: `WatchRPM`, `WatchSysLoad`, `LogSysLoad`, `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo`, `ProfileCProps`, `EnforceMountObjtype`. These were the local diagnostics kept on during the review and were meant to stay out of the commit; they add console/log volume and, for `ProfileCProps`, a per-property-access cost. Turn them back off before this build goes live unless they are wanted. `470d49d` turns `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo` and `LogScriptCycles` back to 0; `WatchRPM`, `WatchSysLoad`, `LogSysLoad`, `ProfileCProps` and `EnforceMountObjtype` are still 1. Separately, `CacheInteractiveScripts=0` has been in `pol.cfg` since the initial commit: every double-click use script is re-read from disk and parsed on each use (a development setting; equip scripts and other run-to-completion scripts are cached regardless).
+- Nothing in `cdd3ef2` or `470d49d` was compiled or tested in game by the reviewer; `ecompile` on the whole tree and a smoke pass over the "Expected impact" lines below are still owed.
 
 ---
 
@@ -95,7 +96,9 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - M | pkg/opt/Events/textcmd/seer/createEventBag.src
 - M | pkg/opt/guilds/commands/player/guilds.src
 - M | pkg/opt/guilds/commands/test/changeguildownership.src
+- M | pkg/opt/guilds/include/guildconstants.inc
 - M | pkg/opt/guilds/include/guilds.inc
+- A | pkg/opt/guilds/include/guilduniform.inc
 - M | pkg/opt/guilds/ondelete.src
 - M | pkg/opt/holybook/angelicfeast.src
 - M | pkg/opt/holybook/angelicgate.src
@@ -275,6 +278,8 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - M | scripts/ai/thor.src
 - M | scripts/ai/townguard.src
 - M | scripts/ai/water.src
+- M | scripts/control/skilladvancerequip.src
+- M | scripts/control/skilladvancerunequip.src
 - M | scripts/control/trashControl.src
 - M | scripts/ecompile.cfg.example
 - M | scripts/ecompile.exe
@@ -288,6 +293,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - M | scripts/include/mrcspawn.inc
 - M | scripts/include/npccast.inc
 - M | scripts/include/privs.inc
+- M | scripts/include/report.inc
 - M | scripts/include/resourcemanager.inc
 - M | scripts/include/skillpoints.inc
 - M | scripts/include/skilltitles.inc
@@ -361,9 +367,9 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Files involved:** `pol.cfg`.
 
-**Notable functional changes:** `WatchRPM`, `WatchSysLoad`, `LogSysLoad`, `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo`, `ProfileCProps`, `EnforceMountObjtype` all `0` -> `1`.
+**Notable functional changes:** `WatchRPM`, `WatchSysLoad`, `LogSysLoad`, `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo`, `ProfileCProps`, `EnforceMountObjtype` all `0` -> `1`. `470d49d` (2026-09-25) sets `ReportRunToCompletionScripts`, `ReportCriticalScripts`, `ShowRealmInfo` and `LogScriptCycles` back to `0`; the other five stay `1`.
 
-**Expected impact:** More console and log output every cycle, a `ProfileCProps` cost on every custom-property read and write, and `EnforceMountObjtype` making the core refuse to mount an item whose objtype is not a registered mount. Flip back to 0 for the live build unless each one is wanted (see the note in the Scope Summary).
+**Expected impact:** More console and log output every cycle, a `ProfileCProps` cost on every custom-property read and write, and `EnforceMountObjtype` making the core refuse to mount an item whose objtype is not a registered mount. Flip back to 0 for the live build unless each one is wanted (see the note in the Scope Summary); after `470d49d` that is five options, not eight.
 
 ### 3. Power Hour and capper crash fixes (commits `e632446`, `12a9981`)
 
@@ -615,6 +621,21 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** No player-visible effect.
 
+### 22. Guild colour table built at every script start, and the slim guild uniform include (commit `470d49d`, 2026-09-25)
+
+**Files involved:** `pkg/opt/guilds/include/guildconstants.inc`, `pkg/opt/guilds/commands/player/guilds.src`, `pkg/opt/guilds/include/guilduniform.inc` (new), `pkg/opt/guilds/include/guilds.inc`, `scripts/control/skilladvancerequip.src`, `scripts/control/skilladvancerunequip.src`, `scripts/include/attributes.inc`, `scripts/include/report.inc`, `pkg/opt/areas/include/areapolicy.inc`, `.claude/skills/escript-gotchas/SKILL.md`, `.claude/subagent-briefing.md`; `pol.cfg` (theme 2).
+
+**Notable functional changes:**
+- Diagnosed with AsYlum (polserver) after he reproduced slow `npcequip.txt` loading on the develop branch. `guildconstants.inc:158` had `var COLOURS := BuildGuildColours();` at file scope. A top-level `var` in an include is a global of every program that includes it, and its initialiser runs at every start of that program, before `program` is entered, whether COLOURS is read or not. `BuildGuildColours()` walks hues 1000-2999 and tests each against the 15 `GUILD_COLOUR_EXCLUDE_RANGES` bands: up to ~30,000 interpreted comparisons and 1,291 appends per script start. It had been a ~150-entry literal until `f404618` (2026-08-24) made it the computed table.
+- Every script that includes `guilds.inc` or `guildconstants.inc` paid it: the itemdesc `equipscript`/`unequipscript` of nearly every wearable (`skilladvancerequip.src`, `skilladvancerunequip.src`, which included `guilds.inc` for `EquipGuildUniform`/`UnEquipGuildUniform`), guild chat `c.src`, `versebook.src`, `guild_uniform.src`, `ondelete.src`, the classic house sign `multiSign/control.src` and `use.src`, and the custom house `sign.src`, `signcontrol.src` and `decaywatcher.src` through `house.inc`. The engine runs the equip script synchronously for every item in `pcequip.txt` and `npcequip.txt` at world load (`loaddata.cpp equip_loaded_item` -> `check_equip_script(chr, startup=1)`, needed to rebuild the unsaved temp mods), so every equipped item on every saved NPC cost one full build on the loader thread, plus one per house sign control script at boot, plus one per equip, unequip, guild chat line and verse book use at runtime. Not a core regression; the nightly's load-time work does not change script execution.
+- Fix: `guildconstants.inc` now has `var COLOURS := 0;` and `GetGuildColours()`, which builds on first call and returns the cached array afterwards. `SetGuildColour()` in `guilds.src`, the only reader (four sites), opens with `var guildColours := GetGuildColours();`; the table is built once per picker open and reused across the Prev/Next re-entries. The picker itself is unchanged.
+- Slim include: `EquipGuildUniform`, `UnEquipGuildUniform` and `UnEntwine` moved verbatim from `guilds.inc` to the new `guilduniform.inc` (`use uo; use os;`, includes only `guildconstants`). `guilds.inc` includes it, so `guilds.src`, `guild_uniform.src` and every other guild script still see the functions; the two control scripts include `:guilds:include/guilduniform` instead of `:guilds:include/guilds`. The equip script's include tree drops from 34 files / 16,738 lines to 30 files / 14,224 lines (`guilds.inc`, `:house:utility`, `:itemutils:itemdesc`, `:mdgumps:include/gumps` and `guildstone/companions` are no longer reached); the unequip script's tree is 12 files. No runtime effect on its own (the engine caches compiled equip scripts in memory whatever `CacheInteractiveScripts` says, and uncalled functions cost nothing); it insulates the two busiest scripts on the shard from any future file-scope work in the housing, item-utils or gump includes and shortens their compile. Checked: no `.em` module and no function defined in the five dropped files is still used by either script's remaining tree.
+- `use basicio;` added to `scripts/include/attributes.inc` (line 2302 `print(...)`), `scripts/include/report.inc` (`Print`) and `pkg/opt/areas/include/areapolicy.inc` (`AreaPolicyDebugPrint`). Each calls `Print` without declaring the module; the two control scripts had been compiling only because `guilds.inc` brought `use basicio` into their tree. Repeated `use` lines are harmless, `basic` is implicit in ecompile, and no repo function is named `Print`.
+- Scan of every `.inc` and `.src` for other file-scope work (a parser that tracks function/program bodies, includes resolved the way ecompile does, 1 unresolved include: `raidconsts` in `mainloopraider.inc`): nothing else computes a value at file scope. What remains is cheap and was left alone: `ReadConfigFile` handles (engine-cached; `hitscriptinc.inc:21` in all 35 hit scripts is the busiest), `UnloadConfigFile` at file scope in `multihouse_settings.inc:5` (reaches the container `canInsert`/`canRemove` hooks through `housing.inc` and makes every later read of `:house:settings` stat the file) and `findcity.inc:7` (unloads "regions" while the read is "::regions/regions", most likely no match), `set_script_option(SCRIPTOPT_NO_RUNAWAY, 1)` at file scope in `starteqp.inc:65` (42 includers, among them `death.src`, `oncreate.src`, fishing, picklock, unlock, digtreasure and the spawnpoint manager, all silently without runaway protection) and `NameChecker.inc:14` (5), and a 12,464-value array literal in `teleporters.inc:37` (`start.src` and three admin/test commands only). The 14 AI setup includes under `scripts/ai` do file-scope work by design, once per NPC.
+- Gotcha 25 added to `.claude/skills/escript-gotchas/SKILL.md` and mirrored in `.claude/subagent-briefing.md`: a top-level `var` in an include may hold a literal or a config handle, never a computed value; build lazily through a `Get...()` getter that fills a `var X := 0;` global on first call.
+
+**Expected impact:** World load no longer runs a guild colour build per equipped NPC item; every equip, unequip, guild chat line, verse book use and house sign start is lighter by the same ~30,000 steps. The guild colour picker behaves as before. No other player-visible change.
+
 ---
 
 ## Validation Notes
@@ -623,4 +644,5 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - File-status counts (9 A / 281 M / 8 D / 1 R = 299) were derived programmatically from `git diff --name-status` and cross-checked against the printed inventory.
 - The themes were written from `ainotes/code-review-fixlog-20260921.md` (the review's own line-level record, kept as each round was applied) rather than by re-reading the 13,646-line diff; the fix log names every file and line for each entry.
 - Working tree was clean at the time of this writing (`git status` on `Patch-3.1.2` at `cdd3ef2`).
-- Nothing in `cdd3ef2` was compiled or run by the reviewer. The `pol.cfg` debug flags (theme 2) are in the commit and should be reverted before a live build.
+- 2026-09-25 update: theme 22, the five inventory additions and the revised counts come from `git show --numstat 470d49d` and `git show --name-status 470d49d` (12 files, +145 / -109). `9ce7c32`, between `cdd3ef2` and `470d49d`, is the 3.1.2 notes commit and touches only `patchnotes/`. Working tree clean at `470d49d`.
+- Nothing in `cdd3ef2` or `470d49d` was compiled or run by the reviewer. Five `pol.cfg` debug flags (theme 2) remain on after `470d49d` and should be reverted before a live build.

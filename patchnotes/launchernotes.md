@@ -182,10 +182,11 @@ Patch 3.1.2 is a fix patch. Every script on the shard was read line by line and 
 ## Server
 
 - The bundled server build is a newer nightly: world load at startup is 20-30% faster and custom-property memory is lower. Weapon and armor can now carry a Damage Increase value and equipment templates can pick colors from ranges; neither is used by shard content yet.
+- The server was rebuilding the guild colour list (about 1,300 colours) from scratch every time anyone equipped or unequipped an item, sent a guild chat message or used a verse book, and once for every item worn by every NPC while the world loaded at startup. It now builds that list only when someone opens the guild colour picker, which works exactly as before.
 
 ### Player Impact
 
-- Shorter restarts.
+- Shorter restarts, and a little less server work on every equip and unequip.
 
 ## Summary
 
@@ -198,6 +199,6 @@ Patch 3.1.2 is a fix patch. Every script on the shard was read line by line and 
 - Guild formation, succession and recruiting, town stone roles, donator mounts in player towns and guild-war looting are fixed.
 - Spawned monsters keep their leash and full health; champion gold covers the whole circle; quest rewards are never lost; Ter Mur teleporters work.
 - The Throwing cap is enforced, the cap check no longer crashes, class bonuses stop sweeping the paperdoll.
-- Login lockout, lockpicking delays, `.recalltotem`, trash cans and several staff tools fixed; a faster server startup.
+- Login lockout, lockpicking delays, `.recalltotem`, trash cans and several staff tools fixed; a faster server startup (newer server build, and the guild colour list is no longer rebuilt on every equip and at every restart).
 
 Thanks for playing Zuluhotel Omega 3.
