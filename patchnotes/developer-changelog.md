@@ -8,7 +8,7 @@ Date: 2026-09-24, updated 2026-09-25
 
 ## Scope Summary
 
-- Total files changed: 304 (10 added, 285 modified, 8 deleted, 1 renamed). Five of those (four modified, one added) enter the range only with `470d49d` on 2026-09-25; the other seven files in that commit were already in the inventory.
+- Total files changed: 305 (10 added, 286 modified, 8 deleted, 1 renamed). Five of those (four modified, one added) enter the range only with `470d49d` on 2026-09-25, and `config/equip.cfg` (theme 23) is in the working tree after it, uncommitted at the time of writing; the other seven files in `470d49d` were already in the inventory.
 - Net textual delta: 21,832 insertions, 3,363 deletions. Of that, 16,887 insertions are the two review record files under `ainotes/` (the fix log and its regenerated diff) and the 3.1.1 release notes landing in this range; the game content itself is 287 files, +4,945 / -2,898. Six rebuilt binaries (`pol.exe`, `poltool.exe`, `uoconvert.exe`, `uotool.exe`, `scripts/ecompile.exe`, `scripts/runecl.exe`) are counted as files but not as lines. `470d49d` adds +145 / -109 across 12 files on top of these figures (94 of the deletions are the three uniform functions leaving `guilds.inc`, 108 of the insertions are the new `guilduniform.inc`).
 - Largest shifts:
   - `ainotes/code-review-fixlog-20260921.diff` (+13,646, new) and `ainotes/code-review-fixlog-20260921.md` (+1,355, new) — the line-level record of the whole-codebase review (18 sections, 172 numbered entries); not game content
@@ -27,6 +27,7 @@ Date: 2026-09-24, updated 2026-09-25
   - `e632446` PH Fixes (`pkg/opt/powerhour/textcmd/player/{ph,setph}.src`)
   - `cdd3ef2` Fable 5.1 fixes (everything else: the review fixes, the Autoloom rework, the alchemyplus Tamla work, `pol.cfg`, the review records, the docs)
   - `470d49d` Guild colors fix (2026-09-25: the guild colour table's per-script-start build and the slim guild uniform include, theme 22; also turns four `pol.cfg` debug options back to 0, theme 2)
+  - uncommitted, 2026-09-25: `config/equip.cfg` comment and word-colour cleanup for the new equip colour parser (theme 23)
 - Merge commits: `cd19f9d` (PR #107, brings `12a9981`), `a453686` (PR #108) and `48ee9c8` (PR #109) (both bring `e6a8b79`) carry nothing beyond those commits. `4f8e46f`, `629d485`, `4705aea` (PR #104-106) appear in the log because they are on the main line, but their content was already in the `9aa5216` tree; a tree diff `9aa5216..cdd3ef2` reconciles against the first four non-merge commits above; `9ce7c32` (the 3.1.2 notes, `patchnotes/` only) and `470d49d` follow it.
 - Almost everything in `cdd3ef2` comes from the whole-codebase review run between 2026-09-20 and 2026-09-23. The review read every file under `pkg/systems`, `pkg/std`, `pkg/multis`, `pkg/packethooks`, `pkg/opt` and `scripts/` and applied 172 numbered fixes chosen item by item; `ainotes/code-review-fixlog-20260921.md` is the line-level companion to the themes below (each theme names the fix-log sections it covers), and every edit site in the code carries a dated `// 2026-09-2x:` comment. The themes are by subsystem, not by commit.
 
@@ -45,6 +46,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - A | ainotes/code-review-fixlog-20260921.diff
 - A | ainotes/code-review-fixlog-20260921.md
 - M | config/command_synopses.cfg
+- M | config/equip.cfg
 - M | config/itemdesc.cfg
 - M | core-changes.txt
 - A | patchnotes/developer-changelog-v3.1.1.md
@@ -636,6 +638,16 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** World load no longer runs a guild colour build per equipped NPC item; every equip, unequip, guild chat line, verse book use and house sign start is lighter by the same ~30,000 steps. The guild colour picker behaves as before. No other player-visible change.
 
+### 23. `equip.cfg` "Bad color" log lines from the new colour parser (working tree, 2026-09-25)
+
+**Files involved:** `config/equip.cfg`.
+
+**Notable functional changes:**
+- After `470d49d` the console showed `Bad color '//fancyshirt' for '0x1EFD' in equip.cfg template 'Banker'` (and `//surcoat`, `//shoes`) on every banker AI start and every decoratefacets pass. The nightly in theme 1 rewrote `equip_from_template` (`pol-core/pol/textcmd.cpp`, upstream `dbc0807`): the colour slot is now everything after the objtype, split on commas and dashes, and an entry that does not start with a digit is logged. The item is still created and equipped with colour 0, which is what the old `strtoul` on the same token produced, so nothing changed on the NPCs; only the log did.
+- `config/equip.cfg` had 60 `Equip` lines across 29 templates with no colour and a trailing `//name` comment (Banker, Armorer, Blacksmith, Bowyer, Provisioner, Tailor, LeatherWorker, castleguard, castleguard2, ranger, butcher, carpenter, tinker, decorator, Clothes, lightsource, lightsource1, zulu2, zulu3, Architect, Gardener, Scribe, baker, bardok, brigandarcher, brigandmarksmen, mountedbrigandarcher, jeweler, RaidDefender), and 5 lines whose colour was a word: `all` (noblemale, innstaff x2), `gray` (Miner), `brown` (RaidDefender). Each comment now sits on its own line above the item (the config reader skips comment lines inside a block); the five words were dropped with a comment recording what they said, since they were never hues and always read as 0. Comments after a numeric colour are untouched: the parser stops at trailing text, and none of them contains a dash or comma. Item-line and template counts are unchanged. A dated header at the top of the file explains the rule for future edits.
+
+**Expected impact:** No player-visible change; the console and log lose the repeated "Bad color" lines.
+
 ---
 
 ## Validation Notes
@@ -644,5 +656,5 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - File-status counts (9 A / 281 M / 8 D / 1 R = 299) were derived programmatically from `git diff --name-status` and cross-checked against the printed inventory.
 - The themes were written from `ainotes/code-review-fixlog-20260921.md` (the review's own line-level record, kept as each round was applied) rather than by re-reading the 13,646-line diff; the fix log names every file and line for each entry.
 - Working tree was clean at the time of this writing (`git status` on `Patch-3.1.2` at `cdd3ef2`).
-- 2026-09-25 update: theme 22, the five inventory additions and the revised counts come from `git show --numstat 470d49d` and `git show --name-status 470d49d` (12 files, +145 / -109). `9ce7c32`, between `cdd3ef2` and `470d49d`, is the 3.1.2 notes commit and touches only `patchnotes/`. Working tree clean at `470d49d`.
+- 2026-09-25 update: theme 22, the five inventory additions and the revised counts come from `git show --numstat 470d49d` and `git show --name-status 470d49d` (12 files, +145 / -109). `9ce7c32`, between `cdd3ef2` and `470d49d`, is the 3.1.2 notes commit and touches only `patchnotes/`. Working tree clean at `470d49d`; theme 23 (`config/equip.cfg`) was applied after it and is uncommitted as of this update.
 - Nothing in `cdd3ef2` or `470d49d` was compiled or run by the reviewer. Five `pol.cfg` debug flags (theme 2) remain on after `470d49d` and should be reverted before a live build.
