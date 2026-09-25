@@ -20,6 +20,7 @@ include ":itemutils:itemdesc";
 
 include ":mdgumps:include/gumps";
 include "guildconstants";
+include "guilduniform";
 include ":guilds:items/guildstone/companions";
 
 // guild.getprop() returns a truthy error struct (not a plain falsy value)
@@ -709,100 +710,8 @@ function NameUniform(item)
 
 endfunction
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// EquipGuildUniform() - Set's the uniform colour on equip
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-function EquipGuildUniform(who, item)
-
-	if(GetObjProperty(item, "EquippedAlready"))
-		return 1;
-	endif
-
-	var guild := who.guild;
-	var colour := guild.getprop(GUILD_COLOUR);
-
-	if (!guild)
-		SendSysMessage(who, "You need a guild to wear a uniform!");
-		return 0;
-	elseif (!colour)
-		SendSysMessage(who, "Your guild needs a guild colour before you can wear that!");
-		return 0;
-	endif
-
-	PlaySoundEffectPrivate(who, 0x457, who);
-	PlayObjectCenteredEffectEx( who, 14186, 10, 10,colour, 0, 7);
-	item.color := colour;
-
-	return 1;
-
-endfunction
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// UnEquipGuildUniform() - Set's the uniform colour on unequip
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-function UnEquipGuildUniform(who, item)
-
-	if (GetObjProperty(item, "Entwined"))
-		item.color := GetObjProperty(item, "OriginalColour");
-		if (who.dead)
-			UnEntwine(who, item);
-		endif
-		return 1;
-	endif
-
-	if (!GetObjProperty(item, GUILD_UNIFORM))
-		return 1;
-	endif
-
-	item.color := 0;
-
-	return 1;
-
-endfunction
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// UnEntwine() - does just that
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-function UnEntwine(who, uniform)
-
-	var name := SplitWords(uniform.desc);
-	var newname, count := 0;
-
-	foreach thing in name
-		if(count == 0)
-			newname := thing;
-			count := 1;
-		elseif ( thing != "[Entwined]" )
-			newname := newname+" "+thing;
-		endif
-	endforeach
-
-	SetName(uniform, newname);
-	uniform.color := GetObjProperty(uniform, "OriginalColour");
-
-	var uni := SystemFindObjectBySerial(GetObjProperty(uniform, "Entwined"));
-
-	if (!uni)
-		Broadcast("This is odd, your uniform is gone!, page staff!",3, 33);
-		syslog(who.name+"/"+who.serial+" This is odd, your uniform is gone!, page staff!");
-		return 0;
-	endif
-
-	EraseObjProperty(uniform, "Entwined");
-	EraseObjProperty(uniform, "OriginalColour");
-	uniform.usescript := "";
-
-	uni.movable := 1;
-	uni.invisible := 0;
-	uni.graphic := GetObjProperty(uni, "Graphic");
-	MoveItemToContainer( uni, who.backpack );
-	endfunction
+// 2026-09-25: EquipGuildUniform(), UnEquipGuildUniform() and UnEntwine() moved to guilduniform.inc
+// (included above) so the equip/unequip control scripts can pull in just those without this file.
 
 	function UpdateUniformColour(guild)
 

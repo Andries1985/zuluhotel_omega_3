@@ -17,7 +17,7 @@ include "include/spelldata";
 include "include/client";
 include "include/namingbyenchant";
 include "include/attributes";
-include ":guilds:include/guilds";
+include ":guilds:include/guilduniform";	// 2026-09-25: was :guilds:include/guilds; only EquipGuildUniform() is used here
 include ":attributes:include/regen";
 
 program equip( who, it )

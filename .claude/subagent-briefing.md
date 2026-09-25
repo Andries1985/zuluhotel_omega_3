@@ -30,6 +30,7 @@ Reference this file at the top of every subagent prompt so it doesn't have to re
 - Call dictionary methods with parentheses (`d.keys()`); bare `d.keys` compiles to a member read that yields nothing on the stock engine (the shard's own engine build may differ; the bracketed form is right everywhere).
 - Never omit the realm argument: uo.em defaults it to "britannia", the unused old map, and nothing errors; pass `thing.realm`.
 - CProp names are case-sensitive ("lockid" and "LockID" are different properties); match the spelling the readers use.
+- A file-scope `var X := SomeCall();` in an include runs at the start of every script that includes it (before `program`, used or not), and the equip/unequip control scripts run per equipped item at world load. Keep top-level include vars to literals or `ReadConfigFile` handles; build anything computed lazily through a `Get...()` that fills a `var X := 0;` global on first call (see `GetGuildColours()` in `pkg/opt/guilds/include/guildconstants.inc`, 2026-09-25).
 - ZH's skill cap is 150, not vanilla UO's 100 — don't "fix" values toward 100.
 - Don't assume a stat/property is static just because there's no stored override — check whether it's a live-computed getter first.
 

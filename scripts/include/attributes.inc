@@ -37,6 +37,7 @@ use util;
 use cfgfile;
 use attributes;
 use vitals;
+use basicio;	// 2026-09-25: Print() is called in this file; was compiling only because an including script brought basicio
 
 // Include client.inc to get the SKILLID_* constants
 include "include/client";

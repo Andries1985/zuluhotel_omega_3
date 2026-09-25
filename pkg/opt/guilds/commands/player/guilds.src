@@ -1477,19 +1477,19 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Toadstool / rewritten 2026-08-23 for the full 1000-2999 hue range
 //
-// SetGuildColour() - guild colour picker. COLOURS (guildconstants.inc) can run
+// SetGuildColour() - guild colour picker. The colour table (GetGuildColours(), guildconstants.inc) can run
 // to ~1300 entries, so the swatch grid is shown GUILD_COLOUR_PER_PAGE at a
 // time, each page its own gump send -- Prev/Next re-enters this function
 // rather than packing every page into one multi-page gump, since a single
 // gump that large has broken the server before.
 //
-// `selected` is the 1-based COLOURS index currently shown in the mannequin
+// `selected` is the 1-based guildColours index currently shown in the mannequin
 // preview (mirrors the original _colour_iter-driven preview, which did work
 // -- restored here). Like the original, a preview is always showing --
 // defaults to index 1 so the mannequins are dressed on first open, same as
 // startat:=1 always matched _colour_iter's first iteration before. Two
 // independent nav pairs: the mannequin-area arrows cycle `selected` by +-1
-// across the whole COLOURS array (wrapping), the small arrows by the page
+// across the whole guildColours array (wrapping), the small arrows by the page
 // counter jump a whole page at a time (keeping selected's relative position
 // within the page); either way the grid page is kept in sync with
 // `selected`. Button values are dispatched by magnitude band so they can't
@@ -1500,7 +1500,10 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function SetGuildColour(who, page := 1, selected := 1)
 
-var total := COLOURS.size();
+// 2026-09-25: the table is built once per picker open (GetGuildColours() caches it in the
+// script's COLOURS global) instead of at the start of every script that includes guildconstants.inc.
+var guildColours := GetGuildColours();
+var total := guildColours.size();
 var total_pages := CInt((total + GUILD_COLOUR_PER_PAGE - 1) / GUILD_COLOUR_PER_PAGE);
 
 if (selected < 1)
@@ -1558,7 +1561,7 @@ GFGumpPic(gump, 430, 70, sex, 1002);
 GFResizePic(gump, 665, 105, 2620, 180, 200);
 GFGumpPic(gump, 665, 70, sex, 1002);
 
-var pcolour := COLOURS[selected];
+var pcolour := guildColours[selected];
 var pname, phue;
 if (taken.Exists(pcolour))
 	var powner := taken[pcolour];
@@ -1645,7 +1648,7 @@ var row := 0;
 var idx;
 var numname, numcolour;
 for (idx := start_index; idx <= end_index; idx := idx + 1)
-	var colour := COLOURS[idx];
+	var colour := guildColours[idx];
 
 	if (taken.Exists(colour))
 		var owner := taken[colour];
@@ -1690,7 +1693,7 @@ if (choice == 999)
 	SendSysMessage(who, "Cancelled.");
 	return GuildMasterGump(who);
 elseif (choice == 500000)
-	return BuyGuildColour(who, COLOURS[selected]);
+	return BuyGuildColour(who, guildColours[selected]);
 elseif (choice >= 400000)
 	// page-jump: keep selected's position within the page consistent on
 	// the destination page (clamped, since the last page may be short).

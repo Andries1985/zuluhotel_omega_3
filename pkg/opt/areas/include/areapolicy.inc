@@ -2,6 +2,7 @@ use uo;
 use os;
 use basic;
 use cfgfile;
+use basicio;	// 2026-09-25: Print() is called in this file; was compiling only because an including script brought basicio
 
 include ":datafile:datafile";
 include "include/constants/cfgfiles";
