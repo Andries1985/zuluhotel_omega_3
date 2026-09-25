@@ -17,7 +17,9 @@ if(!ReserveItem(globe))
 	return;
 endif
 
-var next_use := CInt(GetObjProperty(who, "#GlobeOfSosariaCooldown"));
+// 2026-09-21: a plain (saved) property. It was "#"-prefixed, which the engine
+// never writes to the save, so every restart handed out a fresh 24 h use.
+var next_use := CInt(GetObjProperty(who, "GlobeOfSosariaCooldown"));
 var now := ReadGameClock();
 
 if(next_use and next_use > now and !who.cmdlevel)
@@ -32,7 +34,7 @@ if(!townstone)
 endif
 
 if(TeleportBesideStone(who, townstone))
-	SetObjProperty(who, "#GlobeOfSosariaCooldown", now + GLOBE_COOLDOWN_SECONDS);
+	SetObjProperty(who, "GlobeOfSosariaCooldown", now + GLOBE_COOLDOWN_SECONDS);
 	PlaySoundEffect(who, SFX_SPELL_TELEPORT);
 	SendSysMessage(who, "The globe hums and twists the world around you.");
 	return;

@@ -118,11 +118,13 @@ program cast_teleport( parms, spell_id )
 			canstand := 1;
 		endif
 	endforeach
+	// 2026-09-21: the return was wrapped in "if (!DEBUG_MODE)", so with debug
+	// mode on -- which it was, in the committed client.inc -- the message showed
+	// and the teleport went ahead onto a spot nobody can stand on. Always
+	// enforced now; debug mode only adds messages, never changes the outcome.
 	if (!canstand)
 		SendSysmessage( caster, "You can't stand there.", color:= 33 );
-		if (!DEBUG_MODE)
-			return;
-		endif
+		return;
 	endif
 	
 	var sx := caster.x, sy := caster.y, sz := caster.z, sr := caster.realm;

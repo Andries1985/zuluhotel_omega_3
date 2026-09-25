@@ -92,8 +92,12 @@ function cleareventque()
 endfunction
 
 function handle_speech(sign, event)
-	sign.RefreshHouse();
 	var who := event.source;
+	// 2026-09-22: any speech inside the house used to refresh the abandonment
+	// timer; owner and co-owners only now (your pick, see sign/use.src).
+	if(sign.IsCoOwnerOrOwner(who))
+		sign.RefreshHouse();
+	endif
 	// owneracct := GetObjProperty(sign, "owneraccount");
 	ownerser := GetObjProperty(sign, "ownerserial");
 	var sec;

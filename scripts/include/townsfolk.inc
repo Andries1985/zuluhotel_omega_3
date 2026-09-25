@@ -8,45 +8,47 @@ include "include/client";
 include "include/random";
 
 function SayRandomFromArray(arr)
-	var idx := Random(10);
+	// 2026-09-23: was Random(10) over tables filled from index 0; arrays start at 1 here, so
+	// the first line of each table was rejected and one draw in ten said an error value.
+	var idx := Random(len(arr)) + 1;
 	say(arr[idx]);
 endfunction
 
 var DISENGAGED_SAYINGS;
-DISENGAGED_SAYINGS[0] := "Is it over?";
-DISENGAGED_SAYINGS[1] := "Thank the heavens!";
-DISENGAGED_SAYINGS[2] := "I survived... somehow.";
-DISENGAGED_SAYINGS[3] := "That was too close!";
-DISENGAGED_SAYINGS[4] := "I hope they're gone for good.";
-DISENGAGED_SAYINGS[5] := "Back to safety at last.";
-DISENGAGED_SAYINGS[6] := "I need a drink after that!";
-DISENGAGED_SAYINGS[7] := "I thought I was done for.";
-DISENGAGED_SAYINGS[8] := "Maybe I should lay low for a while.";
-DISENGAGED_SAYINGS[9] := "Thank you, whoever helped me!";
+DISENGAGED_SAYINGS[1] := "Is it over?";
+DISENGAGED_SAYINGS[2] := "Thank the heavens!";
+DISENGAGED_SAYINGS[3] := "I survived... somehow.";
+DISENGAGED_SAYINGS[4] := "That was too close!";
+DISENGAGED_SAYINGS[5] := "I hope they're gone for good.";
+DISENGAGED_SAYINGS[6] := "Back to safety at last.";
+DISENGAGED_SAYINGS[7] := "I need a drink after that!";
+DISENGAGED_SAYINGS[8] := "I thought I was done for.";
+DISENGAGED_SAYINGS[9] := "Maybe I should lay low for a while.";
+DISENGAGED_SAYINGS[10] := "Thank you, whoever helped me!";
 
 var ENGAGED_SAYINGS;
-ENGAGED_SAYINGS[0] := "Help! Help! I'm being attacked!";
-ENGAGED_SAYINGS[1] := "Somebody stop this madness!";
-ENGAGED_SAYINGS[2] := "Guards! Guards!";
-ENGAGED_SAYINGS[3] := "Why are you doing this?";
-ENGAGED_SAYINGS[4] := "Please, I mean no harm!";
-ENGAGED_SAYINGS[5] := "No! Stay away from me!";
-ENGAGED_SAYINGS[6] := "Mercy! Mercy!";
-ENGAGED_SAYINGS[7] := "What did I do to deserve this?";
-ENGAGED_SAYINGS[8] := "Leave me alone!";
-ENGAGED_SAYINGS[9] := "I just want to live!";
+ENGAGED_SAYINGS[1] := "Help! Help! I'm being attacked!";
+ENGAGED_SAYINGS[2] := "Somebody stop this madness!";
+ENGAGED_SAYINGS[3] := "Guards! Guards!";
+ENGAGED_SAYINGS[4] := "Why are you doing this?";
+ENGAGED_SAYINGS[5] := "Please, I mean no harm!";
+ENGAGED_SAYINGS[6] := "No! Stay away from me!";
+ENGAGED_SAYINGS[7] := "Mercy! Mercy!";
+ENGAGED_SAYINGS[8] := "What did I do to deserve this?";
+ENGAGED_SAYINGS[9] := "Leave me alone!";
+ENGAGED_SAYINGS[10] := "I just want to live!";
 
 var DAMAGED_SAYINGS;
-DAMAGED_SAYINGS[0] := "Ouch! Heeelp!";
-DAMAGED_SAYINGS[1] := "That hurts! Stop it!";
-DAMAGED_SAYINGS[2] := "Aaaagh! Why?!";
-DAMAGED_SAYINGS[3] := "By the virtues, that stings!";
-DAMAGED_SAYINGS[4] := "No more, please!";
-DAMAGED_SAYINGS[5] := "I'm bleeding!";
-DAMAGED_SAYINGS[6] := "You fiend!";
-DAMAGED_SAYINGS[7] := "Is this the end for me?";
-DAMAGED_SAYINGS[8] := "I need a healer!";
-DAMAGED_SAYINGS[9] := "Someone, save me!";
+DAMAGED_SAYINGS[1] := "Ouch! Heeelp!";
+DAMAGED_SAYINGS[2] := "That hurts! Stop it!";
+DAMAGED_SAYINGS[3] := "Aaaagh! Why?!";
+DAMAGED_SAYINGS[4] := "By the virtues, that stings!";
+DAMAGED_SAYINGS[5] := "No more, please!";
+DAMAGED_SAYINGS[6] := "I'm bleeding!";
+DAMAGED_SAYINGS[7] := "You fiend!";
+DAMAGED_SAYINGS[8] := "Is this the end for me?";
+DAMAGED_SAYINGS[9] := "I need a healer!";
+DAMAGED_SAYINGS[10] := "Someone, save me!";
 
 function FleeOpenDistance(opponent)
 	var me := Self();
@@ -93,7 +95,7 @@ outer:
 					if (ev.source.serial != opponent.serial)
 						SayRandomFromArray(ENGAGED_SAYINGS);
 					else
-						if (ev.type == "damage")
+						if (ev.type == SYSEVENT_DAMAGED) // 2026-09-23: was the word "damage"; event types are numbers
 							SayRandomFromArray(DAMAGED_SAYINGS);
 						endif
 					endif
@@ -136,15 +138,15 @@ function singsongs(singer, character)
 	endwhile
 endfunction
 
-function PlayMidi(singer, character, song_id)
-	var packet_id;
-	var xdist := Abs(singer.x - character.x);
-	var ydist := Abs(singer.y - character.y);
-
-	foreach character in EnumerateOnlineCharacters()
-		if (xdist <= 15 and ydist <= 15)
-			packet_id := "6D00" + song_id;
-			SendPacket(character, packet_id);
+function PlayMidi(singer, unused character, song_id)
+	// 2026-09-23: the loop reused the listener's name for every online player and tested the
+	// first listener's distance for all of them, so the tune went to the whole shard.
+	var packet_id := "6D00" + song_id;
+	foreach listener in EnumerateOnlineCharacters()
+		if (listener.realm == singer.realm)
+			if (Abs(singer.x - listener.x) <= 15 and Abs(singer.y - listener.y) <= 15)
+				SendPacket(listener, packet_id);
+			endif
 		endif
 	endforeach
 endfunction

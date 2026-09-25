@@ -463,36 +463,42 @@ endfunction
 // Transactions
 // ============================================================
 
-// Deposit an item into the cache. Adds item.amount to the element's qty.
-// On first deposit for this key, stores weight and non-default properties.
-// Returns the new total quantity.
-function DepositItem(df, key, item)
+// 2026-09-22: split so the store can be written AFTER the physical item is
+// gone (consume-first, see DepositSingleItem): callers read objtype, amount
+// and the non-default properties off the item before destroying it.
+function DepositItemData(df, key, objtype, amount, props)
 	var elem := df.FindElement(key);
 	if(!elem)
 		elem := df.CreateElement(key);
 	endif
 
 	var current_qty := CInt(elem.GetProp("qty"));
-	elem.SetProp("qty", current_qty + item.amount);
+	elem.SetProp("qty", current_qty + amount);
 
 	// Store metadata on first deposit for this key
 	if(current_qty == 0)
-		elem.SetProp("objtype", item.objtype);
-		var dep_desc := GetItemDescriptor(item.objtype);
+		elem.SetProp("objtype", objtype);
+		var dep_desc := GetItemDescriptor(objtype);
 		if(dep_desc)
 			elem.SetProp("weight", dep_desc.Weight);
 		endif
 
 		// Store non-default properties for recreation on withdrawal
-		var props := GetNonDefaultProperties(item);
-		foreach name in (props.keys())
+		var propnames := props.keys();
+		foreach name in propnames
 			elem.SetProp(name, props[name]);
 		endforeach
 	endif
 
+	OmegaCacheDebug("DepositItem: key=" + key + " added=" + amount + " total=" + (current_qty + amount));
+	return current_qty + amount;
+endfunction
 
-	OmegaCacheDebug("DepositItem: key=" + key + " added=" + item.amount + " total=" + (current_qty + item.amount));
-	return current_qty + item.amount;
+// Deposit an item into the cache. Adds item.amount to the element's qty.
+// On first deposit for this key, stores weight and non-default properties.
+// Returns the new total quantity. Kept for callers that still hold the item.
+function DepositItem(df, key, item)
+	return DepositItemData(df, key, item.objtype, item.amount, GetNonDefaultProperties(item));
 endfunction
 
 // Withdraw an amount from the cache. Returns the actual amount withdrawn.
@@ -716,11 +722,49 @@ endfunction
 // Item Recreation (Withdrawal)
 // ============================================================
 
-// Recreates an item in a container from DataFile element properties.
-// Only sets non-default properties stored on the element.
+// 2026-09-22: the stored properties of a cache element as a dictionary, so a
+// withdrawal can recreate the item -- and, when creation fails, the element
+// itself -- after WithdrawItem has deleted an emptied element.
+function SnapshotCacheElement(elem)
+	var snapshot := dictionary;
+	var propnames := elem.PropNames();
+	foreach pname in propnames
+		snapshot[pname] := elem.GetProp(pname);
+	endforeach
+	return snapshot;
+endfunction
+
+// Puts a debited amount back: onto the element if it still exists, else by
+// recreating the element from the snapshot taken before the debit.
+function RestoreCacheElement(df, key, snapshot, amount)
+	var elem := df.FindElement(key);
+	if(elem)
+		var current := CInt(elem.GetProp("qty"));
+		elem.SetProp("qty", current + amount);
+		OmegaCacheDebug("RestoreCacheElement: key=" + key + " restored " + amount + " new_total=" + (current + amount));
+		return current + amount;
+	endif
+	elem := df.CreateElement(key);
+	if(!elem)
+		OmegaCacheDebug("RestoreCacheElement: FAILED to recreate element " + key);
+		return 0;
+	endif
+	var propnames := snapshot.keys();
+	foreach pname in propnames
+		if(pname != "qty")
+			elem.SetProp(pname, snapshot[pname]);
+		endif
+	endforeach
+	elem.SetProp("qty", amount);
+	OmegaCacheDebug("RestoreCacheElement: key=" + key + " element recreated with " + amount);
+	return amount;
+endfunction
+
+// Recreates an item in a container from a property snapshot (see
+// SnapshotCacheElement). Only sets the non-default properties stored in it.
 // Returns the created item, or error on failure.
-function RecreateItem(container, elem, amount)
-	var objtype := CInt(elem.GetProp("objtype"));
+function RecreateItemFromProps(container, props, amount)
+	var objtype := CInt(props["objtype"]);
 	var newitem := CreateItemInContainer(container, objtype, amount);
 	if(!newitem)
 		OmegaCacheDebug("RecreateItem: FAILED to create " + Hex(objtype) + " x" + amount + " - returned 0");
@@ -731,10 +775,10 @@ function RecreateItem(container, elem, amount)
 		return newitem;
 	endif
 
-	// Restore non-default properties from element
-	var propnames := elem.PropNames();
+	// Restore non-default properties from the snapshot
+	var propnames := props.keys();
 	foreach pname in propnames
-		var val := elem.GetProp(pname);
+		var val := props[pname];
 
 		// Skip metadata properties
 		if(pname == "qty" or pname == "objtype" or pname == "weight")
@@ -782,6 +826,11 @@ function RecreateItem(container, elem, amount)
 
 	OmegaCacheDebug("RecreateItem: created " + Hex(objtype) + " x" + amount + " serial=" + newitem.serial);
 	return newitem;
+endfunction
+
+// Recreates an item straight from a DataFile element.
+function RecreateItem(container, elem, amount)
+	return RecreateItemFromProps(container, SnapshotCacheElement(elem), amount);
 endfunction
 
 // Re-credits quantity to an existing element without needing a physical item.
@@ -1064,18 +1113,34 @@ endfunction
 // ============================================================
 
 // Deposits a single item into the cache.
+// 2026-09-22: consume first. The store was credited BEFORE DestroyItem and the
+// result ignored; the engine refuses to destroy an item another script has
+// reserved (a bandage stack mid-heal, ingredients mid-cook, reagents, ore,
+// blank scrolls), which left both the credit and the stack. Now the item is
+// reserved (refused when in use), what the credit needs is read off it, it is
+// destroyed, and only then is the store written.
 function DepositSingleItem(who, df, item)
 	if(!IsEligibleForStorage(item))
 		SendSysMessage(who, "That item cannot be stored.");
 		return 0;
 	endif
+	if(!ReserveItem(item))
+		SendSysMessage(who, "That item is in use.");
+		return 0;
+	endif
 
 	var key := BuildItemKey(item);
 	var amt := item.amount;
-	var name := GetItemDisplayName(item.objtype);
-	DepositItem(df, key, item);
-	OmegaCacheAudit(who, "deposit", item.objtype, amt, key);
-	DestroyItem(item);
+	var objtype := item.objtype;
+	var props := GetNonDefaultProperties(item);
+	var name := GetItemDisplayName(objtype);
+	if(!DestroyItem(item))
+		ReleaseItem(item);
+		SendSysMessage(who, "That item cannot be stored right now.");
+		return 0;
+	endif
+	DepositItemData(df, key, objtype, amt, props);
+	OmegaCacheAudit(who, "deposit", objtype, amt, key);
 	SendSysMessage(who, "Deposited: " + FormatNumber(amt) + " " + name);
 	return 1;
 endfunction
@@ -1098,13 +1163,25 @@ function DepositFromContainer(who, df, container)
 	endforeach
 
 	foreach thing in items_to_deposit
+		// 2026-09-22: consume first, as in DepositSingleItem; a stack another
+		// script holds is left where it is and counted as not stored.
+		if(!ReserveItem(thing))
+			skipped := skipped + 1;
+			continue;
+		endif
 		var key := BuildItemKey(thing);
 		var display_name := GetItemDisplayName(thing.objtype);
 		var amt := thing.amount;
+		var objtype := thing.objtype;
+		var props := GetNonDefaultProperties(thing);
+		if(!DestroyItem(thing))
+			ReleaseItem(thing);
+			skipped := skipped + 1;
+			continue;
+		endif
 
-		DepositItem(df, key, thing);
-		OmegaCacheAudit(who, "deposit", thing.objtype, amt, key);
-		DestroyItem(thing);
+		DepositItemData(df, key, objtype, amt, props);
+		OmegaCacheAudit(who, "deposit", objtype, amt, key);
 
 		if(!deposited[display_name])
 			deposited[display_name] := amt;
@@ -1402,6 +1479,12 @@ endfunction
 // ============================================================
 
 // Withdraws items from the cache to a destination container.
+// 2026-09-22: lease-aware and debit-first. `available` came from the raw qty
+// (leases ignored) and each stack was created BEFORE the lease-aware
+// WithdrawItem, whose smaller return value was dropped -- with a craft leasing
+// the key (resourcemanager.inc's LeaseResource) the payout exceeded the debit.
+// Now the available amount excludes leases, the store is debited first, exactly
+// the debited amount is created, and a failed creation puts the debit back.
 function DoWithdraw(who, df, key, amount, destination)
 	_debug_who := who;
 	if(!destination or !destination.isa(POLCLASS_CONTAINER))
@@ -1415,9 +1498,13 @@ function DoWithdraw(who, df, key, amount, destination)
 		return 0;
 	endif
 
-	var available := CInt(elem.GetProp("qty"));
+	var available := GetStoredAmount(df, key);
 	if(amount <= 0)
 		SendSysMessage(who, "Invalid amount.");
+		return 0;
+	endif
+	if(available <= 0)
+		SendSysMessage(who, "That item is reserved by a craft in progress. Try again in a moment.");
 		return 0;
 	endif
 	if(amount > available)
@@ -1428,6 +1515,7 @@ function DoWithdraw(who, df, key, amount, destination)
 	var objtype := CInt(elem.GetProp("objtype"));
 	var desc_info := GetItemDescriptor(objtype);
 	var item_weight := CDbl(elem.GetProp("weight"));
+	var snapshot := SnapshotCacheElement(elem);
 
 	var stack_limit := 60000;
 	if(desc_info and desc_info.StackLimit)
@@ -1476,22 +1564,21 @@ function DoWithdraw(who, df, key, amount, destination)
 			this_stack := stack_limit;
 		endif
 
-		var newitem := RecreateItem(destination, elem, this_stack);
+		var taken := WithdrawItem(df, key, this_stack);
+		if(taken <= 0)
+			SendSysMessage(who, "The rest is reserved by a craft in progress. Stopping withdrawal.");
+			break;
+		endif
+
+		var newitem := RecreateItemFromProps(destination, snapshot, taken);
 		if(!newitem or (newitem and newitem.errortext))
+			RestoreCacheElement(df, key, snapshot, taken);
 			SendSysMessage(who, "Failed to create item. Stopping withdrawal.");
 			break;
 		endif
 
-		WithdrawItem(df, key, this_stack);
-
-		total_withdrawn := total_withdrawn + this_stack;
-		remaining := remaining - this_stack;
-
-		elem := df.FindElement(key);
-		if(!elem and remaining > 0)
-			SendSysMessage(who, "Cache depleted unexpectedly. Stopping.");
-			break;
-		endif
+		total_withdrawn := total_withdrawn + taken;
+		remaining := remaining - taken;
 	endwhile
 
 	if(total_withdrawn > 0)

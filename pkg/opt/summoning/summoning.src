@@ -79,6 +79,11 @@ program summon_creature( parms )
 	//Old Britannia Map
 	//var thecritter := CreateNpcFromTemplate( npctemplate, 5283, 1184, 0, 0, "britannia");
 	var thecritter	:= CreateNpcFromTemplate( npctemplate, 6338, 1581, 0, 0, "britannia_alt" );
+	// 2026-09-21: never written to the world save. This script sleeps for the
+	// summon's duration and then kills it; a restart in between killed the
+	// script but brought the saved creature back -- and the tamed AI skips
+	// hunger/release for anything "summoned", so it stayed as a permanent pet.
+	thecritter.saveonexit := 0;
 	thecritter.hidden := 1;
 
 	//Modify this for Mystic Archer to not require ME

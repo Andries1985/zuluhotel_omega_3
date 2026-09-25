@@ -60,6 +60,11 @@ program mass_dispel ( parms, spell_id )
 
 	victims := SmartAoE( caster, victims);
 
+	// 2026-09-21: two fixes inside this loop. (1) An immune victim used to hit
+	// "return", ending the spell for every victim after it -- now "continue".
+	// (2) The difficulty was built on the shared "magery" variable, so the
+	// Mage class bonus and the cursed-gear doubling COMPOUNDED with every
+	// summoned/animated victim; each victim now gets its own dispel_power.
 	foreach mobile in victims
 	if(!mobile.dead)
 		if( CheckLosAt( mobile, cint(cast_on.x) , cint(cast_on.y) , cint(cast_on.z) ) )
@@ -70,19 +75,20 @@ program mass_dispel ( parms, spell_id )
 		
 			if( summoned )
 				var immunity := IsProtected( caster, mobile, circle );
+				var dispel_power := magery;
 				if( immunity == IMMUNED )
-					return;
+					continue;
 				endif
 				
 				if( immunity == CURSED )
-					magery := magery * 2;
+					dispel_power := dispel_power * 2;
 				endif
 				
 				if( GetObjProperty( caster, CLASSEID_MAGE ) )
-					magery := Cint( magery * ClasseBonus( caster, CLASSEID_MAGE ) );
+					dispel_power := Cint( dispel_power * ClasseBonus( caster, CLASSEID_MAGE ) );
 				endif
 		
-				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, magery, 50 ))
+				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, dispel_power, 50 ))
 					PlaySoundEffect( mobile, SFX_SPELL_DISPEL );
 					MoveObjectToLocation( mobile, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION );
 					// was ApplyTheDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP;
@@ -94,19 +100,20 @@ program mass_dispel ( parms, spell_id )
 
 			elseif( animated )
 				var immunity := IsProtected( caster, mobile, circle );
+				var dispel_power := magery;
 				if( immunity == IMMUNED )
-					return;
+					continue;
 				endif
 				
 				if( immunity == CURSED )
-					magery := magery * 2;
+					dispel_power := dispel_power * 2;
 				endif
 		
 				if( GetObjProperty( caster, CLASSEID_MAGE ) )
-					magery := Cint( magery * ClasseBonus( caster, CLASSEID_MAGE ) );
+					dispel_power := Cint( dispel_power * ClasseBonus( caster, CLASSEID_MAGE ) );
 				endif
 		
-				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, magery, 50 ))
+				if( !CheckSkill( mobile, SKILLID_MAGICRESISTANCE, dispel_power, 50 ))
 					PlaySoundEffect( mobile, SFX_SPELL_DISPEL );
 					// was ApplyTheDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP;
 					// set KilledBy/KilledBySerial manually so RegisterNPC/ProcessQuestKill still credit the kill

@@ -12,13 +12,13 @@ program warn_gump(who)
 			"nomove",
 			"nodispose",                                                
 			"page 0",                                                  
-			"GumpPic 860 300 9460",		                           		
-			"text 918 330 238 0",								// The main headline 
-			"page 1",	                                   		// Initialize the page
-			"text 893 360 190 1",
-			"text 893 375 190 2",
-			"text 888 390 190 3",
-			"button 956 420 249 248 1 0 1"						// Okay button
+			"GumpPic 60 50 9460", // 2026-09-23: was drawn at x 860-956, off-screen on narrow clients
+			"text 118 80 238 0", // The main headline
+			"page 1", // Initialize the page
+			"text 93 110 190 1",
+			"text 93 125 190 2",
+			"text 88 140 190 3",
+			"button 156 170 249 248 1 0 1" // Okay button
 		};
 
 	var gfdata := {

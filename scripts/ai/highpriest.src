@@ -462,12 +462,16 @@ function CheckWhyHeGave ( player , donation )
 	var demand := GetObjProperty( player , "PriestDemand" );
 	if( !demand )
 		if( GetObjProperty( player , "PriestUpset" ) )
-			if( donation.amount >= getlevel*2500 )
-				if (getlevel < 2500)
-					getlevel := 1000;
-				elseif(getlevel > 60000)
-					getlevel := 60000;
-				endif
+			// 2026-09-23: the fine was compared against the raw level*2500 (0 for a classless player,
+			// so one coin forgave) and the clamp below it clamped the level, not the price; same
+			// floor and cap as the remove-curse price now.
+			var fine := getlevel*2500;
+			if (fine < 2500)
+				fine := 1000;
+			elseif(fine > 60000)
+				fine := 60000;
+			endif
+			if( donation.amount >= fine )
 				Say( "Thee be blessed for this generous donation." );
 				EraseObjProperty( player , "PriestUpset" );
 			else

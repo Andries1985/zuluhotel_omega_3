@@ -81,6 +81,13 @@ program cast_mark( caster, spell_id )
 		cast_on2 := CreateItemAtLocation(cast_on.x, cast_on.y, cast_on.z, 0x1f14, 1, cast_on.realm);
 	endif
 
+	// 2026-09-21: the blank rune used to be consumed even when the marked rune
+	// couldn't be created (a full container), leaving the caster with nothing.
+	if( !cast_on2 )
+		SendSysmessage( caster, "There is no room for the marked rune there." );
+		return 0;
+	endif
+
 	SubtractAmount(cast_on, 1);	
 		
 	SetObjProperty(cast_on2, "x", caster.x);
@@ -91,7 +98,11 @@ program cast_mark( caster, spell_id )
 	SetName(cast_on2, "a marked recall rune");
 	cast_on2.color := GetRealmRuneColor( caster.realm );
 
+	// 2026-09-21: tag the NEW marked rune (cast_on2). This wrote the staff-made
+	// tag that merchant.src and shrink.src look for onto cast_on -- the blank
+	// rune stack that was targeted -- so staff-marked runes went untagged and
+	// the leftover blanks were tagged instead.
 	if (caster.cmdlevel > 1)
-		SetObjProperty(cast_on,"LFucker",caster.name);
+		SetObjProperty(cast_on2,"LFucker",caster.name);
 	endif
  endprogram

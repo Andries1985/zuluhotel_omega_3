@@ -75,6 +75,12 @@ program cast_poly( parms, spell_id )
 	elseif( GetObjProperty( caster , CLASSEID_WARRIOR ) )
 		critgroup := critgroup - 1;
 		critter	:= critter - 2;
+		// 2026-09-21: clamped. Random(8)-2 came out as -1 or -2 one time in
+		// four, matched no case below, and left thecreature unset -- the caster's
+		// graphic was then set to 0 for the whole duration.
+		if( critter < 0 )
+			critter := 0;
+		endif
 		if( critgroup < 0 )
 			critgroup := 0;
 		endif

@@ -10,8 +10,10 @@ const startTime := 1543172400; //2018/11/25 19:00 gmt (sunday)
 
 program checkPH(who)
 	var time_now := POLCORE().systime;
-	var use_time := GetObjProperty(who, "pph_use_time");
-	var use_weekday := GetObjProperty(who, "pph_use_weekday");
+	// CInt: both props are unset (error) on a character that never used a PH
+	// (or after .resetph) -- same "error + week" runtime error as setph.src.
+	var use_time := CInt(GetObjProperty(who, "pph_use_time"));
+	var use_weekday := CInt(GetObjProperty(who, "pph_use_weekday"));
 
 	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
 		var remaining := CInt((use_time + hour - time_now) / minute);

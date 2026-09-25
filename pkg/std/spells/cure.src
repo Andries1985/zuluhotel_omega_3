@@ -51,12 +51,16 @@ program cast_cure( parms, spell_id )
 		byPassMR := 1;
 	endif
 
-	if(!byPassMR)
+	// 2026-09-21: reflection removed from this HELPFUL spell, matching Agility/
+	// Bless/Cunning/Strength/Protection where the same block is commented out.
+	// Cast on a friend with Magic Reflect up, the cure used to land on the
+	// caster instead and burn the friend's reflect charges.
+	/*if(!byPassMR)
 		if( !fromhit )
 			detach();
 			cast_on := Reflected( caster , cast_on , circle );
 		endif
-	endif
+	endif*/
 	
 	PlayObjectCenteredEffect(cast_on, 
                                          SPELL_EFFECT_ID,

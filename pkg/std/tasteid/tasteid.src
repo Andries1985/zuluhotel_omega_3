@@ -39,7 +39,10 @@ program do_tasteid( character )
 		if( the_item.graphic != UOBJ_POISON_POTION and the_item.graphic != 0x0f0d and !alchemcfg[the_item.objtype].sname )
 			SendSysMessage( character , "You can't taste that!" );
 			return;
-		else
+		elseif( the_item.graphic == UOBJ_POISON_POTION )
+			// 2026-09-21: only a poison potion's strength is a poison level. Every
+			// other potion's strength was read the same way, so a Greater Heal
+			// "contained a regular poison".
 			poison_level := Cint( GetPotionStrength( the_item ) );
 		endif
 	endif

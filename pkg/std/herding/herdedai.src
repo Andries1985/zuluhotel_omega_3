@@ -10,8 +10,8 @@ program herdedai()
   var locationy := CInt(GetObjProperty(npc, "locationy"));
   var originalscript := GetObjProperty(npc, "originalscript");
   if ((!locationx) or (!locationy))
-    EraseObjProperty(npc, "loctionx");
-    EraseObjProperty(npc, "loctiony");
+    EraseObjProperty(npc, "locationx"); // 2026-09-21: was "loctionx"/"loctiony" (here and below), so the real props were never cleared
+    EraseObjProperty(npc, "locationy");
   EraseObjProperty(npc, "originalscript");
   EraseObjProperty(npc, "#herded");
      npc.script := originalscript;
@@ -22,8 +22,8 @@ program herdedai()
     RunTowardLocation(locationx, locationy);
     count := count+1;
   until (((npc.x == locationx or npc.x == locationx - 1 or npc.x == locationx + 1) and (npc.y == locationy or npc.y == locationy - 1 or npc.y == locationy + 1)) or ( ReadGameClock() > Cint(GetObjProperty( npc , "#herded" ) + 30) ) || count >= 50);
-  EraseObjProperty(npc, "loctionx");
-  EraseObjProperty(npc, "loctiony");
+  EraseObjProperty(npc, "locationx");
+  EraseObjProperty(npc, "locationy");
   EraseObjProperty(npc, "originalscript");
   EraseObjProperty(npc, "#herded");
    npc.script := originalscript;

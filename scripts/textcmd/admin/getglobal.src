@@ -2,7 +2,6 @@
 use uo;
 
 program textcmd_getvar( who, propname )
-    print( "Property Name: " + propname );
 
     var res := GetGlobalProperty( propname );
     if (res != error)

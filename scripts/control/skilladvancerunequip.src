@@ -10,7 +10,7 @@ use os;
 use polsys;
 
 include "include/attributes";
-include ":guilds:include/guilds";
+include ":guilds:include/guilduniform";	// 2026-09-25: was :guilds:include/guilds; only UnEquipGuildUniform() is used here
 include "include/namingbyenchant";
 include ":attributes:include/regen";
 

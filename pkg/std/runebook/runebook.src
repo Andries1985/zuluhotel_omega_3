@@ -305,10 +305,15 @@ program open_runebook( who, runebook )
 			break;
 
 		3:	ReleaseItem( runebook );
+			// 2026-09-21: return here instead of falling through to the RuneDefs
+			// save below. The book is released and a gate takes ~38 s, so that
+			// save wrote back a list read BEFORE the gate: a rune dropped in
+			// meanwhile was destroyed and then wiped from the book, and edits
+			// from a second window were lost. DestroyRune saves its own change.
 			if( !GateWithoutCharges( who, runebook, runes_def, index ) )
 				SendSysmessage( who, "Gate Failed." );
 			endif
-			break;
+			return;
 
 		4:	if( SetDefaultLocation( runebook, runes_def, index, defloc ) )
 				msg := "Rune " + runes_def[index].name + " was successfuly set as default location.";

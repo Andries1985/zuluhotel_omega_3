@@ -96,6 +96,10 @@ program ostardeggs(who, item)
 		SendSysMessage( who, "A baby ostard appears and accepts you as his master!");
 		SetObjProperty (newpet, "master", who.serial);
 		SetObjProperty (newpet, "prevtamed", 1);
+		// 2026-09-22: the engine master was never set (frenziedeggs.src does it);
+		// without it the owner's own area spells and the songs treated the pet as wild.
+		SetObjProperty (newpet, "script", newpet.script);
+		newpet.setmaster (who);
 		newpet.script := "tamed";
 		RestartScript (newpet);
 	else

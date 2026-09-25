@@ -4,10 +4,12 @@ include ":Events:bag";
 function RainDownMoney(corpse)
   var tile, blocked;
   var i;
+  // 2026-09-23: 137-685 a pile over 441 tiles keeps the total near the old 121-tile
+  // 500-2499 (about 180,000 gold a champion); see the GetMapInfo fix below.
   for (i := -10; i <= 10 ; i := i + 1)
     var j;
     for (j := -10; j <= 10; j := j + 1)
-      tile := GetMapInfo(i, j, corpse.realm);
+      tile := GetMapInfo(corpse.x+i, corpse.y+j, corpse.realm); // 2026-09-23: the offsets were passed as map coordinates, so only the 121 tiles with both offsets >= 0 got gold
       if(tile)
 		blocked := 0;
 		var altar := ListItemsAtLocation( corpse.x+i, corpse.y+j, corpse.z, corpse.realm );
@@ -18,13 +20,13 @@ function RainDownMoney(corpse)
 		endforeach
 		if(!blocked)
 			if(CheckLosBetween( corpse.x+i, corpse.y+j, corpse.z, corpse.x, corpse.y, corpse.z+5, corpse.realm) && CheckLosAt( corpse, corpse.x+i, corpse.y+j, corpse.z+5 ) )
-				CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z, "goldcoin", RandomInt(2000)+500, corpse.realm);
+				CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z, "goldcoin", RandomInt(549)+137, corpse.realm);
 				PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z, 0x36b0, 7, 0, 1, corpse.realm);
 			else
-				CreateItemAtLocation( corpse.x, corpse.y, corpse.z, "goldcoin", RandomInt(2000)+500, corpse.realm);
+				CreateItemAtLocation( corpse.x, corpse.y, corpse.z, "goldcoin", RandomInt(549)+137, corpse.realm);
 			endif
 		else
-			CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z+6, "goldcoin", RandomInt(2000)+500, corpse.realm);
+			CreateItemAtLocation( corpse.x+i, corpse.y+j, corpse.z+6, "goldcoin", RandomInt(549)+137, corpse.realm);
 			PlayStationaryEffect( corpse.x+i, corpse.y+j, corpse.z+6, 0x36b0, 7, 0, 1, corpse.realm);
 		endif
         sleepms(50);

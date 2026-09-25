@@ -17,6 +17,7 @@ program CustomItemName (who, soulpen)
 		SendSysMessage(who, "The Soul Pen disintegrates in your hands!", color:= 814);
 		PlayObjectCenteredEffectEX( who, 0x377A, 1, 15, soulpen.color, 3);
 		DestroyItem(soulpen);
+		return; // 2026-09-22: was carrying on to the target and the confirm with the pen gone
 	endif
 
 	SendSysMessage(who, "Select the item you'd like to rename.", color:= 814);
@@ -47,6 +48,15 @@ program CustomItemName (who, soulpen)
 
 	if (item.container != who.backpack)
 		SendSysmessage( who, "You can only rename items in your backpack!" );
+		Releaseitem(soulpen);
+		Releaseitem(item);
+		return;
+	endif
+
+	// 2026-09-22: a renamed pile no longer stacks with the plain ones and loses
+	// the name again through the Omega Cache; stackables are refused.
+	if (item.stackable)
+		SendSysmessage( who, "Stackable items cannot be renamed!" );
 		Releaseitem(soulpen);
 		Releaseitem(item);
 		return;

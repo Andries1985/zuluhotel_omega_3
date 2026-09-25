@@ -68,9 +68,14 @@ function can_sing( me, circle)
 endfunction
 
 function ValidSongBoost(player, cast_near)
-	if ((cast_near.isa(POLCLASS_NPC)) && (cast_near.master == player))
+	// 2026-09-22: a character with no party gets an error value for .party and two
+	// error values compare equal, so two party-less strangers counted as a party:
+	// a solo bard boosted (and Life Balance drained) everyone in sight.
+	if (cast_near.serial == player.serial)
 		return 1;
-	elseif ((!cast_near.isa(POLCLASS_NPC)) && (cast_near.party == player.party))
+	elseif ((cast_near.isa(POLCLASS_NPC)) && (cast_near.master == player))
+		return 1;
+	elseif ((!cast_near.isa(POLCLASS_NPC)) && player.party && (cast_near.party == player.party))
 		return 1;
 	endif
 	return 0;

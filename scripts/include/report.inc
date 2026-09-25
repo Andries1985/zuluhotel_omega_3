@@ -1,6 +1,7 @@
 use uo;
 use os;
 use file;
+use basicio;	// 2026-09-25: Print() is called in this file; was compiling only because an including script brought basicio
 
 CONST MS_REPORT_DISABLE	:= 0x0;
 CONST MS_REPORT_CONSOLE	:= 0x1;

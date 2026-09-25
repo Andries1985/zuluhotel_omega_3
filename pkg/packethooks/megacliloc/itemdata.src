@@ -168,7 +168,19 @@ program itemdata(parms)
 				prop.clilocid := 1070722; ; // Nothing
 				prop.values := array {"DPS: "+CINT(calcdps(who, xObject, weapondesc))};
 				allprops.append(prop);
-				case(weapondesc.hitscript)
+				// 2026-09-22: match the item's own hit script (the engine reports it as
+				// ":combat:banishscript") with the package prefix stripped, so a script
+				// set at runtime or from another package's itemdesc still gets its line;
+				// was the template's local name, which only matched the combat package.
+				var hitscript_name := CStr(xObject.hitscript);
+				if( !hitscript_name )
+					hitscript_name := CStr(weapondesc.HitScript);
+				endif
+				var hitscript_parts := SplitWords(hitscript_name, ":");
+				if( hitscript_parts.size() )
+					hitscript_name := hitscript_parts[hitscript_parts.size()];
+				endif
+				case(hitscript_name)
 					"slayerscript":
 						foreach	creature in SplitWords(GetObjProperty( xObject , "SlayType" ))
 							prop.clilocid := 1070722; ; // Nothing
@@ -201,7 +213,7 @@ program itemdata(parms)
 						allprops.append(prop);
 					"trielementalscript":
 						prop.clilocid := 1070722; ; // Nothing
-						prop.values := array {"Blinds the target"};
+						prop.values := array {"Chance to strike with lightning"}; // 2026-09-22: was "Blinds the target"
 						allprops.append(prop);
 					"crithit":
 						prop.clilocid := 1070722; ; // Nothing
@@ -493,81 +505,110 @@ program itemdata(parms)
 endprogram
 
 function Calcdamage(who, xObject, basedamage)
-
-	var level 					:= GetClasseLevel(who);
+	// 2026-09-22: mirrors the attacker side of CalcPhysicalDamage() in
+	// pkg/systems/combat/include/hitscriptinc.inc as of the Jan 2025 class
+	// pass. This copy still had the older numbers (single-skill bonuses,
+	// level-4 for everyone, no durability, a Paladin INT term). Anything that
+	// needs a defender (Paladin/Warrior/Bladesinger reductions, Mage victims,
+	// the Thief poison bonus, the PvP halving) is left out: a tooltip has no
+	// defender. The level bonus uses the vs-NPC branch.
+	var total_skills := GetClasseSkillTotal(who, GetClass(who));
+	var avg_skill    := total_skills / 8;
+	var level        := GetClasseLevel(who);
 
 	basedamage += xObject.dmg_mod;
 	if( xObject.quality > 1)
 		basedamage += (xObject.quality - 1) * 15;
 	endif
+	// Damaged weapons deal reduced damage
+	if( xObject.maxhp > 0 )
+		var hp_percent := CDbl(xObject.hp) / CDbl(xObject.maxhp);
+		if( hp_percent < 0.5 )
+			basedamage *= hp_percent;
+		endif
+	endif
 
 	if( xObject.attribute == ATTRIBUTEID_ARCHERY )
-		if(!who.isA(POLCLASS_NPC))
+		if( !who.isA(POLCLASS_NPC) )
 			basedamage *= 1 + GetStrength(who) * 0.0015;
 			basedamage *= 1 + GetDexterity(who) * 0.0005;
 		endif
-		//Changes Jan 2025, Class Damage Changes
-		//Bumped Ranger and Bard damage to 0.005
-		// Thief no longer has an Archery skill bonus -- Throwing is their
-		// weapon skill now, matching hitscriptinc.inc's real damage formula.
-		if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_BARD ))
-			basedamage *= 1 + GetAttribute(who, ATTRIBUTEID_ARCHERY) * 0.005;
-		elseif(GetObjProperty( who, CLASSEID_WARRIOR ) || GetObjProperty( who, CLASSEID_POWERPLAYER ) || GetObjProperty( who, CLASSEID_PALADIN ))
-			basedamage *= 1 + GetAttribute(who, ATTRIBUTEID_TACTICS) * 0.002;
-		endif
-
 		if( GetObjProperty( who, CLASSEID_RANGER ) )
-			level := max(0, level-2);
-			basedamage *= ClasseSmallBonusByLevel( level );
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_ARCHERY, ATTRIBUTEID_ANIMALLORE ) * 0.007);
+		elseif( GetObjProperty( who, CLASSEID_BARD ) )
+			basedamage *= 1 + avg_skill * 0.007;
+		elseif( GetObjProperty( who, CLASSEID_POWERPLAYER ) )
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_ARCHERY, ATTRIBUTEID_TACTICS ) * 0.003);
+		elseif( GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_ARCHERY, ATTRIBUTEID_EVALINT ) * 0.004);
+		endif
+		// Ranger / Mystic Archer ranged class bonus from level 4.
+		if( !who.isA(POLCLASS_NPC) )
+			if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ) )
+				level := max(0, level-3);
+				basedamage *= ClasseSmallBonusByLevel( level );
+			endif
 		endif
 
 	elseif( xObject.attribute == ATTRIBUTEID_THROWING )
-		if(!who.isA(POLCLASS_NPC))
+		if( !who.isA(POLCLASS_NPC) )
 			basedamage *= 1 + GetDexterity(who) * 0.0007;
 		endif
-
 		if( GetObjProperty( who, CLASSEID_THIEF ) )
-			basedamage *= 1 + ((CDbl(GetAttribute(who, ATTRIBUTEID_THROWING) + GetAttribute(who, ATTRIBUTEID_TACTICS))) / 2.00) * 0.007;
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_THROWING, ATTRIBUTEID_TACTICS ) * 0.007);
 		elseif( GetObjProperty( who, CLASSEID_POWERPLAYER ) )
-			basedamage *= 1 + ((CDbl(GetAttribute(who, ATTRIBUTEID_THROWING) + GetAttribute(who, ATTRIBUTEID_TACTICS))) / 2.00) * 0.003;
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_THROWING, ATTRIBUTEID_TACTICS ) * 0.003);
 		endif
-		// Poison-scaled bonus is target-dependent and not shown in a static tooltip estimate.
+		// The Thief bonus against a poisoned target depends on the target: not shown.
 
 	else
-		//Changes Jan 2025, Class Damage Changes
-		//Bumped Str damage to 0.005
-		//Added in Paladin Damage for Int
-		//Bumped Warrior and PP damage from 0.002 to 0.005
-		// Thief's Fencing skill bonus retired along with the Fencing weapons --
-		// Thief deals melee damage with no class skill bonus now, same as Mage/Bard.
-		if(!who.isA(POLCLASS_NPC))
-			basedamage *= 1 + GetStrength(who) *0.005;
+		if( !who.isA(POLCLASS_NPC) )
+			basedamage *= 1 + GetStrength(who) * 0.005;
 		endif
-		if(!who.isA(POLCLASS_NPC) && GetObjProperty( who, CLASSEID_PALADIN ))
-			basedamage *= 1 + GetIntelligence(who) *0.005;
+		if( who.isA(POLCLASS_NPC) )
+			basedamage *= 1 + (GetAttribute( who, ATTRIBUTEID_TACTICS ) * 0.00025);
+		elseif( GetObjProperty( who, CLASSEID_WARRIOR ) || GetObjProperty( who, CLASSEID_POWERPLAYER ) )
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_ANATOMY, ATTRIBUTEID_TACTICS ) * 0.005);
+		elseif( GetObjProperty( who, CLASSEID_BLADESINGER ) )
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_ANATOMY, ATTRIBUTEID_TACTICS ) * 0.00375);
+		elseif( GetObjProperty( who, CLASSEID_PALADIN ) )
+			basedamage *= 1 + (TooltipAvgSkill( who, ATTRIBUTEID_EVALINT, ATTRIBUTEID_TACTICS ) * 0.002);
 		endif
-
-		if( GetObjProperty(who, CLASSEID_WARRIOR) || GetObjProperty(who, CLASSEID_POWERPLAYER))
-			basedamage *=  1 + GetAttribute( who, ATTRIBUTEID_ANATOMY ) * 0.005 ;
-		elseif( GetObjProperty(who, CLASSEID_PALADIN) )
-			basedamage *=  1 + GetAttribute( who, ATTRIBUTEID_EVALINT ) * 0.005 ;
+		// Class level bonus (the vs-NPC branch of the real formula).
+		if( !who.isA(POLCLASS_NPC) )
+			if( GetObjProperty( who, CLASSEID_WARRIOR ) || GetObjProperty( who, CLASSEID_POWERPLAYER ) || GetObjProperty( who, CLASSEID_PALADIN ) || GetObjProperty( who, CLASSEID_BLADESINGER ) )
+				level := max(0, level-3);
+				basedamage *= ClasseSmallBonusByLevel( level );
+			elseif( level )
+				level := max(0, level-4);
+				basedamage *= ClasseSmallBonusByLevel( level );
+			endif
 		endif
-
-		level := max(0, level-4);
-		basedamage *= ClasseSmallBonusByLevel( level );
-
+		// Mage melee reduction, on the level the branch above left.
 		if( GetObjProperty( who, CLASSEID_MAGE ) )
-			basedamage := basedamage / ClasseBonus( who, CLASSEID_MAGE );
+			basedamage := basedamage / ClasseSmallBonusByLevel( level );
 		endif
 	endif
 	return basedamage;
 
 endfunction
 
+// 2026-09-22: the two-skill average the real formula uses per class.
+function TooltipAvgSkill( who, attr_a, attr_b )
+	return CDbl( GetAttribute( who, attr_a ) + GetAttribute( who, attr_b ) ) / 2.0;
+endfunction
+
 function calcdps(who, xObject, weapondesc)
-	
-	var averagedmg := (weapondesc.MinDamage + weapondesc.MaxDamage)/2;
-	return Calcdamage(who, xObject, averagedmg)/(15000/(((GetDexterity(who)/10.0)+100)*weapondesc.Speed+xObject.speed_mod));
+	// 2026-09-22: engine swing time (Character::check_attack_time) is
+	// 15000 / ((Dex + 100) * (Speed + speed_mod)) seconds. This used Dex/10
+	// and added speed_mod after the multiply, showing ~1.8x the real DPS.
+	var tooltip_speed := weapondesc.Speed + xObject.speed_mod;
+	if( tooltip_speed < 1 )
+		return 0;
+	endif
+	var averagedmg := CDbl(weapondesc.MinDamage + weapondesc.MaxDamage) / 2.0;
+	var tooltip_swing_secs := 15000.0 / ((GetDexterity(who) + 100) * tooltip_speed);
+	return Calcdamage(who, xObject, averagedmg) / tooltip_swing_secs;
 
 endfunction
 

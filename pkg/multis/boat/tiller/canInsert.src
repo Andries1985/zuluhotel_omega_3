@@ -5,7 +5,7 @@ program canInsert( mobile, container, unused move_type, unused inserttype, addin
 		container.FollowMap( mobile, adding_item );
 	endif
 
-	MoveItemToContainer( adding_item, mobile.container );
+	MoveItemToContainer( adding_item, mobile.backpack ); // 2026-09-22: was mobile.container, which a character does not have
 
 	return 1;
 endprogram

@@ -7,10 +7,16 @@ program randomTome(who, scroll)
 		SendSysMessage(who, "That item need to be in your main backpack!");
 		return;
 	endif
-	var des := DestroyItem(scroll);
-	sleepMS(100);
-	if(!des)
+	// 2026-09-22: create first; the tome was destroyed before the Power Tome
+	// was created, so a full backpack lost it.
+	var tome := CreateItemInBackpack( who, 0x4001AA );
+	if(!tome)
+		SendSysMessage(who, "You need more room in your backpack.");
 		return;
 	endif
-	CreateItemInBackpack( who, 0x4001AA );
+	var des := DestroyItem(scroll);
+	if(!des)
+		DestroyItem(tome);
+		return;
+	endif
 endprogram

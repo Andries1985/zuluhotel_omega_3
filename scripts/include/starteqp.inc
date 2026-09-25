@@ -1565,7 +1565,9 @@ function CreateFromStackString( who, str )
 			if(GetObjProperty(who, "KilledBySerial"))
 				killer := SystemFindObjectBySerial(GetObjProperty(who, "KilledBySerial"),SYSFIND_SEARCH_OFFLINE_MOBILES );
 			endif
-			if(!GetGlobalProperty("PHH") || !GetObjProperty(killer, "#PPHH"))
+			// 2026-09-23: was "!shard hour || !personal hour", which only doubled the stack when both
+			// were on; the item chance rolls above double on either, and now so does the stack.
+			if(!GetGlobalProperty("PHH") && !GetObjProperty(killer, "#PPHH"))
         		item := CreateItemInContainer( who , objname , count );
 			else
 				item := CreateItemInContainer( who , objname , count*2 );

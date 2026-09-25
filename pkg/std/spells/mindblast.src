@@ -101,6 +101,11 @@ program cast_mind_blast( parms, spell_id )
 		PrintTextAbovePrivate( caster , "I've done this much Mind Blast damage: " +dmg, caster );
 	endif
 
-	ApplyRawDamage( cast_on, Resisted( caster , cast_on , circle , dmg ) );
+	// 2026-09-21: was ApplyRawDamage( cast_on, ... ) -- the only spell that went
+	// around the shared damage function, so a Mind Blast kill credited no one
+	// (KilledBy/quest kills/loot lottery shares), ignored damage-type
+	// immunities, and skipped the 60% player-vs-player scaling every other
+	// spell gets. NOTE: this makes it hit players 40% softer than before.
+	ApplyTheDamage( cast_on , caster , Resisted( caster , cast_on , circle , dmg ) , DMGID_MAGIC );
 
 endprogram

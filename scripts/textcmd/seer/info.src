@@ -640,6 +640,8 @@ program textcmd_info( character , whom )
 
   if (result[0]==18)
     who.frozen := 0;
+    EraseObjProperty( who, "frozen" ); // 2026-09-23: .freeze sets this cprop and the AI scripts re-freeze on start while it is set
+    EraseObjProperty( who, "frozen" ); // 2026-09-23: .freeze sets this cprop and the AI scripts re-freeze on start while it is set
     SendSysmessage( character , whoname + " is unfrozen.");
     LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Unfreeze");
     return;
@@ -966,25 +968,26 @@ program textcmd_info( character , whom )
     endif
 
     MoveObjecttoLocation(who, character.x+1, character.y+1, character.z, character.realm, MOVEOBJECT_FORCELOCATION);
+    // 2026-09-23: was tempitem.decay := 20 on every bar; items have no decay member, so the eight bars were permanent
     tempitem := CreateItemAtLocation( who.x-1,who.y, who.z, 0x821, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
     tempitem := CreateItemAtLocation( who.x+1,who.y, who.z, 0x821, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
 
     tempitem := CreateItemAtLocation( who.x-1,who.y+1, who.z, 0x821, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
     tempitem := CreateItemAtLocation( who.x+1,who.y+1, who.z, 0x821, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
 
     tempitem := CreateItemAtLocation( who.x,who.y-1, who.z, 0x823, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
     tempitem := CreateItemAtLocation( who.x,who.y+1, who.z, 0x823, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
 
     tempitem := CreateItemAtLocation( who.x+1,who.y-1, who.z, 0x823, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
     tempitem := CreateItemAtLocation( who.x+1,who.y+1, who.z, 0x823, 1, who.realm );
-    tempitem.decay :=20;
+    tempitem.decayat := ReadGameClock() + 20;
     who.paralyzed := 1;
 
     showflame(who);
@@ -1261,7 +1264,7 @@ endfunction
 
 function EditSkill( who , character , skill );
 
-if (skill>48 and skill<0)
+if( !(skill in GetSkillIds()) ) // 2026-09-23: was skill>48 and skill<0, which no number satisfies
 return;
 endif
 

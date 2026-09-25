@@ -28,6 +28,20 @@ program pickpocket_dummy( who , dummy )
         	return;
 	endif
 
+	// 2026-09-21: matches the combat training dummy (dummy.src): nothing to
+	// learn past 25 skill, and one user at a time. Before, every dip rolled
+	// Stealing for points at any skill level.
+	if( GetEffectiveSkill( who, SKILLID_STEALING ) >= 25.0 )
+		SendSysMessage( who, "You cannot learn any more from simply picking a dummy's pocket." );
+		return;
+	endif
+
+	if( GetObjProperty( dummy, "#picking" ) )
+		SendSysMessage( who, "That dummy is already in use" );
+		return;
+	endif
+	SetObjProperty( dummy, "#picking", 1 );
+
 	if( CheckSkill( who, SKILLID_STEALING, 10, 200 ))
 
 		PlaySoundEffect( who , SFX_58 );		
@@ -54,5 +68,7 @@ program pickpocket_dummy( who , dummy )
 		set_critical(0);
 
 	endif
+
+	EraseObjProperty( dummy, "#picking" );
 
 endprogram

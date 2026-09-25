@@ -1,9 +1,9 @@
 // Synopsis: Force-spawn all spawn points within a radius around your location
 /*
- * Text Command: .forcespawn <radius>
+ * Text Command: .forcespawnarea <radius>
  * 
  * Purpose: Forcespawn all spawnpoints within a given radius from player location
- * Usage: .forcespawn 200
+ * Usage: .forcespawnarea 200
  * Triggers: EVID_SPAWNPOINT_CHECK_POINT on all found spawnpoints
  */
 
@@ -22,7 +22,7 @@ program textcmd_forcespawnarea(who, params)
     var report := "";
     
     if (!p[1] || !CInt(p[1]))
-        SendSysMessage(who, "Usage: .forcespawn <radius>");
+        SendSysMessage(who, "Usage: .forcespawnarea <radius>");
         return;
     endif
     

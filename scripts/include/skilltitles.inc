@@ -49,7 +49,7 @@ function DefineSkillTitlesDictionary()
 	skill [ 40 ]	:= "Swordsman";
 	skill [ 41 ]	:= "Armsman";
 	skill [ 42 ]	:= "Fencer";
-	skill [ 42 ]	:= "Wrestler";
+	skill [ 43 ]	:= "Wrestler"; // 2026-09-23: was 42, which overwrote Fencer and left 43 empty
 	skill [ 44 ]	:= "Lumberjack";
 	skill [ 45 ]	:= "Miner";
 	skill [ 46 ]	:= "Stoic";

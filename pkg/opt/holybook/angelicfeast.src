@@ -20,7 +20,7 @@ program create_food( caster )
 		endif
 		var loop := 0;
 		var food;
-		while (loop <= amount)
+		while (loop < amount) // 2026-09-22: was <=, one item too many
 			case (Random(8))
 				0:	food := 0xc920;
 				1:	food := 0x09ea;

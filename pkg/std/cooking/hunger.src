@@ -17,6 +17,15 @@ program Hunger( chr )
 
 	var hunger;
 
+	// 2026-09-21: a drain left over from the previous login is stopped and, if
+	// this character is already at 10 or more, a fresh one started now. Before,
+	// the drain only ever started at the exact tick hunger reached 10 and it
+	// exits on relog by design, so logging in hungry meant no drain at all.
+	StopHungerDrain(chr);
+	if (Cint(GetObjProperty(chr, "hunger")) >= 10)
+		EnsureHungerDrain(chr);
+	endif
+
 	while ( chr )
 
 		hunger := Cint(GetObjProperty(chr, "hunger"));
@@ -44,7 +53,6 @@ program Hunger( chr )
 			// toward 12/14/15 instead of freezing at 10 like the old
 			// single-tier design did. hungerdamage.src re-checks current
 			// hunger each tick to add mana loss at 12 and health loss at 14.
-			Start_Script(":cooking:hungerdamage", {chr});
 
 		12 :
 			SendSysMessage(chr, "You're growing faint with hunger...");
@@ -55,6 +63,15 @@ program Hunger( chr )
 			// is already covered by hungerdamage.src once hunger reaches 14.
 			CanEat( chr );
 		endcase
+
+		// 2026-09-21: every tick at 10 or more makes sure a drain is running
+		// (it was only started at exactly 10, and the old call passed {chr} --
+		// a one-item list -- where hungerdamage.src expects the character, so
+		// it read hunger off a list, got 0 and exited at once: the drain has
+		// never actually run).
+		if (hunger >= 10)
+			EnsureHungerDrain(chr);
+		endif
 
 		sleep( 60 * 60 );
 		if (chr)
@@ -123,6 +140,37 @@ endfunction
 // background script (spawned via Start_Script at hunger level 10 above)
 // instead of a blocking inline function, so this file's hourly loop can
 // keep climbing hunger toward the new 12/14/15 tiers while it runs.
+
+// 2026-09-21: the running drain's pid lives in #HungerDrainPid on the
+// character (set/cleared by hungerdamage.src itself). Starts one only if
+// none is alive, so an hourly tick can never stack a second drain.
+function EnsureHungerDrain(chr)
+
+	var pid := CInt(GetObjProperty(chr, "#HungerDrainPid"));
+	if (pid)
+		if (GetProcess(pid))
+			return;
+		endif
+	endif
+
+	Start_Script(":cooking:hungerdamage", chr);
+
+endfunction
+
+// 2026-09-21: kills a drain from an earlier login (it would exit on its own
+// within one tick, but a fresh one has to be able to start right away).
+function StopHungerDrain(chr)
+
+	var pid := CInt(GetObjProperty(chr, "#HungerDrainPid"));
+	if (pid)
+		var proc := GetProcess(pid);
+		if (proc)
+			proc.kill();
+		endif
+		EraseObjProperty(chr, "#HungerDrainPid");
+	endif
+
+endfunction
 
 function CanFeed(me, mount)
 

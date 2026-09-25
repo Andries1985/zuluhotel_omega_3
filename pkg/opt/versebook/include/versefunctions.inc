@@ -647,6 +647,12 @@ function SmartSongAoE(who, person)
 		return 0;
 	endif
 	
+	// 2026-09-22: mirror SmartAoE (spelldata.inc) -- nobody standing in a safe
+	// area is a verse target; a bard outside a bank could hit the people inside.
+	if (IsInSafeArea(person))
+		return 0;
+	endif
+
 	if (!person.isa(POLCLASS_NPC) && !who.isa(POLCLASS_NPC) && !who.cmdlevel)
 		
 		var who_noPK := GetObjProperty(who, "NOPKAREA");
@@ -677,9 +683,13 @@ endfunction
 
 function SmartSongBoost(who, person)
 
-	if ((person.isa(POLCLASS_NPC)) && (person.master == who))
+	// 2026-09-22: a character with no party gets an error value for .party and two
+	// error values compare equal, so two party-less strangers counted as a party.
+	if (person.serial == who.serial)
 		return 1;
-	elseif ((!person.isa(POLCLASS_NPC)) && (!who.isa(POLCLASS_NPC)) && (person.party == who.party))
+	elseif ((person.isa(POLCLASS_NPC)) && (person.master == who))
+		return 1;
+	elseif ((!person.isa(POLCLASS_NPC)) && (!who.isa(POLCLASS_NPC)) && who.party && (person.party == who.party))
 		var same_CWcolor := 1;
 		var same_faction := GetObjProperty(who, "IsRPer") == GetObjProperty(person, "IsRPer" );	
 		if (GetObjProperty(who, "cwarring"))
@@ -695,5 +705,21 @@ function SmartSongBoost(who, person)
 		return 1;
 	endif
 	return 0;
+
+endfunction
+
+//////////////////////////////////////////////////////////////////////////////////////
+//
+// EndVerse() - 2026-09-22: SucceedPlayingVerse() sets #Casting and only
+// InterruptedPlaying() cleared it; a verse that ended on its own (no boulder
+// target, a fumbled re-play check, the beast-bond cancel, a break) left the
+// flag set and the song, earth, holy and necro books refused to open until
+// relog. Every verse calls this after its loop and on its early returns.
+//
+//////////////////////////////////////////////////////////////////////////////////////
+
+function EndVerse(who)
+
+	EraseObjProperty(who, "#Casting");
 
 endfunction

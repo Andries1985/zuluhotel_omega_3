@@ -13,9 +13,11 @@ program textcmd_setallskills( who , amount )
 	
 	amount := Cint( amount );
 	
-	for i := 0 to 48
-		SetBaseSkill( targ , i , amount);
-	endfor
+	// 2026-09-23: was 0..48, which skipped the skills added above that (Throwing is 57)
+	var sas_ids := GetSkillIds();
+	foreach sas_id in sas_ids
+		SetBaseSkill( targ , sas_id , amount);
+	endforeach
 	
 	SendSysMessage( targ , "All your skills are now at " + amount + "." );
 

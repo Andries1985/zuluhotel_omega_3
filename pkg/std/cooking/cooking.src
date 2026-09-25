@@ -170,7 +170,9 @@ function create_extra_returns (character, current_recipe)
 	var current_return;
 	
 	//now we cycle through all the ingredients
-	for (return_counter := 1; return_counter == len(return_array); return_counter := return_counter + 1)
+	// 2026-09-21: was "==" -- the loop only ran when there was exactly ONE
+	// extra_returns line, so a recipe given a second line returned nothing.
+	for (return_counter := 1; return_counter <= len(return_array); return_counter := return_counter + 1)
 
 		//Pick the current return items out of the array.  the first part of this (current_return[1]) is the type of
 		//return being created.  The second part (current_return[2]) is the number.
@@ -205,8 +207,11 @@ function destroy_all_ingredients(character, current_recipe)
 
 		//Setting variable to allow for Crafting Power Hour
 		var ingredient_quantity := Cint(current_ingredient[2]);
+		// 2026-09-21: /2.0, not /2 -- int/int is whole-number division in the engine,
+		// so Ceil had nothing left to round and every 1-of ingredient became 0: 45 of
+		// the 88 recipes cost nothing at all during a Power Hour.
 		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-			ingredient_quantity := CInt(Ceil(ingredient_quantity/2));
+			ingredient_quantity := CInt(Ceil(ingredient_quantity/2.0));
 		endif
 		//check to see if its one of the specially defined ingredients that require extra processing
 		if (current_ingredient[1] == "ITEM_GENERAL_WATER")
@@ -383,7 +388,7 @@ function check_for_all_ingredients (character, current_recipe)
 		//Setting variable to allow for Crafting Power Hour
 		var ingredient_quantity := CInt(current_ingredient[2]);
 		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-			ingredient_quantity := CInt(Ceil(ingredient_quantity/2));
+			ingredient_quantity := CInt(Ceil(ingredient_quantity/2.0)); // 2026-09-21: /2.0, see destroy_all_ingredients
 		endif
 
 		//check to see if the item that was defined in the recipe was a special item.  these require somewhat

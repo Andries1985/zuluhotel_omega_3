@@ -31,7 +31,13 @@ const BOD_REWARDS_BTN_X          := 350;
 const BOD_REWARDS_GUMP_WIDTH     := 420;
 
 program bulkorderrewards(who)
-	BOD_ShowRewardsGump(who);
+	// 2026-09-21: loops here. BOD_RedeemReward used to re-open the gump from
+	// inside itself, nesting two calls deeper per purchase, so the script hit
+	// pol.cfg's MaxCallDepth (100) around the 50th purchase in one sitting.
+	// BOD_ShowRewardsGump returns 1 while the player keeps redeeming.
+	while( BOD_ShowRewardsGump(who) )
+		SleepMS(10);
+	endwhile
 endprogram
 
 function BOD_RewardsCfg()
@@ -147,13 +153,15 @@ function BOD_ShowRewardsGump(byref who)
 
 	var response := GFSendGump(who, gump);
 	if( !response )
-		return;
+		return 0;
 	endif
 
 	var btn := CInt(response[0]);
 	if( btn >= BOD_REWARDS_BTN_REDEEM_BASE and btn < BOD_REWARDS_BTN_REDEEM_BASE + total_items )
 		BOD_RedeemReward(who, keys[(btn - BOD_REWARDS_BTN_REDEEM_BASE) + 1]);
+		return 1;	// re-open with the fresh balance (the program loops)
 	endif
+	return 0;
 endfunction
 
 function BOD_RedeemReward(byref who, rewardkey)
@@ -167,6 +175,16 @@ function BOD_RedeemReward(byref who, rewardkey)
 	var objtype := CInt(GetConfigInt(elem, "Objtype"));
 	var name := GetConfigString(elem, "Name");
 	BOD_Debug("BOD_RedeemReward: " + who.name + " redeeming '" + rewardkey + "' (" + name + ", cost=" + cost + ", objtype=" + Hex(objtype) + ")");
+
+	// 2026-09-21: rewards.cfg is staff-edited, and its Cost was trusted as-is --
+	// a missing or 0 Cost made the reward free, and a NEGATIVE one handed out
+	// the item AND added points (BOD_SpendPoints subtracts it). Refused and
+	// logged so the bad row gets noticed.
+	if( cost < 1 )
+		SysLog("[BOD] rewards.cfg entry '" + rewardkey + "' has Cost " + cost + " -- refusing to redeem it; fix its Cost line.");
+		SendSysMessage(who, "That reward isn't available right now.", color := 33);
+		return;
+	endif
 
 	if( !BOD_SpendPoints(who, cost) )
 		BOD_Debug("BOD_RedeemReward: insufficient points (has " + BOD_GetPoints(who) + ", needs " + cost + ")");
@@ -182,5 +200,5 @@ function BOD_RedeemReward(byref who, rewardkey)
 	endif
 
 	SendSysMessage(who, "You redeem " + cost + " points for " + name + ".", color := 66);
-	BOD_ShowRewardsGump(who);
+	// The gump is re-opened by the loop in program bulkorderrewards(), not here.
 endfunction

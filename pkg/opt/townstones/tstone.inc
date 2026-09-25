@@ -159,7 +159,20 @@ function EnsureTownstoneElectionWatcher()
 endfunction
 
 
+// 2026-09-22: the stone gump only DRAWS the buttons a visitor, citizen or
+// mayor may use; a reply can name any button id, so the handlers check for
+// themselves. `stone` is this stone's town id, set by the including program.
+function IsTownCitizen(who)
+	return (stone and CInt(GetObjProperty(who, "town")) == stone);
+endfunction
+
+
 function candidato(who, item)
+
+	if(!IsTownCitizen(who))
+		SendSysMessage(who, "Only citizens of " + city + " can run for mayor.");
+		return 0;
+	endif
 
 	var i;
 	if(who.serial == mayorserial)
@@ -188,6 +201,11 @@ endfunction
 
 
 function voteto(who, item, choose)
+
+	if(!IsTownCitizen(who))
+		SendSysMessage(who, "Only citizens of " + city + " can vote here.");
+		return 0;
+	endif
 	//verifica se fulando jah votou
 	foreach runa in EnumerateItemsInContainer( item )
 		if (runa.objtype == 0xa321)
@@ -316,6 +334,11 @@ endfunction
 
 function ConvocarEleicoes(who, item)
 
+	if(who.serial != mayorserial and !IsTownCitizen(who))
+		SendSysMessage(who, "Only citizens of " + city + " can call an election.");
+		return;
+	endif
+
 	if(eleicoes or pleibicito)
 		SendSysMessage(who, "Elections running.");
 		return;
@@ -353,6 +376,11 @@ function ConvocarEleicoes(who, item)
 endfunction
 
 function ConvocarPleibicito(who, item)
+
+	if(who.serial != mayorserial)
+		SendSysMessage(who, "Only the mayor can call a poll.");
+		return;
+	endif
 
 	if(eleicoes or pleibicito)
 		SendSysMessage(who, "Elections running.");

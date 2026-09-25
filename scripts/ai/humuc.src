@@ -281,14 +281,16 @@ function ProcessSpeech(ev)
 		GiveLoot();
 		return 1;
 	elseif (evtext["vamp"])
-		lastvamp := GetObjProperty(me, "lastvamp");
+		// 2026-09-23: an unset lastvamp made "now - lastvamp" an error and the 600 s test never
+		// true, so a fresh totem could never vamp; an unset IsMage made the drain an error too.
+		lastvamp := CInt(GetObjProperty(me, "lastvamp"));
 		now := ReadGameClock() ;
-		if ((now - lastvamp) > 600)
+		if (!lastvamp || (now - lastvamp) > 600)
 			Setobjproperty(me,"lastvamp",now);
-			specbonus := GetObjProperty(master,"IsMage");
+			specbonus := CInt(GetObjProperty(master,"IsMage"));
 			todrain := (50 +(specbonus * Random(20)));
-			if (todrain > master.mana)
-				todrain := master.mana;
+			if (todrain > GetMana(master)) // 2026-09-23: was master.mana, not a member
+				todrain := GetMana(master);
 			endif
 			SetMana(master, GetMana(master)-todrain);
 			SetMana(me, GetMana(me)+todrain);

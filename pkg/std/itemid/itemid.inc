@@ -8,50 +8,39 @@ include "include/itemutil";
 //include "include/chests";
 include ":containers:checks";
 
+// 2026-09-21: which skill stands in for Item ID depends on the class. This was
+// an if-chain inside SelectItemToID; it is shared now so do_itemid's cooldown
+// can use the same value (at 100+ there is no wait at all).
+function ItemIDClassSkill( who )
+
+	if ( GetObjProperty( who , CLASSEID_BARD ) )
+		return GetEffectiveSkill( who, SKILLID_TASTEID );
+	elseif ( GetObjProperty( who , CLASSEID_WARRIOR ) )
+		return GetEffectiveSkill( who, SKILLID_ANATOMY );
+	elseif ( GetObjProperty( who , CLASSEID_THIEF ) )
+		return GetEffectiveSkill( who, SKILLID_REMOVETRAP );
+	elseif ( GetObjProperty( who , CLASSEID_CRAFTER ) )
+		return GetEffectiveSkill( who, SKILLID_ARMSLORE );
+	elseif ( GetObjProperty( who , CLASSEID_RANGER ) )
+		return GetEffectiveSkill( who, SKILLID_CAMPING );
+	endif
+
+	return GetEffectiveSkill( who, SKILLID_ITEMID );
+
+endfunction
+
+
 function SelectItemToID( who, delay )
 
 	var the_item;
-	var skillID;
+	var skillID := ItemIDClassSkill( who );
 	var intelligence := GetAttribute( who, ATTRIBUTEID_INTELLIGENCE );
 	const MIN_DELAYMS := 250;
 	const MIN_SKILLFORBATCH := 100;
 	const MIN_INTFORBATCH := 100;
 
-	if ( GetObjProperty( who , CLASSEID_BARD ) )
-		skillID := GetEffectiveSkill( who, SKILLID_TASTEID );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	elseif ( GetObjProperty( who , CLASSEID_WARRIOR ) )
-		skillID := GetEffectiveSkill( who, SKILLID_ANATOMY );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	elseif ( GetObjProperty( who , CLASSEID_THIEF ) )
-		skillID := GetEffectiveSkill( who, SKILLID_REMOVETRAP );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	elseif ( GetObjProperty( who , CLASSEID_CRAFTER ) )
-		skillID := GetEffectiveSkill( who, SKILLID_ARMSLORE );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	elseif ( GetObjProperty( who , CLASSEID_RANGER ) )
-		skillID := GetEffectiveSkill( who, SKILLID_CAMPING );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	elseif ( GetObjProperty( who , CLASSEID_POWERPLAYER) || GetObjProperty( who , CLASSEID_MAGE ) )
-		skillID := GetEffectiveSkill( who, SKILLID_ITEMID );
-		if( skillID >= 100)
-			delay := 0;
-		endif
-	else
-		skillID := GetEffectiveSkill( who, SKILLID_ITEMID );
-		if( skillID >= 100)
-			delay := 0;
-		endif
+	if( skillID >= 100 )
+		delay := 0;
 	endif
 
 	SendSysMessage( who, "Select an object to identify." );

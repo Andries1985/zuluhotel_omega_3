@@ -76,6 +76,10 @@ program textcmd_fixstartgear(who)
         default: selectedclass := "The staff must have canceled the gump without doing anything";
     endcase
 
+    if(!selectedclass) // 2026-09-23: only the default branch set it, so every real choice reported a failure
+        selectedclass := GetObjProperty(targ, "RPerStartClass");
+    endif
+
     if(selectedclass)
         SendSysMessage(who, selectedclass+ " starter gear has been given.", FONT_NORMAL, 2567 );
     else

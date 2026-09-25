@@ -65,6 +65,14 @@ program cast_unlock( parms, spell_id )
 		return 0;
 	endif
 
+	// 2026-09-21: same house refusal lockpicking (picklock.src) and Magic Lock
+	// already have. Without it a container with a lock difficulty that had been
+	// moved into a house could be opened by any visiting mage.
+	if( GetObjProperty( cast_on, "houseserial" ) or cast_on.multi )
+		SendSysMessage( caster, "That cannot be unlocked with this spell!" );
+		return 0;
+	endif
+
 	if( cast_on.locked )
 		var diffi := CInt(GetObjProperty(cast_on, PROPID_CHEST_MAGICLOCK_DIFFICULTY));
 		//Print("Diffi :" + diffi);

@@ -84,7 +84,7 @@ function look_around()
 
 	foreach critter in ListMobilesInLineOfSight( me , HALT_THRESHOLD )
 		if( ( GetMana(critter) > max_mana ) and (!critter.script["humuc"]) and (!critter.script["merchant"]) )
-			max_mana := critter.mana;
+			max_mana := GetMana(critter); // 2026-09-23: was critter.mana (error), so only the first mobile was ever chosen
 			targ := critter;
 		endif
 	endforeach

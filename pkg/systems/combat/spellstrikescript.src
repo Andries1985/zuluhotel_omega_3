@@ -42,7 +42,16 @@ program spellstrikescript(attacker, defender, weapon, armor, basedamage, rawdama
 	endif
 
 	var chance := Cint(GetObjProperty(weapon, "ChanceOfEffect"));
-	if(RandomDiceStr("1d100") <= chance)
+	// 2026-09-21: area check added (spell_allowed) -- the struck spell used to
+	// be launched between players in No-PK/safe areas, where only the DAMAGE
+	// further down was blocked. One flag instead of another nesting level.
+	var spell_allowed := 0;
+	if( !IsPvPBlockedByArea( attacker, defender ) )
+		if(RandomDiceStr("1d100") <= chance)
+			spell_allowed := 1;
+		endif
+	endif
+	if(spell_allowed)
 		var spellid := GetObjProperty( weapon , "HitWithSpell" );
 		if(spellid == 666)
 			var chuns := Random(5)+1;

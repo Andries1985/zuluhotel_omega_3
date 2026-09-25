@@ -306,15 +306,30 @@ program textcmd_mobedit(who)
 			SendSysMessage(who, "Changing INT to: "+new_stats[4]);
 		endif
 		if (old_stats[5] != new_stats[5])
-			SetVital(mobile, VITALID_LIFE, Cint(new_stats[5]));
+			// 2026-09-23: was SetVital raw hundredths on the current value only (HP 500 became 5
+			// current hit points and no new maximum); NPCs get the CustomHitsLevel ceiling the
+			// vitals hook reads, players only ever had a current value to set.
+			if (is_npc)
+				SetObjProperty(mobile, "CustomHitsLevel", Cint(new_stats[5]) * 100);
+				RecalcVitals(mobile);
+			endif
+			SetHp(mobile, Cint(new_stats[5]));
 			SendSysMessage(who, "Changing HP to: "+new_stats[5]);
 		endif
 		if (old_stats[6] != new_stats[6])
-			SetVital(mobile, VITALID_STAMINA, Cint(new_stats[6]));
+			if (is_npc)
+				SetObjProperty(mobile, "CustomStaminaLevel", Cint(new_stats[6]) * 100);
+				RecalcVitals(mobile);
+			endif
+			SetStamina(mobile, Cint(new_stats[6]));
 			SendSysMessage(who, "Changing Stamina to: "+new_stats[6]);
 		endif
 		if (old_stats[7] != new_stats[7])
-			SetVital(mobile, VITALID_MANA, Cint(new_stats[7]));
+			if (is_npc)
+				SetObjProperty(mobile, "CustomManaLevel", Cint(new_stats[7]) * 100);
+				RecalcVitals(mobile);
+			endif
+			SetMana(mobile, Cint(new_stats[7]));
 			SendSysMessage(who, "Changing Mana to: "+new_stats[7]);
 		endif
 		if (old_stats[8] != new_stats[8])
@@ -333,7 +348,7 @@ program textcmd_mobedit(who)
 		if (old_stats[11] != new_stats[11])
 			mobile.ar_mod := 0;
 			SendSysMessage(who, "Adding AR_MOD of " +new_stats[11]+ " to base AR of "+mobile.ar);
-			mobile.ar_mod := (Cint(new_stats[11]) - who.ar);
+			mobile.ar_mod := (Cint(new_stats[11]) - mobile.ar); // 2026-09-23: was who.ar, the staff member's own armour
 		endif
 		if (old_stats[12] != new_stats[12])
 			EraseObjProperty(mobile, "EarthProtection");

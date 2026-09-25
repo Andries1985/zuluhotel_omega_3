@@ -53,6 +53,12 @@ program spell_resurrect( parms )
 	PlaySoundEffect(cast_on, SFX_SPELL_REVIVE);
 
 	if( GetObjProperty( cast_on , "Type" ) == "Undead" )
+		// 2026-09-22: bosses are exempt, as Animate Dead and the bard songs do.
+		if( GetObjProperty( cast_on , "Boss" ) or GetObjProperty( cast_on , "SuperBoss" ) )
+			PrintTextAbovePrivate( cast_on , "The nature of the target shields it from the spell!" , caster );
+			EraseObjProperty( caster , "#Casting" );
+			return;
+		endif
 		var circle_mult := ModifyWithMagicEfficiency( caster , 8 );
 		if( !CheckSkill( cast_on , SKILLID_MAGICRESISTANCE , ( circle * circle_mult ) , 0 ) )
 			ApplyTheDamage( cast_on , caster , Cint( GetVital( cast_on, "life" ) + 3) , DMGID_MAGIC );

@@ -30,7 +30,13 @@ program thiefpoisonhit(attacker, defender, weapon, armor, basedamage, rawdamage)
 		endif
 	endif
 
-	SetPoison( targ , poison , "You have been poisoned by " + attacker.name);
+	// 2026-09-21: area check added -- this copy of poisonhit.src had none, so
+	// the poison landed between players in No-PK/safe areas. attacker is passed
+	// too now, so a poison kill is credited to someone (DealDamage's own
+	// SkillPoisoned path already does this).
+	if( !IsPvPBlockedByArea( attacker, defender ) )
+		SetPoison( targ , poison , "You have been poisoned by " + attacker.name, attacker );
+	endif
 	rawdamage := RecalcDmg( attacker , defender , weapon , armor , basedamage );
 	DealDamage( attacker , defender , weapon , armor , basedamage , rawdamage );
 	

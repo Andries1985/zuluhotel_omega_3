@@ -75,6 +75,14 @@ program dig_treasure( character )
 		return;
 	endif
 
+	// 2026-09-21: the map has to be the digger's own. Any decoded map in view
+	// used to do -- on a house floor, in a display case, in a vendor's pack --
+	// and hitting the spot destroyed the owner's map and handed over the chest.
+	if( !IsInContainer( character.backpack, map ) )
+		SendSysmessage( character , "The map must be in your backpack." );
+		return;
+	endif
+
 	var chestx := GetObjProperty( map , "chestx" );
 	var chesty := GetObjProperty( map , "chesty" );
 	var chestz := GetObjProperty( map , "chestz" );
@@ -328,6 +336,10 @@ function CreateGuardian( template, x , y , z, r )
 		CreateGuardian( template, x, y, z, r );
 	else
 		guardians.append( nasty );
+		// 2026-09-21: guardians only exist for this dig (this script waits for them
+		// to die, then spawns the chest). Keep them out of the save so a restart
+		// mid-fight does not leave them standing at the spot for good.
+		nasty.saveonexit := 0;
 		SetObjProperty( nasty, "untamable", 1 );
 		SetObjProperty( nasty, "guardkill", 1 );
 		SetObjProperty( nasty, "noloot", 1 );

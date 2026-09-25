@@ -24,6 +24,17 @@ program SignListener(sign)
 	if(!house)
 		return;
 	endif
+
+	// 2026-09-22: re-register this house against its owner's account cap. The
+	// registry (#housing_of_<acct>, :house:multihouse_settings) is a "#" global
+	// the engine never saves, so it is empty after every restart; the static
+	// and custom sign control scripts already re-register at start, this one
+	// did not, so an account's classic houses counted as zero after a reboot.
+	var owning_acct := GetObjProperty(sign, "owneracct");
+	if(owning_acct)
+		RegisterAccountHouseSign(sign, owning_acct);
+	endif
+
 	var decaytime;
 	while(sign)
 		wait_for_event(120);
@@ -40,7 +51,13 @@ program SignListener(sign)
 				SetObjProperty(sign, "signname", newname);
 			endif
 			if (ReadGameClock() > decaytime)
-				demolish(house);
+				// 2026-09-22: was demolish(house) -- the function expects the SIGN
+				// (it reads "houseserial" off it), so with the multi passed in its
+				// own house lookup failed: the footprint sweep did nothing,
+				// DestroyMulti got nothing, and only the owner's built deed was
+				// destroyed. The house stood "in danger of collapsing" forever.
+				demolish(sign);
+				return;
 			elseif((decaytime - ReadGameClock() ) > 861000 )
 				tname := newname + ", [this house is like new]";
 				SetName(sign, tname);
@@ -471,6 +488,12 @@ function demolish(sign)
 	// silently lose them on top of already losing the house.
 	if(IsOmegaCacheEmpty(house.serial))
 		DeleteOmegaCacheStore(house.serial);
+	endif
+
+	// 2026-09-22: account cap bookkeeping, same as the manual demolish.
+	var abandoned_acct := GetObjProperty(sign, "owneracct");
+	if(abandoned_acct)
+		UnregisterAccountHouseSign(sign, abandoned_acct);
 	endif
 
 	DestroyMulti(house );

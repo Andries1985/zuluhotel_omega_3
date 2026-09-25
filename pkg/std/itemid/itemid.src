@@ -7,12 +7,21 @@ include "include/skillpoints";
 include "include/namingbyenchant";
 include "itemid";
 
-var BASE_DELAY := 0;
+// 2026-09-21: back to 10 seconds between identifications (it went 10 -> 0 on
+// 2025-12-23 and POL2.5 still has 10). The wait is skipped at 100+ in the
+// class's ID skill (ItemIDClassSkill in itemid.inc) -- the same tier
+// SelectItemToID already treats as "no delay"; the old 65-100 ramp had been
+// removed before December and is not brought back.
+var BASE_DELAY := 10;
 
 program do_itemid( who )
 
 	var lastid := CInt(GetObjProperty(who, "#LastID"));
 	var delay := BASE_DELAY;
+
+	if( ItemIDClassSkill( who ) >= 100 )
+		delay := 0;
+	endif
 
 	if ( ( lastid + delay ) > ReadGameClock() )
 		SendSysMessage(who, "You must wait to perform another action.");

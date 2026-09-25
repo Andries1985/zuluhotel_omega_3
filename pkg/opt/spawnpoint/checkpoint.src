@@ -49,9 +49,16 @@ program CheckPoint( point )
 
 	// Check for expiry based on time.
 	if( pt_data[10] )
-		// Calculate how much time left.
-		if( Cint(GetObjProperty(point, PROPID_SPAWNPOINT_CREATION_TIME)) + Cint(pt_data[10]) * 60 >= ReadGameClock() )
-			DestroyItem(point);
+		// 2026-09-23: the compare was ">=" (destroy while still inside the lifetime) and
+		// CreateTime was never stamped anywhere, so Time Expire never fired. New points are
+		// stamped by the manager; an older point gets its stamp on its first check.
+		var created := Cint(GetObjProperty(point, PROPID_SPAWNPOINT_CREATION_TIME));
+		if( !created )
+			created := ReadGameClock();
+			SetObjProperty( point, PROPID_SPAWNPOINT_CREATION_TIME, created );
+		endif
+		if( created + Cint(pt_data[10]) * 60 <= ReadGameClock() )
+			SendSpawnPointEvent( EVID_SPAWNPOINT_DESTROYED, point ); // honours "despawn on destroy" like a manual delete
 			return 0;
 		endif
 	endif
@@ -543,9 +550,16 @@ function CreateSpawnPointNpc( byref point, byref template, byref pt_data )
 			x := point.x + RandomInt((appear*2)+1) - appear;
 			y := point.y + RandomInt((appear*2)+1) - appear;
 			standing := GetStandingHeight( x, y, z, realm);
-			count := maxcount;
-			vits := GetObjProperty(point, "NPCVits");
-			SetHP(critter, vits.hits);
+			// 2026-09-23: was a single retry, and the vitals restore below ran for every
+			// point; a normal point has no NPCVits, so SetHP got an error and the creature
+			// was placed with 1 hit point. Up to ten tries now, vitals for custom points only.
+			if( count >= 10 )
+				count := maxcount;
+			endif
+			if( GetObjProperty(point, "CustomPoint") )
+				vits := GetObjProperty(point, "NPCVits");
+				SetHP(critter, vits.hits);
+			endif
 		else
 			var ret := error;
 			ret.errortext := "Invalid spawning location.";
@@ -668,16 +682,13 @@ function CreateSpawnPointNpcFromGroup( byref point, byref pt_data )
 			standing := GetStandingHeight( x, y, z, realm);
 			count := maxcount;
 		else
-			sleep(5);
-			Print("SPAWNER CANT FIND SPAWN LOCATION, CHANGE APPEAR RANGE?");
-			Print("Spawner xyz = "+point.x+" "+point.y+" "+point.z+" "+point.realm);
-			count := 0;
-			/*
+			// 2026-09-23: was sleep(5), two console lines and count := 0, retrying the same
+			// spot forever with a hidden creature parked at the staging spot; now the same
+			// "Invalid spawning location" error as the NPC branch, which disables the point.
 			var ret := error;
 			ret.errortext := "Invalid spawning location.";
 			KillMobile(critter,1);
 			return ret;
-			*/
 		endif
 		
 	endwhile

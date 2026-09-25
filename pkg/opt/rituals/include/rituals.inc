@@ -18,6 +18,11 @@ include "include/spelldata";
 include "include/classes";
 include "include/string";
 
+// 2026-09-22: how long one drawing step keeps the screen darkened for the
+// people within ten tiles; the next step refreshes it, a bystander who
+// walks off sees it expire (it used to be an override until logoff).
+const RITUAL_LIGHT_STEP_SECONDS := 120;
+
 var magic_circle := array{},
     captor;
 
@@ -71,10 +76,12 @@ function PerformRitual( mobile, spell_id )
         SetObjProperty( mobile, "#Casting", GetPid() );
 
 	if( !CheckRitualEquip( mobile, spell_id ))
+		RITUAL_ClearCasting( mobile );
 		return 0;
         endif
 
         if( !CheckRitualCircle( mobile ))
+		RITUAL_ClearCasting( mobile );
 		return 0;
 	endif
 
@@ -84,16 +91,19 @@ function PerformRitual( mobile, spell_id )
         // current tier for the 8 reinforcement-style rituals.
         var item := GetRitualItem( mobile, spell_id );
         if( !item )
+                RITUAL_ClearCasting( mobile );
                 return 0;
         endif
 
         if( RitualIsAlreadyMaxed( mobile, spell_id, item ))
+                RITUAL_ClearCasting( mobile );
                 return 0;
         endif
 
         var gate_info := GetRitualGateInfo( spell_id, item );
         if( mobile.cmdlevel < 4 && GetEffectiveSkill( mobile, SKILLID_MAGERY ) < gate_info[1] )
                 SendSysMessage( mobile, "Your skill with Magery isn't strong enough to attempt this ritual." );
+                RITUAL_ClearCasting( mobile );
                 return 0;
         endif
 
@@ -190,6 +200,15 @@ endfunction
 function RITUAL_FailFeedback( mobile, message )
 
         PrintTextAbove( mobile, message, FONT_NORMAL, FONTCOLOR_RED );
+
+endfunction
+
+// 2026-09-22: PerformRitual writes its process id into #Casting and nothing
+// erased it; the earth, holy, necro and song books and .cast only test that
+// the flag is set, so every ritual left them refusing until relog.
+function RITUAL_ClearCasting( mobile )
+
+        EraseObjProperty( mobile, "#Casting" );
 
 endfunction
 
@@ -316,6 +335,7 @@ function UndoRitualCircle( mobile, item:=0, practice:=0 )
                 	break;
                 elseif( !captor )
                 	RITUAL_FailFeedback( mobile, "*The ritual circle collapses - something disrupted it!*" );
+                	DestroyDone( mobile, !practice, item ); // 2026-09-22: the circle and the item were left on the ground here
                 	return 0;
                 endif
 
@@ -331,6 +351,7 @@ function UndoRitualCircle( mobile, item:=0, practice:=0 )
 
                 	if( !captor )
                 		RITUAL_FailFeedback( mobile, "*The ritual circle collapses - something disrupted it!*" );
+                		DestroyDone( mobile, !practice, item ); // 2026-09-22: the circle and the item were left on the ground here
                 		return 0;
                 	elseif( ReadGameClock() - starting_delay > speech_delay )
                                 RITUAL_FailFeedback( mobile, "*You took too long to speak the words!*" );
@@ -518,6 +539,11 @@ function DestroyDone( mobile, forced:=0, item:=0 )
                 DestroyItem( item );
         endif
         
+        // 2026-09-22: every teardown clears the bystanders' light and the caster's
+        // casting flag; both used to survive a failed ritual.
+        ChangeLightLevel( mobile, 0 );
+        RITUAL_ClearCasting( mobile );
+
         if( forced )
 		PrintTextAbove( mobile, "*The mystic energy go out of control and unleash itself upon "+mobile.name+"!*" );
                 if( mobile.cmdlevel < 4 )
@@ -536,7 +562,14 @@ function ChangeLightLevel( mobile, level )
                         continue;
                 endif
 
-                player.SetLightLevel( level, -1 );
+                // 2026-09-22: was SetLightLevel( level, -1 ), an override that lasts until
+                // logoff; a bystander who walked off kept the darkness. Each step now
+                // expires on its own and level 0 clears the override (duration 0).
+                if( level > 0 )
+                        player.SetLightLevel( level, RITUAL_LIGHT_STEP_SECONDS );
+                else
+                        player.SetLightLevel( 0, 0 );
+                endif
         endforeach
         
         return 1;
@@ -970,6 +1003,9 @@ function RITUAL_EndCircleSurvivingItem( mobile, item, kill_pct )
                 item.SaveOnExit := 1;
                 MoveItemToContainer( item, mobile.backpack );
         endif
+
+        ChangeLightLevel( mobile, 0 ); // 2026-09-22: see DestroyDone
+        RITUAL_ClearCasting( mobile );
 
         if( kill_pct && Random( 100 ) + 1 <= kill_pct )
                 PrintTextAbove( mobile, "*The backlash proves too much for "+mobile.name+" to bear!*" );

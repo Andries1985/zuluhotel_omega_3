@@ -91,7 +91,14 @@ program dispel ( parms, spell_id )
 		if( !CheckSkill( cast_on, SKILLID_MAGICRESISTANCE, magery, 50 ))
 			PlaySoundEffect( cast_on, SFX_SPELL_DISPEL );
 			MoveObjectToLocation(cast_on, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
-			ApplyTheDamage( cast_on, caster, GetMaxHp(caster) + 3, DMGID_MAGIC );
+			// 2026-09-21: was ApplyTheDamage( cast_on, caster, GetMaxHp(caster) + 3 )
+			// -- the CASTER's max HP, so any summon with more health than the
+			// mage survived the dispel, already parked at the holding location.
+			// Same pattern as the animated branch below and massdispel.src:
+			// record the killer, then kill (also immune to the 65535 HP cap).
+			SetObjProperty( cast_on, "KilledBy", caster.name );
+			SetObjProperty( cast_on, "KilledBySerial", caster.serial );
+			cast_on.kill();
 		else
 			SendSysmessage( caster , "You could not dispel the creature." );
 		endif

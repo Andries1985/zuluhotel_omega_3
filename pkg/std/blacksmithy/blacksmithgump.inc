@@ -135,10 +135,12 @@ function MakeBlacksmithItems( character, ingotRequest, boneRequest, product_type
 	var boneMaterial := element.Material2;
 
 	//Require half resources during Crafting PH
+	// 2026-09-21: /2.0, not /2 -- int/int is whole-number division in the engine,
+	// so Ceil had nothing left to round: 1 became 0 (a free craft) and 25 became 12.
 	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
-		material := Cint(Ceil(material/2));
+		material := Cint(Ceil(material/2.0));
 		if( boneRequest )
-			boneMaterial := Cint(Ceil(boneMaterial/2));
+			boneMaterial := Cint(Ceil(boneMaterial/2.0));
 		endif
 	endif
 
@@ -196,10 +198,39 @@ function MakeBlacksmithItems( character, ingotRequest, boneRequest, product_type
 				product_desc.CProps.insert("OnHitscriptNumber",32);
 			endif
 
+			// 2026-09-21: consume first and honour the result (see
+			// HasCraftingResources in resourcemanager.inc). ConsumeResource's
+			// result used to be ignored, so ingots lifted out of the pack during
+			// the anvil delay above still produced the item.
+			if( !HasCraftingResources( character, ingotRequest, material, boneRequest, boneMaterial ) )
+				SendSysMessage( character, "You no longer have the materials for that." );
+				break;
+			endif
+			if( !ConsumeResource( character , ingotRequest , material ) )
+				break;
+			endif
+			if( boneRequest )
+				if( !ConsumeResource( character , boneRequest , boneMaterial ) )
+					break;
+				endif
+			endif
+
+			var is_excep := 0;
 			if ( GetObjProperty(character, "ForceExceptional") or ((Random(100) < excep_ch) && CheckSkill( character, SKILLID_BLACKSMITHY, excep_diff, 0)) )
+				is_excep := 1;
+			endif
+			ApplyMaterialProperties(product_desc, ingotRequest, is_excep, character, SKILLID_BLACKSMITHY);
 
-				ApplyMaterialProperties(product_desc, ingotRequest, 1, character, SKILLID_BLACKSMITHY);
+			// 2026-09-21: the create was never checked -- on a full backpack a Make
+			// Max run kept charging ingots every pass while announcing success.
+			// Charged once (CheckSkill already paid the gain), then stop.
+			var product := CreateItemInBackpack( character , product_desc );
+			if( !product )
+				SendSysmessage( character , "Your backpack is full." );
+				break;
+			endif
 
+			if( is_excep )
 				SendSysmessage( character , "You make an exceptional item and put it in your pack." );
 				if( excep_diff >= 130 )
 					SendSysmessage( character , "This masterpiece will make you famous around the world." );
@@ -209,16 +240,9 @@ function MakeBlacksmithItems( character, ingotRequest, boneRequest, product_type
 					AwardFame( character , FAME_BONUS );
 				endif
 			else
-				//Made a normal item
-				ApplyMaterialProperties(product_desc, ingotRequest, 0, character, SKILLID_BLACKSMITHY);
 				SendSysmessage( character , "You create the item and place it in your pack." );
 			endif
 
-			ConsumeResource( character , ingotRequest , material );
-			if( boneRequest )
-				ConsumeResource( character , boneRequest , boneMaterial );
-			endif
-			var product := CreateItemInBackpack( character , product_desc );
 			product.hp := product.maxhp;
 			IncRevision( product );
 			if(GetObjProperty(product, "IsExceptional"))
@@ -311,6 +335,11 @@ function MakeSmeltedIngots( character, oreRequest, choice, qty )
 	if( qty > available )
 		qty := available;
 	endif
+	// 2026-09-21: the engine refuses to create more than 60000 of anything in
+	// one call -- a bigger batch used to be charged in full and make nothing.
+	if( qty > 60000 )
+		qty := 60000;
+	endif
 	if( qty < 1 )
 		SendSysMessage( character, "You don't have enough " + orename + "." );
 		return 0;
@@ -323,15 +352,20 @@ function MakeSmeltedIngots( character, oreRequest, choice, qty )
 	Sleep(2);
 
 	if( CheckSkill( character, SKILLID_MINING, difficulty, 0 ) )
-		ConsumeResource( character, oreRequest, qty );
-		var ingots := CreateItemInBackpack( character, resultObjtype, qty );
-		if( !ingots )
-			ingots := CreateItemAtLocation( character.x, character.y, character.z, resultObjtype, qty, character.realm );
-			if( ingots )
-				SendSysmessage( character, "You create " + qty + " ingots, but as your backpack is full, you place them by your feet." );
+		// 2026-09-21: only create if the ore was really charged -- the result
+		// used to be ignored, so ore lifted out of the pack during the Sleep(2)
+		// above still produced the whole ingot batch. ConsumeResource tells the
+		// player itself when it comes up short.
+		if( ConsumeResource( character, oreRequest, qty ) )
+			var ingots := CreateItemInBackpack( character, resultObjtype, qty );
+			if( !ingots )
+				ingots := CreateItemAtLocation( character.x, character.y, character.z, resultObjtype, qty, character.realm );
+				if( ingots )
+					SendSysmessage( character, "You create " + qty + " ingots, but as your backpack is full, you place them by your feet." );
+				endif
+			else
+				SendSysmessage( character, "You create " + qty + " ingots and place them in your pack." );
 			endif
-		else
-			SendSysmessage( character, "You create " + qty + " ingots and place them in your pack." );
 		endif
 	else
 		ConsumeResource( character, oreRequest, 1 );

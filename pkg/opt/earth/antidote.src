@@ -6,6 +6,7 @@ include "include/spelldata";
 include "include/dotempmods";
 include "include/client";
 include "include/attributes";
+include "include/spellgrants";
 
 const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_ANTIDOTE;
 const SPELL_EFFECT_ID		:= FX_SPELL_ANTIDOTE;
@@ -82,8 +83,9 @@ program cast_antidote( parms )
 		var power := ModifyWithMagicEfficiency( caster , magery / 25 );
 		if( duration and power )
 			SetObjProperty( caster, "PermPoisonImmunity" , power );
+			SetObjProperty( caster, "SpellPoisonImmunity" , 1 ); // 2026-09-22: marks the grant so login can take it back after a restart
 			Sleep( duration );
-			EraseObjProperty( caster, "PermPoisonImmunity" );
+			ReclaimSpellPoisonImmunity( caster ); // 2026-09-22: back to what worn items give (spellgrants.inc)
 		endif
 	endif
 		

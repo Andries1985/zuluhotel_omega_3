@@ -102,6 +102,59 @@ const ERROR_MSG_WRONG_EQUIPMENT		:= "Your hands must be free to cast spells.";
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+// 2026-09-21: the player-vs-player area rule that ApplyElementalDamage and
+// ApplyPlanarDamage below apply inline, as one call, for spells that deal
+// damage WITHOUT going through them. Heal, Greater Heal and Resurrection damage
+// a target whose Type is "Undead" through ApplyTheDamage, which has no area
+// check -- and pkg/opt/necro/liche.src puts that Type on a PLAYER in Liche
+// form. Those spells use a neutral target cursor, so the harmful-target hook
+// never saw them either: a liche could be damaged in town, unflagged.
+// Reads the same NOPKAREA / InSafeArea CProps the combat code does, so it
+// needs no extra include. Returns 1 when the damage must NOT be applied.
+function IsSpellPvPBlockedByArea( caster, cast_on )
+
+	if( caster.cmdlevel )
+		return 0;
+	endif
+	if( !cast_on.isa(POLCLASS_MOBILE) )
+		return 0;
+	endif
+	if( cast_on.isa(POLCLASS_NPC) )
+		return 0;
+	endif
+	if( cast_on == caster )
+		return 0;
+	endif
+
+	// An NPC caster only counts as player-caused when a player owns it.
+	if( caster.isa(POLCLASS_NPC) )
+		var pet_owner := caster.master;
+		if( !pet_owner )
+			return 0;
+		endif
+		if( pet_owner.isa(POLCLASS_NPC) )
+			return 0;
+		endif
+	endif
+
+	if( GetObjProperty(caster, "NOPKAREA") )
+		return 1;
+	endif
+	if( GetObjProperty(cast_on, "NOPKAREA") )
+		return 1;
+	endif
+	if( GetObjProperty(caster, "InSafeArea") )
+		return 1;
+	endif
+	if( GetObjProperty(cast_on, "InSafeArea") )
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+
 function ApplyElementalDamage( caster, cast_on, circle, dmg, element )
 
 	if(caster.dead) return; endif
@@ -204,7 +257,8 @@ function BurnSelf ( caster , circle )
         	dmg := Cint( dmg * ClasseBonus( caster , CLASSEID_WARRIOR ) );
         endif
 
-	ApplyRawDamage( caster , Resisted( caster , circle , cast_on , Cint(dmg / 2) ) );
+	// 2026-09-23: circle and cast_on were swapped, so the resist maths ran on a number and the burn was always 0.
+	ApplyRawDamage( caster , Resisted( caster , cast_on , circle , Cint(dmg / 2) ) );
 
 endfunction
 
@@ -271,6 +325,12 @@ endfunction
 function can_cast( me, circle )
 
 	if(me.dead) return 0; endif
+
+	// 2026-09-22: a wand cast (magicwands.src sets #WandCast for 30 s) skips the
+	// circle limit: classic wands, any character, the charge is the cost.
+	if( CInt( GetObjProperty( me, "#WandCast" ) ) >= ReadGameClock() )
+		return 1;
+	endif
 
 	var max_circle := GetMaxCircle( me );
 	if( max_circle )
@@ -1420,7 +1480,11 @@ function SmartAoE( caster, victims)
 			SendSysMessage( caster, "same_faction "+same_faction, color :=53);
 			SendSysMessage( caster, "same_CWcolor "+same_CWcolor, color :=53);
 		endif
-		if ((victims[i].isa(POLCLASS_NPC)) && (victims[i].master == caster))
+		// 2026-09-22: the caster was only ever skipped through the party rule, so a
+		// solo caster inside their own area of effect was hit (or frozen) as well.
+		if (victims[i].serial == caster.serial)
+			to_remove.append(i);
+		elseif ((victims[i].isa(POLCLASS_NPC)) && (victims[i].master == caster))
 			to_remove.append(i);
 		elseif ((victims[i].isa(POLCLASS_NPC)) && victims[i].master && caster.party && (victims[i].master.party == caster.party))
 			to_remove.append(i);

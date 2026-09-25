@@ -23,10 +23,12 @@ const btn_okay := 2;
 program textcmd_setPH(who)
 
 	var time_now := POLCore().systime;
-	var use_time := GetObjProperty(who, "pph_use_time");
+	// CInt: both props are unset (error) on a character that never used a PH
+	// (or after .resetph) -- "error + week" threw a runtime error. 0 = eligible.
+	var use_time := CInt(GetObjProperty(who, "pph_use_time"));
 	var use_time_nextweek := use_time + week;
 	var weekday_now := cint(Floor(time_now/86400)+4) % 7;
-	var use_weekday := GetObjProperty(who, "pph_use_weekday");
+	var use_weekday := CInt(GetObjProperty(who, "pph_use_weekday"));
 
 	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
 		var remaining := (use_time + hour - time_now)/60;

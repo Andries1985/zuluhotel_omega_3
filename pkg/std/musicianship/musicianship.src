@@ -35,9 +35,10 @@ program music(character, instrument, skill)
    var ret := 0;
    harp := inst_id;
 
-	if( instrument.movable == 0 )
-		instrument.movable := 1;
-	endif
+	// 2026-09-21: the "movable == 0 -> movable := 1" lines that were here are gone.
+	// A house lockdown IS movable := 0, so playing a locked-down instrument
+	// unlocked it and anyone inside the house could carry it off. An immovable
+	// instrument still plays where it stands.
 	if( instrument.newbie == 1 )
 		instrument.newbie := 0;
 	endif

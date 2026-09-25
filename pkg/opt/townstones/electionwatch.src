@@ -8,7 +8,9 @@ include "tstone";
 
 const TOWNSTONE_DATAFILE := ":townstone:townstone_data";
 const WATCHER_PROP := "#TownstoneElectionWatcherRunning";
-const WATCHER_INTERVAL_SECONDS := 5;
+// 2026-09-22: 5 -> 60; elections end on the next vote or tick anyway, and
+// the stone lookup below no longer scans the world.
+const WATCHER_INTERVAL_SECONDS := 60;
 const TOWNSTONE_OBJTYPE := 0x35006;
 const TOWNSTONE_SEARCH_RANGE := 10000;
 // Player towns aren't confined to Britannia (playertowns.cfg configures
@@ -57,15 +59,14 @@ endprogram
 
 
 function ProcessActiveTownstones()
-	var townstones := {};
-	foreach realm_name in TOWNSTONE_REALMS
-		var found := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, realm_name);
-		if(found and found.size())
-			foreach item in found
-				townstones.append(item);
-			endforeach
-		endif
-	endforeach
+	// 2026-09-22: was a 10,000-tile ListItemsNearLocationOfType in all six
+	// realms every 5 seconds for the whole election week. The datafile holds
+	// each region's stone_serial; resolve those and only fall back to the world
+	// scan when none of them resolve.
+	var townstones := FindTownstonesFromDatafile();
+	if(!townstones.size())
+		townstones := FindTownstonesByWorldScan();
+	endif
 	if(!townstones.size())
 		return 0;
 	endif
@@ -156,3 +157,43 @@ function LoadTownstoneState(item)
 endfunction
 
 // OpenTownstoneDataFile / TouchTownstoneRegionEntry moved to tstone.inc (2026-09-01)
+
+// 2026-09-22: the stones the datafile knows about (stone_serial per region).
+function FindTownstonesFromDatafile()
+	var stones := {};
+	var df := OpenTownstoneDataFile();
+	if(!df)
+		return stones;
+	endif
+	var keys := df.Keys();
+	foreach region_name in keys
+		var elem := df.FindElement(region_name);
+		if(!elem)
+			continue;
+		endif
+		var serial := CInt(elem.GetProp("stone_serial"));
+		if(!serial)
+			continue;
+		endif
+		var stone := SystemFindObjectBySerial(serial);
+		if(stone and stone.objtype == TOWNSTONE_OBJTYPE)
+			stones.append(stone);
+		endif
+	endforeach
+	UnloadDataFile(TOWNSTONE_DATAFILE);
+	return stones;
+endfunction
+
+// The old whole-world scan, kept as the fallback.
+function FindTownstonesByWorldScan()
+	var stones := {};
+	foreach realm_name in TOWNSTONE_REALMS
+		var found := ListItemsNearLocationOfType(0, 0, LIST_IGNORE_Z, TOWNSTONE_SEARCH_RANGE, TOWNSTONE_OBJTYPE, realm_name);
+		if(found and found.size())
+			foreach item in found
+				stones.append(item);
+			endforeach
+		endif
+	endforeach
+	return stones;
+endfunction

@@ -189,8 +189,15 @@ program VerseBook(who, book)
 	var data := GFSendGump(who, gump);
 
 	// 20 spells, cast, nay SING, a song :P
-	if (data[0] > 0 && data[0] < 21)
-		return PerformSong(who, data[0]);
+	// 2026-09-22: the gump only DRAWS a button for a verse marked learned in this
+	// book; the reply can name any id 1-20. Staff keep their testing bypass.
+	var verse_pick := CInt(data[0]);
+	if (verse_pick > 0 && verse_pick < 21)
+		if (!verses[verse_pick] && !who.cmdlevel)
+			SendSysMessage(who, "That verse is not in this book.");
+			return 0;
+		endif
+		return PerformSong(who, verse_pick);
 	endif
 
 endprogram

@@ -58,6 +58,7 @@ program shootcannon(who, item)
 			return 0;
 		elseif( Distance( who, cannonball ) > 2 )
 			SendSysMessage( who, "This is too far." );
+			EraseObjProperty(item, "#inuse"); // 2026-09-22: was missing here; the cannon stayed "already being used" until restart
 			return 0;
 		endif
 		SubtractAmount(cannonball,1);
@@ -74,6 +75,19 @@ program shootcannon(who, item)
 		  return 0;
 	 endif
 
+	// 2026-09-22: the clamp only held to the east and south; a target far west
+	// or north was used as sent. Now +-10 in every direction, and the shooter
+	// must see the impact point.
+	if( location.x > item.x + 10 ) location.x := item.x + 10; endif
+	if( location.x < item.x - 10 ) location.x := item.x - 10; endif
+	if( location.y > item.y + 10 ) location.y := item.y + 10; endif
+	if( location.y < item.y - 10 ) location.y := item.y - 10; endif
+	if( !CheckLosAt( who, location.x, location.y, location.z ) )
+		SendSysMessage( who, "You cannot see where that would land." );
+		EraseObjProperty(item, "#inuse");
+		return 0;
+	endif
+
 	fireworks(who, item, location);
 
 	EraseObjProperty(item, "#powder");
@@ -84,8 +98,8 @@ endprogram
 
 function fireworks(who, cannon, location)
 
-	var locationx := Min(location.x, (cannon.x+10));
-    var locationy := Min(location.y, (cannon.y+10));
+	var locationx := location.x; // 2026-09-22: clamped and sight-checked by the caller
+    var locationy := location.y;
 
 	var dmg := RandomDiceRoll("10d10+40"),
 	range := 1,

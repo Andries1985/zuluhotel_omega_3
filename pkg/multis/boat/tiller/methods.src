@@ -93,7 +93,9 @@ exported function IsCrewMate( tiller, mobile )
 	var crew_mates := GetCrewMates( tiller );
 	var i;
 	for( i:=1; i<=crew_mates.Size(); i:=i+1 )
-		if( crew_mates[i].name == mobile.name )
+		// 2026-09-22: matched by serial -- by name, any character with the same
+		// name as a crew mate counted as crew (AddCrewMate stores the serial).
+		if( CInt( crew_mates[i].serial ) == mobile.serial )
 			return i;
 		endif
 		SleepMS(5);

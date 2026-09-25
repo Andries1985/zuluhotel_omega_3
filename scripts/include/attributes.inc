@@ -37,6 +37,7 @@ use util;
 use cfgfile;
 use attributes;
 use vitals;
+use basicio;	// 2026-09-25: Print() is called in this file; was compiling only because an including script brought basicio
 
 // Include client.inc to get the SKILLID_* constants
 include "include/client";
@@ -444,13 +445,13 @@ function AwardRawAttributePoints( who, attributeid, rawpoints )
 		
 		if(attributeid != ATTRIBUTEID_STRENGTH && attributeid != ATTRIBUTEID_DEXTERITY && attributeid != ATTRIBUTEID_INTELLIGENCE)
 		var matrix := GetObjProperty(who, "pScrollMatrix");
-		var iSkill := GetSkillIdByAttributeId(attributeid);
+		// 2026-09-23: the matrix has 50 slots (Alchemy in 49, Throwing in 50) and was read by
+		// raw skill id, so Throwing (57) read past the end and got no cap at all. Same slot
+		// helper the scroll scripts use.
+		var iSlot := NormalizeSkillAndSlot( GetSkillIdByAttributeId(attributeid) ).slot;
 			if(!who.cmdlevel && matrix)
-				var pscrollSkillCap := BASE_CAP+(matrix[iSkill]*10);
-				if(iSkill == 0)
-					pscrollSkillCap := BASE_CAP+(matrix[49]*10);
-				endif
-				if(pscrollSkillCap > 1500);
+				var pscrollSkillCap := BASE_CAP+(CInt(matrix[iSlot])*10);
+				if(pscrollSkillCap > 1500)
 					pscrollSkillCap := 1500;
 				endif
 				if(current > pscrollSkillCap)
@@ -2271,7 +2272,7 @@ endfunction
 
 function GetSpeed(me := 0, MoveSpeed)
 	MoveSpeed := lower(MoveSpeed);
-	var i := 0, valid := 1;
+	var i := 1, valid := 1; // 2026-09-23: was 0; strings start at 1, so every numeric MoveSpeed was rejected
 	if(MoveSpeed == "fastest")
 		return 0;
 	elseif(MoveSpeed == "fast")

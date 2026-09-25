@@ -64,7 +64,9 @@ program textcmd_cast( who, spellinput )
 			return;
 		else
 		
-			SetObjProperty( who , "#Casting" , 1 );
+			// 2026-09-23: the casting flag used to be set here too, and the function's early
+			// exits (no book, spell not in the book) never cleared it; every branch sets it
+			// right before it starts the spell, so this copy only ever stuck.
 			CastSpellFunction( who, CastSpell );
 			return;
 			

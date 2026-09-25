@@ -7,6 +7,7 @@ use attributes;
 
 include "include/attributes";
 include "include/classes";
+include "include/jailcheck";
 
 function get_default_points(skillid)
         var cfg := readconfigfile(":attributes:attributes");
@@ -264,14 +265,10 @@ var skill := GetAttributeIdBySkillId(skillid);
 		endif
 	endif
 
-	if( who.x >= 5272 )
-		if( who.x <= 5310 )
-			if( who.y >= 1160 )
-				if( who.y <= 1190 )
-					rawpoints := 0;
-				endif
-			endif
-		endif
+	// 2026-09-23: was the old-map jail box (britannia 5272-5310/1160-1190); Jailcheck
+	// (include/jailcheck) knows where the jail is now, so gains stop there again.
+	if( Jailcheck(who) )
+		rawpoints := 0;
 	endif
 
 	//Powerhour

@@ -29,6 +29,9 @@ exported function hookVersion( who, byref pkt )
 	var converted := CAscZ( versionstring );
         var newstring := array{};
 
+	// 2026-09-22: the SleepMS(5) calls in the two loops below are gone -- a
+	// packet hook runs to completion and the engine ignores a Sleep in it,
+	// so they never delayed anything.
 	//remove nullterminator or any other funk
 	foreach thing in converted
 		if( CInt( thing ) == 0 )
@@ -36,7 +39,6 @@ exported function hookVersion( who, byref pkt )
 		else
 			newstring.Append( thing );
 		endif
-                SleepMS(5);
 	endforeach
 		
 	var realstring := CChrZ( newstring );
@@ -50,7 +52,6 @@ exported function hookVersion( who, byref pkt )
             		pass := 1;
             		break;
         	endif
-                SleepMS(5);
 	endforeach
 
 	if( !pass )

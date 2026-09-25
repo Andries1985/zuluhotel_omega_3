@@ -14,7 +14,11 @@ function OmegaAttack(attacker, defender)
 
 	//var attackerweaponType := cfg[attacker.weapon.objtype];
 
-	var weapfile := ReadConfigFile( ":combat:itemdesc" );
+	// 2026-09-21: was ":combat:itemdesc" -- the 14 weapons defined in other
+	// packages (the astral weapons, shepherd's crook, young oak staff, ...)
+	// resolved to nothing here: no swing animation, never a miss, and base
+	// damage forced to "1d1". GetShieldAbsorption already reads ":*:itemdesc".
+	var weapfile := ReadConfigFile( ":*:itemdesc" );
 	var attackerweaponType := weapfile[attacker.weapon.objtype];
 
 //	var listofanim	:=	GetConfigIntArray( attackerweaponType, "Anim" );
@@ -66,14 +70,31 @@ function OmegaAttack(attacker, defender)
 			if(attackerweaponType.MissSound)
 				PlaySoundEffect( attacker, attackerweaponType.MissSound );
 				PlaySoundEffect( defender, attackerweaponType.MissSound );
-				return;
 			endif
+			// 2026-09-21: this return sat INSIDE the MissSound check, so a melee
+			// weapon with no miss sound (Pickaxe, GhostWeapon, BatWeapon) fell
+			// through on a miss and landed the hit anyway. Matches the ranged
+			// branch above now.
+			return;
 		endif
 	endif
 
 	var hitscript := attacker.weapon.hitscript;
 
-	// This is currently spamming the staff. Not sure how it's triggered though.
+	// 2026-09-21: an NPC template with AttackSpeed/AttackDamage but no
+	// AttackHitScript (the 64 town merchants/bankers/shrines) gets a built-in
+	// weapon with an EMPTY hit script -- that was the source of the staff spam
+	// below, and meant those NPCs could never deal damage. Nested ifs on
+	// purpose: this repo compiles with ShortCircuitEvaluation=0.
+	if(!hitscript)
+		if(attacker.weapon.intrinsic)
+			hitscript := ":combat:mainhit";
+		endif
+	endif
+
+	// Used to spam the staff for every swing of a built-in NPC weapon (handled
+	// just above now). What still reaches this is a REAL weapon item with no
+	// Hitscript in its itemdesc -- a config error worth hearing about.
  	if(!hitscript)
 		// Broadcast to staff
 		var msg := "Can't find a weapon hitscript: " + hitscript +"From attacker: "+ attacker.name + " using item: "+attackerweaponType;
@@ -88,6 +109,21 @@ function OmegaAttack(attacker, defender)
 	CheckEquipmentDamage(attacker, attacker.weapon);
 
 	var weapDMG := attackerweaponType.damage;
+
+	// 2026-09-21: every built-in NPC weapon shares objtype 0x1F020, so the
+	// lookup above always found the PLAYER Wrestling entry (1d5) for it. Take
+	// the dice from the NPC's own template instead. NPCs with no AttackDamage
+	// really do fight with the wrestling weapon and keep its 1d5.
+	if(attacker.isa(POLCLASS_NPC))
+		if(attacker.weapon.intrinsic)
+			var npc_templates := ReadConfigFile( "::npcdesc" );
+			var npc_attack_dice := npc_templates[attacker.npctemplate].AttackDamage;
+			if(npc_attack_dice)
+				weapDMG := npc_attack_dice;
+			endif
+		endif
+	endif
+
 	if(!weapDMG)
 		weapDMG := "1d1";
 	endif

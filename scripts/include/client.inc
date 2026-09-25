@@ -17,11 +17,14 @@
 
 
 // DEBUG MODE
-// Temporarily flipped 2026-09-04 for a local single-player combat-damage test (quality
-// mechanic verification). This is a shard-wide flag included by many packages, not just
-// combat - flip back to 0 and recompile once testing is done, before this is anywhere
-// near a populated shard.
-const DEBUG_MODE	:= 1;
+// A shard-wide flag included by many packages (150+ references), not just combat.
+// It was flipped to 1 on 2026-09-04 for a local combat-damage test and then got
+// COMMITTED that way; back to 0 on 2026-09-21. When you need it for testing,
+// flip it locally and keep client.inc out of the commit. While it was on:
+// teleport skipped its "can't stand there" check (fixed in teleport.src),
+// area spells named every victim -- hidden players included -- to the caster,
+// and damage breakdowns were sent to players.
+const DEBUG_MODE	:= 0;
 
 
 ////

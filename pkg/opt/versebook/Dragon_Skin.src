@@ -3,6 +3,7 @@ use os;
 
 include "include/attributes";
 include "include/classes";
+include "include/spellgrants";
 include ":versebook:include/versefunctions";
 include ":versebook:include/verseconstants";
 
@@ -66,7 +67,7 @@ program Dragon_Skin(parms)
 		// Only play the sound effect every 7 seconds, as the song is 6.2 secs long. This is skipped the first time
 		if (ReadGameClock() >= last_played)
 			if (!PlayBardicMusic(who, diff, instrument))
-				return 0;
+				break; // 2026-09-22: was EndVerse + return 0, which skipped the protection cleanup below
 			endif
 			last_played := ReadGameClock()+7;
 		endif
@@ -115,6 +116,7 @@ program Dragon_Skin(parms)
 		endforeach
 		
 	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+	EndVerse(who); // 2026-09-22: clear #Casting on every exit, see versefunctions.inc
 
 	foreach person in total_protected
 		RemoveDragonSkin(person, protamt);
@@ -130,12 +132,17 @@ function DragonSkin(person, protamt)
 		return 0;
 	endif
 
+	// 2026-09-22: a grant a restart left behind (the runtime flag is gone, the
+	// points are not) is taken back before a new one is given; see spellgrants.inc.
+	ReclaimDragonSkinGrant(person);
+
 	if (person in total_protected)
 	else
 		total_protected.append(person);
 	endif
 
 	SetObjProperty(person, "#DragonSkin", protamt);
+	SetObjProperty(person, "DragonSkinGrant", protamt); // 2026-09-22: durable twin of #DragonSkin
 
 	var currlvl := GetObjProperty(person, "PhysicalProtection");
 	SetObjProperty(person, "PhysicalProtection", protamt+CInt(currlvl));
@@ -150,14 +157,8 @@ function RemoveDragonSkin(person, protamt)
 		return 0;
 	endif
 
-	var currlvl := GetObjProperty(person, "PhysicalProtection");
-
-	if (CInt(currlvl) - protamt < 1)
-		EraseObjProperty(person, "PhysicalProtection");
-	else
-		SetObjProperty(person, "PhysicalProtection", CInt(currlvl)-protamt);
-	endif
-
-	EraseObjProperty(person, "#DragonSkin");
+	// 2026-09-22: takes the recorded grant back and clears both marks; protamt
+	// stays in the signature for the callers.
+	ReclaimDragonSkinGrant(person);
 
 endfunction

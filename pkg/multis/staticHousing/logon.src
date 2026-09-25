@@ -7,9 +7,10 @@ program onlogon(who)
 
 	var hsign := GetHouseSign( who );
 	if(hsign && hsign.IsBanned(who))
-		MoveObjectToLocation(who, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION);
-		SendSysMessage(who, "You have been banned from this house!", color := 33);
-		Start_Script("houseBan", {hsign, who});
+		// 2026-09-22: was a move to the sign plus Start_Script("houseBan", ...),
+		// a script that does not exist anywhere. The shared method-script boot
+		// does the move (to a safe spot outside the footprint) and the message.
+		hsign.BootBannedFromHouse(who);
 	endif
 endprogram
 

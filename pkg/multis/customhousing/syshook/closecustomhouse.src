@@ -8,22 +8,40 @@ exported function CloseCustomHouse ( who, house)
 	if (who.concealed < 2)
 		who.concealed := 0;
 	endif
-	var components := GetObjProperty (house, "components");
+	// 2026-09-22: the lock id comes from the house's own sign (0xFFF4, linked
+	// through "signserial"), as "LockID" -- the key package's property. This
+	// used to look for a 0x0BD0/0x0BD2 sign that a custom house never has, so
+	// every door was re-locked with a lowercase "lockid" of 0 on each close
+	// and no key opened it. A 0x0BD0/0x0BD2 sign is still accepted for any
+	// classic multi placed through this package.
 	var lockid := 0;
-	foreach compo in (components)
-		var sign := SystemFindObjectBySerial(compo);
-		if (sign.objtype == UOBJECT_BRASS_SIGN or sign.objtype == UOBJECT_WOOD_SIGN)
-			lockid := GetObjProperty (sign, "lockid");
-			if (lockid)
-				break;
+	var hsign := SystemFindObjectBySerial (CInt (GetObjProperty (house, "signserial")));
+	if (hsign)
+		lockid := GetObjProperty (hsign, "LockID");
+	endif
+	if (!lockid)
+		var components := GetObjProperty (house, "components");
+		foreach compo in (components)
+			var sign := SystemFindObjectBySerial(compo);
+			if (sign.objtype == 0xFFF4 or sign.objtype == UOBJECT_BRASS_SIGN or sign.objtype == UOBJECT_WOOD_SIGN)
+				lockid := GetObjProperty (sign, "LockID");
+				if (lockid)
+					break;
+				endif
 			endif
-		endif
-	endforeach
+		endforeach
+	endif
 	var teleporters := array{};
 	foreach item in (house.components)
 		if (item.isa (POLCLASS_DOOR))
-			item.locked := 1;
-			SetObjProperty (item, "lockid", lockid);
+			// Only re-lock when there is a real id to lock them to; a sign that has
+			// not been through MigrateCustomHouseLockIds yet leaves the doors as
+			// they are instead of locking them to 0.
+			if (lockid)
+				item.locked := 1;
+				SetObjProperty (item, "LockID", lockid);
+				EraseObjProperty (item, "lockid");
+			endif
 		elseif (item.objtype >= 0x181d and item.objtype <= 0x1828)
 			teleporters.append(item);
 		endif

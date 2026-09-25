@@ -12,6 +12,10 @@ include ":guilds:include/guildconstants";
 include ":guilds:items/guildstone/companions";
 include ":houseExtras:settings";
 include ":statichousing:include/staticHousing";
+// 2026-09-22: the key package (AllocateLockID, "LockID") and the bank box
+// lookup, for MigrateCustomHouseLockIds/ReKeyCustomHouseDoors below.
+include ":keys:key";
+include ":containers:storageAreas";
 
 Const HOUSE_LOCKDOWN_ITEM	:= 1;
 Const HOUSE_RELEASE_ITEM		:= 2;
@@ -273,6 +277,80 @@ function MigrateCustomHouseSignOwnership (sign, character)
 	SetObjProperty (sign, "ownerserial", character.serial);
 	SetObjProperty (sign, "owneracct", character.acctname);
 	RegisterAccountHouseSign (sign, character.acctname);
+endfunction
+
+
+
+
+///////////////////
+//  2026-09-22: every door the multi knows about gets the house's current
+//  LockID (the key package's property). Used by "Change the locks", the
+//  CloseCustomHouse hook (which has its own copy of the loop, it includes
+//  nothing) and the one-time migration below.
+///////////////////
+
+function ReKeyCustomHouseDoors (sign, lockid)
+	var house := SystemFindObjectBySerial (ResolveCustomHouseSerial (sign));
+	if (!house)
+		return 0;
+	endif
+	var count := 0;
+	foreach item in (house.components)
+		if (item.isa (POLCLASS_DOOR))
+			item.locked := 1;
+			SetObjProperty (item, "LockID", lockid);
+			EraseObjProperty (item, "lockid");
+			count := count + 1;
+		endif
+	endforeach
+	return count;
+endfunction
+
+
+
+
+///////////////////
+//  2026-09-22: custom housing used to tag its keys, sign and doors with a
+//  private lowercase "lockid". The key package (pkg/items/keys) reads and
+//  writes "LockID", and property names are case-sensitive, so
+//  KeyMatchesLock() never saw a lock id on a custom house key: nobody but
+//  staff could open a custom house door. On top of that the CloseCustomHouse
+//  hook re-locked every door with the lock id of a 0x0BD0/0x0BD2 sign that a
+//  custom house never has (0). Runs on every sign interaction, does nothing
+//  once a sign carries "LockID": copies the old value over, re-keys the doors
+//  to it, and converts the keys this character has in backpack and bank.
+///////////////////
+
+function MigrateCustomHouseLockIds (sign, character)
+	if (GetObjProperty (sign, "LockID"))
+		return;
+	endif
+
+	var oldlock := GetObjProperty (sign, "lockid");
+	if (!oldlock)
+		// Pre-LockID sign with no old value either: give it a real one.
+		oldlock := AllocateLockID ();
+	endif
+
+	SetObjProperty (sign, "LockID", oldlock);
+	EraseObjProperty (sign, "lockid");
+	ReKeyCustomHouseDoors (sign, oldlock);
+
+	var bankbox := CP_GetStorageContainerForMobile (character, CP_DEFAULT_AREA);
+	foreach thing in EnumerateItemsInContainer (character.backpack)
+		if (GetObjProperty (thing, "lockid") == oldlock)
+			SetObjProperty (thing, "LockID", oldlock);
+			EraseObjProperty (thing, "lockid");
+		endif
+	endforeach
+	if (bankbox)
+		foreach thing in EnumerateItemsInContainer (bankbox)
+			if (GetObjProperty (thing, "lockid") == oldlock)
+				SetObjProperty (thing, "LockID", oldlock);
+				EraseObjProperty (thing, "lockid");
+			endif
+		endforeach
+	endif
 endfunction
 
 
@@ -555,8 +633,12 @@ function ReleaseLockedDownItem (owner, item)
 		olditem.color := item.color;
 		olditem.graphic := item.graphic;
 		olditem.movable := 1;
-		if (getobjproperty (item, "lockid"))
-			setobjproperty(olditem, "lockid", getobjproperty (item, "lockid") );
+		// 2026-09-22: "LockID" (the key package's property); the old lowercase copy
+		// is carried over too in case an old container still has it.
+		if (GetObjProperty (item, "LockID"))
+			SetObjProperty (olditem, "LockID", GetObjProperty (item, "LockID"));
+		elseif (getobjproperty (item, "lockid"))
+			SetObjProperty (olditem, "LockID", getobjproperty (item, "lockid"));
 		endif
 		PrinttextAbovePrivate (olditem, "Released!", owner);
 		DestroyItem (item);
@@ -594,6 +676,12 @@ function ChangeOwner (who, sign)
 		UnregisterAccountHouseSign (sign, who.acctname);
 	endif
 	EraseObjProperty (sign, "housefriends");
+	// 2026-09-22: the shared-core lists survived a transfer, so the old owner's
+	// co-owners, friends and bans (and their permissions) carried over to the
+	// new owner's house. Cleared like the classic sign does.
+	sign.WipeCoOwnerList ();
+	sign.WipeFriendList ();
+	sign.ClearBanList ();
 	SetObjProperty (sign, "account", newowner.acctname);
 	SetObjProperty (sign, "owneracct", newowner.acctname);
 	SetObjProperty (sign, "ownerserial", newowner.serial);

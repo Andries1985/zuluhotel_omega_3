@@ -467,7 +467,7 @@ function GiveQuestieDirections(you, it)
 
 	var questie := SystemFindObjectBySerial(cint(GetObjproperty(it,"slave")));
 	if (!questie)
-		PrintTextAbovePrivate(me, "I don't think you'll ever find who you are looking for.", it);
+		PrintTextAbovePrivate(me, "I don't think you'll ever find who you are looking for.", you); // 2026-09-23: was the item
 		return;
 	endif
 
@@ -493,7 +493,7 @@ function GiveQuestieDirections(you, it)
 		dir := ns_desc + ew_desc ;
 	endif
 
-	PrintTextAbovePrivate(me, "Looking for " + questie.name + "?  I think they are " + dir, it );
+	PrintTextAbovePrivate(me, "Looking for " + questie.name + "?  I think they are " + dir, you ); // 2026-09-23: was the item
 
 endfunction
 

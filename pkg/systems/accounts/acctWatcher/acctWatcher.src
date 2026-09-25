@@ -51,6 +51,10 @@ function CheckForDeletion( account, settings )
 	if( !last_used )
 		ReportText( "Account ("+account.name+") has no last login time. It has been set now though.", REPORT_SYSLOG );
 		ACCT_SetLastLogin(account);
+		// 2026-09-21: spare it, as the message above says. last_used still held
+		// the old empty value here, so the idle test below always passed and the
+		// account was deleted in the very pass that stamped it.
+		return 0;
 	endif
 	
 	var deletion_time := POLCore().systime - ( max_idle_time * SECONDS_IN_DAY );

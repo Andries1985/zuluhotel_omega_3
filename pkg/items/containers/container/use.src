@@ -71,14 +71,18 @@ endfunction
 
 function ContainerIsSecured( mobile, container )
 
-	var house_sign := GetHouseSign ( mobile );
-	if ( !container.IsSecured() )
+	// 2026-09-22: see canRemove.src -- the shared check in housing.inc replaces
+	// the "secured" struct lookup that never matched a real house secure. This
+	// script only sees plain containers (a house secure has its own use
+	// script), so what it guards here is a bag INSIDE a secure chest.
+	var secure_cont := FindHouseSecureContainer( container );
+	if ( !secure_cont )
 		// Nothing to worry about.
 		return 0;
-	elseif ( house_sign.IsAffiliated( mobile ) >= container.GetSecureLevel() )
-		return 0;
-	elseif ( mobile.cmdlevel >= 3 )
-		SendSysMessageCL ( mobile, 501646, color := 66 ); // This item is secure but your Godly powers allow access.
+	elseif ( HouseSecureAccessAllowed( mobile, secure_cont ) )
+		if ( mobile.cmdlevel >= 3 )
+			SendSysMessageCL ( mobile, 501646, color := 66 ); // This item is secure but your Godly powers allow access.
+		endif
 		return 0;
 	else
 		PrintTextAbovePrivateCL ( mobile, container, 501647, color := 33 ); // That is secure.

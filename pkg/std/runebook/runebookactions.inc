@@ -11,6 +11,12 @@ include "customspells";
 include "include/objtype";
 include "include/realmcolors";
 
+// 2026-09-21: how long DropRune stays blocked after a gate is opened from a
+// book (8 s cast + 30 s gate + slack). The marker is a temporary (#) property
+// with this expiry, so a crash or restart mid-gate can no longer leave a book
+// that refuses to drop runes for good, as the old saved "opengate" 1 did.
+const OPENGATE_GUARD_SECS := 60;
+
 
 function UpdateName( runebook, charges )
 
@@ -70,8 +76,12 @@ function RecallWithCharges( who, runebook, byref charges, byref runes_def, index
 		SetObjProperty( runebook, "charges", new_charges );
 		IncRevision(runebook);
 		charges	:= new_charges;
-		SetObjProperty( who, "betatest", 1 );
 
+		// 2026-09-21: "this recall is paid by a charge" travels as the from_charge
+		// argument (below, the 1) instead of a SAVED "betatest" flag on the
+		// character. That flag was only cleared late in the cast, so an
+		// interrupted charged recall left it set and the character's next
+		// recall from a book skipped reagents, mana and the Magery check.
 		if( !CustomRecall( who, tox, toy, toz, torealm, 1 ) )
 			return 0;
 		endif
@@ -126,15 +136,15 @@ function GateWithoutCharges( who, runebook, byref runes_def, index, guild_only :
 		return 0;
 	endif
 
-    //A gate is about to be opened from this runebook.
-    //sets its opengate prop to 1
-    SetObjProperty(runebook, "opengate", 1);
+	//A gate is about to be opened from this runebook: block Drop Rune until it
+	//has closed (see OPENGATE_GUARD_SECS).
+	SetObjProperty( runebook, "#opengate", ReadGameClock() + OPENGATE_GUARD_SECS );
 	if( !CustomGate( who, tox, toy, toz, torealm, guild_only ) )
-		SetObjProperty(runebook, "opengate", 0);
+		EraseObjProperty( runebook, "#opengate" );
 		return 0;
 	endif
-    //The gate is closed already. Sets opengate back to 0.
-    SetObjProperty(runebook, "opengate", 0);
+	//The gate is closed already.
+	EraseObjProperty( runebook, "#opengate" );
 	return 1;
 endfunction
 
@@ -215,11 +225,16 @@ function DropRune( who, runebook, byref runes_def, index )
 	endif
 
 
-    //Checks if there is a gate opened sent from that runebook
-    //this is a work around to prevent players from duping runes.
-    if(GetObjProperty(runebook, "opengate") == 1)
-        return 0;
-    endif
+	//Checks if there is a gate opened sent from that runebook
+	//this is a work around to prevent players from duping runes.
+	// 2026-09-21: expiring # marker (see GateWithoutCharges); a leftover saved
+	// "opengate" from before this change is cleared instead of honoured.
+	EraseObjProperty( runebook, "opengate" );
+	if( CInt(GetObjProperty( runebook, "#opengate" )) > ReadGameClock() )
+		SendSysMessage( who, "You can't drop a rune while a gate from this book is open." );
+		set_critical(0);
+		return 0;
+	endif
 
 	var rune := CreateItemInContainer( who.backpack, UOBJ_RUNE );
 	if( !rune )
@@ -294,6 +309,10 @@ function DestroyRune( runebook, byref runes_def, index )
 		set_critical(0);
 		return 0;
 	endif
+
+	// 2026-09-21: saved here, on the list UpdateRunesDef just re-read, so the
+	// gate path no longer has to write back its own (by then stale) copy.
+	SetObjProperty( runebook, "RuneDefs", runes_def );
 
 	set_critical(0);
 	return 1;

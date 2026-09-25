@@ -5,9 +5,11 @@ use datafile;
 include "include/attributes";
 include "include/NameChecker";
 include ":areas:include/areafunctions";
+include "include/areas"; // 2026-09-23: IsInSafeArea / IsInNOPKArea for the login re-check
 include ":karmafame:karmafame";
 include "include/constants/locations";
 include "include/client";
+include "include/spellgrants";
 include ":accounts:accounts";
 include ":accounts:settings";
 
@@ -32,6 +34,15 @@ program logon( who )
 
 	// for whatever reason I didn't use # tag for this. 
 	RemoveSafeAreaProperties(who, 1);
+	// 2026-09-23: decide the safe-zone and no-PK flags here instead of racing the region
+	// enter script the engine fires at login (it hands off to a delayed script).
+	if (IsInSafeArea(who))
+		SetSafeAreaProperties(who);
+	elseif (IsInNOPKArea(who))
+		SetNOPK(who);
+	else
+		RemoveNOPK(who);
+	endif
 	
 	// Kick if IP banned
 	CheckIPBan(who);
@@ -70,6 +81,12 @@ program logon( who )
 	// stun) should not stay locked in place after logging back in.
 	who.frozen := 0;
 	who.paralyzed := 0;
+
+	// 2026-09-22: take back what a restart left behind: a Dragon Skin grant on
+	// PhysicalProtection and an Antidote/Sanctuary poison immunity, durable
+	// properties that only their sleeping script used to remove (spellgrants.inc).
+	ReclaimDragonSkinGrant( who );
+	ReclaimSpellPoisonImmunity( who );
 	
 	if(!GetObjProperty(who, "OrgName"))
 		SetObjProperty(who, "OrgName", who.name);

@@ -16,14 +16,15 @@ Program clearmsgs( who )
 	endif  
   
 	var messages := RetrieveMessages(who);
-	ResetandBackup(who, messages);
-	if (len(messages) > 1)
-		SendSysMessage(who, "Message log has been wiped.", 3, 53);
-		SetObjProperty(who, "wipeLogs",ReadGameClock()+(24*3600));
-	else
+	// 2026-09-23: an empty log came back as a sentence, so it always counted as wiped and
+	// started the cooldown; now nothing is archived or stamped when there is nothing.
+	if (messages == "")
 		SendSysMessage(who, "Nothing to clear.", 3, 53);
 		return;
 	endif
+	ResetandBackup(who, messages);
+	SendSysMessage(who, "Message log has been wiped.", 3, 53);
+	SetObjProperty(who, "wipeLogs",ReadGameClock()+(24*3600));
 endprogram
 
 
@@ -33,6 +34,7 @@ var file := OpenDataFile(":msg:messages");
 
 if (!file)
 	CreateDataFile( ":msg:messages", flags := DF_KEYTYPE_STRING );
+	file := OpenDataFile(":msg:messages"); // 2026-09-23: reopen after create
 endif
 
 var currentelement := file.FindElement(entryname);
@@ -43,7 +45,7 @@ var props := currentelement.propnames();
 //props.sort();
 var props2 :={};
 foreach prop in props
-  props2[CInt(prop)] := prop;
+  props2[CInt(prop)+1] := prop; // 2026-09-23: messages are numbered from 0, arrays from 1; the first message was missing from the archive
 endforeach
 
 props := props2;
@@ -64,9 +66,7 @@ endfor
 
 UnloadDataFile(":msg:messages");
 
-if (len(mto) < 2)
-  mto := "No recorded message history.";
-endif
+// 2026-09-23: an empty log returns "" so the caller can say "Nothing to clear" without archiving or stamping the cooldown
 
 return mto;
 endfunction
@@ -80,6 +80,7 @@ var file := OpenDataFile(":msg:messages_archive");
 
 if (!file)
 	CreateDataFile( ":msg:messages_archive", flags := DF_KEYTYPE_STRING );
+	file := OpenDataFile(":msg:messages_archive"); // 2026-09-23: reopen after create
 endif
 
 var currentelement := file.FindElement(entryname);

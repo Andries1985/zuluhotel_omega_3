@@ -155,4 +155,14 @@ function BuildGuildColours()
 	return colours;
 endfunction
 
-var COLOURS := BuildGuildColours();
+// 2026-09-25: built lazily through GetGuildColours(). A file-scope `var X := Call()` runs at the start of EVERY
+// script that includes this file (the equip/unequip script per item, incl. every equipped item at world load,
+// guild chat, verse book, house sign control) -- ~30k steps each -- while only SetGuildColour() reads it.
+var COLOURS := 0;
+
+function GetGuildColours()
+	if (!COLOURS)
+		COLOURS := BuildGuildColours();
+	endif
+	return COLOURS;
+endfunction

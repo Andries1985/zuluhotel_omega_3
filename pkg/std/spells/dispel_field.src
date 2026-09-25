@@ -51,7 +51,10 @@ program dispel_field( parms, spell_id )
 
 	endif
 
-	var items := ListItemsNearLocation (cast_area.x, cast_area.y, cast_area.z, therange);
+	// 2026-09-21: realm argument added. Without it this always searched
+	// Britannia, so cast anywhere else it ignored the fields in front of the
+	// caster and destroyed any fields at the same coordinates in Britannia.
+	var items := ListItemsNearLocation (cast_area.x, cast_area.y, cast_area.z, therange, caster.realm);
 	PlaySoundEffect( caster, SFX_SPELL_DISPEL_FIELD );
     var count := 0;
 	foreach item in items

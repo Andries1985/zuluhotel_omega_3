@@ -4,6 +4,7 @@
 include ":bulkorders:bulkorder";
 include ":bulkorders:bulkorder_ledger";
 include "include/objtype";
+include ":containers:storageAreas";	// bank box, for BOD_PayGold's overflow
 
 use cfgfile;
 
@@ -59,14 +60,44 @@ function BOD_TryFill(byref deed, byref item)
 		result.reason := "This order requires " + BOD_MaterialName(skillid, CInt(existing)) + ".";
 		return result;
 	endif
+	// 2026-09-21: a stack fills as many units as the order still needs, one
+	// credit each, and the rest of the stack stays in the pack. It used to be
+	// DestroyItem(item) for ONE credit, so a stack of 20 scrolls bought a
+	// single fill and the other 19 were gone.
+	var still_needed := CInt(BOD_GetAmount(deed)) - CInt(BOD_GetAmountFilled(deed));
+	var take := CInt(item.amount);
+	if( take < 1 )
+		take := 1;
+	endif
+	if( take > still_needed )
+		take := still_needed;
+	endif
+
+	// 2026-09-21: consume FIRST and only count it if that worked. The count
+	// used to go up before an unchecked DestroyItem, so an item that couldn't
+	// be destroyed (reserved by another script, a DestroyScript saying no)
+	// would have kept filling the order forever.
+	// DestroyItem for a whole item/stack (as before, so its DestroyScript still
+	// runs), SubtractAmount only when part of a stack is left behind.
+	var consumed;
+	if( take >= CInt(item.amount) )
+		consumed := DestroyItem(item);
+	else
+		consumed := SubtractAmount(item, take);
+	endif
+	if( !consumed )
+		BOD_Debug("BOD_TryFill: couldn't consume the item (in use?)");
+		result.reason := "You can't use that item right now.";
+		return result;
+	endif
+
 	if( !existing )
 		SetObjProperty(deed, "BODFilledMaterial", material);
 	endif
 
-	var filled := CInt(BOD_GetAmountFilled(deed)) + 1;
+	var filled := CInt(BOD_GetAmountFilled(deed)) + take;
 	SetObjProperty(deed, "BODAmountFilled", filled);
-	DestroyItem(item);
-	BOD_Debug("BOD_TryFill: filled " + filled + "/" + CInt(BOD_GetAmount(deed)));
+	BOD_Debug("BOD_TryFill: filled " + filled + "/" + CInt(BOD_GetAmount(deed)) + " (took " + take + ")");
 
 	result.ok := 1;
 	result.filled := filled;
@@ -147,15 +178,24 @@ function BOD_TryFillLargeSlot(byref large_deed, byref small_deed)
 		return result;
 	endif
 
-	filled[slot] := 1;
-	SetObjProperty(large_deed, "BODSlotsFilled", filled);
-
+	// Everything needed from the Small is read BEFORE it is destroyed.
 	var small_difficulty := BOD_RewardDifficulty(small_deed);
 	var small_gold := BOD_GoldReward(small_difficulty, has_axis);
+
+	// 2026-09-21: destroy first, credit after, and only if the destroy worked.
+	// The slot and the accrued gold/points used to be written before an
+	// unchecked DestroyItem, so a Small that couldn't be destroyed would have
+	// kept its value AND stayed usable.
+	if( !DestroyItem(small_deed) )
+		BOD_Debug("BOD_TryFillLargeSlot: couldn't destroy the Small deed (in use?)");
+		result.reason := "You can't use that deed right now.";
+		return result;
+	endif
+
+	filled[slot] := 1;
+	SetObjProperty(large_deed, "BODSlotsFilled", filled);
 	SetObjProperty(large_deed, "BODAccruedGold", CInt(GetObjProperty(large_deed, "BODAccruedGold")) + small_gold);
 	SetObjProperty(large_deed, "BODAccruedPoints", CInt(GetObjProperty(large_deed, "BODAccruedPoints")) + BOD_POINTS_PER_SMALL);
-
-	DestroyItem(small_deed);
 
 	result.ok := 1;
 	result.slot := slot;
@@ -199,6 +239,57 @@ function BOD_NPCAcceptsCraft(merchant_type, skillid)
 	return 0;
 endfunction
 
+// Pays out gold in stacks the engine will actually create (2026-09-21).
+// CreateItemInContainer refuses more than 60000 of anything in one call, and
+// a Large pays 3x its Smalls' gold -- a six-slot Large in a top material is
+// 6 x 3,500 x 3 = 63,000, so it used to pay NOTHING while the craftsman
+// announced the amount. A full backpack did the same at any amount.
+// Whatever won't fit in the backpack goes to the bank box, and if even that
+// fails it lands at the player's feet, so nothing is ever lost. The player is
+// told where it went. Returns how much went to the bank box.
+function BOD_PayGold(byref who, gold)
+	var gold_left := CInt(gold);
+	var banked := 0;
+	var at_feet := 0;
+	var bankbox := 0;
+
+	while( gold_left > 0 )
+		var stack_size := gold_left;
+		if( stack_size > 60000 )
+			stack_size := 60000;
+		endif
+
+		if( !CreateItemInContainer(who.backpack, UOBJ_GOLD_COIN, stack_size) )
+			if( !bankbox )
+				bankbox := CP_GetStorageContainerForMobile(who, CP_DEFAULT_AREA, CP_CREATE);
+			endif
+			var in_bank := 0;
+			if( bankbox )
+				if( CreateItemInContainer(bankbox, UOBJ_GOLD_COIN, stack_size) )
+					in_bank := 1;
+				endif
+			endif
+			if( in_bank )
+				banked := banked + stack_size;
+			else
+				CreateItemAtLocation(who.x, who.y, who.z, UOBJ_GOLD_COIN, stack_size, who.realm);
+				at_feet := at_feet + stack_size;
+			endif
+		endif
+
+		gold_left := gold_left - stack_size;
+	endwhile
+
+	if( banked )
+		SendSysMessage(who, banked + " gold didn't fit in your backpack and was placed in your bank box.", color := 66);
+	endif
+	if( at_feet )
+		SendSysMessage(who, at_feet + " gold didn't fit in your backpack or bank box and is at your feet.", color := 33);
+	endif
+
+	return banked;
+endfunction
+
 // Turns in a completed BOD for its Points + Gold + Fame/Karma reward.
 // Destroys the deed on success.
 function BOD_TurnIn(byref deed, byref who, merchant_type)
@@ -238,17 +329,26 @@ function BOD_TurnIn(byref deed, byref who, merchant_type)
 		points := BOD_POINTS_PER_SMALL;
 	endif
 
-	CreateItemInContainer( who.backpack, UOBJ_GOLD_COIN, gold );
-	BOD_AwardFameKarma( who, difficulty );
-	BOD_AddPoints( who, points );
-
 	var size_label := "Small";
 	if( CInt(BOD_GetSize(deed)) )
 		size_label := "Large";
 	endif
-	BOD_Debug("BOD_TurnIn: " + who.name + " turned in a " + BOD_CraftName(skillid) + " " + size_label + " for " + gold + " gold, " + points + " points (difficulty=" + difficulty + ")");
 
-	DestroyItem(deed);
+	// 2026-09-21: destroy first, pay after, and only if the destroy worked.
+	// Gold, fame/karma and points used to be handed out BEFORE an unchecked
+	// DestroyItem, so a deed that couldn't be destroyed would have paid out and
+	// stayed in hand to be turned in again. Everything read from the deed
+	// (gold, points, difficulty, size) is already in locals above.
+	if( !DestroyItem(deed) )
+		BOD_Debug("BOD_TurnIn: couldn't destroy the deed (in use?) -- nothing paid");
+		result.reason := "I can't take that order right now.";
+		return result;
+	endif
+
+	var banked := BOD_PayGold( who, gold );
+	BOD_AwardFameKarma( who, difficulty );
+	BOD_AddPoints( who, points );
+	BOD_Debug("BOD_TurnIn: " + who.name + " turned in a " + BOD_CraftName(skillid) + " " + size_label + " for " + gold + " gold (" + banked + " banked), " + points + " points (difficulty=" + difficulty + ")");
 
 	result.ok := 1;
 	result.gold := gold;

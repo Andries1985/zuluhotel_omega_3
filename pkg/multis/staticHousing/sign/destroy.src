@@ -118,8 +118,10 @@ program StaticHouseDestruction(sgn)
 	endforeach
 	foreach thing in GetObjProperty(sign, "components")
 		var obj := SystemFindObjectBySerial(thing);
-		EraseObjProperty(thing, "LockID");
-		obj.locked := 0;
+		if(obj) // 2026-09-22: was EraseObjProperty(thing, ...) on the serial, so the LockID stayed on every component
+			EraseObjProperty(obj, "LockID");
+			obj.locked := 0;
+		endif
 	endforeach
 	if(stone)
 		stone.movable := 0;

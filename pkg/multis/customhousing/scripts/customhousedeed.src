@@ -97,9 +97,12 @@ program usehousedeed (character, deed)
 
    	DestroyItem(deed);
 	SetObjProperty (created.house, "ownerserial", character.serial);
-	var lockid := created.house.serial;
-	SetObjProperty(created.packkey, "lockid", lockid);
-	SetObjProperty(created.bankkey, "lockid", lockid);
+	// 2026-09-22: a real lock id from the key package, stored as "LockID" --
+	// the lowercase "lockid" this wrote (with the house serial as the value)
+	// was never read by KeyMatchesLock, so no key opened a custom house door.
+	var lockid := AllocateLockID();
+	created.packkey.SetLockId(lockid);
+	created.bankkey.SetLockId(lockid);
 
 	//now we add some special stuff based on what kind of a house it is
 	var item, sign, component := array { };
@@ -117,7 +120,7 @@ program usehousedeed (character, deed)
 		SetObjProperty(created.house, "signserial", sign.serial);
 		sign.movable:=0;
 		component.append (sign.serial);
-		SetObjProperty (sign, "lockid", lockid );
+		SetObjProperty (sign, "LockID", lockid );
 		SetObjProperty (sign, "account", character.acctname );
 		SetObjProperty (sign, "owneracct", character.acctname );
 		SetObjProperty (sign, "ownerserial", character.serial );
@@ -143,9 +146,9 @@ program usehousedeed (character, deed)
 	foreach item in (created.house.components)
 		if (item.isa (POLCLASS_DOOR))
 			item.locked := 1;
-			SetObjProperty (item, "lockid", lockid);
+			SetObjProperty (item, "LockID", lockid);
 		elseif (item.objtype == UOBJECT_BRASS_SIGN or item.objtype == UOBJECT_WOOD_SIGN)
-			SetObjProperty (item, "lockid", lockid );
+			SetObjProperty (item, "LockID", lockid );
 			SetObjProperty (item, "account", character.acctname );
 		endif
 	endforeach

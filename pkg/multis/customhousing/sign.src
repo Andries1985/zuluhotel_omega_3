@@ -23,6 +23,10 @@ include ":containers:storageAreas";
 // which was removed as dead weight (nothing in housefriends.inc itself used
 // it). Included directly here, matching customhousedeed.src's package choice.
 include ":mdgumps:yesNo";
+// 2026-09-22: the key package -- custom housing now uses its "LockID" and
+// AllocateLockID() instead of a private lowercase "lockid" that no key ever
+// matched (see MigrateCustomHouseLockIds in include/house.inc).
+include ":keys:key";
 
 // 2026-09-03: removed the sign.objtype == 0x17060 ("static" custom house)
 // dead-code branch that used to live here (DisownHouse, and this program's
@@ -43,6 +47,7 @@ program use_house_sign (character, sign)
 	endif
 
 	MigrateCustomHouseSignOwnership (sign, character);
+	MigrateCustomHouseLockIds (sign, character);
 
 	// Always resolve the owner's live name, regardless of who is clicking the
 	// sign -- previously this only refreshed when a full house manager
@@ -96,10 +101,21 @@ program use_house_sign (character, sign)
 		11:	ListBan (sign, character);
 		12:	DeleteBan (sign, character);
 		13:
+			// 2026-09-22: owner only (staff excepted), like the classic sign. This
+			// was open to every co-owner, and with the lists surviving a transfer
+			// a co-owner could hand the house to themselves.
+			if (!sign.IsOwner (character) and character.cmdlevel < 3)
+				SendSysMessage (character, "Only the owner can transfer this house.", color := 33);
+				return;
+			endif
 			set_critical (1);
 			ChangeOwner (character, sign);
 			set_critical (0);
 		14:
+			if (!sign.IsOwner (character) and character.cmdlevel < 3) // 2026-09-22: owner only, see 13
+				SendSysMessage (character, "Only the owner can demolish this house.", color := 33);
+				return;
+			endif
 			var hserial := ResolveCustomHouseSerial (sign);
 			var house := SystemFindObjectBySerial (hserial);
 
@@ -179,7 +195,7 @@ program use_house_sign (character, sign)
 					endforeach
 				endif
 
-				if (!MakeADeed (character, house))
+				if (!MakeADeed (character, house, sign))
 					return;
 				endif
 				foreach thing in teleporters
@@ -229,28 +245,14 @@ program use_house_sign (character, sign)
 				UnregisterCustomHouseSign (sign);
 				ReleaseAll (character, sign);
 
-				// 2026-08-21: the packkey/bankkey created at purchase
-				// (customhousedeed.src, tagged with the sign's "lockid") were
-				// never destroyed on redeed, unlike :house:'s
-				// KP_DestroyOwnedKeysForLockIDs. customhousing tags keys with
-				// its own lowercase "lockid" property (not key.inc's
-				// "LockID"), so that shared helper can't be reused directly --
-				// swept here instead.
-				var house_lockid := GetObjProperty (sign, "lockid");
+				// 2026-08-21: the packkey/bankkey created at purchase were never
+				// destroyed on redeed, unlike :house:'s KP_DestroyOwnedKeysForLockIDs.
+				// 2026-09-22: custom housing now keys everything with the key
+				// package's "LockID" (see MigrateCustomHouseLockIds), so the shared
+				// helper does the sweep: backpack, bank box and keyrings.
+				var house_lockid := GetObjProperty (sign, "LockID");
 				if (house_lockid)
-					foreach thing in EnumerateItemsInContainer (character.backpack)
-						if (GetObjProperty (thing, "lockid") == house_lockid)
-							DestroyItem (thing);
-						endif
-					endforeach
-					var bankbox := CP_GetStorageContainerForMobile (character, CP_DEFAULT_AREA);
-					if (bankbox)
-						foreach thing in EnumerateItemsInContainer (bankbox)
-							if (GetObjProperty (thing, "lockid") == house_lockid)
-								DestroyItem (thing);
-							endif
-						endforeach
-					endif
+					KP_DestroyOwnedKeysForLockIDs (character, CP_DEFAULT_AREA, array { house_lockid });
 				endif
 
 				// 2026-08-21: a bare DestroyMulti(house) here could silently
@@ -409,11 +411,16 @@ function ChangeHouseLocks (character, sign)
 	if (!newkey)
 		SendSysMessage (character, "Canceled.");
 		return;
-	//Removed as does not work with ZH scripts
-	//elseif (!IsAKey (newkey))
-	//	SendSysMessage (character, "That is not a key!");
-	//	return;
-	elseif (GetObjProperty (newkey, "lockid"))
+	endif
+	// 2026-09-22: a real key check, the key package's "LockID" (this wrote a
+	// lowercase "lockid" that KeyMatchesLock never reads, with a fixed value of
+	// house serial + 1), a fresh AllocateLockID, and the doors re-keyed too --
+	// that loop had been commented out, so "Change the locks" changed nothing
+	// a door could tell.
+	if (!newkey.IsKey() or newkey.IsKeyring())
+		SendSysMessage (character, "That is not a key!", color := 33);
+		return;
+	elseif (newkey.GetLockId())
 		SendSysMessage (character, "That seems to be the key to something else already.");
 		SendSysMessage (character, "If you use that key, it will no longer work on its previous lock.");
 		if (!YesNo (character, "Continue?"))
@@ -422,18 +429,11 @@ function ChangeHouseLocks (character, sign)
 		endif
 	endif
 
-	var lockid := ResolveCustomHouseSerial(sign)+1;
-	SetObjProperty (newkey, "lockid", lockid); 
-	SetObjProperty (sign, "lockid", lockid); 
-	foreach item in ListObjectsInBox (sign.x - 32, sign.y - 32, -127, sign.x + 32, sign.y + 32, 127, sign.realm)
-		//if (IsDoor (item))
-			//if ((item.x >= homeinfo[2] and item.x <= homeinfo[4]) and (item.y >= homeinfo[3] and item.y <= homeinfo[5]) )
-			//	item.locked := 1;
-			//	SetObjProperty (item, "lockid", lockid);
-			//	PrintTextAbove (item, "*LOCKED*");
-			//endif
-		//endif
-	endforeach
+	var lockid := AllocateLockID ();
+	newkey.SetLockId (lockid);
+	SetObjProperty (sign, "LockID", lockid);
+	EraseObjProperty (sign, "lockid");
+	ReKeyCustomHouseDoors (sign, lockid);
 	SendSysmessage (character, "Locks Changed.");
 endfunction
 
@@ -441,10 +441,21 @@ endfunction
 
 
 ///////////////////
-// called when the character demolishes a house, this function makes a new deed for the house
+// called when the character demolishes a house. For a custom foundation the
+// owner is paid back half of what the house cost (foundation price plus every
+// tile bought through the customisation tool) and gets no deed; a classic
+// multi placed through this package gets its deed back.
+//
+// 2026-09-22: this used to look for the price on a 0x0BD0/0x0BD2 component
+// sign, which a custom house never has (its sign is 0xFFF4, and that is where
+// customhousedeed.src writes "houseprice"), so it found no price, made no
+// deed, paid no gold and reported success: a house bought for 75,000 to
+// 133,500 gold left its owner with nothing. Your picks: 50% back, like a
+// deed sold back to a vendor (VendorBuysFor is half of VendorSellsFor on
+// every house deed), no 10,000 cap, and no deed for a custom house.
 ///////////////////
 
-function MakeADeed (character, house)
+function MakeADeed (character, house, sign)
 	var deedtype := GetDeedType (house);
 	if (!deedtype)
 		SendSysMessage (character, "Error finding deed type.");
@@ -452,51 +463,63 @@ function MakeADeed (character, house)
 	endif
 
 	if (deedtype == 0x16230 or deedtype == 0x16231)
-		var components := GetObjProperty (house, "components");
-		var sign := 0;
-		var price := 0;
-		foreach compo in (components)
-			sign := SystemFindObjectBySerial(compo);
-			if (sign.objtype == 0x0bd0 or sign.objtype == 0x0bd2)
-				price := GetObjProperty (sign, "houseprice");
-				break;
-			endif
-		endforeach
-		if (price > 0)
-			var discount := CINT (price/10);
-			if (discount > 10000)
-				discount := 10000;
-			endif
-			var theprice := price - discount;
+		var price := CInt (GetObjProperty (sign, "houseprice"));
+		// Tiles paid for through the customisation tool (scripts/misc/
+		// customhousecommit.src charges CUSTOMHOUSE_PRICE_PER_TILE per new part).
+		var paidparts := CInt (GetObjProperty (house, "customhouse_paidparts"));
+		var totalcost := price + (paidparts * CUSTOMHOUSE_TEARDOWN_PRICE_PER_TILE);
+		var refund := CInt (totalcost / 2);
 
-			SendSysMessage (character, "The value of this house is " + theprice + " gold.");
-			if (!YesNo (character, "Sell it?"))
-				SendSysMessage (character, "Canceled.");
-				return 0;
-			endif
-			var newdeed := CreateItemInContainer (character.backpack, deedtype, 1);
-			if (!newdeed)
-				PrintTextAbovePrivate (character, "*Your backpack is full!*", character);
-				return 0;
-			endif
-			while (theprice > 60000)
-				if (CreateItemInContainer (character.backpack, UOBJ_GOLD_COIN, 60000))
-					theprice := theprice - 60000;
-				else
-					SendSysMessage (character, "Error creating gold!  You'll have to page a GM...");
-					SetObjProperty (character, "OWEDGOLD", theprice);
-					theprice := 0;
-				endif
-			endwhile
-			CreateItemInContainer (character.backpack, UOBJ_GOLD_COIN, theprice);
+		SendSysMessage (character, "This house cost " + totalcost + " gold. Demolishing it pays back " + refund + " gold and no deed.");
+		if (!YesNo (character, "Demolish it for " + refund + " gold?"))
+			SendSysMessage (character, "Canceled.");
+			return 0;
+		endif
+		if (refund > 0)
+			CustomHousePayGold (character, refund);
 		endif
 	else
 		var newdeed := CreateItemInContainer (character.backpack, deedtype, 1);
 		if (!newdeed)
-			PrintTextAbovePrivate (character, "*Your backpack is full!*", character);
-			return 0;
+			// Same rule as the classic demolish (your pick): a full backpack puts
+			// the deed on the ground at the owner's feet instead of refusing.
+			newdeed := CreateItemAtLocation (character.x, character.y, character.z, deedtype, 1, character.realm);
+			if (!newdeed)
+				SendSysMessage (character, "The house deed could not be created, so nothing was demolished. Make room and try again.", color := 33);
+				return 0;
+			endif
+			SendSysMessage (character, "Your backpack was full, so the house deed is on the ground at your feet.", color := 45);
 		endif
 	endif
+	return 1;
+endfunction
+
+// Must match CUSTOMHOUSE_PRICE_PER_TILE in scripts/misc/customhousecommit.src.
+const CUSTOMHOUSE_TEARDOWN_PRICE_PER_TILE := 500;
+
+// Gold in stacks the engine accepts (60,000 max per stack): backpack first,
+// the owner's feet when the backpack is full. Nothing is ever silently lost.
+function CustomHousePayGold (character, amount)
+	var left := CInt (amount);
+	while (left > 0)
+		var chunk := left;
+		if (chunk > 60000)
+			chunk := 60000;
+		endif
+		var coins := CreateItemInBackpack (character, UOBJ_GOLD_COIN, chunk);
+		if (!coins)
+			coins := CreateItemAtLocation (character.x, character.y, character.z, UOBJ_GOLD_COIN, chunk, character.realm);
+			if (coins)
+				SendSysMessage (character, "Your backpack is full; " + chunk + " gold was placed at your feet.", color := 45);
+			endif
+		endif
+		if (!coins)
+			SendSysMessage (character, "Could not create " + left + " gold anywhere. Please page a GM.", color := 33);
+			SysLog ("[customhousing] MakeADeed could not pay " + left + " gold to " + character.name + " (" + character.serial + ")");
+			return 0;
+		endif
+		left := left - chunk;
+	endwhile
 	return 1;
 endfunction
 
@@ -907,15 +930,17 @@ function AddFriend (hsign, who)
 		SendSysMessage (who, "That cannot be added to the list.", color := 33);
 		return;
 	endif
+	// 2026-09-22: checked BEFORE adding (it used to add, then say "Canceled").
+	if (targetchr.acctname == GetObjProperty (hsign, "owneracct"))
+		SendSysMessage (who, "Canceled.", color := 33);
+		return;
+	endif
 	var result := hsign.AddFriend (targetchr);
 	if (!result)
 		SendSysMessage (who, "That person is already a friend.", color := 33);
 		return;
 	elseif (result < 0)
 		SendSysMessage (who, "Your friend list is full.", color := 33);
-		return;
-	elseif (targetchr.acctname == GetObjProperty (hsign, "owneracct"))
-		SendSysMessage (who, "Canceled.", color := 33);
 		return;
 	endif
 	SendSysMessage (who, targetchr.name + " was friended to your house", color := 66);
@@ -938,12 +963,16 @@ function AddBan (hsign, who)
 		SendSysMessage (who, "This person is already banned!", color := 42);
 		return;
 	endif
+	if (targetchr.serial == GetObjProperty (hsign, "ownerserial"))
+		SendSysMessage (who, "You cannot ban the house owner!", color := 33);
+		return;
+	endif
+	if (targetchr.cmdlevel >= 2)
+		SendSysMessage (who, "You cannot ban staff!", color := 33); // 2026-09-22: static housing already refused this; a banned GM was booted by the ban tiles
+		return;
+	endif
 	if (targetchr.multi.serial == ResolveCustomHouseSerial (hsign))
 		MoveObjectToLocation (targetchr, hsign.x, hsign.y, hsign.z, hsign.realm);
-	endif
-	if (targetchr.serial == GetObjProperty (hsign, "ownerserial"))
-		SendSysMessage (who, "You cannot ban yourself!", color := 33);
-		return;
 	endif
 	checklists (hsign, targetchr, "friendlist", "coowners");
 	result := hsign.AddBan (targetchr);
@@ -1017,11 +1046,32 @@ function Eject (hsign, who)
 		SendSysMessage (who, "Canceled.", color := 33);
 		return;
 	endif
-	if ((!targetchr.multi) and (Distance (who, hsign) > 15))
+	// 2026-09-22: same rule as the classic sign now -- mobiles only, never
+	// staff or a player vendor, never the owner or a co-owner, and only someone
+	// actually inside THIS house. Anyone in view used to be droppable here.
+	if (!targetchr.isA (POLCLASS_MOBILE))
+		SendSysMessage (who, "You may only eject people.", color := 33);
+		return;
+	endif
+	if (targetchr.cmdlevel)
+		SendSysMessage (who, "You cannot eject staff!", color := 33);
+		return;
+	endif
+	if (targetchr.npctemplate == "playervendor")
+		SendSysMessage (who, "You cannot eject player vendors.", color := 33);
+		return;
+	endif
+	if (hsign.IsCoOwnerOrOwner (targetchr))
+		SendSysMessage (who, "You cannot eject the owner or a co-owner of the house.", color := 33);
+		return;
+	endif
+	if (!hsign.IsObjectInsideHouse (targetchr))
+		SendSysMessage (who, "You may not eject someone who is not in your house!", color := 33);
 		return;
 	endif
 	MoveObjectToLocation (targetchr, hsign.x, hsign.y, hsign.z, hsign.realm, MOVEOBJECT_FORCELOCATION);
 	SendSysMessage (who, targetchr.name + " was ejected!");
+	SendSysMessage (targetchr, "You have been ejected from this house.", color := 33);
 endfunction
 
 function BuildHouseFriendRows (sign)

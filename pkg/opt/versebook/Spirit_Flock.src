@@ -95,6 +95,7 @@ program Spirit_Flock(parms)
 	sleep(1);
 
 	until ( InterruptedPlaying(who, x, y, stamina, hp) );
+	EndVerse(who); // 2026-09-22: clear #Casting on every exit, see versefunctions.inc
 
 	KillFlock();
 	EraseObjProperty(who, "#Flock");

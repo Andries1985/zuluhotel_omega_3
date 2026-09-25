@@ -694,7 +694,7 @@ function Follow()
 		return;
 	endif
 	
-	if(following.cmd && !master.cmd)
+	if(following.cmdlevel && !master.cmdlevel) // 2026-09-23: was .cmd, not a member, so the check never fired
 		following := 0;
 		return;
 	endif

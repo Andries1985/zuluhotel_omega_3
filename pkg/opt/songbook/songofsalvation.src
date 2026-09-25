@@ -101,7 +101,13 @@ program cast_songofsalvation( player )
 
 			foreach cast_near in victims
 				if( GetObjProperty( cast_near , "Type" ) == "Undead" )
-					SetHp( cast_near, GetHp( cast_near ) / 2 );
+					// 2026-09-22: bosses are exempt (as in Song of Fright and Sirens) and the
+					// half goes through the damage helper (kill credit, immunities, loot lottery)
+					// instead of SetHp, which nothing could resist or attribute.
+					if( GetObjProperty( cast_near , "Boss" ) or GetObjProperty( cast_near , "SuperBoss" ) )
+						continue;
+					endif
+					ApplyTheDamage( cast_near , player , Cint( GetHp( cast_near ) / 2 ) , DMGID_MAGIC );
 					PlayObjectCenteredEffect( cast_near, FX_SPELL_CURE , SPEED_SPELL_CURE , LOOP_SPELL_CURE );
 					PlaySoundEffect(cast_near, SFX_SPELL_REVIVE);
 					PlaySoundEffect(player, SFX_SPELL_REVIVE);

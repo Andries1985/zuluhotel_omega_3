@@ -46,11 +46,16 @@ endprogram
 
 function ContainerIsSecured( mobile, container )
 
-	var house_sign := GetHouseSign ( mobile );
-	if ( !container.IsSecured() )
+	// 2026-09-22: was container.IsSecured() (a "secured" struct with a .level
+	// that no housing package writes any more) compared with the affiliation
+	// to the house the MOBILE stood in -- it never refused anything. Now the
+	// shared check in scripts/include/housing.inc, which resolves the secure's
+	// own house sign and applies that package's open rule.
+	var secure_cont := FindHouseSecureContainer( container );
+	if ( !secure_cont )
 		// Nothing to worry about.
 		return 0;
-	elseif ( house_sign.IsAffiliated( mobile ) >= container.GetSecureLevel() )
+	elseif ( HouseSecureAccessAllowed( mobile, secure_cont ) )
 		return 0;
 	else
 		return 1;

@@ -35,7 +35,7 @@ program textcmd_disarm(me, text)
 	var weaponone := GetEquipmentByLayer( me,  LAYER_HAND1 );
 	var weapontwo := GetEquipmentByLayer( me,  LAYER_HAND2 );
 	var wonecurse := Cint( GetObjProperty( weaponone , "Cursed" ) );
-	var wtwocurse := Cint( GetObjProperty( weaponone , "Cursed" ) );
+	var wtwocurse := Cint( GetObjProperty( weapontwo , "Cursed" ) ); // 2026-09-23: was weaponone (copy-paste)
 
 	if( weaponone )
 		if( !wonecurse or wonecurse == 3 )
@@ -44,7 +44,7 @@ program textcmd_disarm(me, text)
 	endif
 	
 	if( weapontwo )
-		if( !wonecurse or wonecurse == 3 )
+		if( !wtwocurse or wtwocurse == 3 ) // 2026-09-23: was wonecurse
 			MoveItemToContainer(weapontwo, mypack );
 		endif
 	endif

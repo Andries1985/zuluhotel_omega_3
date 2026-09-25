@@ -17,7 +17,7 @@ function GetNewMapMaterialCost(who)
 	var material := 10;
 	// Require half resources during Crafting PH
 	if(GetGlobalProperty("PHC") || GetObjProperty(who, "#PPHC"))
-		material := Ceil(material/2);
+		material := CInt(Ceil(material/2.0)); // 2026-09-21: /2.0 (int/int rounds down)
 	endif
 	return material;
 endfunction
@@ -178,8 +178,9 @@ program go_go_gadget_map( who, blank )
 endprogram
 
 // Unified consumption function — always uses ResourceRequest (cache-aware)
+// Returns ConsumeResource's result (2026-09-21) so callers can honour it.
 function ConsumeMap(who, blank, amount)
-	ConsumeResource(who, mapRequest, amount);
+	return ConsumeResource(who, mapRequest, amount);
 endfunction
 
 function makemap( who, mapdef , blank )
@@ -188,11 +189,22 @@ function makemap( who, mapdef , blank )
 	// Alteration to allow world maps to stack
 	// Their props don't alter like other maps.
 	// Making other maps stack is impossible in 093
+	// 2026-09-21: consume first and honour the result (consume-first pattern,
+	// see HasCraftingResources in resourcemanager.inc). Was charged last,
+	// result ignored.
+	if( !ConsumeMap(who, blank, 1) )
+		return;
+	endif
+
 	var map;
 	if (mapdef[1] == "world")
 		map := CreateItemInBackpack( who, 0x631D );
 	else
 		map := CreateItemInBackpack( who, UOBJ_MAP2 );
+	endif
+	if( !map )
+		SendSysmessage( who , "Your backpack is full." );
+		return;
 	endif
 
 	SetName( map , ("a completed " + mapdef[1] + " map") );
@@ -203,13 +215,16 @@ function makemap( who, mapdef , blank )
 	map.gumpwidth := mapdef[6];
 	map.gumpheight := mapdef[7];
 	SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
-	ConsumeMap(who, blank, 1);
 endfunction
 
 function makeNewmap( who, blank, choice )
 	var material := GetNewMapMaterialCost(who);
 	if(GetAvailableResource(who, mapRequest).total < material)
 		sendsysmessage(who, "You don't have enough materials to do that.");
+		return;
+	endif
+	// 2026-09-21: consume first and honour the result, same as makemap above.
+	if( !ConsumeResource(who, mapRequest, material) )
 		return;
 	endif
 	var map;
@@ -219,8 +234,9 @@ function makeNewmap( who, blank, choice )
 		map := CreateItemInBackpack( who, 0x3D72 );
 	endif
 	if(map)
-		ConsumeResource(who, mapRequest, material);
 		SendSysmessage( who , "You carefully scribe a detailed map and place it in your pack." );
+	else
+		SendSysmessage( who , "Your backpack is full." );
 	endif
 	return;
 endfunction

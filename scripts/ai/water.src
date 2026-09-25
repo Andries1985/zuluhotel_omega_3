@@ -241,12 +241,11 @@ endfunction
 // Added by Terence 07-08-2002
 function claim(who)
 var gotitem;
-var temp := 0;
 if(checkforall(who)==1)
    gotitem :=BuildPrizeGump(who,0);
    if (gotitem>1 && gotitem<5) clearitems(who); endif
 endif
-if(setshells(who,temp)==1)
+if(checkforallshells(who)==1) // 2026-09-23: was setshells(who, 0), which wrote a "shell0" cprop and announced "piece 0 of 9"
 	gotitem :=BuildPrizeGump(who,1);
 	if (gotitem>1 && gotitem<5) clearshells(who); endif
 endif
@@ -466,6 +465,13 @@ endfunction
 function setshells(who,i)
 setobjproperty (who, "shell"+i, 1);
 say("You found Shell piece " + i + " of 9.");
+
+return checkforallshells(who);
+
+endfunction
+
+// 2026-09-23: the all-nine test, split out so "claim" can check without writing a piece
+function checkforallshells(who)
 
 if ((getobjproperty (who, "shell1")==1) && (getobjproperty (who, "shell2")==1) && (getobjproperty (who, "shell3")==1) && (getobjproperty (who, "shell4")==1) && (getobjproperty (who, "shell5")==1) && (getobjproperty (who, "shell6")==1) && (getobjproperty (who, "shell7")==1) && (getobjproperty (who, "shell8")==1) && (getobjproperty (who, "shell9")==1))
 return 1;

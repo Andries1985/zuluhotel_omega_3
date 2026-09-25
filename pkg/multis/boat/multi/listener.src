@@ -133,9 +133,16 @@ function ProcessEvent( boat, byref ev, byref cur_cmd, byref cur_map )
 		var commands := ParseCommands( ev.text, g_cmd_list );
 		if( commands.Size() <= 0 )
 			return 0;
-		else
-			cur_map := 0;
 		endif
+
+		// 2026-09-22: the tiller's CanCommand (owner, crew mates, staff) existed
+		// but was never asked, so any passenger who said "forward" sailed the
+		// boat away with the owner aboard.
+		if( !tillerman.CanCommand( ev.source ) )
+			PrintTextAbove( tillerman, "Ye ain't the captain o' this ship!", 3, 55 );
+			return 0;
+		endif
+		cur_map := 0;
 
 		// Run the command(s) in the order spoken.
 		PrintTextAbove( tillerman, "Aye captain.", 3, 55 );
@@ -147,6 +154,9 @@ function ProcessEvent( boat, byref ev, byref cur_cmd, byref cur_map )
 
 		return 1;
 	elseif( ev.item )
+		if( !tillerman.CanCommand( ev.source ) ) // 2026-09-22: same rule for a map handed to the tillerman
+			return 0;
+		endif
 		// Cancel the current command, load the pin coordinates.
 		cur_cmd := 0;
 		cur_map := struct;

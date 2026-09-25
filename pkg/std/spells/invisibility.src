@@ -44,10 +44,14 @@ program cast_invis( parms, spell_id )
 		endif
 	endif
 
-	if( !fromhit )
+	// 2026-09-21: reflection removed from this HELPFUL spell, matching Agility/
+	// Bless/Cunning/Strength/Protection where the same block is commented out.
+	// Cast on a friend with Magic Reflect up, it used to land on the caster
+	// instead and burn the friend's reflect charges.
+	/*if( !fromhit )
 		detach();
 		cast_on := Reflected( caster , cast_on , circle );
-	endif
+	endif*/
 
         PlaySoundEffect(caster, SFX_SPELL_INVISIBILITY);
         PlaySoundEffect(cast_on, SFX_SPELL_INVISIBILITY);
@@ -55,8 +59,32 @@ program cast_invis( parms, spell_id )
 		SetObjProperty(cast_on, "StealthCD", ReadGameClock()+10);
         cast_on.hidden := 1;
 
+	// 2026-09-21: this used to be "sleep(duration); cast_on.hidden := 0;" with no
+	// check of whose hide it still was. Be revealed, hide again with the Hiding
+	// skill (or a second Invisibility), and this old timer un-hid you later for
+	// no visible reason. Now each cast stamps its pid and owns the hide only
+	// while that stamp is its own; the timer also ends the moment the target is
+	// revealed, and hiding.src clears the stamp on a successful skill hide.
+	var my_pid := GetPid();
+	SetObjProperty( cast_on, "#InvisPid", my_pid );
+
 	detach();
-	sleep (ModifyWithMagicEfficiency( caster , Cint(GetEffectiveSkill(caster, SKILLID_MAGERY))));
-        cast_on.hidden := 0;
+	var time_left := ModifyWithMagicEfficiency( caster , Cint(GetEffectiveSkill(caster, SKILLID_MAGERY)));
+	while( time_left > 0 )
+		sleep( 1 );
+		time_left := time_left - 1;
+		if( CInt( GetObjProperty( cast_on, "#InvisPid" ) ) != my_pid )
+			return;	// a newer cast, or a skill hide, owns the hide now
+		endif
+		if( !cast_on.hidden )
+			EraseObjProperty( cast_on, "#InvisPid" );
+			return;	// revealed early -- this cast is over, never touch .hidden again
+		endif
+	endwhile
+
+	if( CInt( GetObjProperty( cast_on, "#InvisPid" ) ) == my_pid )
+		EraseObjProperty( cast_on, "#InvisPid" );
+		cast_on.hidden := 0;
+	endif
 	
 endprogram
