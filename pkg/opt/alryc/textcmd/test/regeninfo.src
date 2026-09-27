@@ -1,0 +1,65 @@
+// Synopsis: (Alryc test) Reads a targeted mobile's live HP/Mana/Stamina regen rates plus every named regen modifier (poison, template, item...) so poison/regen tests can be checked before and after
+use uo;
+use os;
+use basicio;
+
+include "include/attributes";
+include ":attributes:regen";
+
+// 2026-09-26: read-only QA reader for the stacking regen-rate modifier system
+// (pkg/systems/attributes/include/regen.inc). Rates are hundredths of a point per minute.
+program regeninfo( who, text )
+
+	var mob;
+	if( Lower(CStr(text)) == "me" )
+		mob := who;
+	else
+		SendSysMessage( who, "Target the mobile to inspect (or use .regeninfo me).", 3, 66 );
+		mob := Target( who );
+	endif
+
+	if( !mob || !mob.isa(POLCLASS_MOBILE) )
+		SendSysMessage( who, "Cancelled -- not a mobile.", 3, 33 );
+		return 0;
+	endif
+
+	SendSysMessage( who, "Regen info for " + mob.name + "  (poisoned: " + Cint(mob.poisoned) + ", default rate " + CORE_SETTINGS_DEFAULT_REGEN_RATE + ")", 3, 73 );
+
+	var vitalids := array{ VITALID_LIFE, VITALID_MANA, VITALID_STAMINA };
+	foreach vitalid in vitalids
+		var live;
+		var cur;
+		var maxv;
+		if( vitalid == VITALID_LIFE )
+			live := GetHpRegenRate( mob );
+			cur := GetHp( mob );
+			maxv := GetMaxHp( mob );
+		elseif( vitalid == VITALID_MANA )
+			live := GetManaRegenRate( mob );
+			cur := GetMana( mob );
+			maxv := GetMaxMana( mob );
+		else
+			live := GetStaminaRegenRate( mob );
+			cur := GetStamina( mob );
+			maxv := GetMaxStamina( mob );
+		endif
+
+		var line := Upper(vitalid) + " " + cur + "/" + maxv + "  live rate " + live + " (" + CStr( CDbl(live) / 100.0 ) + "/min)";
+
+		var dict := GetVitalRegenRateModDict( mob, vitalid );
+		if( dict.size() )
+			line := line + "  mods:";
+			foreach modname in (dict.keys())
+				line := line + " " + modname + "=" + Cint(dict[modname]);
+			endforeach
+			line := line + "  (sum " + GetVitalRegenRateMod( mob, vitalid ) + ")";
+		else
+			line := line + "  mods: none";
+		endif
+
+		SendSysMessage( who, line, 3, 88 );
+	endforeach
+
+	return 1;
+
+endprogram

@@ -68,8 +68,10 @@ const CORE_SETTINGS_MAX_REGEN_RATE	:= 30000;
 // Baseline regen rate (hundredths per minute) when nothing overrides it
 const CORE_SETTINGS_DEFAULT_REGEN_RATE	:= 1200;
 
-// CProp name prefix for regen rate changes
-const CPROP_NAME_PREFIX_REGEN_RATE	:= "NewRegenRateFor";
+// 2026-09-26: COMMENTED OUT -- only the (now commented-out) Set*RegenRate functions used this
+// old flat-CProp prefix. Regen is now the "RegenRateModsFor<vital>" dictionary (see regen.inc).
+// Existing "NewRegenRateFor*" CProps on saved characters are inert leftovers.
+//const CPROP_NAME_PREFIX_REGEN_RATE	:= "NewRegenRateFor";
 
 // The attributeid constants
 
@@ -2026,18 +2028,24 @@ endfunction
 **	0/1
 **
 ***********************************************************************************/
-function SetHpRegenRate( who, hundreth_per_minute )
-
-	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
-	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
-	endif
-
-	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_LIFE, hundreth_per_minute);
-	
-	return RecalcVitalsIfOnline(who);
-endfunction
+// 2026-09-26: COMMENTED OUT (audit after the vitals/regen port). This wrote the flat
+// "NewRegenRateFor<vital>" CProp, which nothing reads any more -- the vitals hook
+// (pkg/systems/attributes/hooks/vitalInit.src) now sums the named-entry dictionary
+// managed by SetVitalRegenRateMod()/ClearVitalRegenRateMod() in
+// pkg/systems/attributes/include/regen.inc. A caller would have silently done nothing.
+// No callers remained at the time of removal. Delete this block once the port is verified in game.
+//function SetHpRegenRate( who, hundreth_per_minute )
+//
+//	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
+//	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
+//	endif
+//
+//	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_LIFE, hundreth_per_minute);
+//
+//	return RecalcVitalsIfOnline(who);
+//endfunction
 
 
 /***********************************************************************************
@@ -2112,19 +2120,21 @@ endfunction
 **	0/1
 **
 ***********************************************************************************/
-function SetManaRegenRate( who, hundreth_per_minute )
-
-	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
-	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
-	endif
-	
-	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_MANA, hundreth_per_minute);
-	
-	return RecalcVitalsIfOnline(who);
-
-endfunction
+// 2026-09-26: COMMENTED OUT -- same reason as SetHpRegenRate above (wrote a CProp the
+// vitals hook no longer reads; use SetVitalRegenRateMod() in regen.inc instead).
+//function SetManaRegenRate( who, hundreth_per_minute )
+//
+//	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
+//	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
+//	endif
+//
+//	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_MANA, hundreth_per_minute);
+//
+//	return RecalcVitalsIfOnline(who);
+//
+//endfunction
 
 
 /***********************************************************************************
@@ -2218,19 +2228,21 @@ endfunction
 **	0/1
 **
 ***********************************************************************************/
-function SetStaminaRegenRate( who, hundreth_per_minute )
-
-	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
-	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
-		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
-	endif
-	
-	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_STAMINA, hundreth_per_minute);
-	
-	return RecalcVitalsIfOnline(who);
-
-endfunction
+// 2026-09-26: COMMENTED OUT -- same reason as SetHpRegenRate above (wrote a CProp the
+// vitals hook no longer reads; use SetVitalRegenRateMod() in regen.inc instead).
+//function SetStaminaRegenRate( who, hundreth_per_minute )
+//
+//	if( hundreth_per_minute < CORE_SETTINGS_MIN_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MIN_REGEN_RATE;
+//	elseif( hundreth_per_minute > CORE_SETTINGS_MAX_REGEN_RATE )
+//		hundreth_per_minute := CORE_SETTINGS_MAX_REGEN_RATE;
+//	endif
+//
+//	SetObjProperty(who, CPROP_NAME_PREFIX_REGEN_RATE+VITALID_STAMINA, hundreth_per_minute);
+//
+//	return RecalcVitalsIfOnline(who);
+//
+//endfunction
 
 
 /***********************************************************************************

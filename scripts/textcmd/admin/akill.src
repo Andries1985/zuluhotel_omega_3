@@ -1,5 +1,6 @@
-// Synopsis: Instantly kill all NPCs within a specified tile range
+// Synopsis: Kill every NPC (normal, hidden or concealed) within a tile range; players and staff are never touched, player vendors are force-closed
 //Edited August 25, 2024
+// 2026-09-26: NPC-only. One NPC_ONLY list pass instead of three, and anything that is not a killable NPC is skipped instead of aborting the whole command.
 
 use os;
 use uo;
@@ -35,73 +36,31 @@ function TryForceClosePlayerVendor(byref who, byref mob)
 endfunction
 
 program akill( who, dist )
-	
+
 	dist := CInt(dist);
-        SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles." );
+	SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles." );
 
-	foreach mob in ListMobilesNearLocation( who.x, who.y, LIST_IGNORE_Z, dist, who.realm )
-		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
-			SendSysmessage(who, "You can only .kill NPCs.");
-			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
-			return;
+	var killed := 0;
+	var closed := 0;
+	var mobs := ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_NORMAL + LISTEX_FLAG_HIDDEN + LISTEX_FLAG_CONCEALED + LISTEX_FLAG_NPC_ONLY, who.realm );
+	foreach mob in mobs
+		// belt and braces: the NPC_ONLY flag should already exclude players and staff
+		if( mob == who or !mob.isa(POLCLASS_NPC) )
+			continue;
 		endif
-		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
-			SendSysMessage( who , "You cant kill him, he is superior to you." );
-			SendSysMessage( mob , who.name + " is trying to kill you." );
-			return;
+
+		RevokePrivilege( mob, "invul" );
+		SetObjProperty( mob, "guardkill", 1);
+		if(TryForceClosePlayerVendor(who, mob))
+			closed := closed + 1;
+			continue;
 		endif
-		if (mob != who)
-			RevokePrivilege( mob, "invul" );
-			SetObjProperty( mob, "guardkill", 1);	
-			if(TryForceClosePlayerVendor(who, mob))
-				continue;
-			endif
-			WarnManagerofNPCDeath(mob);
-			mob.kill();
-		endif
-	endforeach
-		
-	foreach mob in ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_HIDDEN, who.realm )
-		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
-			SendSysmessage(who, "You can only .kill NPCs.");
-			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
-			return;
-		endif
-		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
-			SendSysMessage( who , "You cant kill him, he is superior to you." );
-			SendSysMessage( mob , who.name + " is trying to kill you." );
-			return;
-		endif
-		if (mob != who)
-			RevokePrivilege( mob, "invul" );
-			SetObjProperty( mob, "guardkill", 1);	
-			if(TryForceClosePlayerVendor(who, mob))
-				continue;
-			endif
-			WarnManagerofNPCDeath(mob);
-			mob.kill();
-		endif
+		WarnManagerofNPCDeath(mob);
+		mob.kill();
+		killed := killed + 1;
 	endforeach
 
-	foreach mob in ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_CONCEALED, who.realm )
-		if(who.cmdlevel < 4 && !mob.isa(POLCLASS_NPC))
-			SendSysmessage(who, "You can only .kill NPCs.");
-			LogCommand(who, GetProcess(GetPid()).name, who.name+" tried to .kill "+mob.name);
-			return;
-		endif
-		if( mob.cmdlevel > who.cmdlevel and who.cmdlevel < 5 )
-			SendSysMessage( who , "You cant kill him, he is superior to you." );
-			SendSysMessage( mob , who.name + " is trying to kill you." );
-			return;
-		endif
-		if (mob != who)
-			RevokePrivilege( mob, "invul" );
-			SetObjProperty( mob, "guardkill", 1);	
-			if(TryForceClosePlayerVendor(who, mob))
-				continue;
-			endif
-			WarnManagerofNPCDeath(mob);
-			mob.kill();
-		endif
-	endforeach
+	SendSysMessage( who, "Killed "+killed+" NPC(s), closed "+closed+" player vendor(s)." );
+	LogCommand(who, GetProcess(GetPid()).name, "Radius "+dist+": killed "+killed+", closed "+closed+" player vendor(s)");
+
 endprogram
