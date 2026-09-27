@@ -117,7 +117,15 @@ function SetNameByEnchant( item , cursed := 5 )
 	//Look for the regenerations mods
 	foreach mod in regenerations
 		if ( GetObjProperty( item , mod ) )
-			RenameByImmunity( item , mod , Cint(GetObjProperty( item , mod )/100) , cursed );
+			// 2026-09-26: regen tiers are 200..1200 (hundredths/min), so tier = value/200 (was /100 on a
+			// 100..600 scale). Clamped to 1..6 because modenchantdesc.cfg only has Name1-6/CName1-6.
+			var regentier := Cint(GetObjProperty( item , mod )/200);
+			if( regentier < 1 )
+				regentier := 1;
+			elseif( regentier > 6 )
+				regentier := 6;
+			endif
+			RenameByImmunity( item , mod , regentier , cursed );
 		endif
 	endforeach
 	

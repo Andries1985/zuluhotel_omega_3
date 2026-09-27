@@ -21,8 +21,13 @@ include ":staff:include/staff";
 include "include/constants/locations";
 include ":containers:storageAreas";
 include ":admin:include/adminpanel";
+include "include/classes";              // 2026-09-26: class name/level on the Status page
+include "include/res";                  // 2026-09-26: ResurrectMobile()
+include ":attributes:include/regen";    // 2026-09-26: regen-mod dictionary on the Status page
 
 const TEXTSTARTLOCY :=  70;
+
+var statusy := 80;   // next row y on the Status page (page 6), see AddStatusRow
 
 var layout := array( 
 "page 0",
@@ -579,7 +584,10 @@ program textcmd_info( character , whom )
   data[152] := who.title_suffix;
 
   var acc := who.acct;
-  var release := acc.getprop("Release");
+  var release := 0;
+  if( acc )   // 2026-09-26: NPCs have no account; this used to call a method on an error value
+    release := acc.getprop("Release");
+  endif
 
   tempitem := who.title_race;
   if (tempitem<>"") data[154] := who.title_race; endif
@@ -606,7 +614,9 @@ program textcmd_info( character , whom )
     data[146] :="n/a";
   endif
 
-  var result := SendDialogGump( character, layout, data );   
+  AddStatusPages( who );
+
+  var result := SendDialogGump( character, layout, data );
   var reskey;
 
   foreach key in (result.keys)
@@ -640,7 +650,6 @@ program textcmd_info( character , whom )
 
   if (result[0]==18)
     who.frozen := 0;
-    EraseObjProperty( who, "frozen" ); // 2026-09-23: .freeze sets this cprop and the AI scripts re-freeze on start while it is set
     EraseObjProperty( who, "frozen" ); // 2026-09-23: .freeze sets this cprop and the AI scripts re-freeze on start while it is set
     SendSysmessage( character , whoname + " is unfrozen.");
     LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Unfreeze");
@@ -895,27 +904,13 @@ program textcmd_info( character , whom )
   endif
 
   if (result[0]==32) // resurrect
-  var newcolor, racepicked := who.title_race;
-
+  // 2026-09-26: now uses ResurrectMobile() (res.inc) like every other resurrect path -- it sets the
+  // res-protection window, fixes the race colour (this inline copy was missing Orc and Frost-Elf) and
+  // clears stale regen mods.
   if (who.dead)
-  Resurrect( who );
-
-  if (racepicked=="Elf")
-    newcolor := 770;
-  elseif (racepicked=="Dark-Elf")
-    newcolor := 33877;
-  elseif (racepicked=="Goblin")
-    newcolor := 34186;
-  elseif (racepicked=="Barbarian")
-    newcolor := 33804;
-  elseif (racepicked=="Dwarf")
-    newcolor := 33888;
+    ResurrectMobile( who , character );
   else
-    newcolor := who.truecolor;
-  endif
-    who.color := newcolor;
-  else
-          SendSysMessage( character, whoname + " is not dead!" );
+    SendSysMessage( character, whoname + " is not dead!" );
   endif
   LogCommand(character, GetProcess(GetPid()).name, who.name+"/"+who.serial, "Resurrect");
   return;
@@ -1153,8 +1148,8 @@ function FillInStats( who )
    data[22] := GetMana(who) + "/" + GetMaxMana(who);
    data[24] := GetStamina(who) + "/" + GetMaxStamina(who);
    data[26] := who.ar;
-   data[28] := who.graphic;
-   data[30] := who.color;
+   data[28] := DecAndHex( who.graphic );   // 2026-09-26: decimal + hex
+   data[30] := DecAndHex( who.color );
    data[144] := levelname;
    data[146] := who.acctname;
 
@@ -1402,4 +1397,171 @@ endfunction
 
 function GetgoDataLength();
     return (len(godata));
+endfunction
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// 2026-09-26: Status page (page 6) and Throwing skill row.
+// Appended to layout/data at runtime, after the static arrays, so the hand-numbered indices used
+// elsewhere in this script are untouched. Data indices are read from len(data) before each append.
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+function DecAndHex( number )
+
+	return CStr( CInt( number ) ) + " (" + Hex( CInt( number ) ) + ")";
+
+endfunction
+
+function AddStatusRow( label , value )
+
+	var idx := len( data );
+	data.append( CStr( label ) );
+	data.append( CStr( value ) );
+	layout.append( "text 130 " + CStr( statusy ) + " 300 " + CStr( idx ) );
+	layout.append( "text 250 " + CStr( statusy ) + " 995 " + CStr( idx + 1 ) );
+	statusy := statusy + 15;
+
+endfunction
+
+function PropNum( who , key )
+
+	return CInt( GetObjProperty( who , key ) );
+
+endfunction
+
+function AppendFlag( list , condition , name )
+
+	if( condition )
+		if( list )
+			return list + ", " + name;
+		endif
+		return name;
+	endif
+
+	return list;
+
+endfunction
+
+function RegenLine( who , vitalid )
+
+	var live;
+	if( vitalid == VITALID_LIFE )
+		live := GetHpRegenRate( who );
+	elseif( vitalid == VITALID_MANA )
+		live := GetManaRegenRate( who );
+	else
+		live := GetStaminaRegenRate( who );
+	endif
+
+	var line := CStr( live ) + " (" + CStr( CDbl( live ) / 100.0 ) + "/min)";
+
+	var dict := GetVitalRegenRateModDict( who , vitalid );
+	if( dict.size() )
+		line := line + "  mods:";
+		foreach modname in (dict.keys())
+			line := line + " " + modname[1,12] + "=" + CStr( CInt( dict[modname] ) );
+		endforeach
+	endif
+
+	return line;
+
+endfunction
+
+function AddStatusPages( who )
+
+	// Throwing (57) sits after the 0-48 grid on skills page 4 -- radio id 1000+skillid, like the other rows.
+	layout.append( "page 4" );
+	var tidx := len( data );
+	data.append( "THROWING" );
+	data.append( CStr( GetEffectiveSkill( who , SKILLID_THROWING ) ) );
+	layout.append( "text 130 275 300 " + CStr( tidx ) );
+	layout.append( "text 281 275 995 " + CStr( tidx + 1 ) );
+	layout.append( "radio 311 279 2362 2361 0 " + CStr( 1000 + SKILLID_THROWING ) );
+
+	// "Status" tab button, shown on every page
+	var labelidx := len( data );
+	data.append( "Status" );
+	layout.append( "page 0" );
+	layout.append( "button 250 42 2118 2117 0 6" );
+	layout.append( "text 270 40 5 " + CStr( labelidx ) );
+
+	layout.append( "page 6" );
+	layout.append( "button 400 58 5537 5538 0 1" );
+
+	AddStatusRow( "Realm" , who.realm );
+	AddStatusRow( "Serial" , DecAndHex( who.serial ) );
+
+	if( who.npctemplate )
+		AddStatusRow( "Template" , who.npctemplate );
+	else
+		AddStatusRow( "Template" , "player" );
+	endif
+
+	var classkey := GetClass( who );
+	if( classkey )
+		AddStatusRow( "Class" , GetClasseName( classkey ) + " (level " + CStr( GetClasseLevel( who ) ) + ")" );
+	else
+		AddStatusRow( "Class" , "none" );
+	endif
+
+	AddStatusRow( "Karma / Fame" , CStr( GetKarma( who ) ) + " / " + CStr( GetFame( who ) ) );
+
+	var flags := "";
+	flags := AppendFlag( flags , who.dead , "dead" );
+	flags := AppendFlag( flags , who.warmode , "war" );
+	flags := AppendFlag( flags , who.hidden , "hidden" );
+	flags := AppendFlag( flags , who.poisoned , "poisoned" );
+	flags := AppendFlag( flags , who.paralyzed , "paralyzed" );
+	flags := AppendFlag( flags , who.frozen , "frozen" );
+	flags := AppendFlag( flags , who.criminal , "criminal" );
+	flags := AppendFlag( flags , who.murderer , "murderer" );
+	if( !flags )
+		flags := "none";
+	endif
+	AddStatusRow( "Flags" , flags );
+
+	AddStatusRow( "Life regen" , RegenLine( who , VITALID_LIFE ) );
+	AddStatusRow( "Mana regen" , RegenLine( who , VITALID_MANA ) );
+	AddStatusRow( "Stam regen" , RegenLine( who , VITALID_STAMINA ) );
+
+	AddStatusRow( "AR / AR mod" , CStr( who.ar ) + " / " + CStr( who.ar_mod ) );
+	AddStatusRow( "Fire Wat Air Ear" , CStr( PropNum( who , "FireProtection" ) ) + " / " + CStr( PropNum( who , "WaterProtection" ) ) + " / " + CStr( PropNum( who , "AirProtection" ) ) + " / " + CStr( PropNum( who , "EarthProtection" ) ) );
+	AddStatusRow( "Necro Holy Phys" , CStr( PropNum( who , "NecroProtection" ) ) + " / " + CStr( PropNum( who , "HolyProtection" ) ) + " / " + CStr( PropNum( who , "PhysicalProtection" ) ) );
+	AddStatusRow( "PermPois PermMag MR" , CStr( PropNum( who , "PermPoisonImmunity" ) ) + " / " + CStr( PropNum( who , "PermMagicImmunity" ) ) + " / " + CStr( PropNum( who , "Permmr" ) ) );
+	AddStatusRow( "FreeAct HealInc" , CStr( PropNum( who , "FreeAction" ) ) + " / " + CStr( PropNum( who , "HealingIncrease" ) ) );
+
+	if( who.npctemplate )
+		var overrides := "";
+		var cust := PropNum( who , "CustomHitsLevel" );
+		if( cust )
+			overrides := overrides + "HP " + CStr( cust / 100 ) + "  ";
+		endif
+		cust := PropNum( who , "CustomManaLevel" );
+		if( cust )
+			overrides := overrides + "Mana " + CStr( cust / 100 ) + "  ";
+		endif
+		cust := PropNum( who , "CustomStaminaLevel" );
+		if( cust )
+			overrides := overrides + "Stam " + CStr( cust / 100 ) + "  ";
+		endif
+		if( !overrides )
+			overrides := "none";
+		endif
+		AddStatusRow( "Vital overrides" , overrides );
+		AddStatusRow( "Base regen HP/Mana" , CStr( PropNum( who , "BaseHpRegen" ) ) + " / " + CStr( PropNum( who , "BaseManaRegen" ) ) );
+
+		var masterserial := GetObjProperty( who , "master" );
+		if( masterserial )
+			var master := SystemFindObjectBySerial( masterserial );
+			if( !master )
+				master := SystemFindObjectBySerial( masterserial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+			endif
+			if( master )
+				AddStatusRow( "Master" , master.name );
+			else
+				AddStatusRow( "Master" , "serial " + CStr( masterserial ) + " (not found)" );
+			endif
+		endif
+	endif
+
 endfunction

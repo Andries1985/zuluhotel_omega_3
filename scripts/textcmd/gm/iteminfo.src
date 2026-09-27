@@ -1,4 +1,4 @@
-// Synopsis: (Alryc test) Enchant/property editor for a targeted item, constrained to real loot-legal values
+// Synopsis: Enchant/property viewer and editor for a targeted item, constrained to real loot-legal values (regen mods are staff-only)
 use uo;
 use os;
 use math;
@@ -14,13 +14,13 @@ include "include/spelldata";
 include "include/itemutil";
 include ":mdgumps:yesNo";
 
-//Set to 0 to silence all [alryciteminfo] console debug prints once this is verified working.
+//Set to 0 to silence all [iteminfo] console debug prints once this is verified working.
 const DBG_ON := 1;
 
 function Dbg( msg )
 
 	if( DBG_ON )
-		Print( "[alryciteminfo] " + msg );
+		Print( "[iteminfo] " + msg );
 	endif
 
 endfunction
@@ -454,7 +454,35 @@ var layout := array(
 
 			"text 20  270 40 145",			//"GM Counterpart"
 			"text 150 270 40 146",			//GM Counterpart status
-			"button 260 270 2640 2641 1 1 87"	//Button to change to a GM counterpart
+			"button 260 270 2640 2641 1 1 87",	//Button to change to a GM counterpart
+
+
+
+			//--- Appended (2026-09-26): 4th top-level tab "Tile Info" plus its page 20 -- ids/graphic/colour in
+			//--- decimal AND hex, and the tiles.cfg (tiledata.mul) record for the item's graphic.
+			"page 0",
+			"text 410 85 40 147",			//"Tile Info" tab label
+			"button 410 82 2640 2641 0 20",		//Button to Page 20 (Tile Info)
+
+			"page 20",
+			"text 20  120 40 148",			//"Serial"
+			"text 150 120 40 149",			//Serial value
+			"text 20  145 40 150",			//"Objtype"
+			"text 150 145 40 151",			//Objtype value
+			"text 20  170 40 152",			//"Graphic"
+			"text 150 170 40 153",			//Graphic value
+			"text 20  195 40 154",			//"Color"
+			"text 150 195 40 155",			//Color value
+			"text 20  220 40 156",			//"Tile Name"
+			"text 150 220 40 157",			//Tile Name value
+			"text 20  245 40 158",			//"Layer"
+			"text 150 245 40 159",			//Layer value
+			"text 20  270 40 160",			//"Height / Weight"
+			"text 150 270 40 161",			//Height / Weight value
+			"text 20  295 40 162",			//"UoFlags"
+			"text 150 295 40 163",			//UoFlags value
+			"text 20  320 40 164",			//"Tile Flags"
+			"text 150 320 40 165"			//Tile Flags value
 );
 
 var data := array(
@@ -607,10 +635,31 @@ var data := array(
 			"",					//143 val
 			"Advanced",				//144 tab label on page 0
 			"GM Counterpart",			//145 "GM Counterpart"
-			""					//146 val (status/name, or a pick-count prompt)
+			"",					//146 val (status/name, or a pick-count prompt)
+
+			//--- Appended for the Tile Info page (page 20)
+			"Tile Info",				//147 tab label on page 0
+			"Serial",				//148
+			"",					//149 val
+			"Objtype",				//150
+			"",					//151 val
+			"Graphic",				//152
+			"",					//153 val
+			"Color",				//154
+			"",					//155 val
+			"Tile Name",				//156
+			"",					//157 val
+			"Layer",				//158
+			"",					//159 val
+			"Height / Weight",				//160
+			"",					//161 val
+			"UoFlags",				//162
+			"",					//163 val
+			"Tile Flags",				//164
+			""					//165 val
 );
 
-program alryciteminfo( who )
+program iteminfo( who )
 
 	SendSysmessage( who , "Select an Item." );
 	var what :=  TargetCoordinates( who );
@@ -977,7 +1026,7 @@ program alryciteminfo( who )
 				EraseObjProperty( item , "FreeAction" );
 			else
 				SetObjProperty( item , "FreeAction" , 1 );
-				ClearOtherElementalGroup( item , "FreeAction" );
+				ClearGroupOneMods( item , "FreeAction" );
 			endif
 			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Add/Remove Free Action");
 			DebugRenameItem( item );
@@ -1092,7 +1141,7 @@ function FillInArrays( item )
 	
 	
 	//Set the color
-	data[13] := item.color;
+	data[13] := DecAndHex( item.color );
 	if( GetObjProperty( item , "EnchantColor" ) )
 		data[119] := GetObjProperty( item , "EnchantColor" );
 	else
@@ -1294,16 +1343,19 @@ function FillInArrays( item )
 		
 		
 		//Set the mods features
-		//NOTE: Regeneration Mods (old page 11) is deliberately retired - HpRegen/ManaRegen/
-		//StamRegen are never granted by starteqp.inc, so no real drop can carry them. The
-		//label (data[30]) and its nav button (layout[61]) are left unset, which hides the
-		//row entirely and makes the old page 11 unreachable.
+		//2026-09-26: Regeneration Mods (page 11) UN-RETIRED. It was hidden because no loot path
+		//grants HpRegen/ManaRegen/StamRegen (starteqp.inc never sets them), but the regen port
+		//re-enabled the equip side (skilladvancerequip.src DoRegenMods -> "item<serial>" entry in
+		//the vital's regen-mod dictionary), so staff can now hand-make regen items for testing.
+		//These are STAFF-ONLY values -- unlike the other pages they are NOT loot-legal.
 		data[29] := "Stats Mods";
+		data[30] := "Regeneration Mods";
 		data[31] := "Elemental Protections";
 		data[32] := "Special Protections";
 		layout[37] := "button 260 295 2644 2645 0 6";
 		layout[59] := "button 260 220 2644 2645 0 9";
 		layout[60] := "button 260 245 2644 2645 0 10";
+		layout[61] := "button 260 270 2644 2645 0 11";
 		layout[62] := "button 260 295 2644 2645 0 12";
 		layout[63] := "button 260 320 2644 2645 0 13";
 
@@ -1324,6 +1376,25 @@ function FillInArrays( item )
 			data[72] := GetObjProperty( item , "dex" );
 		else
 			data[72] := "0";
+		endif
+
+		//Regen mods (2026-09-26 un-retired; see note above)
+		if( GetObjProperty( item , "HpRegen" ) )
+			data[74] := GetObjProperty( item , "HpRegen" );
+		else
+			data[74] := "0";
+		endif
+
+		if( GetObjProperty( item , "ManaRegen" ) )
+			data[76] := GetObjProperty( item , "ManaRegen" );
+		else
+			data[76] := "0";
+		endif
+
+		if( GetObjProperty( item , "StamRegen" ) )
+			data[78] := GetObjProperty( item , "StamRegen" );
+		else
+			data[78] := "0";
 		endif
 
 
@@ -1659,6 +1730,58 @@ function FillInArrays( item )
 	//whole itemdesc config on every click would be slow). The button itself does the scan
 	//on demand, see ChangeToGMCounterpart.
 	data[146] := "click to search by graphic";
+
+	//Tile Info page: ids in decimal and hex, plus the tiles.cfg record for this graphic
+	data[150] := DecAndHex( item.serial );
+	data[152] := DecAndHex( item.objtype );
+	data[154] := DecAndHex( item.graphic );
+	data[156] := DecAndHex( item.color );
+
+	var tilecfg := ReadConfigFile( "::tiles" );
+	var tile := 0;
+	if( tilecfg )
+		tile := FindConfigElem( tilecfg , item.graphic );
+	endif
+
+	if( tile )
+		data[158] := GetConfigString( tile , "Desc" );
+		var tilelayer := GetConfigInt( tile , "Layer" );
+		if( tilelayer )
+			data[160] := DecAndHex( tilelayer );
+		else
+			data[160] := "none (not wearable)";
+		endif
+		data[162] := GetConfigInt( tile , "Height" ) + " / " + GetConfigInt( tile , "Weight" );
+		data[164] := GetConfigString( tile , "UoFlags" );
+
+		var flagnames := "";
+		var checks := { "Blocking" , "BlockSight" , "Stackable" , "Movable" , "OverFlight" , "Wearable" };
+		foreach flagkey in checks
+			if( GetConfigInt( tile , flagkey ) )
+				if( flagnames )
+					flagnames := flagnames + ", ";
+				endif
+				flagnames := flagnames + flagkey;
+			endif
+		endforeach
+		if( !flagnames )
+			flagnames := "none set";
+		endif
+		data[166] := flagnames;
+	else
+		data[158] := "no tiles.cfg record for " + Hex( item.graphic );
+		data[160] := "n/a";
+		data[162] := "n/a";
+		data[164] := "n/a";
+		data[166] := "n/a";
+	endif
+
+endfunction
+
+function DecAndHex( number )
+//Decimal followed by hex, e.g. "3821 (0xEED)".
+
+	return CStr( CInt( number ) ) + " (" + Hex( CInt( number ) ) + ")";
 
 endfunction
 
@@ -2044,44 +2167,22 @@ function ClearOtherStatMods( item , keep )
 
 endfunction
 
-function ClearOtherElementalGroup( item , keep )
-//The nine-way ApplyEnchant "elemental" pick - exactly one of these ever appears together.
+function ClearGroupOneMods( item , keep )
+//The single "enchant" slot (ritual ruleset Group 1, traced against starteqp.inc's ApplyEnchant): an item carries
+//AT MOST ONE of these 18 properties -- the nine-way elemental/protection pick, the three charge immunities,
+//the three permanent immunities, and (2026-09-26) HpRegen/ManaRegen/StamRegen. Every picker for any of them
+//calls this with its own property as "keep", so the rule holds across all sub-groups instead of only within
+//one. Stat/skill mods (prefixes) and ArBonus are separate slots and are never touched here.
 
-	var props := {	"AirProtection", "EarthProtection", "FireProtection",
-			"WaterProtection", "HolyProtection", "NecroProtection",
-			"FreeAction", "HealingIncrease", "PhysicalProtection"	};
-
-	foreach prop in props
-		if( prop != keep and GetObjProperty( item , prop ) )
-			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
-			EraseObjProperty( item , prop );
-		endif
-	endforeach
-
-endfunction
-
-function ClearOtherChargeImmunity( item , keep )
-//ApplyEnchant's charge-immunity pick - exactly one of these three.
-
-	var props := { "MagicImmunity", "PoisonImmunity", "SpellReflect" };
+	var props := {	"AirProtection", "EarthProtection", "FireProtection", "WaterProtection",
+			"HolyProtection", "NecroProtection", "FreeAction", "HealingIncrease", "PhysicalProtection",
+			"MagicImmunity", "PoisonImmunity", "SpellReflect",
+			"PermMagicImmunity", "PermPoisonImmunity", "Permmr",
+			"HpRegen", "ManaRegen", "StamRegen"	};
 
 	foreach prop in props
 		if( prop != keep and GetObjProperty( item , prop ) )
-			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
-			EraseObjProperty( item , prop );
-		endif
-	endforeach
-
-endfunction
-
-function ClearOtherPermanentImmunity( item , keep )
-//ApplyEnchant's permanent-immunity pick - exactly one of these three.
-
-	var props := { "PermMagicImmunity", "PermPoisonImmunity", "Permmr" };
-
-	foreach prop in props
-		if( prop != keep and GetObjProperty( item , prop ) )
-			Dbg( "ClearOtherGroup: erasing " + prop + " (keeping " + keep + ")" );
+			Dbg( "ClearGroupOneMods: erasing " + prop + " (keeping " + keep + ")" );
 			EraseObjProperty( item , prop );
 		endif
 	endforeach
@@ -2248,12 +2349,55 @@ function EditItemInt( who , item , result )
 			endif
 			break;
 
+		//Regen mods (13-15): staff-only, no loot path grants them yet. Value = hundredths of a point per minute
+		//added to the 1200 baseline; tiers 200-1200 = tier 1-6 (namingbyenchant.inc divides by 200). A regen mod
+		//Regen is a suffix ENCHANT: it shares the one-of-18 enchant slot (the 15 Group 1 properties + HpRegen/ManaRegen/StamRegen).
+		//It stacks freely with stat/skill mods (prefixes) and ArBonus, like any other suffix enchant.
+		13:	//Hp regen mod
+			val := PickTierValue( who , {200,400,600,800,1000,1200} , "Select the Life regen bonus (hundredths/min):" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "HpRegen" , val );
+					ClearGroupOneMods( item , "HpRegen" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "HpRegen" );
+				endif
+			endif
+			break;
+
+		14:	//Mana regen mod
+			val := PickTierValue( who , {200,400,600,800,1000,1200} , "Select the Mana regen bonus (hundredths/min):" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "ManaRegen" , val );
+					ClearGroupOneMods( item , "ManaRegen" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "ManaRegen" );
+				endif
+			endif
+			break;
+
+		15:	//Stam regen mod
+			val := PickTierValue( who , {200,400,600,800,1000,1200} , "Select the Stamina regen bonus (hundredths/min):" );
+			if( val != NOVAL )
+				if( val )
+					SetObjProperty( item , "StamRegen" , val );
+					ClearGroupOneMods( item , "StamRegen" );
+					DebugRenameItem( item );
+				else
+					EraseObjProperty( item , "StamRegen" );
+				endif
+			endif
+			break;
+
 		16:	//Air Protection - elemental group, %-tier per starteqp.inc's ApplyElementalImmunity
 			val := PickTierValue( who , {25,50,65,75,85,95} , "Select Air Protection %:" );
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "AirProtection" , val );
-					ClearOtherElementalGroup( item , "AirProtection" );
+					ClearGroupOneMods( item , "AirProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "AirProtection" );
@@ -2266,7 +2410,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "EarthProtection" , val );
-					ClearOtherElementalGroup( item , "EarthProtection" );
+					ClearGroupOneMods( item , "EarthProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "EarthProtection" );
@@ -2279,7 +2423,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "FireProtection" , val );
-					ClearOtherElementalGroup( item , "FireProtection" );
+					ClearGroupOneMods( item , "FireProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "FireProtection" );
@@ -2292,7 +2436,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "WaterProtection" , val );
-					ClearOtherElementalGroup( item , "WaterProtection" );
+					ClearGroupOneMods( item , "WaterProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "WaterProtection" );
@@ -2305,7 +2449,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "HolyProtection" , val );
-					ClearOtherElementalGroup( item , "HolyProtection" );
+					ClearGroupOneMods( item , "HolyProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "HolyProtection" );
@@ -2318,7 +2462,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "NecroProtection" , val );
-					ClearOtherElementalGroup( item , "NecroProtection" );
+					ClearGroupOneMods( item , "NecroProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "NecroProtection" );
@@ -2334,7 +2478,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "PhysicalProtection" , val );
-					ClearOtherElementalGroup( item , "PhysicalProtection" );
+					ClearGroupOneMods( item , "PhysicalProtection" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "PhysicalProtection" );
@@ -2350,7 +2494,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "HealingIncrease" , val );
-					ClearOtherElementalGroup( item , "HealingIncrease" );
+					ClearGroupOneMods( item , "HealingIncrease" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "HealingIncrease" );
@@ -2363,7 +2507,7 @@ function EditItemInt( who , item , result )
 				EraseObjProperty( item , "FreeAction" );
 			else
 				SetObjProperty( item , "FreeAction" , 1 );
-				ClearOtherElementalGroup( item , "FreeAction" );
+				ClearGroupOneMods( item , "FreeAction" );
 			endif
 			DebugRenameItem( item );
 			break;
@@ -2373,7 +2517,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "MagicImmunity" , val );
-					ClearOtherChargeImmunity( item , "MagicImmunity" );
+					ClearGroupOneMods( item , "MagicImmunity" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "MagicImmunity" );
@@ -2386,7 +2530,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "PoisonImmunity" , val );
-					ClearOtherChargeImmunity( item , "PoisonImmunity" );
+					ClearGroupOneMods( item , "PoisonImmunity" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "PoisonImmunity" );
@@ -2399,7 +2543,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "SpellReflect" , val );
-					ClearOtherChargeImmunity( item , "SpellReflect" );
+					ClearGroupOneMods( item , "SpellReflect" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "SpellReflect" );
@@ -2415,7 +2559,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "PermMagicImmunity" , val );
-					ClearOtherPermanentImmunity( item , "PermMagicImmunity" );
+					ClearGroupOneMods( item , "PermMagicImmunity" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "PermMagicImmunity" );
@@ -2431,7 +2575,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "PermPoisonImmunity" , val );
-					ClearOtherPermanentImmunity( item , "PermPoisonImmunity" );
+					ClearGroupOneMods( item , "PermPoisonImmunity" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "PermPoisonImmunity" );
@@ -2447,7 +2591,7 @@ function EditItemInt( who , item , result )
 			if( val != NOVAL )
 				if( val )
 					SetObjProperty( item , "Permmr" , val );
-					ClearOtherPermanentImmunity( item , "Permmr" );
+					ClearGroupOneMods( item , "Permmr" );
 					DebugRenameItem( item );
 				else
 					EraseObjProperty( item , "Permmr" );

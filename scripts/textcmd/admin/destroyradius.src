@@ -1,22 +1,29 @@
-// Synopsis: Destroy all items and NPCs within a specified radius
+// Synopsis: Destroy all items (corpses included) within a radius; spawnpoints and spawn triggers are left alone, NPCs and players are not affected
 //Edited September 20, 2024
+// 2026-09-26: the old guard skipped 0xa301, the spawnpoint's OldObjType, so live spawnpoints (0xa300) were being destroyed. Now skips both spawnpoint package items.
 
 use uo;
 
 include ":staff:include/staff";
 
+const OBJTYPE_SPAWNPOINT   := 0xa300;   // Container SpawnPoint, pkg/opt/spawnpoint/config/itemdesc.cfg
+const OBJTYPE_SPAWNTRIGGER := 0x35000;  // Item SpawnTrigger (invisible walk-on trigger), same file
+
 program destroyradius( who, text )
 
 	var destroyed := {};
+	var kept := 0;
 	var ranget := cint( text );
-	
+
 	foreach thingie in ListItemsNearLocation( who.x, who.y, LIST_IGNORE_Z, ranget, who.realm );
-		if( thingie.objtype != 0xa301 )
-			destroyed.append(thingie.desc+"/"+thingie.serial);
-			DestroyItem( thingie );
+		if( thingie.objtype == OBJTYPE_SPAWNPOINT or thingie.objtype == OBJTYPE_SPAWNTRIGGER )
+			kept := kept + 1;
+			continue;
 		endif
+		destroyed.append(thingie.desc+"/"+thingie.serial);
+		DestroyItem( thingie );
 	endforeach
-	LogCommand(who, GetProcess(GetPid()).name, "Radius of "+text, destroyed);
-	SendSysMessage(who, "Destroyed everything in a radius of " + ranget);
-		
+	LogCommand(who, GetProcess(GetPid()).name, "Radius of "+text+", kept "+kept+" spawnpoint item(s)", destroyed);
+	SendSysMessage(who, "Destroyed " + destroyed.size() + " item(s) in a radius of " + ranget + ", kept " + kept + " spawnpoint item(s).");
+
 endprogram
