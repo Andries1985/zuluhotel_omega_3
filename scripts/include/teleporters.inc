@@ -1585,10 +1585,10 @@ var teleporters := {
     { 5882, 850, -13, 5836, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 to Poison Dungeon Boss Room
     { 5883, 850, -13, 5837, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 to Poison Dungeon Boss Room
     { 5884, 850, -13, 5838, 1745, 12, "britannia_alt", "britannia_alt" }, //Poison Dungeon Lvl1 to Poison Dungeon Boss Room
-    { 5683, 192, -110, 6017, 1298, 17, "britannia_alt", "britannia_alt" }, //Great Pyramid to Necropolis of Nagash
-    { 5684, 192, -110, 6018, 1298, 17, "britannia_alt", "britannia_alt" }, //Great Pyramid to Necropolis of Nagash
-    { 6017, 1299, 20, 5683, 193, -105, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Great Pyramid
-    { 6018, 1299, 20, 5684, 193, -105, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Great Pyramid
+    { 5683, 192, -108, 6017, 1298, 17, "britannia_alt", "britannia_alt" }, //Great Pyramid to Necropolis of Nagash
+    { 5684, 192, -108, 6018, 1298, 17, "britannia_alt", "britannia_alt" }, //Great Pyramid to Necropolis of Nagash
+    { 6017, 1299, 20, 5683, 193, -103, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Great Pyramid
+    { 6018, 1299, 20, 5684, 193, -103, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Great Pyramid
     { 5382, 2761, 0, 5440, 2636, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash Boss Room to Necropolis of Nagash
     { 5382, 2762, 0, 5440, 2637, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash Boss Room to Necropolis of Nagash
     { 5382, 2763, 0, 5440, 2638, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash Boss Room to Necropolis of Nagash
@@ -1643,9 +1643,9 @@ var teleporters := {
     { 7028, 1419, 2, 6690, 319, 15, "britannia_alt", "britannia_alt" }, //Alryc's Magma Halls to Alryc's Hellfire Abyss
     { 7028, 1420, 2, 6690, 320, 15, "britannia_alt", "britannia_alt" }, //Alryc's Magma Halls to Alryc's Hellfire Abyss
     { 7028, 1421, 2, 6690, 321, 15, "britannia_alt", "britannia_alt" }, //Alryc's Magma Halls to Alryc's Hellfire Abyss
-    { 6691, 319, 15, 7029, 1419, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
-    { 6691, 320, 15, 7029, 1420, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
-    { 6691, 321, 15, 7029, 1421, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
+    { 6691, 319, 20, 7029, 1419, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
+    { 6691, 320, 20, 7029, 1420, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
+    { 6691, 321, 20, 7029, 1421, 7, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Magma Halls
     { 6278, 1523, 45, 6690, 220, 5, "britannia_alt", "britannia_alt" }, //Alryc's Inferno to Alryc's Hellfire Abyss
     { 6278, 1524, 45, 6690, 221, 5, "britannia_alt", "britannia_alt" }, //Alryc's Inferno to Alryc's Hellfire Abyss
     { 6691, 220, 5, 6279, 1523, 45, "britannia_alt", "britannia_alt" }, //Alryc's Hellfire Abyss to Alryc's Inferno
