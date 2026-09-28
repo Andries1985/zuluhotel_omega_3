@@ -52,9 +52,14 @@ function RitualHasOtherImmunity( item, own_property )
         return 0;
 endfunction
 
-// Group 2 (hitscript/onhitscript) is isolated from Group 3 (the weapon/
-// armor "physical" trio - damage/AR/durability/stat mods) entirely: an item
-// can carry one or the other, never both. Checked from both directions.
+// A weapon/armor piece has exactly one hitscript/onhitscript slot - Fury,
+// Slayer, and Poisonlvl are mutually exclusive with each other, since they'd
+// all be competing for this same single field. 2026-09-28: this used to also
+// be checked against Group 3 (damage/AR/durability/stat mods) as if the two
+// were mutually exclusive too - they never were. Confirmed against
+// starteqp.inc/namingbyenchant.inc, and a real item in itemdesc.cfg already
+// combines a Hitscript with a SlayType. RitualHasGroup3Property(), which
+// existed only to enforce that false exclusion, has been removed.
 function RitualHasHitscript( item )
 
         if( item.IsA( POLCLASS_WEAPON ))
@@ -62,13 +67,6 @@ function RitualHasHitscript( item )
         endif
 
         return CInt( GetObjProperty( item, "OnHitscriptNumber" )) > 0;
-endfunction
-
-function RitualHasGroup3Property( item )
-
-        return CInt( item.dmg_mod ) || CInt( item.ar_mod ) || CInt( item.maxhp_mod ) ||
-               GetObjProperty( item, "str" ) || GetObjProperty( item, "int" ) || GetObjProperty( item, "dex" ) ||
-               GetObjProperty( item, "ArBonus" );
 endfunction
 
 function PerformRitual( mobile, spell_id )

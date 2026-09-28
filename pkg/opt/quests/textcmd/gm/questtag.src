@@ -2,7 +2,7 @@
 use uo;
 use os;
 
-include ":questpkg:questdeath";
+include ":quests:questdeath";
 
 program questtag(who, text)
 

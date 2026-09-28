@@ -8,7 +8,7 @@
 use uo;
 use os;
 
-include ":questpkg:queststate";
+include ":quests:queststate";
 
 // kind must be "CatchFish" or "CatchCrustacean", matching ObjKind<n> exactly.
 // tier is "Regular"/"Rare"/"Legendary". weight is 0 unless a TrophyWeight was actually

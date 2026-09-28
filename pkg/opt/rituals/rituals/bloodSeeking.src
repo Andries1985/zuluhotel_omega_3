@@ -32,11 +32,12 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
+        // 2026-09-28: dropped the RitualHasHitscript check here - a Fury/Slayer/Poisonlvl
+        // weapon can also carry a damage bonus. Confirmed against starteqp.inc/namingbyenchant.inc:
+        // nothing in the engine or loot generator ever required these to be exclusive, and a real
+        // hand-authored weapon in itemdesc.cfg already combines a special Hitscript with a SlayType.
         var dmg_mod := item.dmg_mod;
-        if( RitualHasHitscript( item ))
-		SendSysMessage( mobile, "This weapon's power is already bound to a different enchantment and cannot hold another." );
-                return 0;
-        elseif( dmg_mod >= 30 )
+        if( dmg_mod >= 30 )
 		SendSysMessage( mobile, "There's already a stronger enchantment on this item." );
                 return 0;
         endif

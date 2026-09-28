@@ -1,14 +1,14 @@
 // GM/test tool: view a character's status on every quest in quests.cfg, and
 // reset any of them, so testers can retry quest content (e.g. Quest 2's
 // altar/turn-in flow, which is otherwise non-repeatable) without needing a
-// fresh character each time. See pkg/opt/questpkg/textcmd/test/queststate.src.
+// fresh character each time. See pkg/opt/quests/textcmd/test/queststate.src.
 use uo;
 use os;
 use cfgfile;
 
 include ":mdgumps:gumps_ex";
-include ":questpkg:queststate";
-include ":questpkg:questpkg_gumpstyle";
+include ":quests:queststate";
+include ":quests:questpkg_gumpstyle";
 
 const QD_BTN_CLOSE := 0;
 const QD_RESET_OFFSET := 1000;

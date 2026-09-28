@@ -1,14 +1,14 @@
 // Synopsis: Lobsterman, the trap/crustacean quest-giver. Say "quest" to open the
 // quest-giver gump (lists whatever quests.cfg entries have "Giver lobsterman" --
 // currently Quest 104-107, the crustacean line). Also periodically shouts a reminder at
-// nearby players who have an undone quest available. Scaffolded directly from valthor.src.
+// nearby players who have an undone quest available. Scaffolded directly from mariah.src.
 use npc;
 use os;
 use uo;
 
 include "include/eventid";
-include ":questpkg:questnpcgump";
-include ":questpkg:queststate";
+include ":quests:questnpcgump";
+include ":quests:queststate";
 include "ai/setup/modsetup";
 
 const LOBSTERMAN_SHOUT_RANGE := 10;

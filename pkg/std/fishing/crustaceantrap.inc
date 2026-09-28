@@ -5,7 +5,7 @@ use cfgfile;
 include "include/random";
 include "include/skillpoints";
 include "fishing";
-include ":questpkg:questfishing";
+include ":quests:questfishing";
 
 const UOBJ_CRUSTACEANTRAP      := 0x3037E;
 const UOBJ_CRUSTACEANTRAP_BUOY := 0x3037F;

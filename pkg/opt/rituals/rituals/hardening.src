@@ -32,11 +32,10 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
+        // 2026-09-28: dropped the RitualHasHitscript check here - see bloodSeeking.src for why;
+        // an on-hit proc and an armor bonus were never actually mutually exclusive.
         var ar_mod := item.ar_mod;
-        if( RitualHasHitscript( item ))
-		SendSysMessage( mobile, "This armor's protection is already bound to a different enchantment and cannot hold another." );
-                return 0;
-        elseif( ar_mod >= 6 )
+        if( ar_mod >= 6 )
 		SendSysMessage( mobile, "There's already a stronger enchantment on "+item_desc+"." );
                 return 0;
         endif

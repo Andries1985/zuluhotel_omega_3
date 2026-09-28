@@ -1,19 +1,19 @@
-// Synopsis: Nystul the Enchanter, the third ritual quest-giver. Say "quest"
+// Synopsis: Stonewarden Thragg, the sixth ritual quest-giver. Say "quest"
 // to open the quest-giver gump (lists whatever quests.cfg entries have
-// "Giver nystul" -- Quests 9-11: Advanced Theurgy, Protective Aura, Free
-// Movement). Also periodically shouts a reminder at nearby players who
+// "Giver thragg" -- Quests 18-21: Resilience, Hardening, Elemental Ward,
+// Planard Ward). Also periodically shouts a reminder at nearby players who
 // haven't completed his quest(s) yet. Scaffolded directly from
-// valthor.src -- only the idle shout line differs.
+// erethian.src -- only the idle shout line differs.
 use npc;
 use os;
 use uo;
 
 include "include/eventid";
-include ":questpkg:questnpcgump";
-include ":questpkg:queststate";
+include ":quests:questnpcgump";
+include ":quests:queststate";
 include "ai/setup/modsetup";
 
-const NYSTUL_SHOUT_RANGE := 10;
+const THRAGG_SHOUT_RANGE := 10;
 
 var me := Self();
 
@@ -28,7 +28,7 @@ while(1)
 		endcase
 	else
 		var should_shout := 0;
-		foreach mobile in ListMobilesNearLocation(me.x, me.y, me.z, NYSTUL_SHOUT_RANGE, me.realm)
+		foreach mobile in ListMobilesNearLocation(me.x, me.y, me.z, THRAGG_SHOUT_RANGE, me.realm)
 			if(!mobile.npctemplate && QP_GiverHasUndoneQuest(me, mobile))
 				SendSysMessage(mobile, me.name+": I have a task for you, traveler!", 3, 73);
 				should_shout := 1;
@@ -36,7 +36,7 @@ while(1)
 		endforeach
 
 		if(should_shout)
-			Say("The islands off Arcanus hold shadows older than the city itself, traveler.");
+			Say("Rikktor's Lair still shelters worse than the champion himself, traveler.");
 		endif
 	endif
 endwhile

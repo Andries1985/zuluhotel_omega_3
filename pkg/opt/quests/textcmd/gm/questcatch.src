@@ -3,7 +3,7 @@ use uo;
 use os;
 use basicio;
 
-include ":questpkg:questfishing";
+include ":quests:questfishing";
 
 program questcatch(who, text)
 
