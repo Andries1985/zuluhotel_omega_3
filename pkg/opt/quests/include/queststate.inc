@@ -3,7 +3,7 @@
 // (not just chant books) reads/writes state through these functions instead
 // of touching storage directly, so the storage shape can change in one place.
 //
-// Stored in a datafile (data/ds/questpkg/), keyed by character serial, rather
+// Stored in a datafile (data/ds/quests/), keyed by character serial, rather
 // than as a CProp on the character object.
 use uo;
 use os;
@@ -12,7 +12,7 @@ use datafile;
 
 include "include/objtype";
 
-const QUESTPKG_DATAFILE := ":questpkg:queststate";
+const QUESTPKG_DATAFILE := ":quests:queststate";
 const QUESTPKG_STATE_PROP := "QuestState";
 
 // 2026-09-23: the package printed every journal open, tagged kill, fish catch and
@@ -93,9 +93,9 @@ endfunction
 //   200+    reserved for whatever's next
 function QP_GetQuestsCfg()
 
-	var cfg := ReadConfigFile(":questpkg:quests");
+	var cfg := ReadConfigFile(":quests:quests");
 	if(cfg.errortext)
-		SysLog("Error::QP_GetQuestsCfg() - Unable to open [:questpkg:quests.cfg] -->"+cfg.errortext);
+		SysLog("Error::QP_GetQuestsCfg() - Unable to open [:quests:quests.cfg] -->"+cfg.errortext);
 	endif
 
 	return cfg;
@@ -289,7 +289,7 @@ endfunction
 // GM/test tool reset -- unlike QP_AbandonQuest (player self-service, only
 // works on a still-active quest), this resets a quest back to never-started
 // regardless of its current state, including a fully Completed,
-// non-repeatable quest. Used by .queststate (pkg/opt/questpkg/textcmd/test)
+// non-repeatable quest. Used by .queststate (pkg/opt/quests/textcmd/test)
 // so testers can retry quest content without needing a fresh character.
 function QP_ResetQuest(who, questid)
 

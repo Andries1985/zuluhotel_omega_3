@@ -1,7 +1,7 @@
 use uo;
 use os;
 
-include ":questpkg:questjournal";
+include ":quests:questjournal";
 
 program core_questButton( who )
         ShowQuestJournal( who );

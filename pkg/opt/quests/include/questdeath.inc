@@ -6,7 +6,7 @@
 use uo;
 use os;
 
-include ":questpkg:queststate";
+include ":quests:queststate";
 
 const QUESTPKG_TAG_QUESTID := "QuestId";
 const QUESTPKG_TAG_OBJIDX := "QuestObjIndex";

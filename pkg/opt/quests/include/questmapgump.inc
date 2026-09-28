@@ -7,21 +7,21 @@
 // hand-maintained config field -- an altar already knows which quest it
 // belongs to via its own RitualAltarQuestId CProp, and a quest-giver NPC
 // already knows via its own QuestGiverTag CProp (see
-// pkg/opt/questpkg/include/questspawncheck.inc for both lookups). So if an
+// pkg/opt/quests/include/questspawncheck.inc for both lookups). So if an
 // altar gets destroyed, it just drops off this list on the next open; place
 // a fresh one anywhere and it shows back up -- nothing to edit here or in
 // quests.cfg either way.
 //
-// See pkg/opt/questpkg/textcmd/gm/questmap.src.
+// See pkg/opt/quests/textcmd/gm/questmap.src.
 use uo;
 use os;
 use cfgfile;
 use polsys;
 
 include ":mdgumps:gumps_ex";
-include ":questpkg:queststate";
-include ":questpkg:questpkg_gumpstyle";
-include ":questpkg:questspawncheck";
+include ":quests:queststate";
+include ":quests:questpkg_gumpstyle";
+include ":quests:questspawncheck";
 
 const QM_BTN_CLOSE := 0;
 const QM_BTN_REFRESH := 1;

@@ -9,7 +9,7 @@ include "include/random";
 include "include/itemutil";
 include "include/attributes";
 include "include/skillpoints";
-include ":questpkg:questfishing";
+include ":quests:questfishing";
 
 //Dead code - superseded by PickCaughtFish()/ResolveFishCatch() below.
 //function RandomFish(character)

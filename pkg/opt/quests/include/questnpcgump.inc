@@ -7,8 +7,8 @@ use os;
 use cfgfile;
 
 include ":mdgumps:gumps_ex";
-include ":questpkg:queststate";
-include ":questpkg:questpkg_gumpstyle";
+include ":quests:queststate";
+include ":quests:questpkg_gumpstyle";
 
 const QNPC_BTN_CLOSE := 0;
 const QNPC_BTN_ACCEPT := 1;

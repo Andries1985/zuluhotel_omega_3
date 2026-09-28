@@ -32,11 +32,10 @@ function ApplyRitualEffect( mobile, item )
 
         var item_desc := TruncateArticle( item.desc );
 
+        // 2026-09-28: dropped the RitualHasHitscript check here - see bloodSeeking.src for why;
+        // an on-hit proc and durability were never actually mutually exclusive.
         var hp_mod := item.maxhp_mod;
-        if( RitualHasHitscript( item ))
-		SendSysMessage( mobile, "This item's durability is already bound to a different enchantment and cannot hold another." );
-                return 0;
-        elseif( hp_mod >= 30 )
+        if( hp_mod >= 30 )
 		SendSysMessage( mobile, "There's already have a more powerfull enchantment on "+item_desc+"." );
                 return 0;
         endif

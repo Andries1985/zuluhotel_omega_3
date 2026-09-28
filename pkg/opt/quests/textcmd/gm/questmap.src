@@ -2,7 +2,7 @@
 use uo;
 use os;
 
-include ":questpkg:questmapgump";
+include ":quests:questmapgump";
 
 program questmap(who, text)
 

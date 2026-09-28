@@ -3,7 +3,7 @@
 //    dedicated "Quest Item"/"Quest NPC" spawnpoint types instead of the
 //    generic ones (so .questmap's live scan below can rely on them always
 //    being self-describing, no matter which spawnpoint placed them).
-//  - pkg/opt/questpkg/include/questmapgump.inc, to discover quest content
+//  - pkg/opt/quests/include/questmapgump.inc, to discover quest content
 //    live in the world with no hand-maintained quest->objtype/template
 //    registry -- an altar's own RitualAltarQuestId CProp and a giver's own
 //    QuestGiverTag CProp already say which quest they belong to; this just

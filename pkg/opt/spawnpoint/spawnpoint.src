@@ -19,7 +19,7 @@ include "include/constants";
 include "include/mobileutil";
 include "include/managers";
 include ":spawnpoint:customnpc";
-include ":questpkg:questspawncheck";
+include ":quests:questspawncheck";
 
 const MIN_CMD_LEVEL			:= 4;    //CMDLEVEL_ADMIN;
 const REF_X				:= 0;
@@ -507,7 +507,7 @@ function IsValidTemplate( who, type, template )
 
 	// Quest content (ritual altars/quest-givers, self-identified by their
 	// own RitualAltarQuestId/QuestGiverTag CProps -- see
-	// pkg/opt/questpkg/include/questspawncheck.inc) is only allowed on the
+	// pkg/opt/quests/include/questspawncheck.inc) is only allowed on the
 	// dedicated Quest Item/Quest NPC types below, so .questmap's live scan
 	// can always find it there. Checked up front for every OTHER type so a
 	// GM can't accidentally place a quest altar/giver as a plain

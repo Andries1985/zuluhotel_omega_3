@@ -1,19 +1,19 @@
 // Ritual altar reagent-check/summon gump. Framed with the shared OSI quest
-// gump chrome (QuestPkg_DrawOsiFrame, pkg/opt/questpkg/include/questpkg_gumpstyle.inc)
-// so it matches Valthor's own gumps. This engine has no drag-into-gump
+// gump chrome (QuestPkg_DrawOsiFrame, pkg/opt/quests/include/questpkg_gumpstyle.inc)
+// so it matches Mariah's own gumps. This engine has no drag-into-gump
 // mechanic, so reagents are supplied via a target-cursor "Offer" flow
 // (closes the gump, prompts a target, reopens) -- the same shape Bulk Order
 // Deeds already use. Offered amounts are tracked per-player via the generic
 // quest Flags mechanism (QP_SetQuestFlag/QP_GetQuestFlag,
-// pkg/opt/questpkg/include/queststate.inc) -- the same one "AltarUsed"
+// pkg/opt/quests/include/queststate.inc) -- the same one "AltarUsed"
 // already uses -- so progress is naturally per-player and resets
 // automatically on abandon/re-accept.
 use uo;
 use os;
 
 include ":mdgumps:gumps_ex";
-include ":questpkg:questpkg_gumpstyle";
-include ":questpkg:questdeath";
+include ":quests:questpkg_gumpstyle";
+include ":quests:questdeath";
 include "include/objtype";
 include "include/constants/locations";
 include "../pkg/opt/rituals/include/chantbook";
@@ -48,6 +48,12 @@ function RitualAltar_ReagentName(objtype)
 		UOBJ_OBSIDIAN: return "Obsidian";
 		UOBJ_PUMICE: return "Pumice";
 		UOBJ_FERTILE_DIRT: return "Fertile Dirt";
+		UOBJ_BRIMSTONE: return "Brimstone";
+		UOBJ_DRAGONS_BLOOD: return "Dragon's Blood";
+		UOBJ_VOLCANIC_ASH: return "Volcanic Ash";
+		UOBJ_DAEMON_BONE: return "Daemon Bone";
+		UOBJ_EXECUTIONERS_CAP: return "Executioner's Cap";
+		UOBJ_BONE: return "Bone";
 		default: return "Hex 0x"+Hex(CInt(objtype));
 	endcase
 
