@@ -561,7 +561,7 @@ var teleporters := {
     { 1965, 3794, 10, 1909, 3640, 30, "britannia_alt", "britannia_alt" }, //Sunken City Island -> Sunken City Hub
     { 1896, 3653, 5, 1832, 3755, 15, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Sunken City Island
     { 1832, 3758, 10, 1895, 3654, 5, "britannia_alt", "britannia_alt" }, //Sunken City Island -> Sunken City Hub
-    { 1884, 3665, 30, 1850, 3638, 10, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Sunken City Island
+    { 1884, 3665, 30, 1849, 3638, 10, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Sunken City Island
     { 1850, 3638, 10, 1885, 3665, 30, "britannia_alt", "britannia_alt" }, //Sunken City Island -> Sunken City Hub
     { 1896, 3677, 5, 1984, 3706, 10, "britannia_alt", "britannia_alt" }, //Sunken City Hub -> Sunken City Island
     { 1985, 3704, 10, 1898, 3677, 5, "britannia_alt", "britannia_alt" }, //Sunken City Island -> Sunken City Hub
@@ -618,7 +618,6 @@ var teleporters := {
     {1328,  2128,   0,      5401,  703,     -24,    "britannia_alt",    "britannia_alt"},   //To Shandalaar Blood Sewers Graveyard Entrance
     {1489,  1800,   5,      5430,  407,     10,     "britannia_alt",    "britannia_alt"},   //To Shandalaar Blood Sewers North City Entrance
     {5429,  407,    15,     1489,  1801,    12,     "britannia_alt",    "britannia_alt"},   //From Shandalaar Blood Sewers to North City Entrance
-    {5423,  486,    15,     1311,  1997,    -20,    "britannia_alt",    "britannia_alt"},   //From Shandalaar Blood Sewers to West City Entrance
     {5423,  486,    15,     1311,  1997,    -20,    "britannia_alt",    "britannia_alt"},   //From Shandalaar Blood Sewers to West City Entrance
     {5402,  702,    -25,    1329,  2128,    0,      "britannia_alt",    "britannia_alt"},   //From Shandalaar Blood Sewers to Graveyard Entrance
     {5402,  703,    -25,    1329,  2129,    0,      "britannia_alt",    "britannia_alt"},   //From Shandalaar Blood Sewers to Graveyard Entrance
@@ -972,7 +971,7 @@ var teleporters := {
     { 6440, 2624, 0, 6793, 2662, 0, "britannia_alt", "britannia_alt" }, //Trial of the Gilded Accord Lvl2 -> Trial of the Gilded Accord Lvl1
     { 6024, 2531, 0, 3284, 1896, -70, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
     { 6025, 2531, 0, 3284, 1896, -70, "britannia_alt", "britannia_alt" }, //Solen Hive -> Faymoor Island
-    { 3284, 1895, -70, 6024, 2531, 0, "britannia_alt", "britannia_alt" }, //Faymoor Island -> Solen Hive
+    { 3284, 1895, -70, 6024, 2530, 0, "britannia_alt", "britannia_alt" }, //Faymoor Island -> Solen Hive
     { 5760, 2469, 0, 5816, 2462, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
     { 5761, 2469, 0, 5817, 2462, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
     { 5815, 2467, 0, 5761, 2464, 0, "britannia_alt", "britannia_alt" }, //Solen Hive -> Solen Hive
@@ -1166,8 +1165,8 @@ var teleporters := {
     { 5642, 452, 50, 5449, 3565, 0, "britannia_alt", "britannia_alt" }, //Ley-Forge Sanctum -> Tartarus
     { 6653, 1436, 5, 6556, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
     { 6650, 1436, 5, 6552, 1541, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl1 -> Runebound Sanctum Lvl2
-    { 6555, 1538, 0, 6650, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
-    { 6553, 1538, 0, 6653, 1436, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6555, 1538, 0, 6650, 1435, 2, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
+    { 6553, 1538, 0, 6653, 1435, 2, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl1
     { 6488, 1617, 0, 6496, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
     { 6491, 1617, 0, 6499, 1504, 5, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl2 -> Runebound Sanctum Lvl3
     { 6496, 1503, 5, 6489, 1613, 0, "britannia_alt", "britannia_alt" }, //Runebound Sanctum Lvl3 -> Runebound Sanctum Lvl2
@@ -1197,7 +1196,7 @@ var teleporters := {
     { 5979, 52, 46, 746, 3530, -13, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Mount Amroth
     { 6043, 237, 8, 6036, 268, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Lvl1 -> Blood Dungeon Boss
     { 6036, 267, 8, 6043, 236, 8, "britannia_alt", "britannia_alt" }, //Blood Dungeon Boss -> Blood Dungeon Lvl1
-    { 951, 2885, 35, 951, 2885, 35, "britannia_alt", "britannia_alt" }, //Black City of the Damned -> Tartarus
+    { 951, 2885, 35, 5529, 3871, 0, "britannia_alt", "britannia_alt" }, //Black City of the Damned -> Tartarus
     { 6659, 35, 1, 6747, 110, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6747, 109, 1, 6659, 34, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
     { 6787, 105, 1, 6808, 100, 1, "britannia_alt", "britannia_alt" }, //Water Dungeon -> Water Dungeon
@@ -1325,8 +1324,8 @@ var teleporters := {
     { 4575, 360, 5, 6301, 2809, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 6300, 2810, 0, 4574, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
     { 6301, 2810, 0, 4575, 361, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
-    { 4612, 475, 5, 5902, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
-    { 4612, 476, 5, 5902, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4612, 475, 5, 5901, 2076, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
+    { 4612, 476, 5, 5901, 2077, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4636, 491, 5, 5877, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 4637, 491, 5, 5878, 2202, 0, "britannia_alt", "britannia_alt" }, //Sosaria -> Mine
     { 5877, 2203, 0, 4636, 492, 5, "britannia_alt", "britannia_alt" }, //Mine -> Sosaria
@@ -1395,7 +1394,7 @@ var teleporters := {
     { 3621, 3080, 0, 5486, 2897, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
     { 5485, 2898, 0, 3620, 3081, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
     { 5486, 2898, 0, 3621, 3081, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
-    { 3636, 3197, 0, 5590, 2910, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
+    { 3636, 3197, 0, 5589, 2910, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
     { 5590, 2910, 0, 3637, 3197, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
     { 5590, 2911, 0, 3637, 3197, 0, "britannia_alt", "britannia_alt" }, //Cave to Sosaria
     { 3877, 3048, 30, 5656, 2865, 0, "britannia_alt", "britannia_alt" }, //Sosaria to Cave
@@ -1611,8 +1610,8 @@ var teleporters := {
     { 5906, 1256, 17, 5163, 2659, -20, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
     { 5906, 1257, 17, 5163, 2660, -20, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
     { 6012, 1196, 17, 5425, 2601, -13, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
-    { 6012, 1196, 17, 5426, 2601, -13, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
-    { 5425, 2600, -13, 6012, 1196, 17, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
+    { 6013, 1196, 17, 5426, 2601, -13, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
+    { 5425, 2600, -13, 6012, 1195, 17, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
     { 5426, 2600, -13, 6013, 1195, 17, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Necropolis of Nagash
     { 5222, 2601, 1, 6077, 2341, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Cave
     { 6077, 2342, 0, 5222, 2602, 1, "britannia_alt", "britannia_alt" }, //Cave to Necropolis of Nagash
@@ -1620,7 +1619,7 @@ var teleporters := {
     { 6100, 2332, 0, 5311, 2684, 0, "britannia_alt", "britannia_alt" }, //Cave to Necropolis of Nagash
     { 5310, 2683, 0, 6099, 2331, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Cave
     { 5311, 2683, 0, 6100, 2331, 0, "britannia_alt", "britannia_alt" }, //Necropolis of Nagash to Cave
-    { 6950, 1276, 0, 6950, 1276, 40, "britannia_alt", "britannia_alt" }, //Secret Retreat to Secret Retreat
+    { 6950, 1276, 0, 6951, 1276, 41, "britannia_alt", "britannia_alt" }, //Secret Retreat to Secret Retreat
     { 6950, 1277, 40, 6950, 1278, 0, "britannia_alt", "britannia_alt" }, //Secret Retreat to Secret Retreat
     { 6943, 1285, -16, 6173, 985, 0, "britannia_alt", "britannia_alt" }, //Secret Retreat to Secret Retreat
     { 6173, 984, 0, 6943, 1283, -20, "britannia_alt", "britannia_alt" }, //Secret Retreat to Secret Retreat
