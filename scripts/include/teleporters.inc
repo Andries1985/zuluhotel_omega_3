@@ -2332,11 +2332,12 @@ var teleporters := {
     { 442, 153, -38, 850, 273, -11, "termur", "termur" },
     { 442, 166, -38, 850, 286, -11, "termur", "termur" },
     { 442, 167, -38, 850, 287, -11, "termur", "termur" },
-    // 2026-09-23: these four had the destination realm "Felucca", which does not exist here; they are Ter Mur links.
-    { 511, 584, 11, 6992, 1367, -15, "termur", "termur" },
-    { 512, 584, 11, 6992, 1367, -15, "termur", "termur" },
-    { 513, 584, 11, 6993, 1367, -15, "termur", "termur" },
-    { 514, 584, 11, 6993, 1367, -15, "termur", "termur" },
+    // 2026-09-29: destination realm was "Felucca" and was retagged "termur" on 2026-09-23 by mistake. X 6992 is beyond
+    // Ter Mur's 1280-wide map; Felucca on this shard is britannia_alt.
+    // { 511, 584, 11, 6992, 1367, -15, "termur", "britannia_alt" },
+    // { 512, 584, 11, 6992, 1367, -15, "termur", "britannia_alt" },
+    // { 513, 584, 11, 6993, 1367, -15, "termur", "britannia_alt" },
+    // { 514, 584, 11, 6993, 1367, -15, "termur", "britannia_alt" },
     { 519, 919, 39, 1125, 1075, -117, "termur", "termur" },
     { 519, 919, 39, 1125, 1076, -117, "termur", "termur" },
     { 520, 919, 39, 1125, 1075, -117, "termur", "termur" },
@@ -2364,21 +2365,21 @@ var teleporters := {
     { 1081, 974, -20, 1081, 883, -5, "termur", "termur" },
     { 1081, 975, -20, 1081, 883, -5, "termur", "termur" },
     { 1125, 1076, -117, 520, 920, 39, "termur", "termur" },
-    { 1125, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1125, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1125, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1125, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
     { 1126, 1076, 15, 521, 920, 39, "termur", "termur" },
-    { 1126, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1126, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1127, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1127, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1128, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1128, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1129, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1129, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
-    { 1130, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1130, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
-    { 1131, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
-    { 1131, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
+    // { 1126, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1126, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1127, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1127, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1128, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1128, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1129, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1129, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
+    // { 1130, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1130, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
+    // { 1131, 1215, 5, 4194, 3261, 5, "termur", "britannia_alt" },
+    // { 1131, 1215, 5, 4195, 3261, 5, "termur", "britannia_alt" },
     { 1162, 1120, -42, 1147, 1089, -42, "termur", "termur" },
     { 1180, 885, 0, 1187, 1127, -42, "termur", "termur" },
     { 1183, 1180, -45, 1183, 1182, -47, "termur", "termur" },
@@ -2400,15 +2401,17 @@ var teleporters := {
     { 1202, 1183, -45, 1202, 1185, -45, "termur", "termur" },
     { 1203, 1190, -74, 1201, 1190, -73, "termur", "termur" },
     { 1206, 1181, -47, 1204, 1181, -45, "termur", "termur" },
-    { 1238, 1151, -42, 1140, 951, -42, "termur", "termur" },
-    { 4194, 3260, 5, 1128, 1213, -2, "termur", "termur" },
-    { 4195, 3260, 5, 1129, 1213, -2, "termur", "termur" },
-    { 7149, 756, 25, 511, 585, 11, "termur", "termur" },
-    { 7149, 756, 25, 511, 585, 9, "termur", "termur" },
-    { 7150, 756, 25, 511, 585, 9, "termur", "termur" },
-    { 7151, 756, 25, 511, 585, 9, "termur", "termur" },
-    { 7152, 756, 25, 511, 585, 9, "termur", "termur" },
-    { 7153, 756, 25, 511, 585, 9, "termur", "termur" }
+    { 1238, 1151, -42, 1140, 951, -42, "termur", "termur" }
+    // 2026-09-29: source X 4194+ and 7149+ are beyond Ter Mur's 1280-wide map; these are britannia_alt entrances into
+    // Ter Mur. Tagged "termur" they never created (GetWorldHeight returned an error for the Z).
+    // { 4194, 3260, 5, 1128, 1213, -2, "britannia_alt", "termur" },
+    // { 4195, 3260, 5, 1129, 1213, -2, "britannia_alt", "termur" },
+    // { 7149, 756, 25, 511, 585, 11, "britannia_alt", "termur" },
+    // { 7149, 756, 25, 511, 585, 9, "britannia_alt", "termur" },
+    // { 7150, 756, 25, 511, 585, 9, "britannia_alt", "termur" },
+    // { 7151, 756, 25, 511, 585, 9, "britannia_alt", "termur" },
+    // { 7152, 756, 25, 511, 585, 9, "britannia_alt", "termur" },
+    // { 7153, 756, 25, 511, 585, 9, "britannia_alt", "termur" }
     
 
 };	
@@ -2462,7 +2465,11 @@ function CreateTeleporters()
                   if(count % 2 == 0)
                      fromZ := GetWorldHeight( fromX, fromY, fromR );
                   else
-                     fromZ := GetStandingHeight( fromX, fromY, (fromZ-5), fromR);
+                     var standing := GetStandingHeight( fromX, fromY, (fromZ-5), fromR);
+                     fromZ := standing.z; // 2026-09-29: GetStandingHeight returns a struct; passing it whole as Z always failed
+                  endif
+                  if(TypeOf(fromZ) == "Error") // 2026-09-29: coordinate outside the realm; no retry can succeed, and each one cost 100ms x 100
+                     break;
                   endif
                   teleporter := CreateItemAtLocation( fromX, fromY, fromZ, "systemteleporter", 1, fromR );
                   count := count + 1;
