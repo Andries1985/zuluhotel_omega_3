@@ -167,17 +167,20 @@ function TempModConflicts( existing_mod , incoming_mod )
 endfunction
 
 
-function BaseRegenRate( who )
-
-	var baseregen := GetObjProperty(who,"baseregen");
-	
-	if (!baseregen)
-		return 100;
-	endif
-	
-	return baseregen;
-
-endfunction
+// 2026-09-26: COMMENTED OUT (audit after the vitals/regen port). No callers left, and it returned
+// 100 -- the pre-port regen scale; the default is now CORE_SETTINGS_DEFAULT_REGEN_RATE (1200).
+// It was the source of the old "poison clear leaves 1/12 regen" bug. Delete once verified in game.
+//function BaseRegenRate( who )
+//
+//	var baseregen := GetObjProperty(who,"baseregen");
+//
+//	if (!baseregen)
+//		return 100;
+//	endif
+//
+//	return baseregen;
+//
+//endfunction
 
 
 function CanMod( who , stat , persistedprop := 0 )

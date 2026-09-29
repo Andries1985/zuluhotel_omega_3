@@ -32,10 +32,11 @@ function ApplyRitualEffect( mobile, item )
         var item_desc := TruncateArticle( item.desc ),
             is_weapon := item.IsA( POLCLASS_WEAPON );
 
-        if( RitualHasGroup3Property( item ))
-		SendSysMessage( mobile, "This "+item_desc+" already carries a physical enchantment and cannot also hold a Fury." );
-                return 0;
-        elseif( RitualHasHitscript( item ))
+        // 2026-09-28: dropped the RitualHasGroup3Property check - a Fury proc and a physical
+        // mod (damage/armor/durability/stat) were never actually mutually exclusive; confirmed
+        // against starteqp.inc/namingbyenchant.inc. The single-hitscript-slot check below stays -
+        // that one's real, an item can only ever carry one Fury/Slayer/Poisonlvl proc at a time.
+        if( RitualHasHitscript( item ))
 		SendSysMessage( mobile, "This "+item_desc+" already carries a different Fury or Slayer enchantment." );
                 return 0;
         endif

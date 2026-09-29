@@ -28,14 +28,13 @@ endprogram
 
 function ApplyRitualEffect( mobile, item )
 
-        var item_desc := TruncateArticle( item.desc ),
-            is_armor := item.IsBoneArmor() || item.IsChainmailArmor() || item.IsPlatemailArmor() ||
-                        item.IsLeatherArmor() || item.IsRingmailArmor() || item.IsShield() || item.IsStuddedLeatherArmor();
+        var item_desc := TruncateArticle( item.desc );
 
-        if( is_armor && RitualHasHitscript( item ))
-		SendSysMessage( mobile, "This "+item_desc+" already carries a Fury enchantment and cannot also hold a stat bonus." );
-                return 0;
-        elseif( item.IsJewel() && GetObjProperty( item, "skilladv" ))
+        // 2026-09-28: dropped the RitualHasHitscript check here - see bloodSeeking.src for why;
+        // a Fury enchantment and a stat bonus were never actually mutually exclusive. The
+        // skilladv/stat-mod exclusivity below is unrelated and stays - those two are a real,
+        // confirmed single roll in the loot generator, never both at once.
+        if( item.IsJewel() && GetObjProperty( item, "skilladv" ))
 		SendSysMessage( mobile, "This "+item_desc+" already carries a skill bonus and cannot also hold a stat bonus." );
                 return 0;
         endif

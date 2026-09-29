@@ -11,7 +11,7 @@ use polsys;
 include "include/math";
 include "include/attributes";
 include "include/classes";
-include ":questpkg:queststate";
+include ":quests:queststate";
 
 
 /*todo

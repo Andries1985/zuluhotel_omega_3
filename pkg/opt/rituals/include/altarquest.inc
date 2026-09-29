@@ -4,15 +4,15 @@
 // RITUAL_ChantBookColor, so the trophy always matches its reward book's tint)
 // at spawn time, separately from the generic "QuestId"/"QuestObjIndex" tags
 // TagNpcForQuest() already sets for the quest-objective advance
-// (pkg/opt/questpkg/include/questdeath.inc). This drops a proof-of-kill
+// (pkg/opt/quests/include/questdeath.inc). This drops a proof-of-kill
 // trophy on the corpse -- NOT the actual chant book. The real reward comes
-// from the quest's RewardItem (quests.cfg) on turn-in with Valthor, so
+// from the quest's RewardItem (quests.cfg) on turn-in with the giver, so
 // killing the boss alone can't shortcut the trip back.
 //
 // The trophy objtype is generic/shared across every future altar boss (see
 // Item 0xBA3F, pkg/opt/rituals/config/itemdesc.cfg), so the dropped item is
 // also stamped with a "QuestId" CProp matching the corpse's own quest tag --
-// that's what QP_FindTurnInItem() (pkg/opt/questpkg/include/queststate.inc)
+// that's what QP_FindTurnInItem() (pkg/opt/quests/include/queststate.inc)
 // actually checks at turn-in, not just the objtype. Without it, a skull from
 // an easy boss could otherwise be turned in for a harder boss's quest.
 use uo;

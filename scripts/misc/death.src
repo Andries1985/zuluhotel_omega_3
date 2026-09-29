@@ -12,7 +12,7 @@ include "include/eventid";
 include ":karmafame:karmafame";
 include "include/dismount";
 include "include/managers";
-include ":questpkg:questdeath";
+include ":quests:questdeath";
 include "../pkg/opt/rituals/include/altarquest";
 // 2026-09-21: include ":combat:shilcombat" removed along with the file -- none
 // of its four functions was called anywhere, and none could have compiled if

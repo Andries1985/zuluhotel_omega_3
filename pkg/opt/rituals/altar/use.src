@@ -6,7 +6,7 @@ use uo;
 use os;
 
 include "../pkg/utils/itemUtils/include/itemUtil";
-include ":questpkg:queststate";
+include ":quests:queststate";
 include "../pkg/opt/rituals/altar/gump";
 
 program ritualaltar_use(who, item)

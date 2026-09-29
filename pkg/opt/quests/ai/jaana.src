@@ -1,0 +1,44 @@
+// Synopsis: Frostkeeper Jaana, the second ritual quest-giver. Say "quest"
+// to open the quest-giver gump (lists whatever quests.cfg entries have
+// "Giver jaana" -- Quests 6-8: Mana Dissimal, Mana Flux, Venom Bane).
+// Also periodically shouts a reminder at nearby players who haven't
+// completed her quest(s) yet. Formerly "Ysolde" -- renamed to a real
+// Ultima character (Jaana, the series' recurring healer companion,
+// Ultima V/VII) per the user's naming pass. Scaffolded directly from
+// mariah.src -- only the idle shout line differs.
+use npc;
+use os;
+use uo;
+
+include "include/eventid";
+include ":quests:questnpcgump";
+include ":quests:queststate";
+include "ai/setup/modsetup";
+
+const JAANA_SHOUT_RANGE := 10;
+
+var me := Self();
+
+EnableEvents(SYSEVENT_SPEECH, 2);
+
+while(1)
+	var event := os::wait_for_event(15);
+	if(event)
+		case(event.type)
+			SYSEVENT_SPEECH:
+				HandleQuestGiverSpeech(me, event);
+		endcase
+	else
+		var should_shout := 0;
+		foreach mobile in ListMobilesNearLocation(me.x, me.y, me.z, JAANA_SHOUT_RANGE, me.realm)
+			if(!mobile.npctemplate && QP_GiverHasUndoneQuest(me, mobile))
+				SendSysMessage(mobile, me.name+": I have a task for you, traveler!", 3, 73);
+				should_shout := 1;
+			endif
+		endforeach
+
+		if(should_shout)
+			Say("Something stirs in the Everfrost Catacombs, traveler.");
+		endif
+	endif
+endwhile
