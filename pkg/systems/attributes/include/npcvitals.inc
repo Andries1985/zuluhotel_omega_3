@@ -48,7 +48,7 @@ function GetNpcVitalSetting( who, vitalfield )
 		endif
 		value := Cint( value ) * 100;
 	else
-		value := Cint( CDbl( raw ) * 100 );	// 2026-09-30: decimals allowed (HITSREGEN 2.5 -> 250)
+		value := Cint( CDbl( raw ) * 100 + 0.5 );	// 2026-09-30: decimals allowed (HITSREGEN 2.5 -> 250); +0.5 rounds, Cint alone truncates 1.15 to 114
 	endif
 
 	cache.insert( vitalfield, value );
@@ -67,19 +67,31 @@ function SetNpcVitalOverride( who, vitalfield, points )
 		cache := dictionary;
 	endif
 
-	cache.insert( vitalfield, Cint( CDbl( points ) * 100 ) );	// 2026-09-30: decimals allowed
+	cache.insert( vitalfield, Cint( CDbl( points ) * 100 + 0.5 ) );	// 2026-09-30: decimals allowed, rounded
 	SetObjProperty( who, NPCVITALS_CACHE_CPROP, cache );
+
+	// 2026-09-30: the regen fields are read by modsetup.inc at AI (re)start, not by the max-value
+	// hooks, so a recalc here would be wasted work on the spawn path.
+	if( Find( vitalfield, "REGEN", 1 ) )
+		return 1;
+	endif
 
 	return RecalcVitals( who );
 
 endfunction
 
 // The instance's resolved value in real points, or -1 if nothing has been resolved yet.
+// 2026-09-30: returns a Double when the value is not a whole number (HITSREGEN 2.5), an Integer
+// otherwise, so CStr() of it matches what the template line says.
 function GetNpcVitalOverride( who, vitalfield )
 
 	var cache := GetObjProperty( who, NPCVITALS_CACHE_CPROP );
 	if( cache and cache.exists( vitalfield ) )
-		return Cint( cache[vitalfield] ) / 100;
+		var hundredths := Cint( cache[vitalfield] );
+		if( hundredths % 100 )
+			return CDbl( hundredths ) / 100;
+		endif
+		return hundredths / 100;
 	endif
 
 	return -1;

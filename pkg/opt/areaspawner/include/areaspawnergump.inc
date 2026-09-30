@@ -1183,15 +1183,11 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 				ov.hits := loaded.hits;
 				ov.stam := loaded.stam;
 				ov.mana := loaded.mana;
-				// 2026-09-30: regen overrides are points per minute; a definition saved
-				// before the change (no regenunits marker) holds the old BaseHpRegen unit
-				if( loaded.regenunits == "ppm" )
-					ov.hpregen := loaded.hpregen;
-					ov.manaregen := loaded.manaregen;
-				else
-					ov.hpregen := Cint( CInt(loaded.hpregen) * 12 / 100 );
-					ov.manaregen := Cint( CInt(loaded.manaregen) * 12 / 100 );
-				endif
+				// 2026-09-30: regen overrides are points per minute; NormalizeCustomNpcOverrides
+				// (areaspawner.inc) converts a definition saved in the old unit, same as the spawn path
+				loaded := NormalizeCustomNpcOverrides( loaded );
+				ov.hpregen := loaded.hpregen;
+				ov.manaregen := loaded.manaregen;
 				ov.color := loaded.color;
 				ov.truecolor := loaded.truecolor;
 				ov.objtype := loaded.objtype;
@@ -1535,8 +1531,8 @@ function ShowCustomNpcStatsEditor(who, ov)
 	ov.hits := Cint(keyret[AS_TXT_CHITS] - (CStr(AS_TXT_CHITS)+": "));
 	ov.stam := Cint(keyret[AS_TXT_CSTAM] - (CStr(AS_TXT_CSTAM)+": "));
 	ov.mana := Cint(keyret[AS_TXT_CMANA] - (CStr(AS_TXT_CMANA)+": "));
-	ov.hpregen := Cint(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));
-	ov.manaregen := Cint(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
+	ov.hpregen := CDbl(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));	// 2026-09-30: points per minute, decimals allowed (2.5)
+	ov.manaregen := CDbl(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
 
 	return ov;
 

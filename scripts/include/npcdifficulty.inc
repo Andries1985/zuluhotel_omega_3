@@ -21,7 +21,7 @@ function GetNpcDifficultyField( mob, field )
 		return 0;
 	endif
 
-	return Cint( GetConfigString( npcdifficulty_cfg[mob.npctemplate], field ) );
+	return GetConfigInt( npcdifficulty_cfg[mob.npctemplate], field );
 
 endfunction
 

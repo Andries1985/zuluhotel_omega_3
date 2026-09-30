@@ -947,6 +947,32 @@ function NewCustomNpcOverrides()
 	};
 endfunction
 
+// 2026-09-30: hpregen/manaregen changed unit (old BaseHpRegen number -> points per minute,
+// x12/100). A definition saved before that carries no regenunits marker; convert it once at
+// every read boundary (the spawn path and the editor both call this), and stamp the marker so
+// the next save persists the new unit.
+function NormalizeCustomNpcOverrides( ov )
+	if( !ov || ov.regenunits == "ppm" )
+		return ov;
+	endif
+	ov.hpregen := Cint( CInt(ov.hpregen) * 12 / 100 );
+	ov.manaregen := Cint( CInt(ov.manaregen) * 12 / 100 );
+	ov.+regenunits := "ppm";
+	return ov;
+endfunction
+
+// x100 value from GetNpcVitalSetting (-1 = the template has no such field) -> points for the
+// editor: 0 when absent, a Double when fractional (250 -> 2.5), an Integer otherwise.
+function RegenPointsFromSetting( setting )
+	if( setting < 0 )
+		return 0;
+	endif
+	if( setting % 100 )
+		return CDbl( setting ) / 100;
+	endif
+	return setting / 100;
+endfunction
+
 
 // The full set of NPC "Type" CProp values this shard's combat system
 // actually checks for slayer-weapon bonus damage - see
@@ -1073,6 +1099,7 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 	endif
 	critter.hidden := 1;
 
+	overrides := NormalizeCustomNpcOverrides( overrides );	// 2026-09-30: old-unit regen values from pre-change saves
 	if( overrides )
 		if( overrides.name )
 			critter.name := overrides.name;
