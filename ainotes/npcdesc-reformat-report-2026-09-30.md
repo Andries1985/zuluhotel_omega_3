@@ -2,7 +2,7 @@
 
 Rewriter: scratchpad `npcdesc_reformat.py` (layout from the Template Field Order page, options tab indent / values at column 40 / skills and spells alphabetical). Decisions (npcdesc Reformat plan page): R1 points per minute, R2 faithful except the five *elementalsummons -> 5/min, R3 regen out of the karma formula, D4 first duplicate wins (one hand-pick), D5 commented-out lines dropped, D6 template names untouched, D7 attributes.cfg skill names with MaceFighting, D8 reorder only.
 
-Lines 56,560 -> 60,166. Parity check (scratchpad `npcdesc_verify.py`) against the pre-reformat file: 1,455 / 1,455 templates carry the same entries after the agreed transformations; every value at column 40; no blank line after `{`, before `}` or doubled inside a block.
+Lines 56,560 -> 60,166. Parity check (scratchpad `npcdesc_verify.py`) against the pre-reformat file: 1,455 / 1,455 templates carry the same entries after the agreed transformations; every value 28 characters after the key start (CProp values at 52, space-padded after the one-tab indent so it aligns at any tab width; this replaced a first tab-based pass the same day); no blank line after `{`, before `}` or doubled inside a block.
 
 Note: the write-mode report file was overwritten by an accidental second (no-op) run of the tool, and the same slip overwrote the pre-reformat backup. This file is rebuilt from the dry-run output of the same session; the itemised list of the 44 commented-out lines (mostly `//Privs invul` / `//Settings invul` on townsfolk such as townperson, person, artist) was not recoverable.
 
