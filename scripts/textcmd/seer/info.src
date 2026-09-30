@@ -1544,7 +1544,8 @@ function AddStatusPages( who )
 		// 2026-09-30: CustomHitsLevel & co. retired. Shows the template HITS/MANA/STAM field; when
 		// the instance's resolved value differs (tool override or dice roll) it shows "live (tmpl x)".
 		AddStatusRow( "HITS / MANA / STAM" , NpcVitalCell( who , "HITS" ) + " / " + NpcVitalCell( who , "MANA" ) + " / " + NpcVitalCell( who , "STAM" ) );
-		AddStatusRow( "Base regen HP/Mana" , CStr( PropNum( who , "BaseHpRegen" ) ) + " / " + CStr( PropNum( who , "BaseManaRegen" ) ) );
+		// 2026-09-30: regen template fields (points per minute), live value shown when a tool override differs
+		AddStatusRow( "Regen HITS/MANA/STAM" , NpcVitalCell( who , "HITSREGEN" ) + " / " + NpcVitalCell( who , "MANAREGEN" ) + " / " + NpcVitalCell( who , "STAMREGEN" ) );
 
 		var masterserial := GetObjProperty( who , "master" );
 		if( masterserial )

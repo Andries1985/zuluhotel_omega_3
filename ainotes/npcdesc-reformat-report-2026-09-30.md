@@ -1,0 +1,298 @@
+# npcdesc.cfg reformat report -- 2026-09-30
+
+Rewriter: scratchpad `npcdesc_reformat.py` (layout from the Template Field Order page, options tab indent / values at column 40 / skills and spells alphabetical). Decisions (npcdesc Reformat plan page): R1 points per minute, R2 faithful except the five *elementalsummons -> 5/min, R3 regen out of the karma formula, D4 first duplicate wins (one hand-pick), D5 commented-out lines dropped, D6 template names untouched, D7 attributes.cfg skill names with MaceFighting, D8 reorder only.
+
+Lines 56,560 -> 60,166. Parity check (scratchpad `npcdesc_verify.py`) against the pre-reformat file: 1,455 / 1,455 templates carry the same entries after the agreed transformations; every value at column 40; no blank line after `{`, before `}` or doubled inside a block.
+
+Note: the write-mode report file was overwritten by an accidental second (no-op) run of the tool, and the same slip overwrote the pre-reformat backup. This file is rebuilt from the dry-run output of the same session; the itemised list of the 44 commented-out lines (mostly `//Privs invul` / `//Settings invul` on townsfolk such as townperson, person, artist) was not recoverable.
+
+## Counts
+
+- blank lines inside blocks removed: 4407
+- field keys respelt: 3136
+- templates rewritten: 1455
+- peacemake added from provoke: 1276
+- entice added from provoke: 1276
+- field hostile dropped: 1107
+- CProp snoopme -> snoopme field: 1060
+- CProp stealme -> stealme field: 1060
+- skill lines respelt: 169
+- field karma dropped: 166
+- CProp BaseHpRegen -> HITSREGEN field: 149
+- field fame dropped: 138
+- CProp BaseManaRegen -> MANAREGEN field: 77
+- duplicate keys (first kept): 61 (39 with differing values, listed below; 22 identical pairs)
+- CProp Equipt dropped: 48
+- commented-out lines dropped (D5): 44
+- inline comments kept: 16
+- field targettext dropped: 13
+- field graphics dropped: 6
+- field buddytext dropped: 5
+- field leadertext dropped: 5
+- values whitespace-normalised: 3
+- CProp pack dropped: 2
+- field prop dropped: 2
+- CProp equipt dropped: 1
+- field psub dropped: 1
+- CProp kappa dropped: 1
+- CProp PoisonProtection dropped: 1
+- CProp vortexnaga dropped: 1
+
+## Duplicate keys with differing values (first kept, later dropped) -- D4
+
+- Gardener: field snoopme: kept '40', dropped '70'
+- Gardener: field stealme: kept '40', dropped '70'
+- titlemaster, vanityvendor, waterlordshrine, earthshrine, airshrine, fireshrine, shadowshrine, poisonshrine, holyshrine, stygianshrine: skill MaceFighting: kept '50', dropped '100'
+- terathanpriest, ophidianshaman: skill MaceFighting: kept '80', dropped '100'
+- lizardman3: skill MaceFighting: kept '70', dropped '75'
+- undeadfrenziedostard: field deathsnd: kept '0x165', dropped '0x16f'
+- wizardfrog: field magicitemchance: kept '70', dropped '90'
+- rhinocerosbeetle, orcbrute: CProp FireProtection: kept 'i50', dropped 'i20'
+- corruptedterathan: field magicitemchance: kept '90', dropped '10'; magicitemlevel: kept '3', dropped '2'
+- terathaneldermatriarch, solenhivemind: field magicitemlevel: kept '8', dropped '9'
+- troll3: field equip: kept 'troll3', dropped 'warmace' (no Equipment warmace block exists)
+- shade: field equip: kept 'shade', dropped 'bewitchedsword'
+- centaur, brigandking, brigandranger: field equip: kept 'mountedbrigandarcher', dropped 'brigand1'
+- brigandarcher: field equip: kept 'brigandarcher', dropped 'brigand1'
+- mountedbrigandarcher: field equip: kept 'mountedbrigandarcher', dropped 'brigand1'
+- darkranger: field equip: kept 'drowarcher', dropped 'brigand1'
+- fireelemental: field lootgroup: kept '20', dropped '124'
+- fireelementallord: field lootgroup: kept '73', dropped '124'
+- goldenwisp: field magicitemchance: kept '80', dropped '50'; magicitemlevel: kept '6', dropped '5'
+- undeadpirate2: field magicitemchance: kept '50', dropped '10'; magicitemlevel: kept '3', dropped '1'
+- flamingbalron: skill Parry: kept '200', dropped '100'
+- bewitchedpeasant: field equip: first value 'cothes' names no Equipment block -> HAND-PICKED 'bewitchedpeasant' (the second value)
+
+## Fixed
+
+- terathanmatriarch: EvaluateIntelligence -> EvaluatingIntelligence (invalid alias; the skill was silently 0)
+- bewitchedpeasant: equip 'cothes' -> 'bewitchedpeasant' (hand-pick)
+
+## Regen conversions (CProp value -> field, points per minute)
+
+- earthelementalsummons: HITSREGEN i20 -> 5
+- earthelementalsummons: MANAREGEN i60000 -> 7200
+- airelementalsummons: HITSREGEN i20 -> 5
+- airelementalsummons: MANAREGEN i60000 -> 7200
+- fireelementalsummons: HITSREGEN i20 -> 5
+- fireelementalsummons: MANAREGEN i60000 -> 7200
+- waterelementalsummons: HITSREGEN i20 -> 5
+- waterelementalsummons: MANAREGEN i60000 -> 7200
+- mammalelementalsummons: HITSREGEN i20 -> 5
+- mammalelementalsummons: MANAREGEN i60000 -> 7200
+- evilwatershrine: HITSREGEN i500 -> 60
+- evilwatershrine: MANAREGEN i60000 -> 7200
+- evilshadowshrine: HITSREGEN i500 -> 60
+- evilshadowshrine: MANAREGEN i60000 -> 7200
+- evilfireshrine: HITSREGEN i500 -> 60
+- evilfireshrine: MANAREGEN i60000 -> 7200
+- evilairshrine: HITSREGEN i500 -> 60
+- evilairshrine: MANAREGEN i60000 -> 7200
+- evilearthshrine: HITSREGEN i1000 -> 120
+- evilpoisonshrine: HITSREGEN i500 -> 60
+- evilpoisonshrine: MANAREGEN i60000 -> 7200
+- hornedrat: HITSREGEN i500 -> 60
+- hornedrat: MANAREGEN i60000 -> 7200
+- kappa: HITSREGEN i500 -> 60
+- kappa: MANAREGEN i60000 -> 7200
+- monstrousgrizzle: HITSREGEN i1000 -> 120
+- evilpumpkin: HITSREGEN i1000 -> 120
+- worldtree: HITSREGEN i2000 -> 240
+- triwolf: HITSREGEN i1000 -> 120
+- triwolfs: HITSREGEN i1000 -> 120
+- vampirebat: MANAREGEN i250 -> 30
+- gravespider: HITSREGEN i200 -> 24
+- gravespider: MANAREGEN i2000 -> 240
+- hydra: HITSREGEN i1000 -> 120
+- spiderlord: HITSREGEN i500 -> 60
+- remorhaz: HITSREGEN i725 -> 87
+- wizardfrog: HITSREGEN i500 -> 60
+- wizardfrog: MANAREGEN i60000 -> 7200
+- rhinocerosbeetle: HITSREGEN i1000 -> 120
+- blama: HITSREGEN i500 -> 60
+- blama: MANAREGEN i60000 -> 7200
+- tarantulaboss: HITSREGEN i500 -> 60
+- orcbrute: HITSREGEN i1000 -> 120
+- koboldranger: HITSREGEN i500 -> 60
+- terathanbroodlord: HITSREGEN i1000 -> 120
+- solendestroyer: HITSREGEN i1000 -> 120
+- nagaqueen: HITSREGEN i1000 -> 120
+- vrykollakas: HITSREGEN i1000 -> 120
+- finntroll: HITSREGEN i1000 -> 120
+- omegatroll: HITSREGEN i1000 -> 120
+- hunchback: HITSREGEN i1000 -> 120
+- hunchback: MANAREGEN i60000 -> 7200
+- hulk: HITSREGEN i1000 -> 120
+- thor: HITSREGEN i1000 -> 120
+- loke: HITSREGEN i1000 -> 120
+- vortexbeast: HITSREGEN i1000 -> 120
+- scourgegladiator: HITSREGEN i1000 -> 120
+- scourgecommander: HITSREGEN i1000 -> 120
+- shadowelemental: HITSREGEN i500 -> 60
+- shadowelemental: MANAREGEN i1000 -> 120
+- lessershadow: HITSREGEN i500 -> 60
+- greatershadow: HITSREGEN i500 -> 60
+- shadowlord: HITSREGEN i500 -> 60
+- corruptedshadow: HITSREGEN i500 -> 60
+- darkrider: HITSREGEN i500 -> 60
+- hyperion: HITSREGEN i725 -> 87
+- buran: HITSREGEN i725 -> 87
+- quagmire: HITSREGEN i1000 -> 120
+- quagmires: HITSREGEN i1000 -> 120
+- stomp: HITSREGEN i1000 -> 120
+- stamp: HITSREGEN i1000 -> 120
+- stamp: MANAREGEN i60000 -> 7200
+- behemoth: HITSREGEN i1000 -> 120
+- magmalord: HITSREGEN i500 -> 60
+- magmalord: MANAREGEN i3000 -> 360
+- wight: MANAREGEN i250 -> 30
+- summonboss: HITSREGEN i500 -> 60
+- summonboss: MANAREGEN i60000 -> 7200
+- nullmag: HITSREGEN i500 -> 60
+- nullmag: MANAREGEN i1000 -> 120
+- watermag: HITSREGEN i500 -> 60
+- watermag: MANAREGEN i1000 -> 120
+- firemag: HITSREGEN i500 -> 60
+- firemag: MANAREGEN i1000 -> 120
+- earthmag: HITSREGEN i500 -> 60
+- earthmag: MANAREGEN i1000 -> 120
+- Airmag: HITSREGEN i500 -> 60
+- Airmag: MANAREGEN i1000 -> 120
+- Deathmag: HITSREGEN i500 -> 60
+- Deathmag: MANAREGEN i1000 -> 120
+- balrongeneral: HITSREGEN i500 -> 60
+- balrongeneral: MANAREGEN i60000 -> 7200
+- dreadhorn: HITSREGEN i1000 -> 120
+- ladymelisande: HITSREGEN i1000 -> 120
+- darkfather: HITSREGEN i1000 -> 120
+- arcanedaemon: HITSREGEN i500 -> 60
+- arcanedaemon: MANAREGEN i60000 -> 7200
+- dementor: HITSREGEN i500 -> 60
+- dementor: MANAREGEN i3000 -> 360
+- succubus: HITSREGEN i100 -> 12
+- succubus: MANAREGEN i60000 -> 7200
+- fallenangel: HITSREGEN i500 -> 60
+- fallenangel: MANAREGEN i60000 -> 7200
+- balron: HITSREGEN i500 -> 60
+- balron: MANAREGEN i60000 -> 7200
+- balrog: HITSREGEN i500 -> 60
+- balrog: MANAREGEN i60000 -> 7200
+- flamingbalron: HITSREGEN i500 -> 60
+- flamingbalron: MANAREGEN i1000 -> 120
+- frostbalron: HITSREGEN i500 -> 60
+- frostbalron: MANAREGEN i60000 -> 7200
+- waterdaemonlord: HITSREGEN i1000 -> 120
+- abysmalhorror: HITSREGEN i500 -> 60
+- abysmalhorror: MANAREGEN i60000 -> 7200
+- darknightcreeper: HITSREGEN i500 -> 60
+- darknightcreeper: MANAREGEN i60000 -> 7200
+- fleshrenderer: HITSREGEN i500 -> 60
+- fleshrenderer: MANAREGEN i60000 -> 7200
+- ravager: HITSREGEN i1000 -> 120
+- chimera: HITSREGEN i1500 -> 180
+- corruptangel: HITSREGEN i500 -> 60
+- corruptangel: MANAREGEN i60000 -> 7200
+- shadowknight: HITSREGEN i1000 -> 120
+- greaterbonedaemon: HITSREGEN i1000 -> 120
+- lesserchimera: HITSREGEN i1500 -> 180
+- lesserfleshrenderer: HITSREGEN i500 -> 60
+- lesserfleshrenderer: MANAREGEN i60000 -> 7200
+- tiamat: HITSREGEN i2000 -> 240
+- cavedrake: MANAREGEN i2000 -> 240
+- earthwyrm: MANAREGEN i2000 -> 240
+- cavedragon: MANAREGEN i2000 -> 240
+- waterdragon: HITSREGEN i500 -> 60
+- waterdragon: MANAREGEN i60000 -> 7200
+- goldendragon: HITSREGEN i500 -> 60
+- goldendragon: MANAREGEN i60000 -> 7200
+- silverdragon: HITSREGEN i500 -> 60
+- silverdragon: MANAREGEN i60000 -> 7200
+- greatwyrm: HITSREGEN i250 -> 30
+- greatearthwyrm: HITSREGEN i250 -> 30
+- scourgewyrm: HITSREGEN i500 -> 60
+- scourgewyrm: MANAREGEN i6000 -> 720
+- dragonking: HITSREGEN i1000 -> 120
+- dragonking: MANAREGEN i20000 -> 2400
+- ancientwyrm: HITSREGEN i500 -> 60
+- ancientwyrm: MANAREGEN i60000 -> 7200
+- yomotsuwarrior: HITSREGEN i200 -> 24
+- yomotsupriest: HITSREGEN i100 -> 12
+- yomotsupriest: MANAREGEN i100 -> 12
+- yomotsuelder: HITSREGEN i150 -> 18
+- yomotsuelder: MANAREGEN i150 -> 18
+- centaur: HITSREGEN i500 -> 60
+- darkbard: HITSREGEN i500 -> 60
+- brigandranger: HITSREGEN i500 -> 60
+- darkranger: HITSREGEN i500 -> 60
+- darkmage: HITSREGEN i500 -> 60
+- darkmage: MANAREGEN i1000 -> 120
+- darkwarrior: HITSREGEN i500 -> 60
+- darkthief: HITSREGEN i500 -> 60
+- brigandgeneral: HITSREGEN i500 -> 60
+- bezerker: HITSREGEN i500 -> 60
+- bane: HITSREGEN i500 -> 60
+- bane: MANAREGEN i1000 -> 120
+- archangel: HITSREGEN i500 -> 60
+- nemesis: HITSREGEN i500 -> 60
+- darklancer: HITSREGEN i1000 -> 120
+- scourgeterminator: HITSREGEN i500 -> 60
+- plague: HITSREGEN i500 -> 60
+- scourgeinfiltrator: HITSREGEN i500 -> 60
+- scourgebattlemaster: HITSREGEN i500 -> 60
+- soulwhisperearth: HITSREGEN i500 -> 60
+- soulwhisperearth: MANAREGEN i6000 -> 720
+- soulwhisperair: HITSREGEN i500 -> 60
+- soulwhisperair: MANAREGEN i6000 -> 720
+- soulwhisperwater: HITSREGEN i500 -> 60
+- soulwhisperwater: MANAREGEN i6000 -> 720
+- soulwhisperfire: HITSREGEN i500 -> 60
+- soulwhisperfire: MANAREGEN i6000 -> 720
+- barracoon: HITSREGEN i500 -> 60
+- barracoon: MANAREGEN i100 -> 12
+- rikktor: HITSREGEN i500 -> 60
+- rikktor: MANAREGEN i500 -> 60
+- erebuschaosgod: HITSREGEN i500 -> 60
+- erebuschaosgod: MANAREGEN i100 -> 12
+- nyxseductress: HITSREGEN i500 -> 60
+- nyxseductress: MANAREGEN i500 -> 60
+- windrunner: HITSREGEN i200 -> 24
+- moundofmaggots: HITSREGEN i1000 -> 120
+- chiefparoxysmus: HITSREGEN i1000 -> 120
+- glutton: HITSREGEN i1500 -> 180
+- astaroth: HITSREGEN i500 -> 60
+- astaroth: MANAREGEN i60000 -> 7200
+- nosfentor: HITSREGEN i500 -> 60
+- nosfentor: MANAREGEN i60000 -> 7200
+- faulinei: HITSREGEN i500 -> 60
+- faulinei: MANAREGEN i60000 -> 7200
+- korrathironscaled: HITSREGEN i500 -> 60
+- korrathironscaled: MANAREGEN i60000 -> 7200
+- vraxthelselfmending: HITSREGEN i500 -> 60
+- vraxthelselfmending: MANAREGEN i60000 -> 7200
+- ashkelonsoulrent: HITSREGEN i500 -> 60
+- ashkelonsoulrent: MANAREGEN i60000 -> 7200
+- nethrazulbloodwyrm: HITSREGEN i500 -> 60
+- nethrazulbloodwyrm: MANAREGEN i60000 -> 7200
+- malacharbonesovereign: HITSREGEN i500 -> 60
+- malacharbonesovereign: MANAREGEN i60000 -> 7200
+- vhareshdeathlesstyrant: HITSREGEN i500 -> 60
+- vhareshdeathlesstyrant: MANAREGEN i60000 -> 7200
+- argentyrunbroken: HITSREGEN i500 -> 60
+- argentyrunbroken: MANAREGEN i60000 -> 7200
+- aurelianguildedscale: HITSREGEN i500 -> 60
+- aurelianguildedscale: MANAREGEN i60000 -> 7200
+- maelithratidewarden: HITSREGEN i500 -> 60
+- maelithratidewarden: MANAREGEN i60000 -> 7200
+- zorgathraxworldeater: HITSREGEN i500 -> 60
+- zorgathraxworldeater: MANAREGEN i60000 -> 7200
+- grukthar: HITSREGEN i500 -> 60
+- mogrash: HITSREGEN i500 -> 60
+- krugnak: HITSREGEN i500 -> 60
+- sutek: HITSREGEN i500 -> 60
+- sutek: MANAREGEN i6000 -> 720
+- archangellord: HITSREGEN i500 -> 60
+- nemesislord: HITSREGEN i500 -> 60
+- plaguelord: HITSREGEN i500 -> 60
+- scourgeterminatorlord: HITSREGEN i500 -> 60
+- scourgeinfiltratorlord: HITSREGEN i500 -> 60
+- scourgebattlemasterlord: HITSREGEN i500 -> 60

@@ -25,31 +25,6 @@ function HasNoCorpse(npctemplate)
 
 endfunction
 
-//good npcs use this function to determine what they should attack
-function IsHostile(mob)
-
-	if ( (!mob.npctemplate) or ( mob.script == "tamed" ) || GetObjProperty(mob, "NPCAttack"))
-		return 0; 
-	endif
-
-	var cfg := ReadConfigFile("::npcdesc");
-	if (cfg[mob.npctemplate].hostile) return 1; else return 0; endif
-
-endfunction
-
-//aggro npcs use this function to determine what they should attack
-function IsGood(mob)
-
-	if ( (!mob.npctemplate) or ( mob.script == "tamed" ) || GetObjProperty(mob, "NPCAttack"))
-		return 1;
-	endif
-
-	if ( mob.script == "humuc" or mob.script == "merchant" or mob.script == "playervendor" )
-		return 0;
-	endif
-
-	var cfg := ReadConfigFile("::npcdesc");
-	if ( cfg[mob.npctemplate].alignment == "good" ) return 1; else return 0; endif
-
-
-endfunction
+// 2026-09-30: IsHostile() and IsGood() removed -- nothing ever called them, and the "hostile"
+// template field they read was dropped from npcdesc.cfg in the reformat. Target choice lives in
+// the combat/fight includes.

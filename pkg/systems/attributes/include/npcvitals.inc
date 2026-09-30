@@ -6,6 +6,9 @@
 // in the "RolledNpcVitals" dictionary CProp, keyed "HITS"/"MANA"/"STAM". That dictionary is both
 // the dice-roll cache and the override slot: whatever is in it wins over the template field, so a
 // tool that wants to raise a boss's ceiling just writes the entry (SetNpcVitalOverride).
+// 2026-09-30: the same lookup serves the HITSREGEN / MANAREGEN / STAMREGEN fields (points per
+// minute, decimals allowed): x100 is exactly the engine's hundredths-per-minute regen unit, and
+// modsetup.inc applies it as the "template" regen-rate mod.
 
 use uo;
 use cfgfile;
@@ -43,11 +46,11 @@ function GetNpcVitalSetting( who, vitalfield )
 		if( value.errortext )
 			value := 0;
 		endif
+		value := Cint( value ) * 100;
 	else
-		value := Cint( raw );
+		value := Cint( CDbl( raw ) * 100 );	// 2026-09-30: decimals allowed (HITSREGEN 2.5 -> 250)
 	endif
 
-	value := value * 100;
 	cache.insert( vitalfield, value );
 	SetObjProperty( who, NPCVITALS_CACHE_CPROP, cache );
 
@@ -64,7 +67,7 @@ function SetNpcVitalOverride( who, vitalfield, points )
 		cache := dictionary;
 	endif
 
-	cache.insert( vitalfield, Cint( points ) * 100 );
+	cache.insert( vitalfield, Cint( CDbl( points ) * 100 ) );	// 2026-09-30: decimals allowed
 	SetObjProperty( who, NPCVITALS_CACHE_CPROP, cache );
 
 	return RecalcVitals( who );

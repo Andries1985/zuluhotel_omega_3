@@ -119,7 +119,7 @@ program cast_songoffright( player )
 				var elem := FindConfigElem( configfile, cast_near.npctemplate );
 				if((cast_near.script != ":songbook:frightai") && (elem.Privs != "invul"))
 					if(!GetObjProperty(cast_near, "Boss") && !GetObjProperty(cast_near, "SuperBoss"))
-						difficulty := Cint( elem.provoke );
+						difficulty := Cint( elem.peacemake );	// 2026-09-30: Peacemaking rolls against the peacemake field now (was provoke)
 						if( CheckSkill( player, SKILLID_PEACEMAKING, difficulty, 0 ) )
 							PrintTextAbove(cast_near, "*"+cast_near.name+" flees in fright!*"); 
 							SetObjProperty(cast_near, "originalscript",cast_near.script);

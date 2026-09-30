@@ -1,6 +1,6 @@
 # Developer Changelog - v3.1.3
 
-Range: Patch-3.1.2..Patch-3.1.3 (commit `a4336ef`..`85f13a2`) plus the uncommitted working tree on `Patch-3.1.3` as of 2026-09-30
+Range: Patch-3.1.2..Patch-3.1.3 (commit `a4336ef`..`e0ff379`) plus the uncommitted npcdesc reformat (theme 18) on `Patch-3.1.3` as of 2026-09-30
 Branch: Patch-3.1.3
 Date: 2026-09-30
 
@@ -8,23 +8,23 @@ Date: 2026-09-30
 
 ## Scope Summary
 
-- Total files changed: 93 (12 added, 50 modified, 10 deleted, 21 renamed).
-  - Committed (`a4336ef..85f13a2`): 66 files (10 A, 32 M, 3 D, 21 R), +22,410 / -7,482.
-  - Uncommitted working tree on top of `85f13a2`: 28 tracked files (21 M, 7 D), +5,245 / -2,599, plus 2 untracked new includes (`pkg/systems/attributes/include/npcvitals.inc`, `pkg/opt/warriorforhire/include/wfhvitals.inc`, +149). Three files carry both committed and uncommitted edits: `config/npcdesc.cfg`, `config/equip.cfg`, `scripts/textcmd/seer/info.src`.
-- Net textual delta: +27,777 / -10,054. Of that, 14,479 insertions are the purely additive `config/landtiles.cfg` registration (theme 5) and about 6,900 changed lines are the `decoratefacets` door file renumbering after 71 removals (theme 5). No binaries changed.
+- Total files changed: 155 (148 in the committed range: 14 added, 103 modified, 10 deleted, 21 renamed; plus 17 tracked files with uncommitted theme-18 edits, 12 of which are also in the range, and 2 untracked new files).
+  - Committed (`a4336ef..e0ff379`): 148 files (14 A, 103 M, 10 D, 21 R), +34,731 / -20,313.
+  - Uncommitted working tree on top of `e0ff379` (theme 18 only): 17 tracked files (all M), +53,027 / -49,391 (almost all of it the `config/npcdesc.cfg` rewrite), plus 2 untracked new files (`ainotes/npcdesc-reformat-report-2026-09-30.md`, `scripts/include/npcdifficulty.inc`, +336).
+- Net textual delta: +88,094 / -69,704. Of that, 14,479 insertions are the purely additive `config/landtiles.cfg` registration (theme 5), about 6,900 changed lines are the `decoratefacets` door file renumbering after 71 removals (theme 5), and +53,027 / -49,391 is the npcdesc.cfg block rewrite (theme 18, every line of every template moved). No binaries changed.
 - Largest shifts:
   - `config/landtiles.cfg` (+14,479) - 1,385 new land tile definitions for the new dungeon terrain
-  - `config/npcdesc.cfg` (+6,263 / -498) - HITS/MANA/STAM on every template (uncommitted), 21 new quest-giver and boss templates, 6 Chaos Lord templates (uncommitted), dead `virtue`/`mountspawn`/`CustomHitsLevel` lines and two dead templates removed
+  - `config/npcdesc.cfg` (+52,892 / -49,286 against `Patch-3.1.2`) - every one of the 1,455 template blocks rewritten into one layout (theme 18, uncommitted) on top of HITS/MANA/STAM on every template (commit `e0ff379`), 21 new quest-giver and boss templates, 6 Chaos Lord templates (commit `e0ff379`), dead `virtue`/`mountspawn`/`CustomHitsLevel` lines and two dead templates removed
   - `pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg` (+3,012 / -3,864) - 71 stale door placements removed; the rest is index renumbering
   - `scripts/textcmd/gm/newiteminfo.src` (-2,674, deleted) and `scripts/textcmd/admin/iteminfo.src` (-351, deleted) - replaced by the promoted `.iteminfo`
   - `pkg/opt/rituals/config/itemdesc.cfg` (+905) - 28 new ritual altar items and 14 new chant books
   - `pkg/opt/quests/ai/sutek.src` (+528, new) - Soul Whisperer copy for the final ritual boss
   - `pkg/opt/quests/config/quests.cfg` (+342 / -22) - quests 12-25
-  - `config/nlootgroup.cfg` (+253) - lootgroups 308-313 for the Chaos Lords (uncommitted)
+  - `config/nlootgroup.cfg` (+253) - lootgroups 308-313 for the Chaos Lords (commit `e0ff379`)
   - `pkg/opt/quests/questlogs/RitualQuests.md` (+245, new) and `FishingQuests.md` (+113, new) - design records, not game content
   - `scripts/include/teleporters.inc` (+213 / -55) - new dungeon network, coordinate fixes, Ter Mur links disabled, placement bug fix
   - `scripts/textcmd/gm/iteminfo.src` (+205 / -61, renamed from `alryciteminfo.src`) and `scripts/textcmd/seer/info.src` (+189 / -31) - staff tools
-  - `scripts/include/virtue.inc` (-390), `scripts/ai/setup/questiesetup.inc` (-377), `scripts/ai/main/questiesetup.inc` (-365), `config/spawndef.cfg` (-541), `pkg/std/dundee/codex.cfg` (-206) - dead code removed (uncommitted)
+  - `scripts/include/virtue.inc` (-390), `scripts/ai/setup/questiesetup.inc` (-377), `scripts/ai/main/questiesetup.inc` (-365), `config/spawndef.cfg` (-541), `pkg/std/dundee/codex.cfg` (-206) - dead code removed (commit `e0ff379`)
 - Non-merge commits in range (oldest to newest):
   - `7b4c2c5` Animation test fix (alryc99, 2026-09-26) - `animationtest` template only (theme 8)
   - `d87c817` Teleporters and info newiteminfo updates (alryc99, 2026-09-27) - new dungeon teleporters, door decoration cleanup, staff tools, regen enchant naming (themes 4-7)
@@ -33,13 +33,14 @@ Date: 2026-09-30
   - `941d8ba` Teleporter fixes (Sylvash, 2026-09-28) - teleporter coordinates (theme 4)
   - `e4fd8fc` Fixed doors and added new landtiles (Sylvash, 2026-09-28) - door items and land tiles (theme 5)
   - `85f13a2` Tele fixes (alryc99, 2026-09-29) - Ter Mur links, teleporter placement fix, briefing note (themes 4, 17)
+  - `e0ff379` Patch Notes (alryc99, 2026-09-30) - vitals migration, Warrior for Hire vitals, Chaos Lord templates, karma sign, quest-giver snooping, dead NPC/config/virtue/mountspawn removals, staff-tool consolidation, these release notes (themes 6, 9-16)
 - Merge commits: `ab0f893` (PR #110) and `e484311` (PR #111) re-merge `Patch-3.1.2`; the tree at `e484311` is identical to `a4336ef`. `5097add` (PR #112), `3b8b0fe`, `413aa02`, `4eb2b83` and `cff72b7` (PR #114) carry only the non-merge commits listed above.
 
 **Before this build goes live:**
 - **Move the quest progress datafile.** The quest package was renamed from `questpkg` to `quests` (theme 2), so its datafile moves from `data/ds/questpkg/queststate.txt` to `data/ds/quests/queststate.txt`. Without moving it, every character's progress on quests 2-11 (live since 3.0.9/3.1.1) and the fishing quests 100-107 silently resets.
 - **Replace Valthor and Ysolde.** Their templates are gone (renamed `mariah` and `jaana`, theme 1) and `scripts/ai/valthor.src` is deleted. Any spawnpoint or placed NPC using `valthor` or `ysolde` must be re-placed with the new template.
-- **Wipe and respawn NPCs** after the vitals migration (theme 9). There is no migration command. Existing NPCs keep their cached vitals and any old `CustomHitsLevel` CProp is ignored.
-- Nothing in the uncommitted part has been compiled or run. `ecompile` on the whole tree and an in-game pass over the "Expected impact" lines below are still owed.
+- **Wipe and respawn NPCs** after the vitals migration (theme 9) and the npcdesc reformat (theme 18). There is no migration command. Existing NPCs keep their cached vitals and any old `CustomHitsLevel` / `BaseHpRegen` CProp is ignored; snoop/steal keep working on old NPCs through their old CProps. Areaspawner custom-NPC definitions convert their regen values on first load.
+- Nothing in `e0ff379` or in the uncommitted theme 18 has been compiled or run. `ecompile` on the whole tree and an in-game pass over the "Expected impact" lines below are still owed.
 
 ---
 
@@ -47,17 +48,20 @@ Date: 2026-09-30
 
 Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> new`). "uncommitted" marks working-tree-only changes; "committed + uncommitted edits" marks files changed in both.
 
-- M | .claude/subagent-briefing.md
+- M | .claude/subagent-briefing.md (commit `e0ff379` + uncommitted, theme 18)
+- A | ainotes/npcdesc-reformat-report-2026-09-30.md (uncommitted, theme 18)
 - M | config/command_synopses.cfg
-- M | config/equip.cfg (committed + uncommitted edits)
+- M | config/equip.cfg (commit `e0ff379`)
 - M | config/landtiles.cfg
-- M | config/nlootgroup.cfg (uncommitted)
-- M | config/npcdesc.cfg (committed + uncommitted edits)
-- D | config/spawndef.cfg (uncommitted)
-- M | config/speechgroup.cfg (uncommitted)
+- M | config/nlootgroup.cfg (commit `e0ff379`)
+- M | config/npcdesc.cfg (commit `e0ff379` + uncommitted, theme 18)
+- D | config/spawndef.cfg (commit `e0ff379`)
+- M | config/speechgroup.cfg (commit `e0ff379`)
 - M | pkg/items/doors/config/itemdesc.cfg
 - A | pkg/opt/alryc/textcmd/test/regeninfo.src
-- M | pkg/opt/areaspawner/include/areaspawner.inc (uncommitted)
+- M | pkg/opt/areaspawner/include/areaspawner.inc (commit `e0ff379` + uncommitted, theme 18)
+- M | pkg/opt/areaspawner/include/areaspawnergump.inc (commit `e0ff379` + uncommitted, theme 18)
+- M | pkg/opt/songbook/songoffright.src (uncommitted, theme 18)
 - M | pkg/opt/decoratefacets/decorations/britannia_alt/doors.cfg
 - A | pkg/opt/quests/ai/erethian.src
 - R | scripts/ai/fishmonger.src -> pkg/opt/quests/ai/fishmonger.src
@@ -99,47 +103,52 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 - M | pkg/opt/rituals/rituals/racialTheurgy.src
 - M | pkg/opt/rituals/rituals/resilience.src
 - M | pkg/opt/rituals/rituals/vitalInfusion.src
-- M | pkg/opt/spawnpoint/include/customnpc.inc (uncommitted)
+- M | pkg/opt/spawnpoint/include/customnpc.inc (commit `e0ff379`)
 - M | pkg/opt/spawnpoint/spawnpoint.src
-- M | pkg/opt/spawnpoint/textcmd/admin/newmobedit.src (uncommitted)
-- A | pkg/opt/warriorforhire/include/wfhvitals.inc (uncommitted)
-- M | pkg/opt/warriorforhire/warrior.src (uncommitted)
-- M | pkg/packethooks/megacliloc/mobiledata.src
-- D | pkg/std/dundee/codex.cfg (uncommitted)
-- D | pkg/std/dundee/virtuewalkon.src (uncommitted)
+- M | pkg/opt/spawnpoint/textcmd/admin/newmobedit.src (commit `e0ff379`)
+- A | pkg/opt/warriorforhire/include/wfhvitals.inc (commit `e0ff379`)
+- M | pkg/opt/warriorforhire/warrior.src (commit `e0ff379`)
+- M | pkg/packethooks/megacliloc/mobiledata.src (uncommitted, theme 18)
+- M | pkg/std/peacemaking/peacemaking.src (uncommitted, theme 18)
+- D | pkg/std/dundee/codex.cfg (commit `e0ff379`)
+- D | pkg/std/dundee/virtuewalkon.src (commit `e0ff379`)
 - M | pkg/std/fishing/crustaceantrap.inc
 - M | pkg/std/fishing/fishing.inc
-- M | pkg/std/snooping/snooping.src (uncommitted)
-- M | pkg/std/snooping/stealme.cfg (uncommitted)
-- M | pkg/std/stealing/stealing.src (uncommitted)
-- M | pkg/systems/attributes/hooks/vitalInit.src (uncommitted)
-- A | pkg/systems/attributes/include/npcvitals.inc (uncommitted)
+- M | pkg/std/snooping/snooping.src (commit `e0ff379` + uncommitted, theme 18)
+- M | pkg/std/taunt/taunt.src (uncommitted, theme 18)
+- M | pkg/std/snooping/stealme.cfg (commit `e0ff379`)
+- M | pkg/std/stealing/stealing.src (commit `e0ff379`)
+- M | pkg/systems/attributes/hooks/vitalInit.src (commit `e0ff379`)
+- A | pkg/systems/attributes/include/npcvitals.inc (commit `e0ff379` + uncommitted, theme 18)
 - M | pkg/systems/combat/config/modenchantdesc.cfg
-- M | scripts/ai/chaosmultikillpcs.src (uncommitted)
-- M | scripts/ai/highpriest.src (uncommitted)
-- D | scripts/ai/main/questiesetup.inc (uncommitted)
-- M | scripts/ai/setup/modsetup.inc (uncommitted)
-- D | scripts/ai/setup/questiesetup.inc (uncommitted)
-- M | scripts/ai/townguard.src (uncommitted)
+- M | scripts/ai/chaosmultikillpcs.src (commit `e0ff379`)
+- M | scripts/ai/highpriest.src (commit `e0ff379`)
+- M | scripts/ai/main/npcinfo.inc (uncommitted, theme 18)
+- D | scripts/ai/main/questiesetup.inc (commit `e0ff379`)
+- M | scripts/ai/setup/modsetup.inc (commit `e0ff379` + uncommitted, theme 18)
+- D | scripts/ai/setup/questiesetup.inc (commit `e0ff379`)
+- M | scripts/ai/townguard.src (commit `e0ff379`)
 - D | scripts/ai/valthor.src
-- D | scripts/CustomHpFix.src (uncommitted)
-- M | scripts/include/attributes.inc
-- M | scripts/include/constants/npcai.inc (uncommitted)
+- D | scripts/CustomHpFix.src (commit `e0ff379`)
+- M | scripts/include/anchors.inc (uncommitted, theme 18)
+- M | scripts/include/attributes.inc (commit `e0ff379`)
+- M | scripts/include/constants/npcai.inc (commit `e0ff379`)
 - M | scripts/include/dotempmods.inc
 - M | scripts/include/namingbyenchant.inc
-- M | scripts/include/speech.inc (uncommitted)
+- A | scripts/include/npcdifficulty.inc (uncommitted, theme 18)
+- M | scripts/include/speech.inc (commit `e0ff379`)
 - M | scripts/include/teleporters.inc
-- D | scripts/include/virtue.inc (uncommitted)
+- D | scripts/include/virtue.inc (commit `e0ff379`)
 - M | scripts/misc/death.src
 - M | scripts/misc/questbutton.src
-- M | scripts/start.src (uncommitted)
-- M | scripts/textcmd/admin/admin.src (uncommitted)
+- M | scripts/start.src (commit `e0ff379`)
+- M | scripts/textcmd/admin/admin.src (commit `e0ff379`)
 - M | scripts/textcmd/admin/akill.src
 - M | scripts/textcmd/admin/destroyradius.src
 - D | scripts/textcmd/admin/iteminfo.src
 - R | pkg/opt/alryc/textcmd/test/alryciteminfo.src -> scripts/textcmd/gm/iteminfo.src
 - D | scripts/textcmd/gm/newiteminfo.src
-- M | scripts/textcmd/seer/info.src (committed + uncommitted edits)
+- M | scripts/textcmd/seer/info.src (commit `e0ff379` + uncommitted, theme 18)
 
 ---
 
@@ -254,9 +263,9 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** No player-visible effect.
 
-### 9. NPC vitals come from template HITS/MANA/STAM (uncommitted)
+### 9. NPC vitals come from template HITS/MANA/STAM (commit `e0ff379`)
 
-**Files involved:** `config/npcdesc.cfg`, `pkg/systems/attributes/hooks/vitalInit.src`, `pkg/systems/attributes/include/npcvitals.inc` (new), `scripts/ai/setup/modsetup.inc`, `scripts/CustomHpFix.src` (deleted), `scripts/start.src`, `pkg/opt/areaspawner/include/areaspawner.inc`, `pkg/opt/spawnpoint/include/customnpc.inc`, `pkg/opt/spawnpoint/textcmd/admin/newmobedit.src`, `scripts/textcmd/seer/info.src` (uncommitted part)
+**Files involved:** `config/npcdesc.cfg`, `pkg/systems/attributes/hooks/vitalInit.src`, `pkg/systems/attributes/include/npcvitals.inc` (new), `scripts/ai/setup/modsetup.inc`, `scripts/CustomHpFix.src` (deleted), `scripts/start.src`, `pkg/opt/areaspawner/include/areaspawner.inc`, `pkg/opt/spawnpoint/include/customnpc.inc`, `pkg/opt/spawnpoint/textcmd/admin/newmobedit.src`, `scripts/textcmd/seer/info.src` (`e0ff379` part)
 
 **Notable functional changes:**
 - All 1,456 templates carry `HITS`, `MANA` and `STAM` (plain numbers; dice strings supported). HITS = STR + BaseStrmod, MANA = INT + BaseIntmod, STAM = DEX + BaseDexmod, except templates that had a `CProp CustomHitsLevel`, whose value was carried over exactly (e.g. `chiefparoxysmus` 2,000,000 -> `HITS 20000`), and `beckon` (HITS 200 -> 300). All 141 live template `CustomHitsLevel` CProps (and one commented-out line) are removed.
@@ -268,7 +277,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** Monster max HP, mana and stamina are unchanged except the three creatures above. NPC maximums no longer move with Strength/Intelligence/Dexterity buffs or curses. Spawnpoints saved from an NPC with a hand-set `CustomHitsLevel` fall back to the template HITS; re-apply the value through `newmobedit` and re-save the point to keep it.
 
-### 10. Warrior for Hire vitals (uncommitted)
+### 10. Warrior for Hire vitals (commit `e0ff379`)
 
 **Files involved:** `pkg/opt/warriorforhire/include/wfhvitals.inc` (new), `pkg/opt/warriorforhire/warrior.src`, `scripts/ai/highpriest.src`
 
@@ -278,7 +287,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** A fresh hire has 150 HP, 50 mana, 50 stamina (base 75/50/50); before, max HP equalled Strength (75). Max HP rises 2 per Strength point gained.
 
-### 11. Chaos Lords are real templates (uncommitted)
+### 11. Chaos Lords are real templates (commit `e0ff379`)
 
 **Files involved:** `config/npcdesc.cfg`, `config/nlootgroup.cfg`, `scripts/ai/chaosmultikillpcs.src`
 
@@ -289,7 +298,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** A merged Lord is its own creature with its own loot table; a split Lord returns two base creatures.
 
-### 12. NPC karma sign follows alignment (uncommitted)
+### 12. NPC karma sign follows alignment (commit `e0ff379`)
 
 **Files involved:** `scripts/ai/setup/modsetup.inc`
 
@@ -297,7 +306,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** The 105 `alignment good` templates now have positive karma. Killing one gives no karma gain and can cost karma, per `AffectKarmaAndFameForKill()`. Fame is unchanged. Existing NPCs keep their old karma until respawned.
 
-### 13. Quest givers cannot be snooped or stolen from (uncommitted)
+### 13. Quest givers cannot be snooped or stolen from (commit `e0ff379`)
 
 **Files involved:** `pkg/std/snooping/snooping.src`, `pkg/std/stealing/stealing.src`
 
@@ -305,9 +314,9 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** Quest-giver packs are off limits.
 
-### 14. Dead NPC types and configs removed (uncommitted)
+### 14. Dead NPC types and configs removed (commit `e0ff379`)
 
-**Files involved:** `config/npcdesc.cfg`, `config/equip.cfg` (uncommitted part), `config/speechgroup.cfg`, `pkg/std/snooping/stealme.cfg`, `scripts/include/speech.inc`, `scripts/include/constants/npcai.inc`, `scripts/ai/setup/questiesetup.inc`, `scripts/ai/main/questiesetup.inc`, `config/spawndef.cfg`
+**Files involved:** `config/npcdesc.cfg`, `config/equip.cfg` (`e0ff379` part), `config/speechgroup.cfg`, `pkg/std/snooping/stealme.cfg`, `scripts/include/speech.inc`, `scripts/include/constants/npcai.inc`, `scripts/ai/setup/questiesetup.inc`, `scripts/ai/main/questiesetup.inc`, `config/spawndef.cfg`
 
 **Notable functional changes:**
 - `NpcTemplate questie` (its `script questie` never existed) and `NpcTemplate quest_target` removed, with `Equipment quest_target`, `speechlink quest_target`, the `questie` snoop-loot block, `NPCAI_QUESTIE`, both `questiesetup.inc` files, and the `slave`-CProp branch plus `GiveQuestieDirections()` in `speech.inc`. Nothing spawned or included any of them. `Quest_targetWeapon` stays (used by `peasant`).
@@ -315,7 +324,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** No gameplay change.
 
-### 15. Virtue system removed (uncommitted)
+### 15. Virtue system removed (commit `e0ff379`)
 
 **Files involved:** `scripts/include/virtue.inc` (deleted), `pkg/std/dundee/virtuewalkon.src` and `pkg/std/dundee/codex.cfg` (deleted), `scripts/ai/townguard.src`, `scripts/textcmd/admin/admin.src`, `scripts/textcmd/seer/info.src`, `config/npcdesc.cfg`
 
@@ -328,7 +337,7 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** All town guards spawn on foot with standard gear. Existing Virtue Guards keep their gear until they respawn.
 
-### 16. Dead `mountspawn` CProp removed (uncommitted)
+### 16. Dead `mountspawn` CProp removed (commit `e0ff379`)
 
 **Files involved:** `config/npcdesc.cfg`
 
@@ -336,13 +345,31 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 **Expected impact:** No gameplay change.
 
-### 17. Developer notes (commit `85f13a2`)
+### 17. Developer notes (commits `85f13a2`, `e0ff379`, plus uncommitted theme 18)
 
 **Files involved:** `.claude/subagent-briefing.md`
 
-**Notable functional changes:** realm map sizes and the "Felucca means britannia_alt" rule added.
+**Notable functional changes:** realm map sizes and the "Felucca means britannia_alt" rule added (`85f13a2`); NPC stat-limit note (`e0ff379`); (commit `e0ff379`) the npcdesc.cfg canonical-layout convention from theme 18.
 
 **Expected impact:** No player-visible effect.
+
+### 18. npcdesc.cfg reformat: one layout for every template, CProps promoted to fields (uncommitted, 2026-09-30)
+
+**Files involved:** `config/npcdesc.cfg`, `ainotes/npcdesc-reformat-report-2026-09-30.md` (new), `scripts/include/npcdifficulty.inc` (new), `scripts/include/anchors.inc`, `scripts/ai/main/npcinfo.inc`, `scripts/ai/setup/modsetup.inc`, `pkg/systems/attributes/include/npcvitals.inc`, `pkg/std/peacemaking/peacemaking.src`, `pkg/opt/songbook/songoffright.src`, `pkg/std/taunt/taunt.src`, `pkg/std/snooping/snooping.src`, `pkg/packethooks/megacliloc/mobiledata.src`, `pkg/opt/areaspawner/include/areaspawner.inc`, `pkg/opt/areaspawner/include/areaspawnergump.inc`, `scripts/textcmd/seer/info.src`, `.claude/subagent-briefing.md`
+
+**Notable functional changes:**
+- All 1,455 `NpcTemplate` blocks rewritten by script into one order (identity, behaviour, bard/snoop fields, stats, skills, built-in weapon, casting, loot, CProps), one spelling per key (3,136 field keys and 169 skill lines respelt: `MaceFighting`, `EvaluatingIntelligence`, `DetectingHidden`, aliases such as `Swords`/`Resist`/`EvalInt` expanded), tab indent with values at column 40, blank lines only between groups (4,407 stray ones removed), skills and spells alphabetical inside their groups. Text between blocks is untouched; the commented reference template at the top of the file is regenerated in the same order. A parity check confirmed every kept entry survived with its value. Full record: `ainotes/npcdesc-reformat-report-2026-09-30.md`.
+- Promoted from CProps to fields: `snoopme`/`stealme` (1,060 templates) and `HITSREGEN`/`MANAREGEN` (149 / 77, from `BaseHpRegen`/`BaseManaRegen`; unit is points per minute = old value x 12 / 100, so `i500` -> `60`; the five `*elementalsummons` were set to `5` by decision instead of the faithful 2.4). New `peacemake` and `entice` fields seeded from `provoke` on 1,276 templates.
+- Dropped everywhere: `hostile` (1,107 - its only reader `IsHostile()` had no callers), `psub` (1 - `anchors.inc` now uses `ANCHOR_PSUB := 10`), the never-read `Karma`/`Fame` fields (166 / 138), `prop`, `graphics`, `virtue`, `buddytext`/`leadertext`/`targettext`; CProps `Equipt`/`equipt`, `pack`, `kappa`, `vortexnaga`, `PoisonProtection`. 44 commented-out lines inside blocks removed. 61 duplicate keys resolved to their first value (what the engine used); one hand-pick: `bewitchedpeasant` `equip cothes` (no such `Equipment` block) -> `bewitchedpeasant`. `terathanmatriarch`'s invalid `EvaluateIntelligence` -> `EvaluatingIntelligence`.
+- `modsetup.inc`: new `ApplyTemplateRegen()` reads `GetNpcVitalSetting(who, "HITSREGEN")` (and MANA/STAM) - template field x100 = the engine's hundredths per minute, cached per NPC, tool override first - into the `"template"` regen-rate mod, and clears a stale entry when the template has no field. The `baseregen`/`basemanaregen`/`basestaminaregen` mirror CProps are gone. Regen no longer feeds the karma/fame bonus (46 templates with `BaseManaRegen i60000` were pinned at the 15,000 cap by it).
+- `npcvitals.inc`: `GetNpcVitalSetting` and `SetNpcVitalOverride` accept decimals (`Cint(CDbl(x) * 100)`).
+- `scripts/include/npcdifficulty.inc` (new): `GetSnoopDifficulty()` / `GetStealDifficulty()` = instance ObjProperty first (areaspawner override, and NPCs spawned before the move that still carry the CProp), then the template field. Used by `snooping.src` (both reads), the mobile tooltip in `mobiledata.src`, and the areaspawner seed.
+- `peacemaking.src` and `songoffright.src` roll Peacemaking against `elem.peacemake`; `taunt.src` rolls Enticement against `elem.entice`; `provocation.src`, `grarkshep.src` and the tooltip keep `provoke`. A missing field still means 100.
+- `npcinfo.inc`: `IsHostile()` and `IsGood()` deleted.
+- Areaspawner custom NPCs: regen overrides are points per minute stored with `SetNpcVitalOverride(critter, "HITSREGEN"/"MANAREGEN", n)` (same slot as HITS, so `modsetup.inc` sees them first); the override struct carries `regenunits := "ppm"` and a definition saved without that marker is converted x12/100 on load; the editor labels read "HP Regen /min" / "Mana Regen /min"; the snoop/steal seed uses the helper.
+- `.info` Status page: "Regen HITS/MANA/STAM" row (template values, live value when a tool override differs) replaces "Base regen HP/Mana".
+
+**Expected impact:** No change to how any creature spawns, fights, regenerates or drops loot, except: the five elemental summons regenerate 5 HP/min (was 2.4); the terathan matriarch has Evaluating Intelligence 135 (was 0); the bewitched peasant spawns equipped (was naked); the town healer's leash wall moves from 15 to 20 tiles past its spot; NPC karma no longer includes the regen bonus (the 46 high-mana-regen templates drop below the 15,000 cap). Peacemaking and Enticement difficulties equal Provocation's until a `peacemake`/`entice` line is edited. The regen fields need the NPC respawn already listed above; snoop/steal work on old NPCs as well.
 
 ---
 
@@ -350,6 +377,6 @@ Legend: `Status | File` (A=added, M=modified, D=deleted, R=renamed as `old -> ne
 
 - Diff range: `git log --graph Patch-3.1.2..HEAD`, `git diff --name-status -M Patch-3.1.2..HEAD` (committed), `git diff --name-status -M Patch-3.1.2` plus `git ls-files --others --exclude-standard` (committed + working tree; the inventory above), `git diff --numstat -M` on both for the totals and largest shifts, `git show --stat` on each non-merge commit, and `git diff a4336ef e484311` (empty) to confirm the PR #110/#111 merges carry nothing.
 - File-status counts were derived programmatically: 12 A / 50 M / 10 D / 21 R = 93.
-- Template counts come from `^\s*NpcTemplate\s` headers: 1,433 at `Patch-3.1.2`, 1,452 at `85f13a2`, 1,456 in the working tree. HITS/MANA/STAM against old effective values were compared programmatically for every template; the three differences are the ones listed in theme 9.
+- Template counts come from `^\s*NpcTemplate\s` headers: 1,433 at `Patch-3.1.2`, 1,452 at `85f13a2`, 1,455 in the working tree after the reformat. HITS/MANA/STAM against old effective values were compared programmatically for every template; the three differences are the ones listed in theme 9. The reformat (theme 18) was parity-checked entry by entry against the pre-reformat file before writing (scratchpad `npcdesc_verify.py`: 0 mismatches).
 - Teleporter counts come from active and commented `{ x, y, z, ... }` rows in `teleporters.inc` at both ends of the range.
-- Working tree was not clean: 28 tracked files modified or deleted and 2 untracked includes, all described above. Nothing in the range was compiled or run by the author of these notes.
+- Working tree was not clean: 17 tracked files modified and 2 untracked new files, all theme 18 and described above. Themes 9-16 were committed as `e0ff379` ('Patch Notes') after the first draft of these notes; the inventory labels were recomputed from `git show --name-only e0ff379` and `git status --porcelain` on 2026-09-30. Nothing in the range was compiled or run by the author of these notes.

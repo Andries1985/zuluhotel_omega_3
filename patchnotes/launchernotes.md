@@ -76,12 +76,19 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 - When two elite Chaos creatures merge, the Lord that appears is now its own creature. It has 20,000 hit points and its own loot table. A Lord that splits turns back into two of the original creature.
 - Killing a good-aligned NPC no longer earns you karma. Before, every NPC counted as evil, so killing the good ones rewarded karma like killing a monster. Now it earns none and can cost you karma. Fame works as before.
 - Town guards all look the same now. The mounted "Virtue Guard" variant with a shield, sword and horse no longer spawns.
+- Every creature's definition was reorganised into one standard layout. Nothing about how creatures spawn, fight or drop loot changed, apart from the points below.
+- Summoned elementals (the Earthbook summons) heal much more slowly on their own: 5 hit points a minute. Keep them alive with heals or resummon them.
+- Peacemaking and Enticement now roll against their own per-creature difficulty instead of borrowing Provocation's. Today the numbers are identical, so nothing changes until a creature gets tuned.
+- The Terathan Matriarch now has the Evaluating Intelligence skill she was always meant to have, and the Bewitched Peasant spawns with its gear (it used to appear naked).
+- A creature's own regeneration no longer counts toward the karma you earn for killing it; a few fast-regenerating monsters are worth a little less karma.
 
 ### Player Impact
 
 - Monsters hit as hard and last as long as before, apart from the three fairy-folk above.
 - Curses and weakening effects no longer cut a monster's health.
 - Think twice before killing good-aligned townsfolk.
+- Heal or resummon elemental summons; they no longer regenerate quickly.
+- A few fast-regenerating bosses give slightly less karma.
 
 ## Warrior for Hire
 
@@ -97,6 +104,7 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 
 - Staff item, area and player inspection tools were rebuilt and fixed. A Seer resurrecting an Orc or Frost Elf through the staff info panel now restores the right skin color.
 - A staff area-clear command could delete spawn points by mistake. It no longer does, so monsters should stop vanishing from areas staff tidied up.
+- The area spawner's custom-NPC regen fields are now plain points per minute; values saved earlier convert on their own.
 
 ### Player Impact
 
@@ -111,6 +119,7 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 - Monster health moved to a fixed system with no change for nearly all creatures; pixies, dryads and fairies are tougher; curses no longer cut a monster's health.
 - Chaos Lords are their own creatures with their own loot.
 - Killing good-aligned NPCs no longer earns karma.
+- Creature definitions standardised; summoned elementals regenerate slowly; Peacemaking and Enticement have their own difficulties.
 - Hired warriors start with 150 hit points and grow with Strength.
 - Quest-givers can't be snooped or robbed; town guards are uniform; staff tools fixed.
 

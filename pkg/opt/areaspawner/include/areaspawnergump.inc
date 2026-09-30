@@ -1183,8 +1183,15 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 				ov.hits := loaded.hits;
 				ov.stam := loaded.stam;
 				ov.mana := loaded.mana;
-				ov.hpregen := loaded.hpregen;
-				ov.manaregen := loaded.manaregen;
+				// 2026-09-30: regen overrides are points per minute; a definition saved
+				// before the change (no regenunits marker) holds the old BaseHpRegen unit
+				if( loaded.regenunits == "ppm" )
+					ov.hpregen := loaded.hpregen;
+					ov.manaregen := loaded.manaregen;
+				else
+					ov.hpregen := Cint( CInt(loaded.hpregen) * 12 / 100 );
+					ov.manaregen := Cint( CInt(loaded.manaregen) * 12 / 100 );
+				endif
 				ov.color := loaded.color;
 				ov.truecolor := loaded.truecolor;
 				ov.objtype := loaded.objtype;
@@ -1481,9 +1488,9 @@ endfunction
 
 
 // Stats sub-page of the Custom NPC editor - str/dex/int, max hits/stam/mana,
-// and the regen bonuses (BaseHpRegen/BaseManaRegen - see
-// scripts/ai/setup/modsetup.inc, which is what actually turns these into a
-// regen rate and a Karma/Fame bonus once the critter's AI restarts).
+// and the regen overrides (points per minute since 2026-09-30, stored with
+// SetNpcVitalOverride as HITSREGEN/MANAREGEN - see scripts/ai/setup/modsetup.inc,
+// which turns them into the regen rate once the critter's AI restarts).
 function ShowCustomNpcStatsEditor(who, ov)
 
 	var gumpwidth := 380;
@@ -1498,7 +1505,7 @@ function ShowCustomNpcStatsEditor(who, ov)
 	tid := tid + 1;
 
 	var y := 55 + AS_GUMP_Y_SHIFT;
-	var fieldlabels := array{ "STR:", "DEX:", "INT:", "Max Hits:", "Max Stam:", "Max Mana:", "HP Regen Bonus:", "Mana Regen Bonus:" };
+	var fieldlabels := array{ "STR:", "DEX:", "INT:", "Max Hits:", "Max Stam:", "Max Mana:", "HP Regen /min:", "Mana Regen /min:" };	// 2026-09-30: points per minute (template default 12)
 	var fieldids := array{ AS_TXT_CSTR, AS_TXT_CDEX, AS_TXT_CINT, AS_TXT_CHITS, AS_TXT_CSTAM, AS_TXT_CMANA, AS_TXT_G1, AS_TXT_G2 };
 	var fieldvals := array{ CStr(ov.str), CStr(ov.dex), CStr(ov.intel), CStr(ov.hits), CStr(ov.stam), CStr(ov.mana), CStr(ov.hpregen), CStr(ov.manaregen) };
 

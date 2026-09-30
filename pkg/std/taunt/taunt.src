@@ -79,11 +79,11 @@ program Enticement( who )
 	endif
 	range := Cint( range * ClasseBonus( who, CLASSEID_BARD ) );
 
-	// Find npc provoke difficulty, as we use that for entice difficulty.
-	// If no .provoke found, 100 used.
+	// 2026-09-30: Enticement has its own template field (seeded from provoke in the npcdesc
+	// reformat). If no .entice found, 100 used.
 
 	elem := FindConfigElem( configfile, subject.npctemplate );
-	difficulty := Cint( elem.provoke );
+	difficulty := Cint( elem.entice );
 	
 	if( !difficulty )
 		difficulty := 100;

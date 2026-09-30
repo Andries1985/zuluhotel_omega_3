@@ -13,7 +13,8 @@ include "include/constants/usescriptids";	// USESCRIPTID_TRAPPED_CONTAINER - che
 include "include/constants/locations";	// DEFAULT_LOCATION_ITEM_CREATION_X/Y/Z/R - chest kind stages offsite before moving into the box, matches pkg/opt/spawnpoint's CreateSpawnPointContainer
 include "include/all";	// KillMobile
 include "include/attributes";	// GetStrength/GetDexterity/GetIntelligence/GetMaxHp/GetMaxStamina/GetMaxMana/SetBaseStrength/SetBaseDexterity/SetBaseIntelligence/VITALID_* - custom npc stat capture/apply
-include ":attributes:npcvitals";	// SetNpcVitalOverride - custom npc max HP/Stam/Mana ceilings (2026-09-30)
+include ":attributes:npcvitals";	// SetNpcVitalOverride - custom npc max HP/Stam/Mana ceilings and HITSREGEN/MANAREGEN (2026-09-30)
+include "include/npcdifficulty";	// GetSnoopDifficulty/GetStealDifficulty - snoopme/stealme are template fields now (2026-09-30)
 include "include/starteqp";	// MakeLoot - chest kind loot rolling, matches pkg/opt/spawnpoint's CreateSpawnPointContainer
 include ":areas:include/areapolicy";	// pulls in :datafile:datafile for DFOpenDataFile/DFFindElement/DFGetProp
 
@@ -933,6 +934,7 @@ function NewCustomNpcOverrides()
 		str := 0, dex := 0, intel := 0,
 		hits := 0, stam := 0, mana := 0,
 		hpregen := 0, manaregen := 0,
+		regenunits := "ppm",	// 2026-09-30: hpregen/manaregen are points per minute; a saved definition without this marker holds the old BaseHpRegen unit
 		color := 0, truecolor := 0,
 		objtype := 0,
 		gender := 0,
@@ -1005,10 +1007,11 @@ function GetNpcTemplateBaseStats(template)
 
 	// CreateNpcFromTemplate runs the scratch npc's normal AI startup just
 	// like any other spawn, so every CProp npcdesc.cfg sets on this template
-	// (BaseHpRegen, the *Protection fields, Type, etc.) is already sitting on
-	// this live instance as an ObjProperty - straight GetObjProperty reads,
-	// same as pkg/opt/spawnpoint/include/customnpc.inc and
-	// scripts/ai/setup/modsetup.inc both already rely on for a live npc.
+	// (the *Protection fields, Type, etc.) is already sitting on this live
+	// instance as an ObjProperty - straight GetObjProperty reads, same as
+	// pkg/opt/spawnpoint/include/customnpc.inc and scripts/ai/setup/modsetup.inc
+	// both already rely on for a live npc. Regen and snoop/steal are template
+	// FIELDS since 2026-09-30 and go through their helpers.
 	var stats := NewCustomNpcOverrides();
 	stats.name	:= scratch.name;
 	stats.str	:= GetStrength(scratch);
@@ -1017,8 +1020,8 @@ function GetNpcTemplateBaseStats(template)
 	stats.hits	:= GetMaxHp(scratch);
 	stats.stam	:= GetMaxStamina(scratch);
 	stats.mana	:= GetMaxMana(scratch);
-	stats.hpregen	:= CInt(GetObjProperty(scratch, "BaseHpRegen"));
-	stats.manaregen	:= CInt(GetObjProperty(scratch, "BaseManaRegen"));
+	stats.hpregen	:= RegenPointsFromSetting( GetNpcVitalSetting(scratch, "HITSREGEN") );	// 2026-09-30: template field, points per minute
+	stats.manaregen	:= RegenPointsFromSetting( GetNpcVitalSetting(scratch, "MANAREGEN") );
 	stats.color	:= scratch.color;
 	stats.truecolor	:= CInt(scratch.TrueColor);
 	stats.objtype	:= scratch.graphic;
@@ -1034,8 +1037,8 @@ function GetNpcTemplateBaseStats(template)
 		var mscfg := ReadConfigFile( "::npcdesc" );
 		stats.movespeed := CStr(GetConfigString( mscfg[scratch.npctemplate], "MoveSpeed" ));
 	endif
-	stats.snoopme	:= CInt(GetObjProperty(scratch, "snoopme"));
-	stats.stealme	:= CInt(GetObjProperty(scratch, "stealme"));
+	stats.snoopme	:= GetSnoopDifficulty(scratch);	// 2026-09-30: template field (instance override first)
+	stats.stealme	:= GetStealDifficulty(scratch);
 	stats.looter	:= GetObjProperty(scratch, "Looter") ? 1 : 0;
 	stats.slaytype	:= GetObjProperty(scratch, "Type") ? GetObjProperty(scratch, "Type") : "";
 	stats.fireprot		:= CInt(GetObjProperty(scratch, "FireProtection"));
@@ -1144,18 +1147,19 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 		if( overrides.slaytype )
 			SetObjProperty(critter, "Type", overrides.slaytype);
 		endif
-		// Elemental/alt protections and regen bonuses are plain ObjProperty
-		// CProps read by scripts/ai/setup/modsetup.inc (Base*Regen ->
-		// regen rate, *Protection/Perm*/FreeAction -> its possible_prots
-		// Karma/Fame bonus loop) - that setup script runs when the AI
-		// process (re)starts, which is exactly what RestartScript below
+		// Elemental/alt protections are plain ObjProperty CProps read by
+		// scripts/ai/setup/modsetup.inc (*Protection/Perm*/FreeAction -> its
+		// possible_prots Karma/Fame bonus loop) - that setup script runs when
+		// the AI process (re)starts, which is exactly what RestartScript below
 		// does, so setting these here before that call is what makes them
 		// actually take effect, same idea as the vital overrides above.
+		// 2026-09-30: regen overrides go into the same RolledNpcVitals slot as
+		// HITS (points per minute); modsetup.inc reads that slot first.
 		if( overrides.hpregen )
-			SetObjProperty(critter, "BaseHpRegen", Cint(overrides.hpregen));
+			SetNpcVitalOverride(critter, "HITSREGEN", overrides.hpregen);
 		endif
 		if( overrides.manaregen )
-			SetObjProperty(critter, "BaseManaRegen", Cint(overrides.manaregen));
+			SetNpcVitalOverride(critter, "MANAREGEN", overrides.manaregen);
 		endif
 		if( overrides.fireprot )
 			SetObjProperty(critter, "FireProtection", Cint(overrides.fireprot));
