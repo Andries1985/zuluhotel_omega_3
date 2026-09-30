@@ -70,6 +70,14 @@ program snoop(who)
 		return;
 	endif
 
+	// 2026-09-30: quest-package NPCs (templates tagged QuestGiverTag, see pkg/opt/quests) are off
+	// limits -- this is also what keeps them out of the stealing skill, since stealing from an NPC
+	// only ever works on the pack a successful snoop produced.
+	if(GetObjProperty(victim, "QuestGiverTag"))
+		SendSysMessage(who, "You can't snoop quest givers.");
+		return;
+	endif
+
 	if (victim.npctemplate == "warriorforhire")
 		SendSysMessage(who, "You can't snoop warriors for hire.");
 		return;

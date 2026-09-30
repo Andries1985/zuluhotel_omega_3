@@ -388,15 +388,9 @@ function MakeTotem( me , what )
 	CopySkills( me , thecritter );
 	if( GetObjProperty( me , CLASSEID_MAGE ) )
 		SetObjProperty( thecritter , CLASSEID_MAGE , GetObjProperty( me , CLASSEID_MAGE ) );
-		SetStrengthMod(thecritter, GetStrengthMod(thecritter)+ GetStrength(me) );
-
-		SetObjProperty( thecritter , "BaseStrmod" , GetObjProperty( thecritter , "BaseStrmod" ) + GetStrength(me));
-		SetIntelligenceMod(thecritter, GetIntelligenceMod(thecritter)+GetIntelligence(me) );
-		
-		SetObjProperty( thecritter , "BaseIntmod" , GetObjProperty( thecritter , "BaseIntmod" ) + GetIntelligence(me));
-		
-		SetDexterityMod(thecritter, GetDexterityMod(thecritter)+GetDexterity(me) );
-		SetObjProperty( thecritter , "BaseDexmod" , GetObjProperty( thecritter , "BaseDexmod" ) + GetDexterity(me));
+		// 2026-09-30: the mage's Str/Int/Dex no longer go onto the homunculus as mods (+ the
+		// Base*mod CProps that re-applied them after a restart). The humuc template carries the
+		// extra HITS/MANA/STAM instead.
 	endif
 	
 	set_critical(0);

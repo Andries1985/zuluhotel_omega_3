@@ -58,14 +58,7 @@ endprogram
 
 function CloseDistance( opponent )
 
-	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
-	if (sleepdelay < 0) 
-		sleepdelay := 0; 
-	endif
-	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
-	if(MoveSpeed)
-		sleepdelay := GetSpeed(me, MoveSpeed);
-	endif
+	var sleepdelay := GetNpcMoveDelay(me);	// 2026-09-30: MoveSpeed template field / instance override / Dex default (attributes.inc)
   
     case (Distance( me, opponent ))
         1:
@@ -190,7 +183,7 @@ function Follow()
 		return;
 	endif
 
-	SetDexterityMod(me, 5000);
+	//SetDexterityMod(me, 5000);
 	var d := Distance( me, following );
 	if (d < 2)
 		sleep(1);
@@ -207,7 +200,7 @@ function Follow()
 	if ( (!GetBaseStrength(following)) or (following.dead) )
 		following := 0;
 	endif
-	SetDexterityMod(me, 0);
+	//SetDexterityMod(me, 0);
 	if (master)
 		Guard();
 	endif

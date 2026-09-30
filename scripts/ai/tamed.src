@@ -144,7 +144,7 @@ function Fight( opponent )
 	var oldguarding := guarding;
 	var oldstaying := staying;
 
-	SetDexterityMod(me, 0);
+	//SetDexterityMod(me, 0);
 	following := 0;
 
 	if ( (opponent.serial == me.serial) or (opponent.serial == master.serial) )
@@ -269,14 +269,7 @@ function Fight( opponent )
 endfunction
 
 function CloseDistance( opponent )
-	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
-	if (sleepdelay < 0) 
-		sleepdelay := 0; 
-	endif
-	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
-	if(MoveSpeed)
-		sleepdelay := GetSpeed(me, MoveSpeed);
-	endif
+	var sleepdelay := GetNpcMoveDelay(me);	// 2026-09-30: MoveSpeed template field / instance override / Dex default (attributes.inc)
 	// casters are better off not meleeing their opponent! 
 	//replicate the movement from spellkill
 	if (caster)

@@ -13,6 +13,7 @@ include "include/randname";
 include "include/anchors";
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/dotempmods";
+include ":warriorforhire:include/wfhvitals";	// 2026-09-30: HP = 2 x Str ceilings, re-stamped on hire/growth
 include "include/myutil";
 include ":mdgumps:yesNo";
 include ":mdgumps:gumps";
@@ -337,7 +338,7 @@ function SetMeUp()
 	SetBaseSkill(me, 57, 50);  //Throwing
 
 	SetObjProperty(me,"WarriorForHire",1);
-	SetHP(me, GetMaxHP(me));
+	SetWfhVitalCeilingsAndFill(me);	// 2026-09-30: was SetHP(me, GetMaxHP(me)); ceilings are HP = 2 x Str, Mana = Int, Stam = Dex
 endfunction
 
 function FixStuff()
@@ -708,10 +709,10 @@ function Follow()
 		chaseloop := 0;
 		sleep(1);
 	else
-		SetDexterityMod(me, GetDexterityMod(me)+5000);//me.dexterity_mod := me.dexterity_mod + 5000;
+		//SetDexterityMod(me, GetDexterityMod(me)+5000);//me.dexterity_mod := me.dexterity_mod + 5000;
 		RunToward(following);
 		chaseloop := chaseloop + 1;
-		SetDexterityMod(me, GetDexterityMod(me)-5000);//me.dexterity_mod := me.dexterity_mod - 5000;
+		///SetDexterityMod(me, GetDexterityMod(me)-5000);//me.dexterity_mod := me.dexterity_mod - 5000;
 	endif
 
 	if ( (!GetStrength(following)) or (following.dead) )
@@ -1244,6 +1245,7 @@ function GainStat()
 			say("Ha! I liked that move!");
 		endif
 	endif
+	SetWfhVitalCeilings(me);	// 2026-09-30: max HP/Mana/Stam follow the grown stats (HP = 2 x Str)
 	SyncStatusMirror();
 endfunction
 

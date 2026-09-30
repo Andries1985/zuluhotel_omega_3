@@ -34,6 +34,7 @@ Reference this file at the top of every subagent prompt so it doesn't have to re
 - A file-scope `var X := SomeCall();` in an include runs at the start of every script that includes it (before `program`, used or not), and the equip/unequip control scripts run per equipped item at world load. Keep top-level include vars to literals or `ReadConfigFile` handles; build anything computed lazily through a `Get...()` that fills a `var X := 0;` global on first call (see `GetGuildColours()` in `pkg/opt/guilds/include/guildconstants.inc`, 2026-09-25).
 - ZH's skill cap is 150, not vanilla UO's 100 — don't "fix" values toward 100.
 - Don't assume a stat/property is static just because there's no stored override — check whether it's a live-computed getter first.
+- NPC stats (2026-09-30): the `BaseStrmod`/`BaseIntmod`/`BaseDexmod` CProps are gone, folded into each template's STR/INT/DEX; every template also sets `RunSpeed` (the engine's step pacing, otherwise taken from base DEX at spawn). Max HP/Mana/Stam come from the template's HITS/MANA/STAM fields, changed per instance with `SetNpcVitalOverride` (`:attributes:npcvitals`), never by raising Str/Int/Dex. Stat limits: base 6000, temp mod ±3000 — `SetAttributeTemporaryMod` REJECTS an out-of-range value (mod left unchanged), it does not clamp. The engine does not save temp mods to the world file (only base/cap/lock), so a mod set on an NPC is gone after a restart.
 
 ## Reporting back
 - Report findings and `file:line` citations, not full file dumps.

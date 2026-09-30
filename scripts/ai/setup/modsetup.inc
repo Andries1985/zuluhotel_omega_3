@@ -11,31 +11,9 @@ include ":attributes:regen";
 
 var modnpc := Self();
 
-if( !GetStrengthMod(modnpc) )
-	var strmod := GetObjProperty( modnpc , "BaseStrmod" );
-	if (strmod)
-		SetStrengthMod(modnpc, strmod);
-		SetHP(modnpc, GetStrength(modnpc));
-	endif
-endif
-
-
-if( !GetIntelligenceMod(modnpc) )	
-	var intmod := GetObjProperty( modnpc , "BaseIntmod" );
-	if (intmod)
-		SetIntelligenceMod(modnpc,  intmod);
-		SetMana(modnpc, GetIntelligence(modnpc));
-	endif
-endif
-
-
-if( !GetDexterityMod(modnpc) )
-	var dexmod := GetObjProperty( modnpc , "BaseDexmod" );
-	if (dexmod)
-		SetDexterityMod(modnpc, dexmod);
-		SetStamina(modnpc, GetDexterity(modnpc));
-	endif
-endif
+// 2026-09-30: the BaseStrmod/BaseIntmod/BaseDexmod CProps were folded into each template's
+// STR/INT/DEX (and RunSpeed pinned to the old DEX), so there is no stat mod to apply here any
+// more. The engine fills HP/Mana/Stam to max itself when an NPC spawns (npc.cpp).
 
 
 var base_hp_regen := GetObjProperty( modnpc , "BaseHpRegen" );
@@ -145,7 +123,9 @@ if( !GetObjProperty( modnpc , "Karma" ) )
 	var karma := Cint( base * (Random(21)+90) / 100 );
 	var famodnpc  := Cint( base * (Random(21)+90) / 100 * 0.875 );
 
-	case( npc_cfg[modnpc.npctemplate].alignmodnpcnt )
+	// 2026-09-30: was ".alignmodnpcnt" (a mangled "alignment") -- it never matched, so every NPC
+	// fell through to the default (negative karma) branch, "alignment good" templates included.
+	case( npc_cfg[modnpc.npctemplate].alignment )
 		"evil":		karma := 0 - karma;	break;
 		"good":		break;
 		

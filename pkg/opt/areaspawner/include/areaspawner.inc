@@ -13,6 +13,7 @@ include "include/constants/usescriptids";	// USESCRIPTID_TRAPPED_CONTAINER - che
 include "include/constants/locations";	// DEFAULT_LOCATION_ITEM_CREATION_X/Y/Z/R - chest kind stages offsite before moving into the box, matches pkg/opt/spawnpoint's CreateSpawnPointContainer
 include "include/all";	// KillMobile
 include "include/attributes";	// GetStrength/GetDexterity/GetIntelligence/GetMaxHp/GetMaxStamina/GetMaxMana/SetBaseStrength/SetBaseDexterity/SetBaseIntelligence/VITALID_* - custom npc stat capture/apply
+include ":attributes:npcvitals";	// SetNpcVitalOverride - custom npc max HP/Stam/Mana ceilings (2026-09-30)
 include "include/starteqp";	// MakeLoot - chest kind loot rolling, matches pkg/opt/spawnpoint's CreateSpawnPointContainer
 include ":areas:include/areapolicy";	// pulls in :datafile:datafile for DFOpenDataFile/DFFindElement/DFGetProp
 
@@ -936,7 +937,7 @@ function NewCustomNpcOverrides()
 		objtype := 0,
 		gender := 0,
 		lesserboss := 0, boss := 0, superboss := 0,
-		runspeed := 0, movespeed := 0,
+		runspeed := 0, movespeed := "",
 		snoopme := 0, stealme := 0, looter := 0,
 		slaytype := "",
 		fireprot := 0, waterprot := 0, airprot := 0, earthprot := 0, holyprot := 0, necroprot := 0, physicalprot := 0,
@@ -1026,7 +1027,13 @@ function GetNpcTemplateBaseStats(template)
 	stats.boss		:= GetObjProperty(scratch, "Boss") ? 1 : 0;
 	stats.superboss		:= GetObjProperty(scratch, "SuperBoss") ? 1 : 0;
 	stats.runspeed	:= scratch.run_speed;
-	stats.movespeed	:= CInt(GetObjProperty(scratch, "MoveSpeed"));
+	// 2026-09-30: MoveSpeed is a word (Fastest/Fast/Normal/Slow/Slowest): an instance override if one
+	// is set, else the template's MoveSpeed field, else blank (= Dex-based default).
+	stats.movespeed	:= CStr(GetObjProperty(scratch, "MoveSpeed"));
+	if( !stats.movespeed )
+		var mscfg := ReadConfigFile( "::npcdesc" );
+		stats.movespeed := CStr(GetConfigString( mscfg[scratch.npctemplate], "MoveSpeed" ));
+	endif
 	stats.snoopme	:= CInt(GetObjProperty(scratch, "snoopme"));
 	stats.stealme	:= CInt(GetObjProperty(scratch, "stealme"));
 	stats.looter	:= GetObjProperty(scratch, "Looter") ? 1 : 0;
@@ -1076,29 +1083,23 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 		if( overrides.intel )
 			SetBaseIntelligence(critter, Cint(overrides.intel));
 		endif
-		// Plain SetVital(critter, VITALID_LIFE, overrides.hits) is wrong two
-		// ways: SetVital's raw value is hundredths (overrides.hits is a real
-		// HP number, so it'd be 100x under-scaled), and it only stamps the
-		// CURRENT vital, not the ceiling - this repo's actual max-HP formula
-		// (pkg/systems/attributes/hooks/vitalInit.src's GetLifeMaximumValueExported, wired via
-		// vitals.cfg's MaximumFunction) checks the CustomHitsLevel ObjProperty
-		// first and only falls back to STR*100 if it's unset, exactly like
-		// npcdesc.cfg's own CustomHitsLevel field. So the override has to set
-		// that property (in hundredths, matching how it's stored on real
-		// templates) to actually raise the ceiling, then SetHp - which is
-		// already correctly scaled/clamped - to fill current HP to match.
-		// Mana/Stamina have the identical CustomManaLevel/CustomStaminaLevel
-		// mechanism in the same file, so the same fix applies to both.
+		// Max HP/Stam/Mana overrides go through the vitals port's per-instance
+		// override API (pkg/systems/attributes/include/npcvitals.inc): it writes the
+		// "RolledNpcVitals" entry the MaximumFunction hook reads before the template's
+		// HITS/MANA/STAM field, in the engine's x100 scale, and recalcs. SetHp/
+		// SetStamina/SetMana then fill the current value up to the new ceiling.
+		// (2026-09-30: replaced the retired CustomHitsLevel/CustomStaminaLevel/
+		// CustomManaLevel CProps.)
 		if( overrides.hits )
-			SetObjProperty(critter, "CustomHitsLevel", Cint(overrides.hits) * 100);
+			SetNpcVitalOverride(critter, "HITS", Cint(overrides.hits));
 			SetHp(critter, Cint(overrides.hits));
 		endif
 		if( overrides.stam )
-			SetObjProperty(critter, "CustomStaminaLevel", Cint(overrides.stam) * 100);
+			SetNpcVitalOverride(critter, "STAM", Cint(overrides.stam));
 			SetStamina(critter, Cint(overrides.stam));
 		endif
 		if( overrides.mana )
-			SetObjProperty(critter, "CustomManaLevel", Cint(overrides.mana) * 100);
+			SetNpcVitalOverride(critter, "MANA", Cint(overrides.mana));
 			SetMana(critter, Cint(overrides.mana));
 		endif
 		if( overrides.color )
@@ -1129,7 +1130,7 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 			critter.run_speed := Cint(overrides.runspeed);
 		endif
 		if( overrides.movespeed )
-			SetObjProperty(critter, "MoveSpeed", Cint(overrides.movespeed));
+			SetObjProperty(critter, "MoveSpeed", CStr(overrides.movespeed));	// 2026-09-30: a word, not a number
 		endif
 		if( overrides.snoopme )
 			SetObjProperty(critter, "snoopme", Cint(overrides.snoopme));
@@ -1149,7 +1150,7 @@ function TryPlaceAreaSpawnerCustomNpc(realm, box, template, overrides, allow_wat
 		// Karma/Fame bonus loop) - that setup script runs when the AI
 		// process (re)starts, which is exactly what RestartScript below
 		// does, so setting these here before that call is what makes them
-		// actually take effect, same mechanism as CustomHitsLevel above.
+		// actually take effect, same idea as the vital overrides above.
 		if( overrides.hpregen )
 			SetObjProperty(critter, "BaseHpRegen", Cint(overrides.hpregen));
 		endif

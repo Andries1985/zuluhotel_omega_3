@@ -13,6 +13,7 @@ use attributes;
 use file;
 
 include "include/attributes";
+include ":attributes:npcvitals";	// SetNpcVitalOverride (2026-09-30)
 include "include/client";
 include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
@@ -39,7 +40,8 @@ program textcmd_mobedit(who)
 	desc_list[5] := "HP";
 	desc_list[6] := "Stamina";
 	desc_list[7] := "Mana";
-	desc_list[8] := "MoveSpeed";
+	desc_list[8] := "RunSpeed";	// 2026-09-30: was labelled "MoveSpeed" but it always edited mobile.run_speed (the engine step pacing)
+	desc_list[86] := "MoveSpeed";	// 2026-09-30: the AI think-delay word (Fastest/Fast/Normal/Slow/Slowest); instance override of the template field
 	desc_list[9] := "Graphic";
 	desc_list[10] := "Color";
 	desc_list[11] := "AR";
@@ -140,8 +142,10 @@ program textcmd_mobedit(who)
 	old_stats[7] := GetMaxMana(mobile);
 	if (is_npc)
 		old_stats[8] := mobile.run_speed;
+		old_stats[86] := EffectiveMoveSpeedWord(mobile);
 	else
 		old_stats[8] := 0;
+		old_stats[86] := "";
 	endif
 	old_stats[9] := mobile.graphic;
 	old_stats[10] := mobile.color;
@@ -175,6 +179,9 @@ program textcmd_mobedit(who)
 		for (i := 2; i <= 85; i := i+1)
 			new_stats[i] := Cint(GFExtractData(gump_ret, i));
 		endfor
+		if (is_npc)
+			new_stats[86] := CStr(GFExtractData(gump_ret, 86));	// MoveSpeed word, keep as text
+		endif
 
 		if ( gump_ret[0] <= 7 )
 			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
@@ -307,27 +314,24 @@ program textcmd_mobedit(who)
 		endif
 		if (old_stats[5] != new_stats[5])
 			// 2026-09-23: was SetVital raw hundredths on the current value only (HP 500 became 5
-			// current hit points and no new maximum); NPCs get the CustomHitsLevel ceiling the
-			// vitals hook reads, players only ever had a current value to set.
+			// current hit points and no new maximum); players only ever had a current value to set.
+			// 2026-09-30: the NPC ceiling goes through SetNpcVitalOverride (CustomHitsLevel retired).
 			if (is_npc)
-				SetObjProperty(mobile, "CustomHitsLevel", Cint(new_stats[5]) * 100);
-				RecalcVitals(mobile);
+				SetNpcVitalOverride(mobile, "HITS", Cint(new_stats[5]));
 			endif
 			SetHp(mobile, Cint(new_stats[5]));
 			SendSysMessage(who, "Changing HP to: "+new_stats[5]);
 		endif
 		if (old_stats[6] != new_stats[6])
 			if (is_npc)
-				SetObjProperty(mobile, "CustomStaminaLevel", Cint(new_stats[6]) * 100);
-				RecalcVitals(mobile);
+				SetNpcVitalOverride(mobile, "STAM", Cint(new_stats[6]));
 			endif
 			SetStamina(mobile, Cint(new_stats[6]));
 			SendSysMessage(who, "Changing Stamina to: "+new_stats[6]);
 		endif
 		if (old_stats[7] != new_stats[7])
 			if (is_npc)
-				SetObjProperty(mobile, "CustomManaLevel", Cint(new_stats[7]) * 100);
-				RecalcVitals(mobile);
+				SetNpcVitalOverride(mobile, "MANA", Cint(new_stats[7]));
 			endif
 			SetMana(mobile, Cint(new_stats[7]));
 			SendSysMessage(who, "Changing Mana to: "+new_stats[7]);
@@ -335,6 +339,19 @@ program textcmd_mobedit(who)
 		if (old_stats[8] != new_stats[8])
 			if (is_npc)
 				mobile.run_speed := Cint(new_stats[8]);
+			endif
+		endif
+		if (is_npc && old_stats[86] != new_stats[86])
+			// 2026-09-30: MoveSpeed accepts only the five words; blank clears the override (back to the template).
+			var msword := CanonicalMoveSpeedWord(new_stats[86]);
+			if (!CStr(new_stats[86]))
+				EraseObjProperty(mobile, "MoveSpeed");
+				SendSysMessage(who, "MoveSpeed override cleared -- back to the template value.");
+			elseif (msword)
+				SetObjProperty(mobile, "MoveSpeed", msword);
+				SendSysMessage(who, "Changing MoveSpeed to: "+msword);
+			else
+				SendSysMessage(who, "MoveSpeed must be Fastest, Fast, Normal, Slow or Slowest -- not changed.");
 			endif
 		endif
 		if (old_stats[9] != new_stats[9])
@@ -448,15 +465,15 @@ function gump_mobedit(who)
 	
 	GFPage(mobedit, 0);
 	
-	GFResizePic(mobedit, 16, 19, 9300, 473, 351);
+	GFResizePic(mobedit, 16, 19, 9300, 473, 381);	// 2026-09-30: +30px for the Move Speed row
 	GFTextLine(mobedit, 207, 25, TEXT_COLOR, "Edit Mobile");
 	GFResizePic(mobedit, 273, 62, 83, 199, 233);
 	//Cancel
-	GFAddButton(mobedit, 30, 334, 2121, 2120, GF_CLOSE_BTN, 100);
+	GFAddButton(mobedit, 30, 364, 2121, 2120, GF_CLOSE_BTN, 100);
 	//Apply
-	GFAddButton(mobedit, 100, 334, 2123, 2124, GF_CLOSE_BTN, 999);
+	GFAddButton(mobedit, 100, 364, 2123, 2124, GF_CLOSE_BTN, 999);
 	//Log to file
-	GFAddButton(mobedit, 170, 334, 5202, 5203, GF_CLOSE_BTN, 777);
+	GFAddButton(mobedit, 170, 364, 5202, 5203, GF_CLOSE_BTN, 777);
 
 	//PageButtons	
 	GFAddButton(mobedit, 255, 85, 216, 216, GF_PAGE_BTN, 1);
@@ -525,7 +542,7 @@ function gump_mobedit(who)
 	GFTextEntry(mobedit, 131, 197, 50, 20, TEXT_COLOR, new_stats[7], 7);
 
 	if (is_npc)
-		GFTextLine(mobedit, 47, 220, TEXT_COLOR, "Move Speed");
+		GFTextLine(mobedit, 51, 220, TEXT_COLOR, "Run Speed");
 		GFResizePic(mobedit, 123, 220, 9550, 65, 22);
 		GFTextEntry(mobedit, 131, 222, 50, 20, TEXT_COLOR, new_stats[8], 8);
 	endif
@@ -538,6 +555,13 @@ function gump_mobedit(who)
 
 	GFTextLine(mobedit, 85, 295, TEXT_COLOR, "AR");
 	GFTextEntry(mobedit, 131, 297, 50, 20, TEXT_COLOR, new_stats[11], 11);
+
+	if (is_npc)
+		// 2026-09-30: AI think-delay word -- Fastest/Fast/Normal/Slow/Slowest, blank = template value
+		GFTextLine(mobedit, 47, 320, TEXT_COLOR, "Move Speed");
+		GFResizePic(mobedit, 123, 320, 9550, 65, 22);
+		GFTextEntry(mobedit, 131, 322, 50, 20, TEXT_COLOR, new_stats[86], 86);
+	endif
 
 	GFPage(mobedit, 1);
 
@@ -799,6 +823,37 @@ function gump_mobedit(who)
 	GFTextEntry(mobedit, 408, 278, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_IMBUING], 28+SKILLID_IMBUING);
 
 	return GFSendGump(who, mobedit);
+
+endfunction
+
+// Effective MoveSpeed word for the editor: instance override, else the template field, else "".
+function EffectiveMoveSpeedWord(mobile)
+
+	var word := GetObjProperty(mobile, "MoveSpeed");
+	if (!word)
+		var cfg := ReadConfigFile("::npcdesc");
+		word := GetConfigString(cfg[mobile.npctemplate], "MoveSpeed");
+	endif
+	if (!word)
+		return "";
+	endif
+
+	return CStr(word);
+
+endfunction
+
+// The five accepted words in their canonical spelling, or "" if the text is not one of them.
+function CanonicalMoveSpeedWord(text)
+
+	case (Lower(CStr(text)))
+		"fastest":	return "Fastest";
+		"fast":		return "Fast";
+		"normal":	return "Normal";
+		"slow":		return "Slow";
+		"slowest":	return "Slowest";
+	endcase
+
+	return "";
 
 endfunction
 

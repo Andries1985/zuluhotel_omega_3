@@ -2282,9 +2282,10 @@ endfunction
 //
 ////////////////////////////////////////////////////////////////////////////////////
 
+// AI think-delay (ms between movement decisions) for a MoveSpeed word. 2026-09-30: numeric values
+// are no longer accepted -- nothing writes them any more (the areaspawner override stores the word too).
 function GetSpeed(me := 0, MoveSpeed)
-	MoveSpeed := lower(MoveSpeed);
-	var i := 1, valid := 1; // 2026-09-23: was 0; strings start at 1, so every numeric MoveSpeed was rejected
+	MoveSpeed := lower(CStr(MoveSpeed));
 	if(MoveSpeed == "fastest")
 		return 0;
 	elseif(MoveSpeed == "fast")
@@ -2297,24 +2298,45 @@ function GetSpeed(me := 0, MoveSpeed)
 		return 300;
 	endif
 
-	var number := {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
-	repeat
-		if(MoveSpeed[i] in number)
-		else
-			valid := 0;
-		endif
-		i := i+1;
-	until (i > len(MoveSpeed) || valid == 0);
+	print(me.name + " has an unknown MoveSpeed '" + MoveSpeed + "' (npcdesc.cfg MoveSpeed field or an instance override) -- use Fastest/Fast/Normal/Slow/Slowest. Using Slowest.");
+	return 300;
+endfunction
 
-	if(valid)
-		if(MoveSpeed < 0)
-			MoveSpeed := 0;
-		endif
-		return MoveSpeed;
-	else
-		print(me.name+" Have a wrong MoveSpeed value in npcdesc.cfg, fix it now!");
-		return 300;
+// 2026-09-30: MoveSpeed is a template FIELD now (config/npcdesc.cfg: "MoveSpeed Fast"), no longer a
+// CProp. Order of precedence: a "MoveSpeed" ObjProperty on the instance (the per-NPC override the
+// areaspawner panel writes) -> the template field -> the old Dex formula. The template value is looked
+// up once per script and cached; the override is checked every call so tool edits apply immediately.
+var npcmovespeed_template := "?";	// "?" = not looked up yet, "" = template has no MoveSpeed field
+
+function GetNpcMoveDelay( me )
+
+	var speed := GetObjProperty( me, "MoveSpeed" );
+	if( speed )
+		return GetSpeed( me, speed );
 	endif
+
+	if( npcmovespeed_template == "?" )
+		npcmovespeed_template := "";
+		if( me.npctemplate )
+			var npccfg := ReadConfigFile( "::npcdesc" );
+			var fieldvalue := GetConfigString( npccfg[me.npctemplate], "MoveSpeed" );
+			if( fieldvalue )
+				npcmovespeed_template := fieldvalue;
+			endif
+		endif
+	endif
+
+	if( npcmovespeed_template != "" )
+		return GetSpeed( me, npcmovespeed_template );
+	endif
+
+	var delay := 300 - (CInt(GetDexterity(me)) * 1.5);
+	if( delay < 0 )
+		delay := 0;
+	endif
+
+	return delay;
+
 endfunction
 
 // Recompute the equipped-item skill bonus from scratch and write it via

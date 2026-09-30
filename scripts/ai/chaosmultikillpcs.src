@@ -12,6 +12,7 @@ use npc;
 use os;
 use uo;
 use cfgfile;
+use basicio;	// 2026-09-30: Print() when a <base>lord template is missing
 
 include "include/myutil";
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
@@ -685,20 +686,40 @@ function ReadyStaff (me)
 	EquipItem(me,weaponone);		
 endfunction
 
+// 2026-09-30: a Lord is now a real template ("<base>lord" in config/npcdesc.cfg, with its own
+// doubled STR/INT/DEX, the two bases' combined HITS/MANA/STAM pool, its own lootgroup, and
+// CProp merged i1 / BaseTemplate). Nothing is doubled at runtime any more; both originals die
+// with no loot and the Lord takes the survivor's place.
 function MakeLord(me, mergewith)
 	var pmg;
 	var ct;
+	var lordtemplate := me.npctemplate + "lord";
+	var lord := CreateNpcFromTemplate( lordtemplate, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, 0, DEFAULT_LOCATION_NPC_RELOCATION_R );
+	if (!lord)
+		Print("chaosmultikillpcs: no template '" + lordtemplate + "' in npcdesc.cfg -- " + me.name + " cannot become a Lord");
+		return;
+	endif
+	lord.hidden := 1;
+	ct := GetEquipmentByLayer( lord, LAYER_ROBE );
+	if (ct)
+		ct.color := 1174;
+	endif
+
 	foreach item in EnumerateItemsInContainer( me.backpack )
-		if (item.graphic == 0xf3f) 
+		if (item.graphic == 0xf3f)
 			DestroyItem(item);
 		endif
 	endforeach
 	foreach item in EnumerateItemsInContainer( mergewith.backpack )
-		if (item.graphic == 0xf3f) 
+		if (item.graphic == 0xf3f)
 			DestroyItem(item);
 		endif
 	endforeach
 	SetObjProperty(mergewith,"follower",1);
+	var lx := me.x;
+	var ly := me.y;
+	var lz := me.z;
+	var lrealm := me.realm;
 	me.hidden := 1;
 	mergewith.hidden :=1;
 	ShowFlame2(mergewith);
@@ -706,23 +727,23 @@ function MakeLord(me, mergewith)
 	RevokePrivilege( mergewith, "invul" );
 	setobjproperty( mergewith, "guardkill", 1);
 	ApplyRawDamage( mergewith, Cint(GetMAXHP(mergewith)+3) );
+
+	// transform flash on the survivor, then the Lord steps into its place
 	pmg := me.graphic;
-	ct := GetEquipmentByLayer( me,  LAYER_ROBE );
-	ct.color := 1174;
 	me.graphic := 0x005f;
-	PlaySoundEffect( me , 0x020a );	
+	PlaySoundEffect( me , 0x020a );
 	me.hidden := 0;
 	sleep(2);
-	PlaySoundEffect( me , 0x020a );	
+	PlaySoundEffect( me , 0x020a );
 	me.graphic := pmg;
-	SetBaseStrength(me, GetStrength(me)*2);
-	SetBaseIntelligence(me, GetIntelligence(me)*2);
-	SetBaseDexterity(me, GetDexterity(me)*2);
-	SetHP(me, GetStrength(me));
-	SetMana(me, GetIntelligence(me));
-	SetStamina(me, GetDexterity(me));
-	me.name := me.name + " Lord";
-	SetObjProperty(me,"merged",1);
+	me.hidden := 1;
+	MoveObjectToLocation( me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+	MoveObjectToLocation( lord, lx, ly, lz, lrealm, MOVEOBJECT_FORCELOCATION);
+	lord.hidden := 0;
+	PlaySoundEffect( lord , 0x020a );
+	RevokePrivilege( me, "invul" );
+	setobjproperty( me, "guardkill", 1);
+	ApplyRawDamage( me, Cint(GetMAXHP(me)+3) );
 endfunction
 
 function SplitLord(me)
@@ -742,7 +763,12 @@ function SplitLord(me)
 	me.hidden := 0;
 	PlaySoundEffect( me , 0x020a );	
 	sleep (1);
-	tp := me.npctemplate;
+	// 2026-09-30: a Lord splits back into its BASE template (CProp BaseTemplate on the <base>lord
+	// template), never into two more Lords.
+	tp := GetObjProperty(me, "BaseTemplate");
+	if (!tp)
+		tp := me.npctemplate;
+	endif
 	//Old Britannia Map
 	//var twin1 := CreateNpcFromTemplate( tp, 5376, 1081, 0, 0, "britannia" );
 	//var twin2 := CreateNpcFromTemplate( tp, 5376, 1081, 0, 0, "britannia" );

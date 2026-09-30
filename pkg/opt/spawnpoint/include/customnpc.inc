@@ -110,9 +110,9 @@ o.+titleguild := npc.title_guild;
 o.+titlerace := npc.title_race;
 o.+facing := npc.facing;
 
-// GetMaxHp() already reads CustomHitsLevel internally (pkg/systems/attributes/hooks/vitalInit.src)
-// and converts it down from the engine's x100 fixed-point scale, so it's correct
-// for both custom and template-default NPCs -- no need to special-case it here.
+// GetMaxHp()/GetMaxMana()/GetMaxStamina() read the vitals hook's ceiling (the template's
+// HITS/MANA/STAM field or a per-instance override, see pkg/systems/attributes/include/npcvitals.inc)
+// already scaled down from x100, so they're correct for both custom and template-default NPCs.
 vits.+HITS := GetMaxHp(npc);
 vits.+STAM := GetMaxStamina(npc);
 vits.+MANA := GetMaxMana(npc);

@@ -209,6 +209,12 @@ if (victimserial)
 	if (!victim)
 		victim := SystemFindObjectBySerial(victimserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
 	endif
+	// 2026-09-30: belt and braces -- snooping already refuses quest-package NPCs (QuestGiverTag),
+	// so no snoop pack should ever point at one; refuse here too in case one slipped through.
+	if (victim && GetObjProperty(victim, "QuestGiverTag"))
+		sendsysmessage(who, "You can't steal from quest givers.");
+		exit;
+	endif
 	if (victim && victim.realm == who.realm && Distance(who, victim) <= 2)
 		return 1;
 	endif

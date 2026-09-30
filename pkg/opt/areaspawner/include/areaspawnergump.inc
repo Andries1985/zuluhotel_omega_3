@@ -1661,7 +1661,7 @@ function ShowCustomNpcOtherEditor(who, ov)
 
 		var y := 55 + AS_GUMP_Y_SHIFT;
 		layout.append( "text 20 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
-		data.append( "Move Speed (0-300, 0 = dex-based default):" );
+		data.append( "Move Speed (Fastest/Fast/Normal/Slow/Slowest, blank = template):" );
 		tid := tid + 1;
 		layout.append( "textentry 260 "+CStr(y-2)+" 90 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_G1)+" "+CStr(tid) );
 		data.append( CStr(ov.movespeed) );
@@ -1714,7 +1714,7 @@ function ShowCustomNpcOtherEditor(who, ov)
 
 		// same "read whatever's in the fields before branching" rule as the
 		// main editor, so Pick Slayer Type doesn't discard hand-typed values
-		ov.movespeed := Cint(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));
+		ov.movespeed := CStr(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));	// 2026-09-30: a MoveSpeed word, not a number
 		ov.runspeed := Cint(keyret[AS_TXT_CRUNSPEED] - (CStr(AS_TXT_CRUNSPEED)+": "));
 		ov.snoopme := Cint(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
 		ov.stealme := Cint(keyret[AS_TXT_G3] - (CStr(AS_TXT_G3)+": "));
