@@ -30,6 +30,10 @@ CONST OFFSET_ACCOUNT_NAME	:= 0x01;
 CONST OFFSET_ACCOUNT_PASS	:= 0x1F;
 CONST INFO_LEN			:= 30;
 
+// 2026-10-01: where the same two fields sit in the game-login packet (0x91).
+CONST OFFSET_GAME_ACCOUNT_NAME	:= 0x05;
+CONST OFFSET_GAME_ACCOUNT_PASS	:= 0x23;
+
 enum THEFT_LEVELS
 	ACCT_NOT_EXIST		:= 0,
 	ACCT_LOGIN_OKAY		:= 1,
@@ -79,9 +83,12 @@ exported function LoginHook( connection, byref packet )
 			ACCT_DebugPrint( "LoginHook: account not found for user=" + username );
 			break;
 		ACCT_LOGIN_OKAY: // Account credentials are valid.
-			if( !ACCT_CheckAccountLoginPolicy( username, connection.ip ))
-				DeniedMSG( connection, 8 );
-				return 0;
+			// 2026-10-01: refusals are final. Returning 0 hands the packet back to the core,
+			// which carries on with the normal login whatever message was sent first;
+			// RefuseLogin() returns 1, which stops it here. Reason 6 is the client's
+			// "concurrency limit" message.
+			if( !ACCT_CheckAccountLoginPolicy( username ))
+				return RefuseLogin( connection, 6 );
 			endif
 			ACCT_DebugPrint( "LoginHook: credentials accepted for user=" + username );
 			return 0;
@@ -91,14 +98,15 @@ exported function LoginHook( connection, byref packet )
 			DeniedMSG( connection, 4);
 			return 0;
 			break;
-		ACCT_LOGIN_HACK: // Too many invalid logins for this IP. Leave user hanging.
+		ACCT_LOGIN_HACK: // Too many invalid logins for this IP.
 			ACCT_DebugPrint( "LoginHook: hack lockout for user=" + username + " ip=" + connection.ip );
-			return 0;
+			// 2026-10-01: was "return 0", so the core accepted the right password during a
+			// lockout and the lockout stopped nothing. Reason 3 is "account blocked".
+			return RefuseLogin( connection, 3 );
 			break;
 		ACCT_NO_DISCORDID:
 			ACCT_DebugPrint( "LoginHook: missing DiscordID for user=" + username );
-			DeniedMSG( connection, 8);
-			return 0;
+			return RefuseLogin( connection, 8 );
 			break;
 	endcase
 
@@ -166,6 +174,45 @@ exported function LoginHook( connection, byref packet )
 	return 0;
 endfunction
 
+// 2026-10-01: tells the client why, drops the connection and returns 1, so the core does
+// not go on to process the login packet.
+function RefuseLogin( connection, reason )
+
+	DeniedMSG( connection, reason );
+	DisconnectClient( connection );
+
+	return 1;
+endfunction
+
+// 2026-10-01: the game-login packet (0x91) checks the password as well, and a tool can send
+// it without ever passing the login screen (0x80), so the lockout has to watch it too.
+// Only the lockout acts here: a wrong password is counted, a locked-out address is dropped,
+// and everything else is left to the core and to the world-entry check.
+exported function GameLoginHook( connection, byref packet )
+
+	var username := packet.GetString( OFFSET_GAME_ACCOUNT_NAME, INFO_LEN );
+	var password := packet.GetString( OFFSET_GAME_ACCOUNT_PASS, INFO_LEN );
+
+	if( username == error )
+		return 0;
+	elseif( password == error )
+		return 0;
+	endif
+
+	username := Lower( username );
+
+	var theft_level := AcctHackChecks( username, password, connection.ip );
+	if( theft_level == ACCT_LOGIN_HACK )
+		ACCT_DebugPrint( "GameLoginHook: hack lockout for user=" + username + " ip=" + connection.ip );
+		// No message: from this packet on the client expects a compressed stream, so a
+		// plain refusal packet would not be readable. The login screen gives the reason.
+		DisconnectClient( connection );
+		return 1;
+	endif
+
+	return 0;
+endfunction
+
 function AcctHackChecks( username, password, ip )
 
 	/*
@@ -187,6 +234,11 @@ function AcctHackChecks( username, password, ip )
 	 *    duration, which is always true, so every attempt re-armed the lock.
 	 *  - The lock is per account AND per address, so someone guessing from
 	 *    elsewhere can't lock the real owner out.
+	 *
+	 * 2026-10-01: the rework above still let a locked-out address in, because
+	 * LoginHook answered ACCT_LOGIN_HACK with "return 0" and the core then ran
+	 * its own login. Both hooks now refuse it themselves (LoginHook for packet
+	 * 0x80, GameLoginHook for 0x91), and this function is called from both.
 	 */
 
 	var account := FindAccount( username );
@@ -219,7 +271,7 @@ function AcctHackChecks( username, password, ip )
 						account.SetProp( "#FailedLogin", failed_login );
 					endif
 					ACCT_DebugPrint( "AcctHackChecks: locked out user=" + username + " ip=" + ip );
-					return ACCT_LOGIN_HACK; // Leave user hanging, right password or not.
+					return ACCT_LOGIN_HACK; // Refused by the caller, right password or not.
 				endif
 
 				// The lock has run out -- clean slate for this address.
@@ -305,33 +357,36 @@ function DeniedMSG( who, reason)
 		return;
 	endif
 
+	// 2026-10-01: the reason is byte 1 of this 2-byte packet. The case below wrote it to
+	// byte 2, which is past the end, so the engine refused the write and every refusal
+	// reached the client as reason 0, "Incorrect name/password".
 	var newpacket := CreatePacket(0x82, 2);
 	newpacket.SetInt8(1, 0);
 
 	case(reason)
 		1:	//Incorrect name/password.
-			newpacket.SetInt8(2, 0x00);
+			newpacket.SetInt8(1,0x00);
 			break;
 		2:	//Someone is already using this account.
-			newpacket.SetInt8(2, 0x01);
+			newpacket.SetInt8(1,0x01);
 			break;
 		3:	//Your account has been blocked.
-			newpacket.SetInt8(2, 0x02);
+			newpacket.SetInt8(1,0x02);
 			break;
 		4:	//Your account credentials are invalid.
-			newpacket.SetInt8(2, 0x03);
+			newpacket.SetInt8(1,0x03);
 			break;
 		5:	//Communication problem.
-			newpacket.SetInt8(2, 0x04);
+			newpacket.SetInt8(1,0x04);
 			break;
 		6:	//The IGR concurrency limit has been met.
-			newpacket.SetInt8(2, 0x05);
+			newpacket.SetInt8(1,0x05);
 			break;
 		7:	//The IGR time limit has been met.
-			newpacket.SetInt8(2, 0x06);
+			newpacket.SetInt8(1,0x06);
 			break;
 		8:	//General IGR authentication failure.
-			newpacket.SetInt8(2, 0x07);
+			newpacket.SetInt8(1,0x07);
 			break;
 	endcase
 

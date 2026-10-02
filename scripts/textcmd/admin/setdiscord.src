@@ -1,0 +1,49 @@
+// Synopsis: Set or change the DiscordID of an existing account: .setdiscord <account> <discordID>
+//
+// 2026-10-01: until now a DiscordID could only be given when the account was made
+// (.mkaccount); correcting one meant editing data/accounts.txt with the server stopped.
+// The 2-accounts-per-DiscordID limit applies (MaxAccountsPerDiscord in :accounts:settings),
+// and an account that is in a household stays in it.
+use uo;
+use os;
+
+include ":accounts:accounts";
+
+program textcmd_setdiscord( who, text )
+
+	var params := array;
+	if( text )
+		params := SplitWords( text );
+	endif
+
+	if( params.size() != 2 )
+		SendSysMessage( who, ".setdiscord <accountname> <discordID>" );
+		return 0;
+	endif
+
+	var account := FindAccount( params[1] );
+	if( !account )
+		SendSysMessage( who, "There is no account named " + params[1] + "." );
+		return 0;
+	endif
+
+	var result := ACCT_SetAccountDiscordID( account, params[2] );
+	if( result.errortext )
+		SendSysMessage( who, result.errortext );
+		return 0;
+	endif
+
+	var old_discord := result["OldDiscordIDNorm"];
+	if( !old_discord )
+		old_discord := "(none)";
+	endif
+
+	SysLog( "SetDiscord: " + who.name + " changed the DiscordID of account " + result["AccountName"] + " from " + old_discord + " to " + result["DiscordIDNorm"] + "." );
+	SendSysMessage( who, "Account " + result["AccountName"] + ": DiscordID " + old_discord + " -> " + result["DiscordIDNorm"] + ".", 3, 53 );
+	if( result["HouseholdId"] )
+		SendSysMessage( who, "It stays in household " + result["HouseholdId"] + "; the household's member list was updated." );
+	endif
+	SendSysMessage( who, "Characters already online are not re-checked; the new DiscordID applies from the next login." );
+
+	return 1;
+endprogram

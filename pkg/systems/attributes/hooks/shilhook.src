@@ -26,8 +26,9 @@ exported function ShilCheckSkill( who, skillid, difficulty, points )
 	// dropped failed, however high it still was. It still drops once per use
 	// (the original intent: "should drop on skill fail"), but the normal roll
 	// below now decides success. For an arrow-down skill every AwardSkillPoints
-	// call is another -1, so "dropping" keeps the checks below from calling it
-	// a second time, and points is zeroed so nothing else awards either.
+	// call is another -0.1 (2026-10-02; it was a whole point), so "dropping" keeps
+	// the checks below from calling it a second time, and points is zeroed so
+	// nothing else awards either.
 	var dropping := 0;
 	if( skill_state == "d" )
 		AwardSkillPoints(who, skillid, 0);
@@ -117,8 +118,8 @@ endfunction
 ///////////////////////////////////////////////////////////////////////////////
 
 // dropping (2026-09-21): 1 when the skill's arrow is down -- ShilCheckSkill
-// has already applied this use's -1, so the two unguarded half-point awards
-// below must not call AwardSkillPoints again (each call is another -1).
+// has already applied this use's -0.1, so the two unguarded half-point awards
+// below must not call AwardSkillPoints again (each call is another -0.1).
 function SkillAsPercentSkillCheck( who, skillid, difficulty, points, dropping := 0 )
 
 	var skill	:= GetEffectiveSkill( who, skillid );

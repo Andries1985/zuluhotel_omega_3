@@ -1,34 +1,35 @@
-// Synopsis: Remove a targeted account DiscordID from its household group
+// Synopsis: Remove an account from its household: .householdremove [account] (no account name = target a player)
 use uo;
 
 include ":accounts:accounts";
 
-program textcmd_householdremove( who )
+program textcmd_householdremove( who, text )
 
 	ACCT_DebugPrint( "householdremove invoked by " + who.name );
-	SendSysMessage( who, "Target a player to remove from household." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		ACCT_DebugPrint( "householdremove cancelled before target selection." );
-		SendSysMessage( who, "Cancelled." );
-		return 0;
+
+	// 2026-10-01: takes an account name, so it works on an offline account; with no name
+	// it targets a character, as before.
+	var account_name := "";
+	if( text )
+		account_name := ACCT_TrimDiscordID( text );
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a player to remove from household.", picked_mobile );
+	if( !account )
+		ACCT_DebugPrint( "householdremove ended before an account was picked." );
 		return 0;
 	endif
 
 	var result := ACCT_RemoveAccountFromHousehold( account, who.name );
 	if( result.errortext )
-		ACCT_DebugPrint( "householdremove failed for " + targ.acctname + ": " + result.errortext );
+		ACCT_DebugPrint( "householdremove failed for " + account.name + ": " + result.errortext );
 		SendSysMessage( who, result.errortext );
 		return 0;
 	endif
 
-	ACCT_DebugPrint( "householdremove success account=" + targ.acctname + " household=" + result["HouseholdId"] );
-	SendSysMessage( who, "Removed " + targ.name + " from household " + result["HouseholdId"] + ".", 3, 53 );
+	ACCT_DebugPrint( "householdremove success account=" + account.name + " household=" + result["HouseholdId"] );
+	SendSysMessage( who, "Removed account " + account.name + " from household " + result["HouseholdId"] + ".", 3, 53 );
 	SendSysMessage( who, "Household members: " + CStr( result["MemberCount"] ) + "." );
 	return 1;
 endprogram

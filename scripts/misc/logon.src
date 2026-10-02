@@ -19,6 +19,16 @@ const BANNED_IPS := ":ipban:bannedips";
 program logon( who )
 	//Print("I am using scripts misc logon.src");
 
+	// 2026-10-01: login policy first (the DiscordID / IP / household rules in
+	// :accounts:accounts). A refused character is disconnected here, before it is
+	// announced or any player script starts; the check used to run after this whole
+	// script, from pkg/systems/accounts/logon.src. Its logoff marker is cleared as for
+	// any character entering the world; logoff.src puts a new one down when it leaves.
+	if( !ACCT_AdmitCharacter( who ) )
+		RemoveLogoff( who );
+		return 0;
+	endif
+
 	var stafflevel := who.cmdlevel;
 
 	if(stafflevel > 0)
@@ -109,6 +119,8 @@ program logon( who )
 	else
 		Broadcast( who.name + " has come online and is here to help!");
 	endif
+	// 2026-10-01: logoff.src announces a departure only when the arrival was announced.
+	SetObjProperty( who, "#ArrivalAnnounced", 1 );
 
 	// Resume personal powerhour if one was active when the player disconnected.
 	// The original activateph() instance (setph.src) does not survive a server

@@ -5,6 +5,7 @@ include "include/client";
 include "include/attributes";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse
 
 var water := { 0xA8, 0xA9, 0x64, 0xAA, 0xAB };
 
@@ -99,7 +100,16 @@ program cast_teleport( parms, spell_id )
 	if( multi )
 		return;
 	endif
-	
+
+	// 2026-10-02: a spot can be inside a house footprint without standing on a house piece (a
+	// castle courtyard, a static house), which the test above cannot see. Same owner /
+	// Teleporter-permission rule as Recall. NPC casts skip the sign scan (they fire often).
+	var spot_house := FindHouseAtSpot( cint(where.x), cint(where.y), cint(where.z), caster.realm, !caster.isa(POLCLASS_NPC) );
+	if( !CanTravelIntoHouse( caster, spot_house, RECALL_TO ) )
+		SendSysMessage( caster, "You cannot teleport there." );
+		return;
+	endif
+
 	var canstand := 0;
 	var Moveland := GetStandingLayers(cint(where.x), cint(where.y), MAPDATA_FLAG_MOVELAND, caster.realm );
 	

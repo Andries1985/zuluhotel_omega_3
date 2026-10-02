@@ -11,6 +11,21 @@ const BANNED_IPS := ":ipban:bannedips";
 
 program reconnect( who )
 
+	// 2026-10-01: login policy first, as in logon.src. A refused reconnect is disconnected
+	// here; the check used to run afterwards, from pkg/systems/accounts/reconnect.src.
+	if( !ACCT_AdmitCharacter( who ) )
+		return 0;
+	endif
+
+	// 2026-10-02: a character that was refused at login waits out its logout delay in the
+	// world, and logging into it again inside that delay comes here, not to logon.src. Its
+	// login setup never ran (no arrival, no playermanager: hunger, area ban, class), so run
+	// logon.src for it now. #ArrivalAnnounced is what logon.src sets once it has run.
+	if( !GetObjProperty( who, "#ArrivalAnnounced" ) )
+		Start_Script( "misc/logon", who );
+		return 1;
+	endif
+
 	// Name Check
         var check := CheckName(who.name,who);
         if (check[1] == 0 || check != 1 || GetObjProperty(who, "Converted"))
@@ -67,9 +82,6 @@ program reconnect( who )
 	endif
 
 	SendSysMessage( who, "Reconnected." );
-
-	// Successful reconnect satisfies any pending policy login reservation.
-	ACCT_ClearPendingLoginReservation( who );
 
 endprogram
 

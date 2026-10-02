@@ -11,6 +11,7 @@
 use uo;
 use os;
 use cfgfile;
+use attributes;	// 2026-10-02: SetAttributeLock
 include "include/attributes";
 include "include/classes";
 include "include/client";
@@ -604,8 +605,10 @@ program skillwindow( who )
 					state_array := {};
 				endif
 				state_array[ res ] := "d";
-				TakeCurrentSkillLevelInNote( who , res );
+				TakeCurrentSkillLevelInNote( who , res-1 );	// 2026-10-02: the skill id (res is id+1), as the other two branches pass
 				SetObjProperty( who , "SkillsState" , state_array );
+				// 2026-10-02: the engine lock too, so the client's own skill list shows the same arrow
+				SetAttributeLock( who, GetAttributeIdBySkillId( res-1 ), ATTRIBUTE_LOCK_DOWN );
 
 			// Lock the skill
 			elseif( res < 200 )
@@ -616,6 +619,7 @@ program skillwindow( who )
 				state_array[ res-100 ] := "l";
 				TakeCurrentSkillLevelInNote( who , (res-101) );
 				SetObjProperty( who , "SkillsState" , state_array );
+				SetAttributeLock( who, GetAttributeIdBySkillId( res-101 ), ATTRIBUTE_LOCK_LOCKED );	// 2026-10-02
 
 			// Make the skill raise again
 			elseif( res < 300 )
@@ -626,6 +630,7 @@ program skillwindow( who )
 				state_array[ res-200 ] := "r";
 				TakeCurrentSkillLevelInNote( who , (res-201) );
 				SetObjProperty( who , "SkillsState" , state_array );
+				SetAttributeLock( who, GetAttributeIdBySkillId( res-201 ), ATTRIBUTE_LOCK_UP );	// 2026-10-02
 
 			// Perform skill
 			elseif( res >= PERFORM_SKILL )

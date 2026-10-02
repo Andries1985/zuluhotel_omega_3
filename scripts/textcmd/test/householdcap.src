@@ -1,20 +1,29 @@
-// Synopsis: Set household cap for a targeted household member account
+// Synopsis: Set a household's cap: .householdcap [cap] [account] (no account name = target a member)
 use uo;
 
 include ":accounts:accounts";
 
-program textcmd_householdcap( who, cap_text )
+program textcmd_householdcap( who, text )
 
-	SendSysMessage( who, "Target a household member to set household cap." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		SendSysMessage( who, "Cancelled." );
-		return 0;
+	// 2026-10-01: ".householdcap <cap> <account>" works on an offline account; with no
+	// account name it targets a character, as before.
+	var params := array;
+	if( text )
+		params := SplitWords( text );
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
+	var cap_text := "";
+	var account_name := "";
+	if( params.size() >= 1 )
+		cap_text := params[1];
+	endif
+	if( params.size() >= 2 )
+		account_name := ACCT_TrimDiscordID( params[2] );
+	endif
+
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a household member to set household cap.", picked_mobile );
+	if( !account )
 		return 0;
 	endif
 
@@ -26,7 +35,7 @@ program textcmd_householdcap( who, cap_text )
 
 	var household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
 	if( !household_id )
-		SendSysMessage( who, "Target is not assigned to a household. Use .householdadd first." );
+		SendSysMessage( who, "Account " + account.name + " is not assigned to a household. Use .householdadd first." );
 		return 0;
 	endif
 

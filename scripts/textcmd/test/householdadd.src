@@ -1,22 +1,33 @@
-// Synopsis: Add a targeted account DiscordID to a household group
+// Synopsis: Add an account to a household: .householdadd [household] [account] (no account name = target a player)
 use uo;
 
 include ":accounts:accounts";
 
-program textcmd_householdadd( who, household_id )
+program textcmd_householdadd( who, text )
 
 	ACCT_DebugPrint( "householdadd invoked by " + who.name );
-	SendSysMessage( who, "Target a player to add to a household." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		ACCT_DebugPrint( "householdadd cancelled before target selection." );
-		SendSysMessage( who, "Cancelled." );
-		return 0;
+
+	// 2026-10-01: ".householdadd <household> <account>" works on an offline account, so the
+	// second player of a household no longer has to be online (and refused for sharing the
+	// IP) to be added. With no account name it targets a character, as before.
+	var params := array;
+	if( text )
+		params := SplitWords( text );
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
+	var household_id := "";
+	var account_name := "";
+	if( params.size() >= 1 )
+		household_id := ACCT_TrimDiscordID( params[1] );
+	endif
+	if( params.size() >= 2 )
+		account_name := ACCT_TrimDiscordID( params[2] );
+	endif
+
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a player to add to a household.", picked_mobile );
+	if( !account )
+		ACCT_DebugPrint( "householdadd ended before an account was picked." );
 		return 0;
 	endif
 
@@ -28,11 +39,10 @@ program textcmd_householdadd( who, household_id )
 
 	var discord_norm := info["DiscordIDNorm"];
 	if( !discord_norm )
-		SendSysMessage( who, "Target has no DiscordID set." );
+		SendSysMessage( who, "Account " + account.name + " has no DiscordID set." );
 		return 0;
 	endif
 
-	household_id := ACCT_TrimDiscordID( household_id );
 	if( !household_id )
 		household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
 	endif
@@ -40,19 +50,19 @@ program textcmd_householdadd( who, household_id )
 		household_id := "hh_" + discord_norm;
 	endif
 
-	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "householdadd", targ.acctname ))
+	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "householdadd", account.name ))
 		return 0;
 	endif
 
 	var result := ACCT_AssignAccountToHousehold( account, household_id, who.name );
 	if( result.errortext )
-		ACCT_DebugPrint( "householdadd failed for " + targ.acctname + ": " + result.errortext );
+		ACCT_DebugPrint( "householdadd failed for " + account.name + ": " + result.errortext );
 		SendSysMessage( who, "Unable to assign household: " + result.errortext );
 		return 0;
 	endif
 
-	ACCT_DebugPrint( "householdadd success account=" + targ.acctname + " household=" + result["HouseholdId"] );
-	SendSysMessage( who, "Added " + targ.name + " to household " + result["HouseholdId"] + ".", 3, 53 );
+	ACCT_DebugPrint( "householdadd success account=" + account.name + " household=" + result["HouseholdId"] );
+	SendSysMessage( who, "Added account " + account.name + " to household " + result["HouseholdId"] + ".", 3, 53 );
 	SendSysMessage( who, "Household members: " + CStr( result["MemberCount"] ) + ", cap: " + CStr( result["HouseholdCap"] ) + "." );
 	return 1;
 endprogram

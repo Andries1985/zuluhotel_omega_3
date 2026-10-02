@@ -5,7 +5,7 @@ Always check Discord announcements for all the patch notes.
 
 ## What Changed
 
-Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be learned through a quest, with six new quest-givers and fourteen new bosses. A wave of new dungeons opens up to reach them, many teleporters now land where they should, and ritual enchantments combine more freely. Monster health was moved to a new system that keeps almost every creature exactly as tough as before, and hired warriors get sturdier.
+Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be learned through a quest, with six new quest-givers and fourteen new bosses. A wave of new dungeons opens up to reach them, many teleporters now land where they should, and ritual enchantments combine more freely. Monster health was moved to a new system that keeps almost every creature exactly as tough as before, and hired warriors get sturdier. Logging in was repaired as well: households work, and the password lockout now holds. Skills set to decrease now drop gently, and your client's own skill arrows finally count.
 
 ---
 
@@ -100,11 +100,55 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 
 - Hired warriors are twice as sturdy from day one and keep growing with their Strength.
 
+## Houses: Recall, Gate and Mark
+
+- An old rune can no longer take you into someone else's house. Before, a rune marked inside a house (for example on an upper floor of a tower) kept working after that house was gone and another player built on the same spot, landing the rune's holder inside the new house.
+- Recall, Gate, the runebook and Mark now treat the whole footprint of a house as that house: floors, upper storeys, castle courtyards and static houses alike.
+- Who may travel in is unchanged: the owner, co-owners, and friends or guild ranks holding the house's Teleporter permission.
+- If you use a rune that leads into a house you may not enter, the spell is refused and **the rune is destroyed**. In a runebook, that entry is removed from the book.
+- Mark no longer works inside someone else's house, including courtyards and static houses.
+- You can no longer open a Gate or Recall out from inside a static house you have no access to, the same as other houses.
+- When a recall spot is simply blocked, you are now told so. Before, the spell did nothing and said nothing.
+
+### Player Impact
+
+- Check your old runes. One that points inside another player's house will be destroyed the first time you use it.
+- Runes marked on the ground outside a house, such as in front of a door, work as before.
+- House owners: grant the Teleporter permission to friends who should be able to recall in.
+
+## Logging In: Two Characters, Households and Lockouts
+
+- You may have two characters online at once: two on one account, or one on each of your two accounts. Both must come from the same internet connection.
+- Households now work. Two players who share one home connection, each with their own Discord ID, can play at the same time once staff have registered their accounts as a household. Before, an account registered in a household was refused at login.
+- If you logged into the wrong account, backed out at the character list and logged into your other account, you could be refused for up to three minutes. That wait is gone.
+- Each player (one Discord ID) may hold at most two accounts.
+- A refused login now shows the right reason, such as too many characters online or a temporarily blocked account. Before, it could read "Incorrect name/password" whatever the cause.
+- Five wrong passwords within three minutes block logins to that account from that connection for ten minutes, even with the right password. Before, the block did not hold.
+- A character that is refused on entering the world is no longer announced to the shard as arriving and departing.
+
+### Player Impact
+
+- Sharing a connection with another player? Ask staff to register your accounts as a household. Every account has to be registered, including a second account of the same player.
+- Mistyped your password five times? Wait ten minutes before trying again.
+- Nothing changes if you play one or two characters of your own from one connection.
+
+## Skills: Arrows and the Verse Book
+
+- A skill set to decrease now loses 0.1 each time you use it, instead of a whole point and whatever tenths you had. It still drops on every use, pass or fail, and locks when it reaches zero.
+- The arrows in your client's own skill list now count. Setting a skill to decrease, locked or raise there does the same as in the `.skills` window, and the two windows show the same arrows.
+- The verse book shows which skills each verse uses, under its difficulty. Dragon Skin, for example, uses Begging and Peacemaking.
+
+### Player Impact
+
+- Check your arrows before you use a skill you care about: a down arrow set long ago in `.skills` still costs 0.1 per use.
+- Bards: a verse rolls every skill on its "Uses" line, and you need each of them within 15 points of the verse's difficulty to attempt it.
+
 ## Staff Tools
 
 - Staff item, area and player inspection tools were rebuilt and fixed. A Seer resurrecting an Orc or Frost Elf through the staff info panel now restores the right skin color.
 - A staff area-clear command could delete spawn points by mistake. It no longer does, so monsters should stop vanishing from areas staff tidied up.
 - The area spawner's custom-NPC regen fields are now plain points per minute; values saved earlier convert on their own.
+- Staff can manage households and Discord IDs for accounts that are offline, and can correct an account's Discord ID in game.
 
 ### Player Impact
 
@@ -121,6 +165,9 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 - Killing good-aligned NPCs no longer earns karma.
 - Creature definitions standardised; summoned elementals regenerate only 5 a minute; Peacemaking and Enticement have their own difficulties.
 - Hired warriors start with 150 hit points and grow with Strength.
+- Old runes no longer lead into other players' houses: refused runes are destroyed, and Mark is blocked inside someone else's house.
+- Households work: two players on one connection can play together once registered. The password lockout now holds, and login refusals show the right reason.
+- Down-arrow skills lose 0.1 per use instead of a whole point; the client's skill arrows work; the verse book lists each verse's skills.
 - Quest-givers can't be snooped or robbed; town guards are uniform; staff tools fixed.
 
 Thanks for playing Zuluhotel Omega 3.

@@ -1,4 +1,4 @@
-// Synopsis: Manage household assignments through a selection gump
+// Synopsis: Manage household assignments through a selection gump: .householdmanager [account] (no account name = target a player)
 use uo;
 
 include ":accounts:accounts";
@@ -9,21 +9,28 @@ const BTN_CREATE_NEW := 10;
 const BTN_CLEAR_HOUSEHOLD := 20;
 const BTN_ASSIGN_BASE := 1000;
 
-program textcmd_householdmanager( who )
+program textcmd_householdmanager( who, text )
 
 	ACCT_DebugPrint( "householdmanager invoked by " + who.name );
-	SendSysMessage( who, "Target a player to manage household assignment." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		ACCT_DebugPrint( "householdmanager cancelled before target selection." );
-		SendSysMessage( who, "Cancelled." );
+
+	// 2026-10-01: ".householdmanager <account>" works on an offline account; with no name
+	// it targets a character, as before.
+	var account_name := "";
+	if( text )
+		account_name := ACCT_TrimDiscordID( text );
+	endif
+
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a player to manage household assignment.", picked_mobile );
+	if( !account )
+		ACCT_DebugPrint( "householdmanager ended before an account was picked." );
 		return 0;
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
-		return 0;
+	// What the gump and the messages call the account: the character too, when one was targeted.
+	var label := CStr( account.name );
+	if( picked_mobile )
+		label := picked_mobile.name + " (" + account.name + ")";
 	endif
 
 	var info := ACCT_GetAccountDiscordInfo( account );
@@ -41,7 +48,7 @@ program textcmd_householdmanager( who )
 	// same way). Replaced with CollectHouseholdIds() below, which derives the
 	// list from every account's own ACCT_GetAccountDiscordInfo() instead.
 	var keys := CollectHouseholdIds();
-	var result := HouseholdManagerGump( who, targ, info, keys );
+	var result := HouseholdManagerGump( who, label, info, keys );
 	if( !result || !result[0] )
 		SendSysMessage( who, "Cancelled." );
 		return 0;
@@ -56,7 +63,7 @@ program textcmd_householdmanager( who )
 			return 0;
 		endif
 
-		SendSysMessage( who, "Removed " + targ.name + " from household " + removed["HouseholdId"] + ".", 3, 53 );
+		SendSysMessage( who, "Removed " + label + " from household " + removed["HouseholdId"] + ".", 3, 53 );
 		return 1;
 	elseif( button == BTN_CREATE_NEW )
 		var new_id := SendTextEntryGump( who, "Enter new HouseholdId:", TE_CANCEL_ENABLE, TE_STYLE_NORMAL, 30 );
@@ -67,7 +74,14 @@ program textcmd_householdmanager( who )
 			return 0;
 		endif
 
-		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], new_id, "householdmanager", targ.acctname ))
+		// 2026-10-02: .householdadd reads "<household> <account>", so an id with a space in it
+		// could not be given there afterwards.
+		if( Find( new_id, " ", 1 ) )
+			SendSysMessage( who, "A household id cannot contain spaces." );
+			return 0;
+		endif
+
+		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], new_id, "householdmanager", account.name ))
 			return 0;
 		endif
 
@@ -77,7 +91,7 @@ program textcmd_householdmanager( who )
 			return 0;
 		endif
 
-		SendSysMessage( who, "Assigned " + targ.name + " to new household " + assign_new["HouseholdId"] + ".", 3, 53 );
+		SendSysMessage( who, "Assigned " + label + " to new household " + assign_new["HouseholdId"] + ".", 3, 53 );
 		return 1;
 	elseif( button >= BTN_ASSIGN_BASE )
 		var idx := button - BTN_ASSIGN_BASE + 1;
@@ -88,7 +102,7 @@ program textcmd_householdmanager( who )
 		endif
 
 		var selected_household := CStr( keys[idx] );
-		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], selected_household, "householdmanager", targ.acctname ))
+		if( !ACCT_ConfirmDiscordHouseholdReassign( who, info["DiscordIDNorm"], selected_household, "householdmanager", account.name ))
 			return 0;
 		endif
 
@@ -98,7 +112,7 @@ program textcmd_householdmanager( who )
 			return 0;
 		endif
 
-		SendSysMessage( who, "Assigned " + targ.name + " to household " + assign_existing["HouseholdId"] + ".", 3, 53 );
+		SendSysMessage( who, "Assigned " + label + " to household " + assign_existing["HouseholdId"] + ".", 3, 53 );
 		return 1;
 	endif
 
@@ -136,7 +150,7 @@ function CollectHouseholdIds()
 	return ids;
 endfunction
 
-function HouseholdManagerGump( who, targ, info, keys )
+function HouseholdManagerGump( who, label, info, keys )
 
 	var gump := GFCreateGump( 20, 20, 740, 640 );
 	GFDisposable( gump, 0 );
@@ -148,7 +162,7 @@ function HouseholdManagerGump( who, targ, info, keys )
 	GFTextLine( gump, 300, 35, 67, "Household Manager" );
 
 	GFTextLine( gump, 50, 68, 900, "Target" );
-	GFTextLine( gump, 180, 68, 0, targ.name + " (" + targ.acctname + ")" );
+	GFTextLine( gump, 180, 68, 0, label );
 	GFTextLine( gump, 50, 88, 900, "DiscordIDNorm" );
 	GFTextLine( gump, 180, 88, 0, CStr( info["DiscordIDNorm"] ));
 	GFTextLine( gump, 430, 88, 900, "Current Household" );

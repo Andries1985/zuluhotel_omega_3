@@ -21,7 +21,50 @@ function ReturnVerseInfo(verse)
 	var Stamina := GetConfigInt(ele,"Stamina");
 	var diff := GetConfigInt(ele,"Difficulty");
 
-	return {Stamina, diff};
+	// 2026-10-02: the names of the skills the verse rolls (UseSkill), for the book's info
+	// page -- players were never told them. Two lines when the list is long.
+	var skill_lines := VerseSkillNameLines( ele );
+
+	return {Stamina, diff, skill_lines[1], skill_lines[2]};
+
+endfunction
+
+// 2026-10-02: "Begging, Peacemaking" for a verse element: skillsdef.cfg names, each skill
+// once, broken into a second line when the first would not fit the info page.
+function VerseSkillNameLines( ele )
+
+	var skillsdef := ReadConfigFile( ":attributes:skillsdef" );
+	var skill_names := array;
+	var uses_skills := GetConfigStringArray( ele, "UseSkill" );
+	foreach skill in uses_skills
+		var skill_elem := skillsdef[CInt( skill )];
+		if( !skill_elem )
+			continue;
+		endif
+		var skill_name := CStr( skill_elem.Name );
+		if( skill_name == "TasteIdentification" )
+			skill_name := "Taste ID";
+		endif
+		if( !( skill_name in skill_names ) )
+			skill_names.append( skill_name );
+		endif
+	endforeach
+
+	var line1 := "";
+	var line2 := "";
+	foreach skill_name in skill_names
+		if( !line1 )
+			line1 := skill_name;
+		elseif( Len( line1 ) + 2 + Len( skill_name ) <= 24 )
+			line1 := line1 + ", " + skill_name;
+		elseif( !line2 )
+			line2 := skill_name;
+		else
+			line2 := line2 + ", " + skill_name;
+		endif
+	endforeach
+
+	return { line1, line2 };
 
 endfunction
 
@@ -266,7 +309,7 @@ function SucceedPlayingVerse(who, skills, diff, instrument, name)
 
 	foreach skill in skills
 		if (!CheckSkill(who, CInt(skill), diff, 0))
-			PrintTextAbove(who, "*"+who.name+" fails the arachic verse of "+name+"*");
+			PrintTextAbove(who, "*"+who.name+" fails the archaic verse of "+name+"*");	// 2026-10-02: typo
 			PlayMusicEffect(who, instrument, PLAY_FAIL);
 
 			// check for trying to add verse to book

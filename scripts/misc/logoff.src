@@ -13,7 +13,12 @@ include ":accounts:accounts";
 program logoff(who)
 
 	print("Logoff: "+who.name);
-	ACCT_ClearPendingLoginReservation( who );
+
+	// 2026-10-01: set by logon.src when it announces an arrival. A character the login
+	// policy refused never got that far, so it has no session to count and no departure
+	// to announce (see the two "if( arrival_announced )" blocks below).
+	var arrival_announced := GetObjProperty( who, "#ArrivalAnnounced" );
+	EraseObjProperty( who, "#ArrivalAnnounced" );
 
 	DisplayLogoff( who );
 
@@ -147,12 +152,16 @@ program logoff(who)
 	//  if (who.cmdlevel>0) return; endif
 
 	// online time counter
-	var sessiontime:=ReadGameClock()-GetObjProperty(who,"#logontime");
-	var timer:=GetObjProperty(who,"onlinetimer");
-	if(!timer)
-		timer:=0;
+	// 2026-10-01: only for a session that really started. playermanager.src (which sets
+	// #logontime) is not run for a refused login, so the subtraction had nothing to work with.
+	if( arrival_announced )
+		var sessiontime:=ReadGameClock()-GetObjProperty(who,"#logontime");
+		var timer:=GetObjProperty(who,"onlinetimer");
+		if(!timer)
+			timer:=0;
+		endif
+		SetObjProperty(who,"onlinetimer",timer+sessiontime);
 	endif
-	SetObjProperty(who,"onlinetimer",timer+sessiontime);
 /*
 	//reset newbie status
 	var newbieflag := GetObjProperty(who,"newbie");
@@ -228,7 +237,9 @@ program logoff(who)
 		EraseObjProperty(who, "pvptype");
 	endif
 
-	Broadcast( "Player " + who.name + " has departed");
+	if( arrival_announced )
+		Broadcast( "Player " + who.name + " has departed");
+	endif
 
 endprogram
 

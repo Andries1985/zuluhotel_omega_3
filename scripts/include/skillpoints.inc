@@ -45,16 +45,19 @@ function AwardSkillPoints( who, skillid, points )
 	
 	// Skill is set to drop
 	if( skill_state == "d" )
-		var baseskill := GetBaseSkill( who, skillid );
+		// 2026-10-02: 0.1 per check instead of a whole point. GetBaseSkill/SetBaseSkill work in
+		// whole points, so 75.9 used to become 74.0; the tenths accessors keep the fraction.
+		// Still every check, pass or fail, and still locked once it reaches zero.
+		var base_tenths := GetBaseSkillBaseValue( who, skillid );
 		var amount   := 1;
 		//amount to drop is more than the skill he has, set skill to 0 and LOCK the skill
-		if( amount > baseskill )
-			amount := baseskill;
+		if( amount > base_tenths )
+			amount := base_tenths;
 			skills_state_array[skillid+1] := "l";
 			SetObjProperty( who, "SkillsState", skills_state_array );
 		endif
 		// Reduce skill points
-		SetBaseSkill( who, skillid, Cint(baseskill - amount) );
+		SetBaseSkillBaseValue( who, skillid, Cint(base_tenths - amount) );
 		return 0;
 		
 		// Skill is set to locked, just return 0

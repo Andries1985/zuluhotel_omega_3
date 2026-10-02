@@ -1,0 +1,48 @@
+// 2026-10-02: the arrows in the client's own skill list arrive as packet 0x3A. They used to
+// reach only the engine's per-skill lock, which no script reads: the shard's rules (the
+// drop on a down-arrow skill in include/skillpoints.inc) read the SkillsState property that
+// the .skills gump writes. This hook writes that same property, so both windows agree, and
+// returns 0 so the engine still records its own lock as before (CoreHandledLocks).
+use uo;
+use os;
+
+include "include/attributes";
+
+program install()
+
+	return 1;
+
+endprogram
+
+exported function SkillLockHook( who, byref packet )
+
+	// before a character is picked the hook is handed the connection, not a character
+	if( !who.isa( POLCLASS_MOBILE ) )
+		return 0;
+	endif
+
+	// u16 skill id at offset 3 (the client's numbering matches SKILLID_*), u8 mode at 5
+	var skillid := packet.GetInt16( 3 );
+	var lock_mode := packet.GetInt8( 5 );
+	if( skillid < 0 || skillid > SKILLID__HIGHEST )
+		return 0;
+	endif
+
+	var state;
+	case( lock_mode )
+		0:	state := "r";	break;	// raise
+		1:	state := "d";	break;	// decrease
+		2:	state := "l";	break;	// locked
+		default:	return 0;
+	endcase
+
+	var state_array := GetObjProperty( who, "SkillsState" );
+	if( !state_array )
+		state_array := {};
+	endif
+	state_array[skillid + 1] := state;
+	SetObjProperty( who, "SkillsState", state_array );
+
+	return 0;
+
+endfunction

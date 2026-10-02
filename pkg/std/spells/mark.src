@@ -5,9 +5,10 @@ include "include/spelldata";
 include "include/areas";
 include "include/client";
 include "include/realmcolors";
+include "include/traveldebug";	// 2026-10-01 TEMP debug: console tracing for the recall-into-house report
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":multistatichousing:recallgatehelp";
 
 program cast_mark( caster, spell_id )
 
@@ -30,27 +31,15 @@ program cast_mark( caster, spell_id )
 		endif
 	endforeach
 
-	var multi := caster.multi;
-	if( multi )
-		if( !Iscowner( caster, multi ) )
-			if( !IsFriend( caster, multi, GATE_TO ) )
-				SendSysMessage( caster , "You can't mark there!" );
-				return;
-			endif
-		endif
+	// 2026-10-02: house test by footprint (housetravel.inc) instead of caster.multi, which only
+	// saw a house under a house piece: a visitor standing in a castle courtyard or in a static
+	// house could mark it. Only someone who may travel into the house may mark inside it.
+	var here_house := FindHouseAtSpot( caster.x, caster.y, caster.z, caster.realm );
+	if( !CanTravelIntoHouse( caster, here_house, GATE_TO ) )
+		SendSysMessage( caster , "You can't mark there!" );
+		return;
 	endif
-	// Same check as above for static houses
-	// var serialstatichouse := StaticHouseSerial( caster );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, GATE_TO ));
-	// 			SendSysMessage( caster, "You can't mark there!" );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
-	
+
 	if (TryToCast( caster, spell_id ) != SUCCESS);
 		EraseObjProperty(caster, "#Casting");
 		return 0;
@@ -88,12 +77,13 @@ program cast_mark( caster, spell_id )
 		return 0;
 	endif
 
-	SubtractAmount(cast_on, 1);	
-		
+	SubtractAmount(cast_on, 1);
+
 	SetObjProperty(cast_on2, "x", caster.x);
 	SetObjProperty(cast_on2, "y", caster.y);
 	SetObjProperty(cast_on2, "z", caster.z);
 	SetObjProperty(cast_on2, "realm", caster.realm);
+	TravelDebugMark( caster );	// 2026-10-01 TEMP debug
 
 	SetName(cast_on2, "a marked recall rune");
 	cast_on2.color := GetRealmRuneColor( caster.realm );

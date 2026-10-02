@@ -24,7 +24,12 @@ include "include/areas";
 include "include/client";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":multistatichousing:recallgatehelp";
+include "include/traveldebug";	// 2026-10-01 TEMP debug: console tracing for the recall-into-house report
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse
+
+// 2026-10-02: CustomRecall / CustomGate return this when the destination is inside a house the
+// caster may not enter; the caller (runebookactions.inc) then removes that entry from the book.
+const TRAVEL_REFUSED_BY_HOUSE := -1;
 
 const RECALL_DELAY_MS	:= 5000;
 const GATE_DELAY_MS	:= 8000;
@@ -165,57 +170,38 @@ function CustomRecall( caster, x, y, z, realm, from_charge := 0 )
 	endif
 	
 	
-	var multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
-	if( multi )
+	TravelDebugDest( "RUNEBOOK RECALL", caster, tox, toy, toz, torealm );	// 2026-10-01 TEMP debug
 
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, RECALL_TO ) )
-				SendSysMessage( caster, "You can't recall to this house." );
-				return;
-			endif
+	// 2026-10-02: the destination's house is found by footprint, ignoring the rune's z (see
+	// scripts/include/housetravel.inc). The old test, GetStandingHeight at the rune's z, saw no
+	// house when the rune was marked higher than the floor of a house placed there later.
+	var house := FindHouseAtSpot( tox, toy, toz, torealm );
+	var allowed := CanTravelIntoHouse( caster, house, RECALL_TO );
+	TravelDebugHouse( "RUNEBOOK RECALL", caster, house, allowed );	// 2026-10-01 TEMP debug
+	if( !allowed )
+		SendSysMessage( caster, "You can't recall to this house." );
+		if( house.isa( POLCLASS_BOAT ) )
+			return 0;
 		endif
+		return TRAVEL_REFUSED_BY_HOUSE;
 	endif
 
-	var multi2 := GetStandingHeight(sx, sy, sz, srealm).multi;
-	if(multi2)
-		if( !Iscowner( caster, multi2 )  )
-			if( !IsFriend( caster, multi2, RECALL_TO ) )
-				SendSysMessage( caster, "You can't recall from this house." );
-				return;
-			endif
-		endif
+	var from_house := FindHouseAtSpot( sx, sy, sz, srealm );
+	if( !CanTravelIntoHouse( caster, from_house, RECALL_TO ) )
+		SendSysMessage( caster, "You can't recall from this house." );
+		return 0;
 	endif
-	// Same check as above for static houses
-	/*
-	var serialstatichouse := StaticHouseSerial( caster );
-	if(serialstatichouse)
-		var sign := SystemFindObjectBySerial(serialstatichouse);
-		if(GetObjProperty( sign, "OwnerAcct") != caster.acctname)
-			if( !Iscowner( caster, sign )  )
-				if( !IsFriend( caster, sign, RECALL_TO) )
-					SendSysMessage( caster, "You can't recall from this house." );
-					return;
-				endif
-			endif
-		endif
-	endif
-	serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
-	if(serialstatichouse)
-		var sign := SystemFindObjectBySerial(serialstatichouse);
-		if(GetObjProperty( sign, "OwnerAcct") != caster.acctname)
-			if( !Iscowner( caster, sign )  )
-				if( !IsFriend( caster, sign, RECALL_TO) )
-					SendSysMessage( caster, "You can't recall to this house." );
-					return;
-				endif
-			endif
-		endif
-	endif
-	*/
+
 	PlaySoundEffect( caster, SFX_SPELL_RECALL1 );
 	sleepms(250);
 
-	MoveObjectToLocation( caster, tox, toy, toz, torealm );
+	var moved := MoveObjectToLocation( caster, tox, toy, toz, torealm );
+	TravelDebugLanded( "RUNEBOOK RECALL", caster, moved );	// 2026-10-01 TEMP debug
+	// 2026-10-02: the move can fail (something now stands on that spot); it used to fail silently.
+	if( !moved )
+		SendSysMessage( caster, "Something blocks that location." );
+		return 0;
+	endif
 	PlaySoundEffect( caster, SFX_SPELL_RECALL2 );
 
         return 1;
@@ -334,14 +320,12 @@ function CustomGate( caster, x, y, z, realm, guild_only := 0 )
 		endif
 	endforeach
 	
-	var multi := GetStandingHeight( caster.x, caster.y, caster.z, caster.realm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_FROM) )
-				SendSysMessage( caster, "You can't gate from this house." );
-				return;
-			endif
-		endif
+	// 2026-10-02: footprint test (housetravel.inc). A gate is two-way, so opening one from inside a
+	// house lets everyone at the far end in.
+	var from_house := FindHouseAtSpot( caster.x, caster.y, caster.z, caster.realm );
+	if( !CanTravelIntoHouse( caster, from_house, GATE_FROM ) )
+		SendSysMessage( caster, "You can't gate from this house." );
+		return 0;
 	endif
 	
 	var tox := x;
@@ -377,42 +361,20 @@ function CustomGate( caster, x, y, z, realm, guild_only := 0 )
 		endif
 	endforeach
 	
-  multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_TO) )
-				SendSysMessage( caster, "You can't gate to this house." );
-				return;
-			endif
+	TravelDebugDest( "RUNEBOOK GATE", caster, tox, toy, toz, torealm );	// 2026-10-01 TEMP debug
+
+	// 2026-10-02: footprint test, ignoring the rune's z (see CustomRecall).
+	var house := FindHouseAtSpot( tox, toy, toz, torealm );
+	var allowed := CanTravelIntoHouse( caster, house, GATE_TO );
+	TravelDebugHouse( "RUNEBOOK GATE", caster, house, allowed );	// 2026-10-01 TEMP debug
+	if( !allowed )
+		SendSysMessage( caster, "You can't gate to this house." );
+		if( house.isa( POLCLASS_BOAT ) )
+			return 0;
 		endif
+		return TRAVEL_REFUSED_BY_HOUSE;
 	endif
-	// Same check as above for static houses
-	/*
-	var serialstatichouse := StaticHouseSerial( caster );
-	if(serialstatichouse)
-		var sign := SystemFindObjectBySerial(serialstatichouse);
-		if(GetObjProperty( sign, "OwnerAcct") != caster.acctname)
-			if( !Iscowner( caster, sign )  )
-				if( !IsFriend( caster, sign, GATE_FROM) )
-					SendSysMessage( caster, "You can't gate from this house." );
-					return;
-				endif
-			endif
-		endif
-	endif
-	serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
-	if(serialstatichouse)
-		var sign := SystemFindObjectBySerial(serialstatichouse);
-		if(GetObjProperty( sign, "OwnerAcct") != caster.acctname)
-			if( !Iscowner( caster, sign )  )
-				if( !IsFriend( caster, sign, GATE_FROM) )
-					SendSysMessage( caster, "You can't gate to this house." );
-					return;
-				endif
-			endif
-		endif
-	endif
-	*/
+
 	var gate1 := CreateItemAtLocation( caster.x, caster.y, caster.z, 0x99b1, 1, caster.realm );
 	gate1.facing := 1;
 
@@ -425,6 +387,7 @@ function CustomGate( caster, x, y, z, realm, guild_only := 0 )
 		return 0;
 	endif
 
+	TravelDebugGate( "RUNEBOOK GATE", gate2, toz );	// 2026-10-01 TEMP debug
 	SetObjProperty( gate1, "GateDestX", gate2.x );
 	SetObjProperty( gate1, "GateDestY", gate2.y );
 	SetObjProperty( gate1, "GateDestZ", gate2.z );
