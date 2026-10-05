@@ -39,6 +39,9 @@ program cast_summonmammals( parms )
 
 		EraseObjProperty( caster , "#Casting" );
 		SummonCreature( caster , "mammalelementalsummons" , cast_loc );
+		// 2026-10-04: a Mystic Archer gets the Spawn of the Dead only. It used to fall through into
+		// the loop below and summon 1 or 2 ordinary mammals as well.
+		return;
 	else
 		caster := parms;
 		if(IsInSafeArea(caster))

@@ -28,7 +28,7 @@ const STATUS_ALLIANCE_FORMING := "FA";
 const STATUS_ALLIANCE_ENDING := "EA";
 
 const GUILD_UNIFORM_PRICE := 150000;
-const GUILD_COLOUR_TIME := 24; //hours
+const GUILD_COLOUR_TIME := 7; // days (2026-10-04: one week, was 24 hours)
 const GUILD_COLOUR_TIME_SET := "TimeGuildColour";
 const GUILD_NAME_TIME := 7; // days
 const GUILD_NAME_TIME_SET := "TimeGuildName";

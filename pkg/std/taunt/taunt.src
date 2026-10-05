@@ -169,7 +169,8 @@ program Enticement( who )
 			break;
 		elseif (subject.dead)
 			break;
-		elseif (who.x != mx && who.y != my)
+		// 2026-10-03: was && (only a diagonal step cancelled it, a straight-line walk never did)
+		elseif (who.x != mx || who.y != my)
 			SendSysMessage(who, "Enticement cancelled, you moved.");
 			break;
 		endif

@@ -111,6 +111,13 @@ program cast_songofdefense( player )
 			PlayObjectCenteredEffect( cast_near, FX_SPELL_ARCH_PROTECTION , SPEED_SPELL_ARCH_PROTECTION , LOOP_SPELL_ARCH_PROTECTION );
 			DoTempMod( cast_near , "ar" , dmod , duration );
 			SendBoostMessage( player, cast_near, "song of defense", dmod, duration, 0 );
+			else
+				// 2026-10-03: say so when the boost is refused (another armor buff or polymorph is active)
+				if( cast_near.serial == player.serial )
+					SendSysMessage( player, "You are already under another armor-affecting buff." );
+				else
+					SendSysMessage( player, cast_near.name+" is already under another armor-affecting buff." );
+				endif
 			endif
 		endforeach
 	endif

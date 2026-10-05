@@ -69,7 +69,7 @@ program summon_creature( parms )
 		4: duration := 400;
 		5: duration := 500;
 		6: duration := 600;
-		default : duration := 60;
+		default : duration := 80; // 2026-10-03: no class level (was 60), between that and level 1 (100)
 	endcase	
 	//Print("Duration after: " + duration);
 
@@ -101,7 +101,7 @@ program summon_creature( parms )
 		4: power := 65;
 		5: power := 80;
 		6: power := 100;
-		default : power := 1;
+		default : power := 10; // 2026-10-03: no class level (was 1), between that and level 1 (20)
 	endcase	
 	
 	//Print("Power after case: " + power);

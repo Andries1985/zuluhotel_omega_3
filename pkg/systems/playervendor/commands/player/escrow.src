@@ -11,6 +11,9 @@ include ":containers:storageAreas";
 include ":playervendor:include/escrow";
 
 const ESCROW_STORAGE_NAME := "Merchant Escrow";
+// 2026-10-04: Warrior for Hire payouts live in the same per-owner datafile (wfhescrow.inc) but are
+// recovered through the High Priest for a fee. They must never be listed or claimed here.
+const ESCROW_WFH_VENDOR_NAME := "Warrior for Hire";
 const DEBUG_MODE := 1;
 
 const ENTRY_ID_IDX := 1;
@@ -83,7 +86,7 @@ function LoadEscrowEntriesForSerial(who, merchant_serial)
 			foreach part in parts
 				if(part)
 					var fields := SplitWords(part, "|");
-					if(len(fields) >= 7)
+					if(len(fields) >= 7 and fields[4] != ESCROW_WFH_VENDOR_NAME)
 						entries.append({
 							fields[1],
 							CInt(fields[2]),
@@ -143,7 +146,7 @@ function ShowEscrowGump(who, page)
 		foreach part in parts
 			if(part)
 				var fields := SplitWords(part, "|");
-				if(len(fields) >= 7)
+				if(len(fields) >= 7 and fields[4] != ESCROW_WFH_VENDOR_NAME)
 					all_entries.append({
 						fields[1],
 						CInt(fields[2]),
@@ -278,6 +281,11 @@ function DestroyContainerAndContents(byref container)
 endfunction
 
 function ClaimEscrowEntry(who, entry, to_bank)
+	if(EntryVendorName(entry) == ESCROW_WFH_VENDOR_NAME)
+		SendSysMessage(who, "Warrior for Hire packages are recovered through the High Priest.");
+		return;
+	endif
+
 	var area := FindStorageArea(ESCROW_STORAGE_NAME);
 	if(!area)
 		EscrowDebugMsg(who, "ClaimEscrowEntry: escrow storage unavailable for entry_id=" + EntryId(entry));

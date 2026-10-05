@@ -5,15 +5,18 @@ include "include/NameChecker";
 include ":accounts:accounts";
 include ":areas:include/areafunctions"; // 2026-09-23: safe-zone flags re-checked on reconnect too
 include "include/areas";
-
-// Toadstool ADD
-const BANNED_IPS := ":ipban:bannedips";
+include "include/ipban";
 
 program reconnect( who )
 
 	// 2026-10-01: login policy first, as in logon.src. A refused reconnect is disconnected
 	// here; the check used to run afterwards, from pkg/systems/accounts/reconnect.src.
 	if( !ACCT_AdmitCharacter( who ) )
+		return 0;
+	endif
+
+	// 2026-10-04: IP ban list (.ipban), checked before anything else runs for this login.
+	if( !IPBan_AdmitCharacter( who ) )
 		return 0;
 	endif
 
@@ -32,8 +35,6 @@ program reconnect( who )
 			who.name := "AlreadyUsed";
 			start_script("misc/namechanger", {who, check[2]}); 
         endif
-
-	CheckIPBan(who);
 
 	RemoveSafeAreaProperties(who, 1);
 	// 2026-09-23: decide the safe-zone and no-PK flags here instead of racing the region
@@ -84,53 +85,4 @@ program reconnect( who )
 	SendSysMessage( who, "Reconnected." );
 
 endprogram
-
-////////////////////////////////////////////////////////////////////////
-// Check data file for banned ip and kick
-//
-// This can probably be removed one day since converting to 099
-////////////////////////////////////////////////////////////////////////
-function CheckIPBan(who)
-
-// open banned datafile
-var ipdfile := OpenDataFile( BANNED_IPS );
-
-// open element
-var bannedele := ipdfile.FindElement("BannedIPS");
-var strip := CStr(who.ip);
-
-UnloadDataFile( BANNED_IPS );
-
-var iplist := bannedele.PropNames();
-
-var i := 1;
-var stop;
-
-foreach ip in iplist	
-	if (ip[i] == strip[i]) // If first number is the same, check the whole thing
-
-		repeat
-			// even if this is the first one, it means entire world ban
-			if (CInt(ip[i]) == 2 && CInt(ip[(i+1)]) == 5 && CInt(ip[(i+2)]) == 5)
-				stop := 1;
-				foreach person in EnumerateOnlineCharacters()
-					if (person.cmdlevel > 1)
-						SendSysMessage(person, "Account: "+who.acctname, 3, 53);
-						SendSysMessage(person, "Character: "+who.name, 3, 53);
-						SendSysMessage(person, "Tried logging in but is IP banned. Consider account ban?", 3, 43);
-					endif
-				endforeach
-				DisconnectClient( who );
-			elseif (strip[i] == ip[i])
-				i := i + 1;
-			else
-				stop := 1;
-			endif
-		until (stop || i > 100); //failsafe
-		stop := 0;
-		i := 1;	
-	endif
-endforeach
-
-endfunction
 

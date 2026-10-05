@@ -1011,6 +1011,135 @@ function CreateRitualSpellScroll( character , blankscroll , tome )
 endfunction
 
 
+// 2026-10-03: Bulk Order Book (see the Inscription 0x2259 element in inscription.cfg). Mirrors
+// CreateRunebook: needs mana and blank scrolls up front, consumes them first, then rolls Inscription.
+// 2026-10-03: any plain cloth colour counts (cut cloth 0x175D..0x1768, one objtype per bolt colour).
+function BookRequest( objtype )
+	return struct{
+		objtype              := objtype,
+		key                  := 0,
+		color                := 0,
+		quality              := 0,
+		preferredSourceOrder := array{ BACKPACK, OMEGA_CACHE },
+		dataFileHandle       := 0,
+		houseSerial          := 0,
+		leaseKey             := 0
+	};
+endfunction
+
+function CountBookCloth( character )
+	var total := 0;
+	var clothtype := 0x175D;
+	while( clothtype <= 0x1768 )
+		total := total + GetAvailableResource( character , BookRequest( clothtype ) ).total;
+		clothtype := clothtype + 1;
+	endwhile
+	return total;
+endfunction
+
+function ConsumeBookCloth( character , amount )
+	var clothtype := 0x175D;
+	while( amount > 0 and clothtype <= 0x1768 )
+		var req := BookRequest( clothtype );
+		var have := GetAvailableResource( character , req ).total;
+		if( have > 0 )
+			var take := have;
+			if( take > amount )
+				take := amount;
+			endif
+			if( !ConsumeResource( character , req , take ) )
+				return 0;
+			endif
+			amount := amount - take;
+		endif
+		clothtype := clothtype + 1;
+	endwhile
+	return amount <= 0;
+endfunction
+
+function CreateBulkOrderBook( character , blankscroll )
+
+	var elem			@:= FindConfigElem( config_file, UOBJ_BULKORDER_BOOK );
+	if( !elem )
+		SendSysMessage( character , "You can't do that." );
+		return;
+	endif
+
+	var needed_blank	:= Cint( elem.BlankScrolls );
+	var needed_logs	@:= Cint( elem.Logs );
+	var needed_cloth	:= Cint( elem.Cloth );
+	var idifficulty	@:= Cint( elem.Inscription );
+	var manacost			:= Cint( elem.Manacost );
+	var points				:= idifficulty * POINT_MULTIPLIER;
+
+	// Mage discount applies to the mana and the blank scrolls only, as for the runebook.
+	if( GetObjProperty( character, CLASSEID_MAGE ) )
+		manacost		:= Cint( manacost / ClasseBonus( character , CLASSEID_MAGE ) );
+		needed_blank := Cint( needed_blank / ClasseBonus( character , CLASSEID_MAGE ) );
+	endif
+	if( needed_blank < 1 )
+		needed_blank := 1;
+	endif
+
+	if( GetEffectiveSkill( character , SKILLID_INSCRIPTION ) < idifficulty - 20 )
+		SendSysMessage( character , "You aren't skilled enough in inscription to make this yet." );
+		return;
+	endif
+
+	if( GetMana(character) < manacost )
+		SendSysMessage( character , "You don't have enough mana." );
+		return;
+	endif
+
+	var scrollreq := BookRequest( UOBJ_BLANK_SCROLL );
+	var logreq	@:= BookRequest( UOBJ_LOGS );
+
+	// Everything is confirmed before the first item is consumed (ConsumeResource has no refund).
+	if( !HasCraftingResources( character , scrollreq , needed_blank , logreq , needed_logs ) )
+		SendSysMessage( character , "You need "+needed_blank+" blank scrolls and "+needed_logs+" logs to make a bulk order book." );
+		return;
+	endif
+	if( CountBookCloth( character ) < needed_cloth )
+		SendSysMessage( character , "You need "+needed_cloth+" cloth to make a bulk order book." );
+		return;
+	endif
+
+	if( !ConsumeResource( character , scrollreq , needed_blank ) )
+		SendSysMessage( character , "You don't have enough blank scrolls." );
+		return;
+	endif
+	if( !ConsumeResource( character , logreq , needed_logs ) )
+		SendSysMessage( character , "You don't have enough logs." );
+		return;
+	endif
+	if( !ConsumeBookCloth( character , needed_cloth ) )
+		SendSysMessage( character , "You don't have enough cloth." );
+		return;
+	endif
+
+	SetMana(character, GetMana(character) - manacost);
+
+	if(!GetObjProperty(character, "toggleDiff"))
+		SendSysmessage( character , "Inscription Difficulty: "+idifficulty );
+	endif
+
+	if( !CheckSkill( character , SKILLID_INSCRIPTION , idifficulty , points ) )
+		SendSysmessage( character , "You fail to create the bulk order book." );
+		return;
+	endif
+
+	PlaySoundEffect( character , SOUND_EFFECT_INSCRIPTION );
+	var book := CreateItemInBackpack( character , UOBJ_BULKORDER_BOOK );
+	if( !book )
+		SendSysMessage( character , "Your backpack is full!" );
+		return;
+	endif
+
+	SendSysmessage( character , "You create a bulk order book and put it in your backpack." );
+
+endfunction
+
+
 function CreateRunebook( character , item )
 	
 	var needed	    := { UOBJ_GATE_SCROLL, UOBJ_RECALL_SCROLL, UOBJ_BLANK_SCROLL };
@@ -1771,7 +1900,7 @@ endfunction
 
 function WantToCreateScroll( character , blankscroll )
 
-	SendSysmessage( character, "Select a spellbook from which to inscribe." );
+	SendSysmessage( character, "Select a spellbook from which to inscribe, or target these scrolls again to make a bulk order book." );
 	
 	var book := Target( character , TGTOPT_CHECK_LOS );
 	if ( !book )
@@ -1780,6 +1909,13 @@ function WantToCreateScroll( character , blankscroll )
 
 	if ( !Accessible( character , book ) )
 		SendSysmessage (character, "You can't reach that!");
+		return;
+	endif
+
+	// 2026-10-03: targeting the blank scrolls themselves makes a bulk order book (checked before
+	// ReserveItem, the program already reserved this stack).
+	if( book.serial == blankscroll.serial )
+		CreateBulkOrderBook( character , blankscroll );
 		return;
 	endif
 

@@ -55,7 +55,11 @@ program detect_hidden( who )
 		elem := FindConfigElem( item_cfg, item.objtype );
 		if( elem )
 			data := elem.WalkOnScript;
-			prop := GetObjProperty( item , "trap_type" );
+			// 2026-10-04: Trap_Type now; the old lowercase name still counts for chests trapped before the change
+			prop := GetObjProperty( item , "Trap_Type" );
+			if( !prop )
+				prop := GetObjProperty( item , "trap_type" );
+			endif
 			
 			if( data == TRAP )
 				if( CheckSkill( who , SKILLID_DETECTINGHIDDEN , -1 , 0 ))

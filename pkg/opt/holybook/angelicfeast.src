@@ -10,7 +10,7 @@ program create_food( caster )
 		EraseObjProperty( caster , "#Casting" );
 		return;
 	else
-		var spec := GetObjProperty(caster,"IsMage");
+		var spec := GetObjProperty(caster,"IsPaladin"); // 2026-10-02: Grand Feast scales with Paladin level only (was IsMage, so a Paladin always got 1)
 		if (!spec) 
 			spec := 0;
 		endif

@@ -248,7 +248,7 @@ function CraftLogRecipe( character, what, element, logRequest, reagentRequest )
 
 				var crafter := GetObjProperty( character, CLASSEID_CRAFTER );
 				if( crafter )
-					excep_ch := Cint( excep_ch * CLASSE_BONUS );
+					excep_ch := Cint( excep_ch * ClasseBonus( character, CLASSEID_CRAFTER ) ); // 2026-10-03: by class level like the other crafts (was the flat constant 1.5, so 15% at every level)
 				else
 					skill := skill + 40;
 				endif
@@ -344,12 +344,23 @@ function CraftAmmoRecipe( character, what, element, shaftsRequest, feathersReque
 	endif
 	var thepoints := get_default_points(SKILLID_BOWCRAFT);
 
+	// 2026-10-03: Half-Resources power hour, rounded up (/2.0, see CraftLogRecipe). Single arrows
+	// and bolts had no halving at all.
+	var shafts_cost := CInt(element.Material);
+	var feathers_cost := CInt(element.Material2);
+	var reagent_cost := CInt(element.Material3);
+	if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+		shafts_cost := CInt(Ceil(shafts_cost/2.0));
+		feathers_cost := CInt(Ceil(feathers_cost/2.0));
+		reagent_cost := CInt(Ceil(reagent_cost/2.0));
+	endif
+
 	// Loop count was already fixed by ShowDetailGump -- do NOT call
 	// AutoLoop_init again here, it would overwrite that count.
 
-	while( AutoLoop_more() && GetAvailableResource(character, shaftsRequest).total >= element.Material
-	       && GetAvailableResource(character, feathersRequest).total >= element.Material2
-	       && (!reagentRequest or GetAvailableResource(character, reagentRequest).total >= element.Material3)
+	while( AutoLoop_more() && GetAvailableResource(character, shaftsRequest).total >= shafts_cost
+	       && GetAvailableResource(character, feathersRequest).total >= feathers_cost
+	       && (!reagentRequest or GetAvailableResource(character, reagentRequest).total >= reagent_cost)
 	       && NOT character.dead )
 
 		// Plain Arrow/Bolt (Skill 1) never show a difficulty readout --
@@ -361,20 +372,36 @@ function CraftAmmoRecipe( character, what, element, shaftsRequest, feathersReque
 		endif
 
 		if( CheckSkill( character, SKILLID_BOWCRAFT, skill, thepoints ) )
+			// 2026-10-03: consume first and honour the result (see HasCraftingResources in
+			// resourcemanager.inc). It used to create the item and then consume without checking,
+			// so moving the shafts or feathers away mid-loop gave free ammo.
+			if( !HasCraftingResources( character, shaftsRequest, shafts_cost, feathersRequest, feathers_cost, reagentRequest, reagent_cost ) )
+				SendSysMessage( character, "You no longer have the materials for that." );
+				break;
+			endif
+			if( !ConsumeResource( character, shaftsRequest, shafts_cost ) )
+				break;
+			endif
+			if( !ConsumeResource( character, feathersRequest, feathers_cost ) )
+				break;
+			endif
+			if( reagentRequest )
+				if( !ConsumeResource( character, reagentRequest, reagent_cost ) )
+					break;
+				endif
+			endif
 			var made := CreateItemInBackpack( character, what, 1 );
 			if( made )
-				ConsumeResource( character, shaftsRequest, element.Material );
-				ConsumeResource( character, feathersRequest, element.Material2 );
-				if( reagentRequest )
-					ConsumeResource( character, reagentRequest, element.Material3 );
-				endif
 				SendSysMessage( character, "You create " + element.Name + " and put it in your pack." );
+			else
+				SendSysMessage( character, "Your backpack is full." );
+				break;
 			endif
 		else
-			ConsumeResource( character, shaftsRequest, element.Material );
-			ConsumeResource( character, feathersRequest, element.Material2 );
+			ConsumeResource( character, shaftsRequest, shafts_cost );
+			ConsumeResource( character, feathersRequest, feathers_cost );
 			if( reagentRequest )
-				ConsumeResource( character, reagentRequest, element.Material3 );
+				ConsumeResource( character, reagentRequest, reagent_cost );
 			endif
 			SendSysMessage( character, "You fail, and destroy some materials." );
 		endif
@@ -529,6 +556,12 @@ function CraftAmmoBulk( character, what, element, shaftsRequest, feathersRequest
 		var shafts_needed := CInt(element.Material) * qty;
 		var feathers_needed := CInt(element.Material2) * qty;
 		var reagents_needed := CInt(element.Material3) * qty;
+		// 2026-10-03: Half-Resources power hour, rounded up (bulk ammo had no halving)
+		if(GetGlobalProperty("PHC") || GetObjProperty(character, "#PPHC"))
+			shafts_needed := CInt(Ceil(shafts_needed/2.0));
+			feathers_needed := CInt(Ceil(feathers_needed/2.0));
+			reagents_needed := CInt(Ceil(reagents_needed/2.0));
+		endif
 		if( !HasCraftingResources( character, shaftsRequest, shafts_needed, feathersRequest, feathers_needed, reagentRequest, reagents_needed ) )
 			SendSysMessage( character, "You no longer have the materials for that." );
 			return;

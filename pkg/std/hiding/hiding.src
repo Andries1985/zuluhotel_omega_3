@@ -37,6 +37,12 @@ program skill_hide ( hider )
 		range := Cint( range / ClasseBonus( hider , CLASSEID_THIEF ) );
 	endif
 	
+	// 2026-10-04: the range never drops below 1 tile. At Hiding above 130 the base is 1, and a Thief divides it
+	// by 1.25 to 2.5, which rounded down to 0 and let a Thief hide with a hostile standing next to him.
+	if( range < 1 )
+		range := 1;
+	endif
+
 	var bystanders := ListHostiles( hider, range, LH_FLAG_LOS );
 
 	if( len(bystanders) > 0 )

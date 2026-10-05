@@ -52,6 +52,14 @@ program classinfo( who )
 	var nextline;
 	if( level >= 6 )
 		nextline := "<BASEFONT color=#FFCC33>You are at the maximum class level.</BASEFONT>";
+	elseif( number > 20 )
+		// 2026-10-04: the all-skills class (Powerplayer) has no percentage rule, only the point total:
+		// level 1 = 75 x number, then 15 x number more per level.
+		var ppneeded := number * ( AVERAGE_SKILL + AVERAGE_LEVEL_MOD * level ) - classe;
+		if( ppneeded < 1 )
+			ppneeded := 1;
+		endif
+		nextline := "<BASEFONT color=#FFCC33>Next level (" + (level+1) + "): " + ppneeded + " more in-class points needed.</BASEFONT>";
 	else
 		var nextpct := RequiredClassePercent( total, number, level );
 		var needed  := PointsToNextClasseLevel( classe, total, number, level, maxclasse );
@@ -70,7 +78,7 @@ program classinfo( who )
 	endif
 
 	var slackline := "";
-	if( level > 0 )
+	if( level > 0 and number <= 20 )
 		var maxtotal := (SKILLID__HIGHEST + 1) * CLASSINFO_SKILL_CAP;
 		var slack    := PointsBeforeClasseDrop( classe, total, number, level, maxtotal );
 		var allowed  := outside + slack;
@@ -160,7 +168,7 @@ function ClasseLevelFromCounts( classe, total, number )
 	var level;
 	var average_t;
 
-	if( classe >= 3675 )
+	if( number > 20 and classe >= AVERAGE_SKILL * number )
 		level     := 1;
 		average_t := CInt( (AVERAGE_SKILL + AVERAGE_LEVEL_MOD) * number );
 		while( (classe >= average_t) and (level < 6) )

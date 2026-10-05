@@ -16,7 +16,9 @@ use datafile;
 include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
 include ":staff:include/staff";
+include "include/ipban";
 
+// 2026-10-04: must stay equal to IPBAN_DATAFILE in include/ipban.inc (the login scripts read it).
 const DFILE := "bannedips";
 
 program IP_Ban(who)
@@ -157,7 +159,8 @@ var bannedele := ipdfile.FindElement("BannedIPS");
 
 var ips := bannedele.PropNames();
 
-foreach key in (data.keys)
+var pressed := data.keys();
+foreach key in pressed
 	if (key > 0 && key != 5)
 		SendSysMessage(who, "IP address "+ips[key-10]+" removed from ban list.", 3, 57);
 		bannedele.EraseProp(ips[key-10]);
@@ -181,8 +184,8 @@ if (!toban)
 	return 0;
 endif
 
-if (toban == who.ip)
-	SendSysMessage(who, "Banning your own IP range is a bit silly!");
+if (IPBan_Matches(toban, who.ip))
+	SendSysMessage(who, "Banning a range that contains your own IP is a bit silly!");
 	return 0;
 endif
 
@@ -219,7 +222,7 @@ if (!toban)
 	return 0;
 endif
 
-if (toban == who.ip)
+if (IPBan_Matches(toban, who.ip))
 	SendSysMessage(who, "Banning your own IP is a bit silly!");
 	return 0;
 endif
@@ -256,7 +259,7 @@ UnloadDataFile(DFILE);
 var num := {};
 
 foreach person in EnumerateOnlineCharacters()
-	if (person.ip == ip)
+	if (IPBan_Matches(ip, person.ip))
 		SendSysMessage(person, "You have been banned from the server", 3, 59);
 		SendSysMessage(person, "Contact the staff team for further information.", 3, 59);
 		num.append(person);

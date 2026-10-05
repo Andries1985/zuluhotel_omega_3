@@ -170,10 +170,8 @@ function TryToHeal( who , patient , bandages )
 		healed := Cint( healed * CLASSE_BONUS );
 	endif
 
-	// rangers arnt great at healing humans, half amount healed
-	if (who == patient)
-		healed := CInt(healed * 0.5);
-	endif
+	// 2026-10-04: a half-amount branch for who == patient was removed here. It could never run:
+	// TryToHeal refuses a self-target above (a Ranger cannot bandage himself through vet.src).
 
 	var count	:= 10;
 	var shp	:= GetHP(who);
@@ -390,6 +388,16 @@ function ResAnimal( who , patient , bandages )
 		return;
 	endif
 
+	// 2026-10-04: the 5 bandages are used up front now (it checked for 5 but only took 1 after the
+	// roll, so bandages lifted out during the delay gave a free resurrection).
+	if( !bandages or bandages.amount < BANDAGES_TO_RES )
+		SendSysMessage( who , "You no longer have enough bandages." );
+		EraseObjProperty(patient, "#Ressing");
+		return;
+	endif
+	SubtractAmount( bandages , BANDAGES_TO_RES );
+	CreateItemInBackpack( who , BLOODY_BANDAGE , BANDAGES_TO_RES );
+
 	var diff := tameat+10;
 	var points 	:= tameat * POINTS_MULTIPLIER;
 
@@ -410,15 +418,23 @@ function ResAnimal( who , patient , bandages )
 				npc.color := color;
 				setobjproperty(npc,"color", color);
 			endif
-			SendSysMessage( who , "You resurrected "+npc.name+"!" );
+			// 2026-10-04: the animal comes back as the vet's own pet (same steps as a successful
+			// taming in taming.src; tamed.src sets the engine master when its AI restarts).
+			SetObjProperty( npc , "master" , who.serial );
+			SetObjProperty( npc , "PreviouslyTamed" , 1 );
+			npc.setmaster( who );
+			npc.script := "tamed";
+			RestartScript( npc );
+			if( GetObjProperty( npc , "PhysicalProtection" ) > 100 )
+				SetObjProperty( npc , "PhysicalProtection" , 6 );
+				EraseObjProperty( npc , "AttackTypeImmunities" );
+			endif
+			SendSysMessage( who , "You resurrected "+npc.name+"! It accepts you as its master." );
 		endif
 	else
 		SendSysMessage(who, "You fail to resurrect the creature.");
 	endif
 
 	EraseObjProperty(patient, "#Ressing");
-
-	SubtractAmount( bandages , BANDAGES_TO_HEAL );
-	CreateItemInBackpack( who , BLOODY_BANDAGE , BANDAGES_TO_HEAL );
 
 endfunction

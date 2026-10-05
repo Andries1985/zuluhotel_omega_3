@@ -50,7 +50,11 @@ program cast_strength( parms, spell_id )
 		return;
 	endif
 
-	var strength	:= GetObjProperty( cast_on, "trap_strength" );
+	// 2026-10-04: Trap_Strength now; the old lowercase name is still read for chests trapped before the change
+	var strength	:= GetObjProperty( cast_on, "Trap_Strength" );
+	if( !strength )
+		strength := GetObjProperty( cast_on, "trap_strength" );
+	endif
 	var diff	:= strength * 30;
 	if( GetObjProperty( caster , CLASSEID_MAGE ) )
 		diff := Cint( diff / CLASSE_BONUS );
@@ -60,6 +64,9 @@ program cast_strength( parms, spell_id )
 	
 	if( CheckSkill( caster , SKILLID_MAGERY , diff , 0 ) )
 		PlaySoundEffect( caster , SFX_SPELL_MAGIC_UNTRAP1 );
+		EraseObjProperty( cast_on , "Trap_Type" );
+		EraseObjProperty( cast_on , "Trap_Strength" );
+		EraseObjProperty( cast_on , "Trapped_By" );
 		EraseObjProperty( cast_on , "trap_type" );
 		EraseObjProperty( cast_on , "trap_strength" );
 		EraseObjProperty( cast_on , "trapped_by" );

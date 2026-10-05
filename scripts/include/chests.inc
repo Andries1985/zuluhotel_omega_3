@@ -15,8 +15,8 @@ function lockem(chest)
 		level := Random(5) + 1;
 		set_critical(1);
 		if( RandomDiceStr("1d100") <= 15 )
-			SetObjProperty( chest , "trap_strength", level );
-			SetObjProperty( chest , "trap_type", cstr(RandomDiceStr("1d3")) );
+			SetObjProperty( chest , "Trap_Strength", level );
+			SetObjProperty( chest , "Trap_Type", cstr(RandomDiceStr("1d3")) );
 			chest.usescript := ":traps:traps";
 		endif
 		set_critical(0);
@@ -30,8 +30,8 @@ function lockem(chest)
 		chest.locked := 1;
 	
 		if( RandomDiceStr("1d100") <= (level * 5) )
-			SetObjProperty( chest , "trap_strength", level );
-			SetObjProperty( chest , "trap_type", cstr(RandomDiceStr("1d3")) );
+			SetObjProperty( chest , "Trap_Strength", level );
+			SetObjProperty( chest , "Trap_Type", cstr(RandomDiceStr("1d3")) );
 			chest.usescript := ":traps:traps";
 		endif
 		set_critical(0);

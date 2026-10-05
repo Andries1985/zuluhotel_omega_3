@@ -120,6 +120,13 @@ program cast_songoffright( player )
 				if((cast_near.script != ":songbook:frightai") && (elem.Privs != "invul"))
 					if(!GetObjProperty(cast_near, "Boss") && !GetObjProperty(cast_near, "SuperBoss"))
 						difficulty := Cint( elem.peacemake );	// 2026-09-30: Peacemaking rolls against the peacemake field now (was provoke)
+						// 2026-10-03: a template with no peacemake field gave difficulty 0, which ShilCheckSkill treats as an
+						// automatic success. Default 100 and cap 150, like peacemaking.src and taunt.src.
+						if( !difficulty )
+							difficulty := 100;
+						elseif( difficulty > 150 )
+							difficulty := 150;
+						endif
 						if( CheckSkill( player, SKILLID_PEACEMAKING, difficulty, 0 ) )
 							PrintTextAbove(cast_near, "*"+cast_near.name+" flees in fright!*"); 
 							SetObjProperty(cast_near, "originalscript",cast_near.script);

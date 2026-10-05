@@ -99,9 +99,10 @@ program cast_songofdismissal( player )
 		var victims := ListMobilesInLineOfSight( player , range)+player;
 
 		victims := SmartAoE(player, victims);
+		victims.append(player); // 2026-10-03: SmartAoE drops the caster; the Bard dismisses their own mods too
 
 		foreach cast_near in victims
-			if(!IsInSafeArea(cast_near) || GetObjProperty(cast_near, "pvping"))
+			if(cast_near.serial == player.serial || !IsInSafeArea(cast_near) || GetObjProperty(cast_near, "pvping"))
 				PlayObjectCenteredEffect(cast_near, 
 				SPELL_EFFECT_ID,
 				SPELL_EFFECT_SPEED,

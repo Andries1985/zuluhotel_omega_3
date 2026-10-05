@@ -1525,12 +1525,28 @@ function CraftMenu_ShowDetailGump( character, cfg, objtype, skill_id, skill_labe
 				return 0;
 			endif
 
-			var maxCraftable := GetAvailableResource(character, slot1Request).total / element.Material;
-			if( element.Material2Type )
-				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot2Request).total / element.Material2 );
+			// 2026-10-03: count with the Half-Resources power hour cost, rounded up like the crafts
+			// themselves do (it used the full cost, so Make Max stopped well short of your stock).
+			// Smelting has no halving, so it keeps the full cost.
+			var cost1 := CInt( element.Material );
+			var cost2 := CInt( element.Material2 );
+			var cost3 := CInt( element.Material3 );
+			if( ( GetGlobalProperty("PHC") || GetObjProperty( character, "#PPHC" ) ) && element.Category != "Smelting" )
+				cost1 := CInt( Ceil( cost1 / 2.0 ) );
+				cost2 := CInt( Ceil( cost2 / 2.0 ) );
+				cost3 := CInt( Ceil( cost3 / 2.0 ) );
 			endif
-			if( element.Material3Type )
-				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot3Request).total / element.Material3 );
+
+			if( cost1 < 1 )
+				cost1 := 1;
+			endif
+
+			var maxCraftable := GetAvailableResource(character, slot1Request).total / cost1;
+			if( element.Material2Type and cost2 > 0 )
+				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot2Request).total / cost2 );
+			endif
+			if( element.Material3Type and cost3 > 0 )
+				maxCraftable := Min( maxCraftable, GetAvailableResource(character, slot3Request).total / cost3 );
 			endif
 			maxCraftable := CInt(maxCraftable);
 

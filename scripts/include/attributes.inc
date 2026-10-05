@@ -655,6 +655,55 @@ function NormalizeSkillAndSlot( skill )
 
 endfunction
 
+/***********************************************************************************
+**
+** function RaiseSkillCapsTo( who, skillids, value )
+**
+** Usage:
+**	2026-10-03: raises the powerscroll cap of every skill in skillids so that a
+**	skill value of "value" is allowed (cap = 130 + the matrix slot, max 150), so the
+**	hourly capper and AwardRawSkillPoints do not pull it back down. Only ever raises
+**	a slot; a slot that is already higher stays. Repairs a matrix that was saved as a
+**	bare number (the old Starter Class stone did that) and pads a short matrix up to
+**	SKILLID_MAX. A value of 130 or less needs no cap and changes nothing.
+**
+** Parameters:
+**	who:      the player (mobile)
+**	skillids: array of real skillids
+**	value:    the skill value that must be allowed (integer, whole skill points)
+**
+***********************************************************************************/
+function RaiseSkillCapsTo( who, skillids, value )
+
+	var extra := CInt( value ) - ( BASE_CAP / 10 );
+	if( extra < 1 )
+		return 1;
+	endif
+	if( extra > 20 )
+		extra := 20;
+	endif
+
+	var matrix := GetObjProperty( who, "pScrollMatrix" );
+	if( Lower( TypeOf( matrix ) ) != "array" )
+		matrix := {};
+	endif
+	var padi;
+	for( padi := Len( matrix ); padi < SKILLID_MAX; padi := padi + 1 )
+		matrix.append( 0 );
+	endfor
+
+	foreach skillid in skillids
+		var slot := NormalizeSkillAndSlot( skillid ).slot;
+		if( CInt( matrix[slot] ) < extra )
+			matrix[slot] := extra;
+		endif
+	endforeach
+
+	SetObjProperty( who, "pScrollMatrix", matrix );
+	return 1;
+
+endfunction
+
 
 function GetAttributeIdBySkillId( skillid )
 

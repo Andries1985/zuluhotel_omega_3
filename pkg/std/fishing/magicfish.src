@@ -73,19 +73,13 @@ program use_magicfish( who, fish )
 	var spelleffect := GetObjProperty( fish, "spelleffect" );
 	var miscprop1 := GetObjProperty( fish, "miscprop1" );
 	var miscprop2 := GetObjProperty( fish, "miscprop2" );
-	subtractamount(fish, 1);
+	// 2026-10-04: the scroll is used up only when it actually does something. It used to be taken
+	// before every check, so a buff that was refused, a Cure with nobody poisoned, or a Teleport without
+	// the mana or the Fishing skill ate the scroll and left the use lock on. A refused scroll is kept
+	// and the lock is cleared. A Bless scroll also no longer gives its armor part when the bless part is refused.
+	var refused := 0;
+	var quiet := 0;
 	if (spellnum > 0)
-		// this magic fish has a spell set for it
-		// play the sound and animations that are requested
-		if( spellnum != 22)
-		PlaySoundEffect( who, spellsound );
-		PlayObjectCenteredEffect( who, spelleffect, 10, 10);
-		endif
-		// debug messages
-		// SendSysMessage( who, "Fish has spell number " + spellnum);
-		// SendSysMessage( who, "Using spell sound " + spellsound);
-		// SendSysMessage( who, "Using spell effect" + spelleffect);
-        
 		case (spellnum)		// handle the different magical effects
 			4:	// heal
 				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
@@ -107,39 +101,35 @@ program use_magicfish( who, fish )
 				SendSysMessage(who, "You are now able to see in the darkness for "+miscprop2/60+" minutes.");
 
 			9:	// agility
-				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
-					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
-					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
-					
-					if (CanMod(who, "dex"))
+				if( CanTakeFishMod( who, "dex" ) )
+					if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+						var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+						var duration := CInt(GetModDurationFish( who, miscprop2 ) );
 						DoTempMod(who, "dex", mod_amount, duration);
 						SendBoostMessage( who, who, "dex fish", mod_amount, duration, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
-					endif
-				else
-					if (CanMod(who, "dex"))
+					else
 						DoTempMod(who, "dex", miscprop1, miscprop2);
 						SendBoostMessage( who, who, "dex fish", miscprop1, miscprop2, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
 					endif
+					DELAY_BETWEEN_FISH := buff_delay;
+				else
+					refused := 1;
 				endif
 			
 			10:	// cunning
-				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
-					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
-					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
-					
-					if (CanMod(who, "int"))
+				if( CanTakeFishMod( who, "int" ) )
+					if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+						var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+						var duration := CInt(GetModDurationFish( who, miscprop2 ) );
 						DoTempMod(who, "int", mod_amount, duration);
 						SendBoostMessage( who, who, "int fish", mod_amount, duration, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
-					endif
-				else
-					if (CanMod(who, "int"))
+					else
 						DoTempMod(who, "int", miscprop1, miscprop2);
 						SendBoostMessage( who, who, "int fish", miscprop1, miscprop2, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
 					endif
+					DELAY_BETWEEN_FISH := buff_delay;
+				else
+					refused := 1;
 				endif
 			
 			11:	// cure
@@ -148,44 +138,47 @@ program use_magicfish( who, fish )
 					CurePoison(who,SFX_SPELL_CURE,"The fish has CURED you!");
 				else
 					SendSysMessage(who, "You are not poisoned!");
+					refused := 1;
+					quiet := 1;
 				endif
 
 			16:	// strength
-				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
-					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
-					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
-					
-					if (CanMod(who, "str"))
+				if( CanTakeFishMod( who, "str" ) )
+					if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
+						var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+						var duration := CInt(GetModDurationFish( who, miscprop2 ) );
 						DoTempMod(who, "str", mod_amount, duration);
 						SendBoostMessage( who, who, "str fish", mod_amount, duration, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
-					endif
-				else
-					if (CanMod(who, "str"))
+					else
 						DoTempMod(who, "str", miscprop1, miscprop2);
 						SendBoostMessage( who, who, "str fish", miscprop1, miscprop2, 1 );
-						DELAY_BETWEEN_FISH := buff_delay;
 					endif
+					DELAY_BETWEEN_FISH := buff_delay;
+				else
+					refused := 1;
 				endif
 			17:	// bless
 				if( GetObjProperty( who, CLASSEID_RANGER ) || GetObjProperty( who, CLASSEID_MYSTIC_ARCHER ))
-					var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
-					var duration := CInt(GetModDurationFish( who, miscprop2 ) );
-					
-					if (CanMod(who, "all") && CanMod( who , "ebless" ) && CanMod( who, "poly") )
+					if (CanMod(who, "all") && CanMod( who , "ebless" ) && CanMod( who, "poly") && CanModNoConflict( who, "all" ) )
+						var mod_amount := CInt(GetModAmountFish( who, miscprop1 ) );
+						var duration := CInt(GetModDurationFish( who, miscprop2 ) );
 						DoTempMod(who, "all", mod_amount, duration);
 						SendBoostMessage( who, who, "bless fish", mod_amount, duration, 0 );
 						DELAY_BETWEEN_FISH := buff_delay;
-					endif
-					if (CanMod(who, "ar"))
-						var arAmount := Cint(mod_amount/1.7);
-						DoTempMod(who, "ar", arAmount, duration);
+						if (CanMod(who, "ar"))
+							var arAmount := Cint(mod_amount/1.7);
+							DoTempMod(who, "ar", arAmount, duration);
+						endif
+					else
+						refused := 1;
 					endif
 				else
-					if (CanMod(who, "all"))
+					if (CanMod(who, "all") && CanModNoConflict( who, "all" ))
 						DoTempMod(who, "all", miscprop1, miscprop2);
 						SendBoostMessage( who, who, "bless fish", miscprop1, miscprop2, 1 );
 						DELAY_BETWEEN_FISH := buff_delay;
+					else
+						refused := 1;
 					endif
 				endif
 			22: // Teleport
@@ -204,30 +197,49 @@ program use_magicfish( who, fish )
 
 				if (manacost > GetMana(who))
 					PrintTextAbovePrivate(who,"Not enough mana!",who);
-					return 0;
-				endif
-					
-				if (GetEffectiveSkill(who,SKILLID_FISHING) < (GetSpellDifficulty( spellid ) + 40) )
+					refused := 1;
+					quiet := 1;
+				elseif (GetEffectiveSkill(who,SKILLID_FISHING) < (GetSpellDifficulty( spellid ) + 40) )
 					PrintTextAbovePrivate(who,"Not a chance...",who);
-					return 0;
+					refused := 1;
+					quiet := 1;
+				else
+					// Do a skill check to not even try to cast if we can't
+					SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_NO_SKILL_CHECK, CASTINGOPT_USE_SCROLL});
+
+					var script := elem.Script;
+
+					// the pre-checks passed: the scroll is used up now, the spell script gets the item
+					subtractamount(fish, 1);
+					Start_Script(":spells:"+script, {who, spellid, fish} );
+
+					SleepMS(spelldelay);
+					DELAY_BETWEEN_FISH := teleport_delay;
 				endif
-
-				// Do a skill check to not even try to cast if we can't
-				SetObjProperty(who, CASTINGOPT_PROP_NAME, {CASTINGOPT_NO_REAGENTS, CASTINGOPT_NO_SKILL_CHECK, CASTINGOPT_USE_SCROLL});
-
-				var script := elem.Script;
-
-				Start_Script(":spells:"+script, {who, spellid, fish} );
-
-				SleepMS(spelldelay);
-				DELAY_BETWEEN_FISH := teleport_delay;
 		    44:	// invisibility
 				SetObjProperty(who, "StealthCD", ReadGameClock()+10);
 				who.hidden := 1;
 		endcase
+
+		if( refused )
+			if( !quiet )
+				SendSysMessage( who, "That effect cannot be applied to you right now, so the scroll was not used." );
+			endif
+			ReleaseItem( fish );
+			CanUseFish( who );
+			return;
+		endif
+
+		if( spellnum != 22 )
+			// the scroll is used up now (Teleport took its scroll above)
+			subtractamount(fish, 1);
+			PlaySoundEffect( who, spellsound );
+			PlayObjectCenteredEffect( who, spelleffect, 10, 10);
+		endif
 	else
 		// bad spellnum cprop on this scroll (0/unset) -- currently only
 		// reachable via 0x2279, the reserved future-Ranger-spell slot
+		subtractamount(fish, 1);
 		SendSysMessage(who, "The scroll's magic has faded to nothing.");
 	endif
     Detach();
@@ -235,6 +247,18 @@ program use_magicfish( who, fish )
     Sleep(DELAY_BETWEEN_FISH);
     CanUseFish(who);
 endprogram
+
+// 2026-10-04: CanMod only matches the SAME mod name; AddToStatMods also refuses a mod that CONFLICTS
+// with a running one and says nothing, so the scroll was wasted. Check both before using a buff scroll.
+function CanTakeFishMod( who , modname )
+
+	if( CanMod( who , modname ) && CanModNoConflict( who , modname ) )
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
 
 function GetModAmountFish( who, miscprop1 ) 
 

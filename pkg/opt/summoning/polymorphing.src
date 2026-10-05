@@ -27,6 +27,13 @@ program polymorphing( parms )
 		return;
 	endif
 
+	// 2026-10-03: refuse BEFORE the body changes when the poly mod would be refused (an armor buff is
+	// running), otherwise nothing ever reverts the graphic.
+	if( mods and !CanModNoConflict( cast_on , "poly" ) )
+		SendSysMessage( cast_on , "Another buff you are under conflicts with that form." );
+		return;
+	endif
+
 	var old_graphic := cast_on.graphic;
 	var old_color	:= cast_on.color;
 	SetObjProperty(cast_on, "old_colah", cast_on.color);

@@ -890,7 +890,19 @@ function DistanceCheck(attacker, defender, weapon, basedamage)
 	if( weapon.attribute == ATTRIBUTEID_ARCHERY )
 		// Range limit exceeded = 1/4th damage
 		var dist := Distance( attacker, defender );
-		if( (dist < 1) || (dist > 14 ) )
+		// 2026-10-04: a Ranger keeps full damage RANGER_LEVEL_ARCHERY_RANGE_BONUS tiles further per
+		// class level (level 6 = 20 tiles, the engine reach of a bow). The constant was never used.
+		var maxdist := 14;
+		if( !attacker.isA(POLCLASS_NPC) )
+			if( GetObjProperty( attacker, CLASSEID_RANGER ) )
+				maxdist := maxdist + ( CInt( GetObjProperty( attacker, CLASSEID_RANGER ) ) * RANGER_LEVEL_ARCHERY_RANGE_BONUS );
+			elseif( GetObjProperty( attacker, CLASSEID_MYSTIC_ARCHER ) )
+				// 2026-10-04: a Mystic Archer reaches shorter than everyone else: 10 tiles, plus one per
+				// class level (11 to 16).
+				maxdist := 10 + ( CInt( GetObjProperty( attacker, CLASSEID_MYSTIC_ARCHER ) ) * RANGER_LEVEL_ARCHERY_RANGE_BONUS );
+			endif
+		endif
+		if( (dist < 1) || (dist > maxdist ) )
 			basedamage *= 0.25;
 		elseif(dist == 1)
 			basedamage *= 0.5;

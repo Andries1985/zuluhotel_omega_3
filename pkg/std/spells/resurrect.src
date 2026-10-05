@@ -40,7 +40,7 @@ program spell_resurrect( parms, spell_id )
 			EraseObjProperty(caster, "#Casting");
 			return 0;
 		endif
-		cast_on := CanTargetSpell(caster, circle, TGTOPT_NEUTRAL + TGTOPT_CHECK_LOS );
+		cast_on := CanTargetSpell(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
 		if( !cast_on )
 			return;
 		endif
@@ -77,6 +77,9 @@ program spell_resurrect( parms, spell_id )
 		// 2026-09-21: area rule added -- see IsSpellPvPBlockedByArea in
 		// spelldata.inc (a Liche-form PLAYER also has Type "Undead", and this
 		// branch deals their max HP + 3).
+		if( IsSpellPvPBlockedByArea( caster , cast_on ) )
+			SendSysMessage( caster , "That would harm them, and they are in a protected area." ); // 2026-10-03: the cursor is helpful now, so say why
+		endif
 		if( !IsSpellPvPBlockedByArea( caster , cast_on ) )
 			var circle_mult := ModifyWithMagicEfficiency( caster , 8 );
 			if( !CheckSkill( cast_on , SKILLID_MAGICRESISTANCE , ( circle * circle_mult ) , 0 ) )

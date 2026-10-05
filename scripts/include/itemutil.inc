@@ -877,7 +877,7 @@ function IsJewel(item)
 endfunction
 
 function IsCBoost(item)
-	if ((item.objtype >= 0x8B01) && (item.objtype <= 0x8B04))
+	if ((item.objtype >= 0x30381) && (item.objtype <= 0x30384))
 		return 1;
 	endif
 	return 0;

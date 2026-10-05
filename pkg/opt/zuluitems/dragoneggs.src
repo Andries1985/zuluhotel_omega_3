@@ -119,7 +119,7 @@ program dragoneggs(who, item)
 		if ( masteralone < 70 )
 			SendSysMessage( who, "A baby dragon appears and accepts you as his master!");
 			SetObjProperty (newpet, "master", who.serial);
-			SetObjProperty (newpet, "prevtamed", 1);
+			SetObjProperty (newpet, "PreviouslyTamed", 1);
 			// 2026-09-22: the engine master was never set (frenziedeggs.src does it);
 			// without it the owner's own area spells and the songs treated the pet as wild.
 			SetObjProperty (newpet, "script", newpet.script);

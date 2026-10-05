@@ -206,6 +206,28 @@ function CanMod( who , stat , persistedprop := 0 )
 endfunction
 
 
+// 2026-10-03: CanMod only matches the SAME mod name, but AddToStatMods also refuses a mod that
+// CONFLICTS with a running one (TempModConflicts: poly vs an armor buff, for instance). A form
+// spell that changed the body and then had its "poly" mod refused left the body changed with no
+// timer to revert it. Check this BEFORE touching the graphic.
+function CanModNoConflict( who , stat )
+
+	var currentmods := GetObjProperty( who , "#mods" );
+	if( !currentmods )
+		return 1;
+	endif
+
+	foreach mmod in currentmods
+		if( TempModConflicts( mmod[1] , stat ) )
+			return 0;
+		endif
+	endforeach
+
+	return 1;
+
+endfunction
+
+
 function CurePoison( who , sound := 0 , msg := 0)
 
 	Set_Critical( 1 );

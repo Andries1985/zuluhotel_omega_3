@@ -232,6 +232,14 @@ function TryToMakeItem( character, resourceRequest, item, station := 0 )
 		return;
 	endif
 
+	// 2026-10-03: the hide gate is back. 3.0.9 refused when Tailoring was below the hide's
+	// difficulty; the 3.1.0 crafting window dropped it, so a too-hard hide let you start
+	// and fail every try. Same message and rule as Carpentry and Tinkering.
+	if( GetEffectiveSkill( character, SKILLID_TAILORING ) < resource_diff )
+		SendSysmessage( character, "You aren't skilled enough to make anything with this yet." );
+		return;
+	endif
+
 	var skill := element.Skill + CInt( resource_diff / DIVIDER );
 	if( skill < 1 )
 		skill := 1;
