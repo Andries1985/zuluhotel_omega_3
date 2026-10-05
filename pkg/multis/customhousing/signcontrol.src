@@ -4,7 +4,8 @@ use cfgfile;
 
 //include "include/eventid";
 //include "include/utility";
-//include "include/itemtypes";
+// 2026-10-04: disabled include removed -- see the note in sign.src; the
+// itemtypes.inc it named was deleted as dead code.
 include "include/house";
 include "include/housefriends";
 include ":house:multihouse_settings";

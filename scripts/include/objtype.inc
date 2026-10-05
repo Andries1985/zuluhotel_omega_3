@@ -432,10 +432,13 @@ const UOBJ_AURORA_INGOT	    := 0Xc52c;
 const UOBJ_ARASARN_INGOT    := 0Xc52d;
 const UOBJ_ORACLE_INGOT     := 0Xc52e;
 const UOBJ_VULCAN_INGOT	    := 0Xc52f;
-const UOBJ_SHING_INGOT	    := 0Xc530;
-const UOBJ_LEVIATHAN_INGOT  := 0Xc531;
-const UOBJ_SANCTUARY_INGOT  := 0Xc532;
-const UOBJ_INGOTS2_END      := 0xc532;
+// 2026-10-04: UOBJ_SHING_INGOT (0xc530), UOBJ_LEVIATHAN_INGOT (0xc531) and
+// UOBJ_SANCTUARY_INGOT (0xc532) removed. They sat inside UOBJ_ORE3_START..END
+// (0xc530-0xc546) as well, so IsIngot() and IsOre() both returned 1 for those
+// three objtypes. All three were reserved with no itemdesc entry, and nothing
+// outside this file referenced them. The three slots now belong to the ore
+// range alone.
+const UOBJ_INGOTS2_END      := 0xc52f;
 //
 
 

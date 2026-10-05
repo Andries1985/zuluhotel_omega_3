@@ -45,7 +45,8 @@ program use_picktool( character , tool )
 		return;
 	endif
 	
-	if( tool.objtype != UOBJ_SHOVEL and !IsEquipped( character , tool ) )
+	// 2026-10-04: IsEquipped renamed to EquipIfNeeded -- it equips the tool here.
+	if( tool.objtype != UOBJ_SHOVEL and !EquipIfNeeded( character , tool ) )
 		SendSysMessage( character , "You must equip it to mine." );
 		return;
 	endif

@@ -809,6 +809,8 @@ function IsProhibitedByClasse( who , item )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )
 			ret := 1;
+		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )	// 2026-10-05: every other class tests the objtype too; without it the Navar Bloody Barrier (objtype 0x982a, graphic 0x2B01) was never barred for Rangers
+			ret := 1;
 		endif
 	elseif( GetObjProperty( who , CLASSEID_THIEF ) )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_THIEF ) )

@@ -35,6 +35,9 @@ Classic repeat offender: `var target := Target(character);` collides with `uo.em
 **4. `cfgfile.em` block lookups: a one-token block header keys as `""`, not the header word.**
 `Global\n{` (used by `regions/{fish,ore,wood,sand,clay}.cfg`) has no name after `Global`, so `FindConfigElem(cfg, "Global")` always fails — use `FindConfigElem(cfg, "")`. Only a two-line header like `Region Background\n{` keys as `"Background"`. Check for a bare single-word header before assuming the word itself is the key.
 
+**4a. Reading a whole config: `foreach elem in cfg` works, and `GetConfigIntArray` is the one that parses `0x`.**
+A `ConfigFile` is iterable — the engine’s `ConfigFileIterator` (`pol/module/cfgmod.cpp`) walks `elements_byname_`, yielding each ConfigElem with its name in the hidden iteration var — so you can read every block without knowing their names, which is how `GetEdibleObjtypes()` in `scripts/include/itemutil.inc` eats all four blocks of `config/food.cfg`. Only NAMED elements are yielded; a keyless block (gotcha 4) is not among them. For numeric lists use `GetConfigIntArray`, not `GetConfigStringArray` + `CInt`: it converts with `std::stoi( value, nullptr, 0 )` (`cfgmod.cpp:532`), so the `0x09d0` form the configs are written in comes back as a number. And note an old include may not have `use cfgfile;` yet (`itemutil.inc` did not until 2026-10-04) — add it, or every `ReadConfigFile`/`GetConfig*` call is an unknown identifier.
+
 **5. Data type choice:** array (ordered/multi-return), struct (fixed known named fields, dot-access, `.+field` to add a new member), dictionary (dynamic key-value, `.Exists()`/`.Keys()`). Structs/dicts are the standard way to shape CProp/GProp data.
 
 **5a. There is NO short-circuit evaluation in this repo.** `scripts/ecompile.cfg` has `ShortCircuitEvaluation=0` (the engine default), so BOTH operands of `and`/`or`/`&&`/`||` are always evaluated. Two consequences:

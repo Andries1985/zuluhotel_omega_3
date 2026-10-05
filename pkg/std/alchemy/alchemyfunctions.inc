@@ -326,7 +326,12 @@ endfunction
 
 // find a bottle in backpack and reserve it
 function GetBottle( conts, user, parentRequest := 0 )
-	var bottle := FindItemInContainer( conts , UOBJ_EMPTY_BOTTLE );
+	// 2026-10-05: FindItemInContainer -> the engine call FindObjtypeInContainer. Same
+	// recursion (both skip locked sub-containers) and a not-found error is falsy just
+	// like the old unset return, so the !x checks below are unchanged. The engine
+	// searches the top level before recursing, so where a match exists at both depths
+	// you now get the top-level one.
+	var bottle := FindObjtypeInContainer( conts , UOBJ_EMPTY_BOTTLE );
 	if(bottle)
 		if( !ReserveContainers( user, bottle.container ) )
 			return 0;

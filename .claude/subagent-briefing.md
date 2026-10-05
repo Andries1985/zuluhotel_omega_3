@@ -12,6 +12,7 @@ Reference this file at the top of every subagent prompt so it doesn't have to re
 - Flat global namespace: never name a function/const/var/struct-field the same as an .em module builtin OR any other function anywhere in this repo. `target`/`Target` is a repeat offender — use `targetted`.
 - `foreach x in arr` implicitly creates `_x_iter` — that's not a stray/dead variable if you see it.
 - cfgfile.em: `FindConfigElem(cfg, "Global")` fails on a one-token block header — the real key is `""`, not the type word.
+- cfgfile.em: `foreach elem in cfg` iterates a whole config file (named blocks only). Use `GetConfigIntArray` for numeric lists — it parses the `0x09d0` form; `GetConfigStringArray` does not. Check the file has `use cfgfile;` first.
 - No short-circuit evaluation: this repo compiles with `ShortCircuitEvaluation=0` (`scripts/ecompile.cfg`), so BOTH sides of `and`/`or`/`&&`/`||` always run. Never put a call with side effects (`ConsumeResource`, `CheckSkill`, `SubtractAmount`, anything that writes) in a compound condition, and don't rely on `if( x and x.member... )` to skip the right side — use nested `if`s.
 - `foreach x in someDictionary` hands back the VALUES (the key is in `_x_iter`). For the keys, take them first: `var ids := d.keys(); foreach id in ids`. A dictionary used as a set yields `1, 1, 1...` otherwise (2026-10-01: that refused every household account at login).
 - If you have the Skill tool available, invoke the `escript-gotchas` skill before editing .src/.inc files — it has the full list, this is just the high-frequency subset.

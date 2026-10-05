@@ -384,6 +384,10 @@ function GetHouseObjtype(deed)
   return ot;
 endfunction
 
+// 2026-10-04: a local copy, and a RECURSIVE one -- the shared IsInContainer in
+// scripts/include/itemutil.inc is root level only, so the two behave
+// differently under the same name. This file does not include itemutil, so
+// there is no collision; the deep search is what the house deed checks want.
 function IsInContainer(container, item)
   foreach thing in EnumerateItemsInContainer(container)
     if(thing.serial == item.serial)

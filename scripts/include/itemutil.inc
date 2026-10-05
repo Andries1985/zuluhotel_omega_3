@@ -1,5 +1,6 @@
 use uo;
 use os;
+use cfgfile;	// 2026-10-04: added for GetEdibleObjtypes() reading config/food.cfg
 
 //Removed Includes
 //include "include/attributes";
@@ -10,69 +11,79 @@ include "include/objtype";
 include "include/constants/settings";
 include "include/constants/propids";
 
-function ConsumeObjType( who , objtype , amount )
-
-	var item := FindItemInContainer( who.backpack , objtype );
-	if( !item )
-		return 0;
-	endif
-	
-	if( !ReserveItem( item ) )
-		return 0;
-	endif
-	
-	if( item.amount < amount )
-		return 0;
-	endif
-	
-	if( !SubtractAmount( item , amount ) )
-		return 0;
-	endif
-	
-	return 1;
-	
-endfunction
-
-
-function CreateItemAt( where , objtype , duration := -1 , amount := 1 , color := 0 , movable := 0 )
-
-	var parms := {};
-	parms[1] := where;
-	parms[2] := objtype;
-	parms[3] := duration;
-	parms[4] := amount;
-	parms[5] := color;
-	parms[6] := movable;
-	
-	Start_Script( ":summoning:itemappear" , parms );
-	
-endfunction
+// 2026-10-04: commented out - dead code, no callers. Superseded by the
+// resourcemanager.inc helpers (ConsumeResource / ConsumeFromBackpack).
+// function ConsumeObjType( who , objtype , amount )
+//
+// 	var item := FindItemInContainer( who.backpack , objtype );
+// 	if( !item )
+// 		return 0;
+// 	endif
+// 	
+// 	if( !ReserveItem( item ) )
+// 		return 0;
+// 	endif
+// 	
+// 	if( item.amount < amount )
+// 		return 0;
+// 	endif
+// 	
+// 	if( !SubtractAmount( item , amount ) )
+// 		return 0;
+// 	endif
+// 	
+// 	return 1;
+// 	
+// endfunction
 
 
-function CreateMagicCircleAround( who , duration := 0 , color := 0 , sfx := 0 )
+// 2026-10-04: commented out - dead code, no callers, and it would fail anyway:
+// there is no :summoning:itemappear script in the repo.
+// function CreateItemAt( where , objtype , duration := -1 , amount := 1 , color := 0 , movable := 0 )
+//
+// 	var parms := {};
+// 	parms[1] := where;
+// 	parms[2] := objtype;
+// 	parms[3] := duration;
+// 	parms[4] := amount;
+// 	parms[5] := color;
+// 	parms[6] := movable;
+// 	
+// 	Start_Script( ":summoning:itemappear" , parms );
+// 	
+// endfunction
 
-	var parms := {};
-	parms[1] := who;
-	parms[2] := duration;
-	parms[3] := color;
-	parms[4] := sfx;
-	
-	Start_Script( ":summoning:magiccircleappear" , parms );
-	
-endfunction
+
+// 2026-10-04: commented out - dead code, no callers (see also
+// PlayMagicCircleEffect below; between them they were the only users of
+// :summoning:magiccircleappear).
+// function CreateMagicCircleAround( who , duration := 0 , color := 0 , sfx := 0 )
+//
+// 	var parms := {};
+// 	parms[1] := who;
+// 	parms[2] := duration;
+// 	parms[3] := color;
+// 	parms[4] := sfx;
+// 	
+// 	Start_Script( ":summoning:magiccircleappear" , parms );
+// 	
+// endfunction
 
 
-function CreateWaterfall( who , duration := 0 , color := 0 , sfx := 0 )
-
-	var parms := {};
-	parms[1] := who;
-	parms[2] := duration;
-	parms[3] := color;
-	parms[4] := sfx;
-
-	Start_Script( ":summoning:waterfallappear" , parms );
-
-endfunction
+// 2026-10-04: commented out - dead code, no callers (see also
+// PlayWaterfallEffect below; between them they were the only users of
+// :summoning:waterfallappear).
+// function CreateWaterfall( who , duration := 0 , color := 0 , sfx := 0 )
+//
+// 	var parms := {};
+// 	parms[1] := who;
+// 	parms[2] := duration;
+// 	parms[3] := color;
+// 	parms[4] := sfx;
+//
+// 	Start_Script( ":summoning:waterfallappear" , parms );
+//
+// endfunction
 
 	
 function DupeItem( item, newitem )
@@ -92,6 +103,13 @@ function DupeItem( item, newitem )
 	if( item.hp ) 		newitem.hp 		:= item.hp; 		endif
 	if( item.buyprice )	newitem.buyprice 	:= item.buyprice; 	endif
 	if( item.decayat )	newitem.decayat		:= item.decayat;	endif
+	// 2026-10-04: these four were dropped silently. usescript is the second
+	// most script-assigned item member in the repo (36 sites), so a .iteminfo
+	// clone used to lose its use script, its description and its price.
+	if( item.usescript )	newitem.usescript	:= item.usescript;	endif
+	if( item.desc )		newitem.desc		:= item.desc;		endif
+	if( item.sellprice )	newitem.sellprice	:= item.sellprice;	endif
+	if( item.amount > 1 )	newitem.amount		:= item.amount;		endif
 
 	foreach prop in GetObjPropertyNames(item)
 		SetObjProperty( newitem, prop, GetObjProperty( item , prop ) );
@@ -102,9 +120,10 @@ endfunction
 
 function DestroyTheItem( who , item )
 
-	var cursed := GetObjProperty( item , "Cursed" );
-	if( cursed )
-		SetObjProperty( item , "Cursed" , 3 );
+	// 2026-10-04: was a bare SetObjProperty( item, "Cursed", 3 ); the named
+	// constant and SetCurseLevel() below say the same thing.
+	if( GetCurseLevel( item ) )
+		SetCurseLevel( item , SETTING_CURSE_LEVEL_REVEALED_CAN_UNEQUIP );
 	endif
 	
 	if( who.backpack )
@@ -116,43 +135,55 @@ function DestroyTheItem( who , item )
 endfunction
 
 
-function FindItemInContainer( container , objtype )
+// 2026-10-05: commented out - no callers left. Its 23 call sites across 9 files
+// were swapped to the engine call FindObjtypeInContainer, which does the same
+// search in C++ and returns on the first hit instead of building a list of the
+// whole container tree first. Both skip locked sub-containers, and a not-found
+// error is falsy exactly like this function's unset return, so no caller changed
+// shape. 27 other sites in the repo already used the engine call.
+// function FindItemInContainer( container , objtype )
+//
+// 	var the_item;	
+// 	foreach thing in EnumerateItemsInContainer( container );
+// 		if( thing.objtype == objtype )
+// 			the_item := thing;
+// 			break;
+// 		endif
+// 	endforeach
+// 	
+// 	return the_item;
+//
+// endfunction
 
-	var the_item;	
-	foreach thing in EnumerateItemsInContainer( container );
-		if( thing.objtype == objtype )
-			the_item := thing;
-			break;
-		endif
-	endforeach
-	
-	return the_item;
 
-endfunction
-
-
-function FindRootItemInContainer( container , objtype )
-
-	var the_item;
-	
-	foreach thing in EnumerateItemsInContainer( container );
-		if( (thing.container == container) and (thing.objtype == objtype) )
-			the_item := thing;
-			break;
-		endif
-	endforeach
-	
-	return the_item;
-
-endfunction
+// 2026-10-04: commented out - dead code, no callers. Superseded by the engine
+// call FindObjtypeInContainer( container, objtype, FINDOBJTYPE_ROOT_ONLY ).
+// function FindRootItemInContainer( container , objtype )
+//
+// 	var the_item;
+// 	
+// 	foreach thing in EnumerateItemsInContainer( container );
+// 		if( (thing.container == container) and (thing.objtype == objtype) )
+// 			the_item := thing;
+// 			break;
+// 		endif
+// 	endforeach
+// 	
+// 	return the_item;
+//
+// endfunction
 
 function GetPlatemailArmorGraphics()
 
 	return { 0x1408, 0x1409, 0x140a, 0x140b, 0x140c,
 		 0x140d, 0x140e, 0x140f, 0x1410, 0x1411,
 		 0x1412, 0x1413, 0x1414, 0x1415, 0x1416,
-		 0x1417, 0x1418, 0x1419, 0x141a, 0x1c04, 0x1c05 };
+		 0x1417, 0x1418, 0x1419, 0x141a, 0x1c04, 0x1c05,
+		 0x1f0b };
 
+	// 2026-10-04: 0x1f0b is the orc helm (also worn by KoboldOrchelm 0x32d,
+	// same graphic) -- a metal helm that was in no family list, so classes
+	// barred from plate could still wear one.
 endfunction
 
 function GetChainmailArmorGraphics()
@@ -181,8 +212,13 @@ function GetStuddedLeatherArmorGraphics()
 
 	return { 0x13d4, 0x13d5, 0x13d6, 0x13d7, 0x13d8,
 		 0x13d9, 0x13da, 0x13db, 0x13dc, 0x13dd,
-		 0x13de, 0x13df, 0x13e0, 0x13e1, 0x13e2 };
+		 0x13de, 0x13df, 0x13e0, 0x13e1, 0x13e2,
+		 0x1c02, 0x1c0c };
 
+	// 2026-10-04: 0x1c02 FemaleStudded and 0x1c0c StuddedBustier were missing,
+	// so Bladesinger and Paladin could wear studded leather in female form.
+	// Covers SylvianFemaleStudded 0x8249 and TourneyFemaleStudded 0x8275 too,
+	// which share graphic 0x1c02.
 endfunction
 
 function GetLeatherArmorGraphics()
@@ -201,15 +237,27 @@ endfunction
 function GetShieldGraphics()
 
 	return { 0x1b72, 0x1b73, 0x1b74, 0x1b75, 0x1b76,
-		 0x1b77, 0x1b78, 0x1b79, 0x1b7a, 0x1b7b, 0x982a };
+		 0x1b77, 0x1b78, 0x1b79, 0x1b7a, 0x1b7b, 0x982a,
+		 0x1bc3, 0x1bc4 };
 
+	// 2026-10-04: 0x1bc3 Chaosshield and 0x1bc4 Ordershield were in no list, so
+	// every shield-restricted class could carry one. Adding the graphics also
+	// covers Chaosshieldguard 0x86df, Ordershieldguard 0x86ef and TourneyShield
+	// 0x8260, which reuse them -- and ebardshield 0x7ce2, which also uses
+	// graphic 0x1bc3 and has no script that creates it anywhere in the repo.
 endfunction
 
 function GetShieldGraphicsThief()
 
 	return { 0x1b72, 0x1b74, 0x1b75, 0x1b76,
-		 0x1b77, 0x1b78, 0x1b79, 0x1b7a, 0x1b7b };
+		 0x1b77, 0x1b78, 0x1b79, 0x1b7a, 0x1b7b,
+		 0x982a, 0x1bc3, 0x1bc4 };
+	// 2026-10-05: 0x1bc3 Chaosshield and 0x1bc4 Ordershield added here too; they
+	// were only in GetShieldGraphics, so thieves could still carry them (decided).
 
+	// 2026-10-04: 0x982a NavarBloodyBarrier added -- it was restricted for every
+	// other shield class but not for thieves. The buckler 0x1b73 stays off this
+	// list deliberately: thieves keep it.
 endfunction
 
 function GetGraphicsCrafter()
@@ -227,171 +275,172 @@ function GetGraphicsBladesinger()
 	// Cloak of Lettenhove, Grarks Shepherds Crook
 endfunction
 
-function GetPossiblePropertyNames()
-
-	return {	"AirProtection"		,
-			"ArBonus"		,
-			"AvailSkills"		,
-			"BaseName"		,
-			"BetweenUses"		,
-			"bookcontent"		,
-			"ByTrueMage"		,
-			"CannotBeUncursed"	,
-			"CastingOpts"		,
-			"CastSpell"		,
-			"ChanceOfEffect"	,
-			"charges"		,
-			"ChoppedBy"		,
-			"Circle1"		,
-			"Circle2"		,
-			"Circle3"		,
-			"Circle4"		,
-			"CircleColor"		,
-			"CircleDurationMs"	,
-			"CircleSfx"		,
-			"ColorMod"		,
-			"ConfirmationMsg"	,
-			"Consecrated"		,
-			"CostPerCharge"		,
-			"CreatureType"		,
-			"Cursed"		,
-			"DefaultDex"		,
-			"DefaultLocation"	,
-			"Delay"			,
-			"DelayBetweenMs"	,
-			"DestroyAfterUse"	,
-			"dex"			,
-			"DontAffectCaster"	,
-			"EarthProtection"	,
-			"EffectCircle"		,
-			"EffectType"		,
-			"ElementalSpell"	,
-			"EnchantColor"		,
-			"Enchanted"		,
-			"EnchantedWith"		,
-			"equipspell"		,
-			"Expire"		,
-			"ExpireNum"		,
-			"FireProtection"	,
-			"FixedDamages"		,
-			"FreeAction"		,
-			"Frequency"		,
-			"GateDestX"		,
-			"GateDestY"		,
-			"GateDestZ"		,
-			"GraphicMod"		,
-			"Greater"		,
-			"HealingIncrease"	,
-			"HitscriptNumber"	,
-			"HitWithSpell"		,
-			"HolyProtection"	,
-			"HpRegen"		,
-			"HrEnd"			,
-			"HrStart"		,
-			"IDed"			,
-			"int"			,
-			"IsExceptional"		,
-			"IsGMItem"		,
-			"ItemAppear"		,
-			"ItemAppearAmount"	,
-			"ItemAppearColor"	,
-			"ItemAppearDurationMs"	,
-			"ItemAppearMovable"	,
-			"keep"			,
-			"KilledBy"		,
-			"Lesser"		,
-			"LootedBy"		,
-			"LumberjackingBonus"	,
-			"MagicImmunity"		,
-			"MagicPenalty"		,
-			"ManaCost"		,
-			"ManaLevel"		,
-			"ManaRegen"		,
-			"Max"			,
-			"maxcharges"		,
-			"MaxStatMod"		,
-			"MiningBonus"		,
-			"name"			,
-			"NameMod"		,
-			"NecroProtection"	,
-			"NoCheckLos"		,
-			"noloot"		,
-			"NormalRange"		,
-			"OfBlackrock"		,
-			"OnHitScript"		,
-			"OnHitscriptNumber"	,
-			"ownername"		,
-			"ownerserial"		,
-			"PermMagicCircle"	,
-			"PermMagicImmunity"	,
-			"Permmr"		,
-			"PermPoisonImmunity"	,
-			"PhysicalProtection"	,
-			"PlanarSpell"		,
-			"PlayAnimation"		,
-			"Poisoned"		,
-			"PoisonImmunity"	,
-			"Poisonlvl"		,
-			"PolymorphColor"	,
-			"PolymorphDuration"	,
-			"PolymorphInto"		,
-			"PolymorphMod"		,
-			"Powerlevel"		,
-			"PowerWords"		,
-			"ProtectedType"		,
-			"Range"			,
-			"ReagentsNeeded"	,
-			"Rechargeable"		,
-			"RequireNoCharges"	,
-			"runedefs"		,
-			"SlayType"		,
-			"ShearingBonus"		,
-			"skilladv"		,
-			"skilladvamount"	,
-			"SkillLevelMod"		,
-			"SkillMultipliersMod"	,
-			"SkillPoisoned"		,
-			"SpecMult"		,
-			"SpellCircle"		,
-			"SpellDifficulty"	,
-			"SpellEffectType"	,
-			"SpellFx"		,
-			"SpellFxLoop"		,
-			"SpellFxSpeed"		,
-			"SpellFxType"		,
-			"SpellHealAmount"	,
-			"SpellId"		,
-			"SpellModAmount"	,
-			"SpellModDuration"	,
-			"SpellModId"		,
-			"SpellPoisonLevel"	,
-			"SpellRadius"		,
-			"SpellReflect"		,
-			"SpellSfx"		,
-			"SpellTargetOption"	,
-			"StamRegen"		,
-			"StaticColor"		,
-			"StaticName"		,
-			"StaticCursedName"	,
-			"StatLevelMod"		,
-			"StayEquipped"		,
-			"str"			,
-			"SummonDelayBeforeMs"	,
-			"SummonDelayBetweenMs"	,
-			"SummonSfx"		,
-			"SummonNpcTemplate"	,
-			"TargetingType"		,
-			"Template"		,
-			"TriggerCircle"		,
-			"Type"			,
-			"WasCursed"		,
-			"WaterProtection"	,
-			"WordOfPower"		,
-			"x"			,
-			"y"			,
-			"z"			};
-			
-endfunction
+// 2026-10-04: commented out - dead code, no callers anywhere in the repo.
+// function GetPossiblePropertyNames()
+//
+// 	return {	"AirProtection"		,
+// 			"ArBonus"		,
+// 			"AvailSkills"		,
+// 			"BaseName"		,
+// 			"BetweenUses"		,
+// 			"bookcontent"		,
+// 			"ByTrueMage"		,
+// 			"CannotBeUncursed"	,
+// 			"CastingOpts"		,
+// 			"CastSpell"		,
+// 			"ChanceOfEffect"	,
+// 			"charges"		,
+// 			"ChoppedBy"		,
+// 			"Circle1"		,
+// 			"Circle2"		,
+// 			"Circle3"		,
+// 			"Circle4"		,
+// 			"CircleColor"		,
+// 			"CircleDurationMs"	,
+// 			"CircleSfx"		,
+// 			"ColorMod"		,
+// 			"ConfirmationMsg"	,
+// 			"Consecrated"		,
+// 			"CostPerCharge"		,
+// 			"CreatureType"		,
+// 			"Cursed"		,
+// 			"DefaultDex"		,
+// 			"DefaultLocation"	,
+// 			"Delay"			,
+// 			"DelayBetweenMs"	,
+// 			"DestroyAfterUse"	,
+// 			"dex"			,
+// 			"DontAffectCaster"	,
+// 			"EarthProtection"	,
+// 			"EffectCircle"		,
+// 			"EffectType"		,
+// 			"ElementalSpell"	,
+// 			"EnchantColor"		,
+// 			"Enchanted"		,
+// 			"EnchantedWith"		,
+// 			"equipspell"		,
+// 			"Expire"		,
+// 			"ExpireNum"		,
+// 			"FireProtection"	,
+// 			"FixedDamages"		,
+// 			"FreeAction"		,
+// 			"Frequency"		,
+// 			"GateDestX"		,
+// 			"GateDestY"		,
+// 			"GateDestZ"		,
+// 			"GraphicMod"		,
+// 			"Greater"		,
+// 			"HealingIncrease"	,
+// 			"HitscriptNumber"	,
+// 			"HitWithSpell"		,
+// 			"HolyProtection"	,
+// 			"HpRegen"		,
+// 			"HrEnd"			,
+// 			"HrStart"		,
+// 			"IDed"			,
+// 			"int"			,
+// 			"IsExceptional"		,
+// 			"IsGMItem"		,
+// 			"ItemAppear"		,
+// 			"ItemAppearAmount"	,
+// 			"ItemAppearColor"	,
+// 			"ItemAppearDurationMs"	,
+// 			"ItemAppearMovable"	,
+// 			"keep"			,
+// 			"KilledBy"		,
+// 			"Lesser"		,
+// 			"LootedBy"		,
+// 			"LumberjackingBonus"	,
+// 			"MagicImmunity"		,
+// 			"MagicPenalty"		,
+// 			"ManaCost"		,
+// 			"ManaLevel"		,
+// 			"ManaRegen"		,
+// 			"Max"			,
+// 			"maxcharges"		,
+// 			"MaxStatMod"		,
+// 			"MiningBonus"		,
+// 			"name"			,
+// 			"NameMod"		,
+// 			"NecroProtection"	,
+// 			"NoCheckLos"		,
+// 			"noloot"		,
+// 			"NormalRange"		,
+// 			"OfBlackrock"		,
+// 			"OnHitScript"		,
+// 			"OnHitscriptNumber"	,
+// 			"ownername"		,
+// 			"ownerserial"		,
+// 			"PermMagicCircle"	,
+// 			"PermMagicImmunity"	,
+// 			"Permmr"		,
+// 			"PermPoisonImmunity"	,
+// 			"PhysicalProtection"	,
+// 			"PlanarSpell"		,
+// 			"PlayAnimation"		,
+// 			"Poisoned"		,
+// 			"PoisonImmunity"	,
+// 			"Poisonlvl"		,
+// 			"PolymorphColor"	,
+// 			"PolymorphDuration"	,
+// 			"PolymorphInto"		,
+// 			"PolymorphMod"		,
+// 			"Powerlevel"		,
+// 			"PowerWords"		,
+// 			"ProtectedType"		,
+// 			"Range"			,
+// 			"ReagentsNeeded"	,
+// 			"Rechargeable"		,
+// 			"RequireNoCharges"	,
+// 			"runedefs"		,
+// 			"SlayType"		,
+// 			"ShearingBonus"		,
+// 			"skilladv"		,
+// 			"skilladvamount"	,
+// 			"SkillLevelMod"		,
+// 			"SkillMultipliersMod"	,
+// 			"SkillPoisoned"		,
+// 			"SpecMult"		,
+// 			"SpellCircle"		,
+// 			"SpellDifficulty"	,
+// 			"SpellEffectType"	,
+// 			"SpellFx"		,
+// 			"SpellFxLoop"		,
+// 			"SpellFxSpeed"		,
+// 			"SpellFxType"		,
+// 			"SpellHealAmount"	,
+// 			"SpellId"		,
+// 			"SpellModAmount"	,
+// 			"SpellModDuration"	,
+// 			"SpellModId"		,
+// 			"SpellPoisonLevel"	,
+// 			"SpellRadius"		,
+// 			"SpellReflect"		,
+// 			"SpellSfx"		,
+// 			"SpellTargetOption"	,
+// 			"StamRegen"		,
+// 			"StaticColor"		,
+// 			"StaticName"		,
+// 			"StaticCursedName"	,
+// 			"StatLevelMod"		,
+// 			"StayEquipped"		,
+// 			"str"			,
+// 			"SummonDelayBeforeMs"	,
+// 			"SummonDelayBetweenMs"	,
+// 			"SummonSfx"		,
+// 			"SummonNpcTemplate"	,
+// 			"TargetingType"		,
+// 			"Template"		,
+// 			"TriggerCircle"		,
+// 			"Type"			,
+// 			"WasCursed"		,
+// 			"WaterProtection"	,
+// 			"WordOfPower"		,
+// 			"x"			,
+// 			"y"			,
+// 			"z"			};
+// 			
+// endfunction
 
 function IsCarpet( item )
 
@@ -415,57 +464,33 @@ endfunction
 
 function IsConsommable( item )
 
+	// 2026-10-04: was nineteen hardcoded objtype ranges that recognised only 79
+	// of the 138 edible objtypes in config/food.cfg -- the fish steaks, the raw
+	// fish, the fruit at 0x1a92-0x1a96 and the custom foods at 0x30128-0x3012b
+	// among the misses, so none of them could be poisoned. It now reads
+	// food.cfg, the same file the cooking package eats from, so the two can no
+	// longer drift. The potion ranges the old list carried are kept below:
+	// potions are not in food.cfg but poisoning a potion is intended.
+	// 2026-10-05: drinks are not in food.cfg either (nothing eats them) but were
+	// poisonable before the rewrite, as were onion rings and the alchemyplus
+	// potion; the old ranges are restored below (decided 2026-10-05).
 	var objtype := item.objtype;
-	
-	if( objtype == 0x099b or objtype== 0x099f or objtype == 0x09c7 or objtype == 0x09c8 )
+
+	if( objtype in GetEdibleObjtypes() )
 		return 1;
-	elseif( objtype >= 0x1f7d and objtype <= 0x1f9e )
+	elseif( objtype == 0x099b or objtype == 0x099f or objtype == 0x09c7 or objtype == 0x09c8 )	// bottles of liquor, ale, wine, jug of cider
 		return 1;
-	elseif( objtype >= 0x09ee and objtype <= 0x09f0 )
+	elseif( objtype >= 0x09ee and objtype <= 0x09f0 )	// mugs of ale
 		return 1;
-	elseif( objtype >= 0x0c7f and objtype <= 0x0c82 )
+	elseif( objtype >= 0x1f7d and objtype <= 0x1f9e )	// glasses and pitchers of drink, milk, water
 		return 1;
-	elseif( objtype >= 0x0c77 and objtype <= 0x0c7c )
+	elseif( objtype == 0xc950 or objtype == 0x7059 )	// onion rings, alchemyplus potion
 		return 1;
-	elseif( objtype >= 0x171d and objtype <= 0x172d )
+	elseif( objtype >= 0xdc01 and objtype <= 0xdc03 )	// heal potions
 		return 1;
-	elseif( objtype >= 0x0c64 and objtype <= 0x0c67 )
+	elseif( objtype >= 0xdc0b and objtype <= 0xdc16 )	// agility .. greater cure
 		return 1;
-	elseif( objtype >= 0x0c70 and objtype <= 0x0c75 )
-		return 1;
-	elseif( objtype >= 0x097b and objtype <= 0x097e )
-		return 1;
-	elseif( objtype >= 0xc900 and objtype <= 0xc903 )
-		return 1;
-	elseif( objtype >= 0xc910 and objtype <= 0xc912 )
-		return 1;
-	elseif( objtype >= 0xc920 and objtype <= 0xc923 )
-		return 1;
-	elseif( objtype >= 0xc930 and objtype <= 0xc936 )
-		return 1;
-	elseif( objtype >= 0xc940 and objtype <= 0xc947 )
-		return 1;
-	elseif( objtype == 0x0978 or objtype == 0x0979 )
-		return 1;
-	elseif( objtype == 0x09b7 or objtype == 0x09b8 )
-		return 1;
-	elseif( objtype ==0x09d0 or objtype == 0x0d1a or objtype == 0x0c5c )
-		return 1;
-	elseif( objtype == 0x0c6d or objtype == 0x0d3a or objtype == 0x09e9 )
-		return 1;
-	elseif( objtype == 0x09f2 or objtype == 0x09b6 or objtype == 0x09ea )
-		return 1;
-	elseif( objtype == 0x103b or objtype == 0x098c or objtype == 0x160c )
-		return 1;
-	elseif( objtype == 0x1e1f or objtype == 0x09c1 or objtype == 0x1608 )
-		return 1;
-	elseif( objtype ==0x160a or objtype == 0x1e1d or objtype == 0x1e1e )
-		return 1;
-	elseif( objtype == 0xc950 or objtype == 0x7059 )
-		return 1;
-	elseif( objtype >= 0xdc01 and objtype <= 0xdc03 )
-		return 1;
-	elseif( objtype >= 0xdc0b and objtype <= 0xdc16 )
+	elseif( objtype >= 0xc900 and objtype <= 0xc947 )	// custom cooked dishes
 		return 1;
 	else
 		return 0;
@@ -473,7 +498,41 @@ function IsConsommable( item )
 	
 endfunction
 
-function IsEquipped( who, what )
+// Cached because IsConsommable is called per item while poisoning, and a file
+// scope initialiser would re-read the config at the start of every one of the
+// 77 scripts that include this file. Built on first use instead.
+var _edible_objtypes := 0;
+
+function GetEdibleObjtypes()
+
+	if( _edible_objtypes )
+		return _edible_objtypes;
+	endif
+
+	// GetConfigIntArray, not GetConfigStringArray: the engine parses these with
+	// std::stoi( .., 0 ), so the "0x09d0" form in food.cfg comes back as a
+	// number. foreach over a ConfigFile yields its named elements -- food.cfg's
+	// four blocks (veggie, meat, all, cooked) hold every entry between them.
+	var found := {};
+	var cfg := ReadConfigFile( "::food" );
+	if( cfg )
+		foreach elem in cfg
+			foreach entry in GetConfigIntArray( elem , "food" )
+				found.append( entry );
+			endforeach
+		endforeach
+	endif
+
+	_edible_objtypes := found;
+	return _edible_objtypes;
+
+endfunction
+
+// 2026-10-04: renamed from IsEquipped. It never only asked -- if the item is
+// not already in hand 1 or 2 it calls EquipItem and returns that result, which
+// is exactly what the lumberjacking and mining call sites rely on. The old name
+// read like a test and would have caught the next caller out.
+function EquipIfNeeded( who, what )
 
 	var hand1	:= GetEquipmentByLayer( who , 0x01 );
 	var hand2	:= GetEquipmentByLayer( who , 0x02 );
@@ -525,6 +584,8 @@ function IsIDable( item )
 
 endfunction
 
+// Root level only: an item inside a bag inside this container does NOT match.
+// IsOnPlayer() below is the same search with recursion -- see the note there.
 function IsInContainer( container , item )
 
    	foreach thing in EnumerateItemsInContainer( container, ENUMERATE_ROOT_ONLY )
@@ -561,34 +622,46 @@ function IsLog( item )
 
 endfunction
 
+// 2026-10-04: the landtile list below is regions/ore.cfg's Global LandTile
+// block, grouped into ranges, with each entry's name from that file. It used to
+// be eighteen hardcoded ranges covering 129 of the config's 199 tiles, so 70
+// ore tiles answered "You can't mine or dig anything there." Delete a line to
+// take a tile out of mining without touching the resource config.
 function IsMinable( theobj , othertype )
 
 	if( (othertype >= 0x053b) and (othertype <= 0x0553) and (othertype != 0x0550 ) )
 	
 		return 1;
 		
-	elseif( ((theobj >= 0xe2)  and (theobj <= 0xe7))  or
-	    ((theobj >= 0xf3)  and (theobj <= 0xf7))  or
-	    ((theobj >= 0x104) and (theobj <= 0x107)) or
-	    ((theobj >= 0x110) and (theobj <= 0x113)) or
-	    ((theobj >= 0x122) and (theobj <= 0x125)) or
-	    ((theobj >= 0x1d3) and (theobj <= 0x1da)) or
-	    ((theobj >= 0x21f) and (theobj <= 0x230)) or
-	    ((theobj >= 0x232) and (theobj <= 0x23B)) or
-	    ((theobj >= 0x6cd) and (theobj <= 0x6d1)) or
-	    ((theobj >= 0x6da) and (theobj <= 0x6dd)) or
-	    ((theobj >= 0x6eb) and (theobj <= 0x6fe)) or
-	    ((theobj >= 0x70d) and (theobj <= 0x714)) or
-	    ((theobj >= 0x71d) and (theobj <= 0x720)) or
-	    ((theobj >= 0x72b) and (theobj <= 0x732)) or
-	    ((theobj >= 0x73b) and (theobj <= 0x73e)) or
-	    ((theobj >= 0x749) and (theobj <= 0x750)) or
-	    ((theobj >= 0x759) and (theobj <= 0x75c)) or
-	    ((theobj >= 0x245) and (theobj <= 0x249)) )
-	
-		return 1;
 	else
-		return 0;
+		if( ((theobj >= 0x00E4) and (theobj <= 0x00E7)) or   // rock
+		    ((theobj >= 0x00F4) and (theobj <= 0x00F7)) or   // rock
+		    ((theobj >= 0x0104) and (theobj <= 0x0107)) or   // rock
+		    ((theobj >= 0x0110) and (theobj <= 0x0113)) or   // rock
+		    ((theobj >= 0x0122) and (theobj <= 0x0125)) or   // rock
+		    ((theobj >= 0x01D3) and (theobj <= 0x01DA)) or   // rock
+		    ((theobj >= 0x021F) and (theobj <= 0x0230)) or   // rock
+		    ((theobj >= 0x0235) and (theobj <= 0x0238)) or   // rock
+		    ((theobj >= 0x0245) and (theobj <= 0x026D)) or   // cave
+		    ((theobj >= 0x02BC) and (theobj <= 0x02CB)) or   // cave
+		    ((theobj >= 0x063B) and (theobj <= 0x063E)) or   // cave
+		    ((theobj >= 0x06CD) and (theobj <= 0x06D1)) or   // rock
+		    ((theobj >= 0x06DA) and (theobj <= 0x06DD)) or   // rock
+		    ((theobj >= 0x06EB) and (theobj <= 0x06F2)) or   // rock
+		    ((theobj >= 0x06FB) and (theobj <= 0x06FE)) or   // rock
+		    ((theobj >= 0x070D) and (theobj <= 0x0714)) or   // rock
+		    ((theobj >= 0x071D) and (theobj <= 0x0720)) or   // rock
+		    ((theobj >= 0x072B) and (theobj <= 0x0732)) or   // rock
+		    ((theobj >= 0x073B) and (theobj <= 0x073E)) or   // rock
+		    ((theobj >= 0x0749) and (theobj <= 0x0750)) or   // rock
+		    ((theobj >= 0x0759) and (theobj <= 0x075C)) or   // rock
+		    ((theobj >= 0x07C2) and (theobj <= 0x07C4)) or   // rock
+		    ((theobj >= 0x07D1) and (theobj <= 0x07D4)) or   // rock
+		    ((theobj >= 0x09EC) and (theobj <= 0x0A03)) )   // rock
+			return 1;
+		else
+			return 0;
+		endif
 	endif
 	
 endfunction
@@ -609,7 +682,9 @@ endfunction
 
 function IsHide( objtype )
 
-	if( objtype == UOBJ_HIDE1 or objtype == UOBJ_HIDE2 or objtype == 0x702f or objtype == 0xdc13 or objtype == 0xdc0a or objtype == 0x7030 or objtype == 0xff17 or objtype == 0xff18 )
+	// 2026-10-04: 0x702f and 0x7030 dropped from this line -- both already fall
+	// inside UOBJ_HIDES_START..UOBJ_HIDES_END on the next branch.
+	if( objtype == UOBJ_HIDE1 or objtype == UOBJ_HIDE2 or objtype == 0xdc13 or objtype == 0xdc0a or objtype == 0xff17 or objtype == 0xff18 )
 
 		return 1;
 	elseif( objtype >= UOBJ_HIDES_START and objtype <= UOBJ_HIDES_END )
@@ -630,15 +705,34 @@ function IsReagent( item )
 	
 endfunction
 
+// 2026-10-04: this list is regions/sand.cfg's Global landtile block, grouped
+// into ranges, with each entry's name from that file. It used to be seven
+// hardcoded ranges that matched the config only partly -- 44 configured sand
+// tiles were rejected and 54 accepted tiles were not in the config at all.
+// Note IsMinable is tested before IsSand in mining.src.
 function IsSand( theobj )
 
-	if( ((theobj >= 0x0016 ) and (theobj <= 0x004b )) or
-	    ((theobj >= 0x011e ) and (theobj <= 0x012d )) or
-	    ((theobj >= 0x0192 ) and (theobj <= 0x01ab )) or
-	    ((theobj >= 0x01b9 ) and (theobj <= 0x01d1 )) or
-	    ((theobj >= 0x0282 ) and (theobj <= 0x0291 )) or
-	    ((theobj >= 0x03b7 ) and (theobj <= 0x03ca )) or
-	    ((theobj >= 0x064b ) and (theobj <= 0x0672 )) )
+	if( ((theobj >= 0x0016) and (theobj <= 0x003A)) or   // sand
+	    ((theobj >= 0x0044) and (theobj <= 0x004B)) or   // sand
+	    ((theobj >= 0x011E) and (theobj <= 0x0121)) or   // sand
+	    ((theobj >= 0x0126) and (theobj <= 0x012D)) or   // sand
+	    ((theobj >= 0x01A8) and (theobj <= 0x01AB)) or   // sand
+	    ((theobj >= 0x01B9) and (theobj <= 0x01D1)) or   // sand
+	    ((theobj >= 0x0282) and (theobj <= 0x0285)) or   // sand
+	    ((theobj >= 0x028A) and (theobj <= 0x0291)) or   // sand
+	    ((theobj >= 0x0335) and (theobj <= 0x033C)) or   // sand
+	    ((theobj >= 0x0341) and (theobj <= 0x0344)) or   // sand
+	    ((theobj >= 0x034D) and (theobj <= 0x0354)) or   // sand
+	    ((theobj >= 0x0359) and (theobj <= 0x035C)) or   // sand
+	    ((theobj >= 0x03B7) and (theobj <= 0x03BE)) or   // sand
+	    ((theobj >= 0x03C7) and (theobj <= 0x03CA)) or   // sand
+	    ((theobj >= 0x05A7) and (theobj <= 0x05B2)) or   // sand
+	    ((theobj >= 0x064B) and (theobj <= 0x0652)) or   // sand
+	    ((theobj >= 0x0657) and (theobj <= 0x065A)) or   // sand
+	    ((theobj >= 0x0663) and (theobj <= 0x066A)) or   // sand
+	    ((theobj >= 0x066F) and (theobj <= 0x0672)) or   // sand
+	    ((theobj >= 0x07BD) and (theobj <= 0x07C1)) or   // sand
+	    ((theobj >= 0x07C5) and (theobj <= 0x07D0)) )   // sand
 		return 1;
 	else
 		return 0;
@@ -661,17 +755,129 @@ function IsSwamp( theobjtype )
 	
 endfunction
 
+// 2026-10-04: this list is regions/wood.cfg's Global ObjType block, grouped
+// into ranges, with each entry's name from that file. It used to be four
+// hardcoded ranges covering 208 of the config's 574 objtypes, so two thirds of
+// the trees had wood units allocated and regrowing that no axe could harvest.
+// Delete any line here to make that kind of tree unchoppable without touching
+// the resource config.
 function IsTree( theobj )
 
-	if((theobj == 0x0c9e) or (theobj == 0x0ca8) or (theobj == 0x0caa) or (theobj == 0x0cab))
-		return 1;
-	elseif((theobj >= 0x0c99) and (theobj <= 0x0cea))
-		return 1;
-	elseif((theobj >= 0x0cf3) and (theobj <= 0x0d03))
-		return 1;
-	elseif((theobj >= 0x0d41) and (theobj <= 0x0dab))
-		return 1;
-	elseif((theobj >= 0x0d37) and (theobj <= 0x0d38))
+	if( ((theobj >= 0x0C5E) and (theobj <= 0x0C60)) or   // vines
+	    ((theobj >= 0x0C99) and (theobj <= 0x0C9D)) or   // small palm
+	    (theobj == 0x0C9E) or                            // o'hii tree
+	    (theobj == 0x0CA6) or                            // ponytail palm
+	    (theobj == 0x0CA8) or                            // small banana tree
+	    (theobj == 0x0CA9) or                            // snake plant
+	    ((theobj >= 0x0CAA) and (theobj <= 0x0CAB)) or   // banana tree
+	    (theobj == 0x0CC8) or                            // juniper bush
+	    (theobj == 0x0CC9) or                            // spider tree
+	    ((theobj >= 0x0CCA) and (theobj <= 0x0CCD)) or   // tree
+	    ((theobj >= 0x0CCE) and (theobj <= 0x0CCF)) or   // leaves
+	    (theobj == 0x0CD0) or                            // tree
+	    ((theobj >= 0x0CD1) and (theobj <= 0x0CD2)) or   // leaves
+	    (theobj == 0x0CD3) or                            // tree
+	    ((theobj >= 0x0CD4) and (theobj <= 0x0CD5)) or   // leaves
+	    (theobj == 0x0CD6) or                            // cedar tree
+	    (theobj == 0x0CD7) or                            // cedar needles
+	    (theobj == 0x0CD8) or                            // cedar tree
+	    (theobj == 0x0CD9) or                            // cedar needles
+	    (theobj == 0x0CDA) or                            // oak tree
+	    ((theobj >= 0x0CDB) and (theobj <= 0x0CDC)) or   // oak leaves
+	    (theobj == 0x0CDD) or                            // oak tree
+	    ((theobj >= 0x0CDE) and (theobj <= 0x0CDF)) or   // oak leaves
+	    (theobj == 0x0CE0) or                            // walnut tree
+	    ((theobj >= 0x0CE1) and (theobj <= 0x0CE2)) or   // walnut leaves
+	    (theobj == 0x0CE3) or                            // walnut tree
+	    ((theobj >= 0x0CE4) and (theobj <= 0x0CE5)) or   // walnut leaves
+	    (theobj == 0x0CE6) or                            // willow tree
+	    ((theobj >= 0x0CE7) and (theobj <= 0x0CE8)) or   // willow leaves
+	    ((theobj >= 0x0CE9) and (theobj <= 0x0CEA)) or   // sapling
+	    ((theobj >= 0x0CEB) and (theobj <= 0x0CF2)) or   // vines
+	    ((theobj >= 0x0CF3) and (theobj <= 0x0CF7)) or   // fallen log
+	    (theobj == 0x0CF8) or                            // cypress tree
+	    ((theobj >= 0x0CF9) and (theobj <= 0x0CFA)) or   // cypress leaves
+	    (theobj == 0x0CFB) or                            // cypress tree
+	    ((theobj >= 0x0CFC) and (theobj <= 0x0CFD)) or   // cypress leaves
+	    (theobj == 0x0CFE) or                            // cypress tree
+	    ((theobj >= 0x0CFF) and (theobj <= 0x0D00)) or   // cypress leaves
+	    (theobj == 0x0D01) or                            // cypress tree
+	    ((theobj >= 0x0D02) and (theobj <= 0x0D03)) or   // cypress leaves
+	    ((theobj >= 0x0D41) and (theobj <= 0x0D44)) or   // tree
+	    ((theobj >= 0x0D45) and (theobj <= 0x0D53)) or   // leaves
+	    ((theobj >= 0x0D54) and (theobj <= 0x0D56)) or   // vines
+	    ((theobj >= 0x0D57) and (theobj <= 0x0D5B)) or   // tree
+	    ((theobj >= 0x0D5C) and (theobj <= 0x0D69)) or   // leaves
+	    ((theobj >= 0x0D6A) and (theobj <= 0x0D6D)) or   // vines
+	    ((theobj >= 0x0D6E) and (theobj <= 0x0D72)) or   // tree
+	    ((theobj >= 0x0D73) and (theobj <= 0x0D7F)) or   // leaves
+	    ((theobj >= 0x0D80) and (theobj <= 0x0D83)) or   // vines
+	    ((theobj >= 0x0D84) and (theobj <= 0x0D86)) or   // tree
+	    ((theobj >= 0x0D87) and (theobj <= 0x0D90)) or   // leaves
+	    ((theobj >= 0x0D91) and (theobj <= 0x0D93)) or   // vines
+	    (theobj == 0x0D94) or                            // apple tree
+	    (theobj == 0x0D95) or                            // leaves
+	    (theobj == 0x0D96) or                            // apple tree
+	    (theobj == 0x0D97) or                            // fall leaves
+	    (theobj == 0x0D98) or                            // apple tree
+	    (theobj == 0x0D99) or                            // leaves
+	    (theobj == 0x0D9A) or                            // apple tree
+	    (theobj == 0x0D9B) or                            // fall leaves
+	    (theobj == 0x0D9C) or                            // peach tree
+	    (theobj == 0x0D9D) or                            // leaves
+	    (theobj == 0x0D9E) or                            // peach tree
+	    (theobj == 0x0D9F) or                            // fall leaves
+	    (theobj == 0x0DA0) or                            // peach tree
+	    (theobj == 0x0DA1) or                            // leaves
+	    (theobj == 0x0DA2) or                            // peach tree
+	    (theobj == 0x0DA3) or                            // fall leaves
+	    (theobj == 0x0DA4) or                            // pear tree
+	    (theobj == 0x0DA5) or                            // leaves
+	    (theobj == 0x0DA6) or                            // pear tree
+	    (theobj == 0x0DA7) or                            // fall leaves
+	    (theobj == 0x0DA8) or                            // pear tree
+	    (theobj == 0x0DA9) or                            // leaves
+	    (theobj == 0x0DAA) or                            // pear tree
+	    (theobj == 0x0DAB) or                            // fall leaves
+	    ((theobj >= 0x1B1F) and (theobj <= 0x1B26)) or   // leaves
+	    ((theobj >= 0x224A) and (theobj <= 0x224B)) or   // willow tree
+	    ((theobj >= 0x224C) and (theobj <= 0x224D)) or   // oak tree
+	    ((theobj >= 0x309C) and (theobj <= 0x30A5)) or   // tree
+	    ((theobj >= 0x30A6) and (theobj <= 0x30BC)) or   // leaves
+	    ((theobj >= 0x30BD) and (theobj <= 0x30C7)) or   // tree
+	    ((theobj >= 0x30C8) and (theobj <= 0x30D3)) or   // leaves
+	    ((theobj >= 0x30D4) and (theobj <= 0x30DE)) or   // tree
+	    (theobj == 0x3123) or                            // peach tree
+	    (theobj == 0x3124) or                            // apple tree
+	    (theobj == 0x36A0) or                            // leaves
+	    ((theobj >= 0x39A3) and (theobj <= 0x39D3)) or   // tree
+	    ((theobj >= 0x39D5) and (theobj <= 0x3A54)) or   // tree
+	    ((theobj >= 0x3A9C) and (theobj <= 0x3AEF)) or   // tree
+	    (theobj == 0xA65C) or                            // o'hii tree
+	    ((theobj >= 0xA65D) and (theobj <= 0xA65F)) or   // leaves
+	    ((theobj >= 0xA660) and (theobj <= 0xA661)) or   // oak leaves
+	    ((theobj >= 0xA662) and (theobj <= 0xA663)) or   // walnut leaves
+	    (theobj == 0xA664) or                            // willow leaves
+	    ((theobj >= 0xA665) and (theobj <= 0xA668)) or   // leaves
+	    (theobj == 0xA669) or                            // o'hii tree
+	    ((theobj >= 0xA66A) and (theobj <= 0xA66C)) or   // leaves
+	    ((theobj >= 0xA66D) and (theobj <= 0xA66E)) or   // oak leaves
+	    ((theobj >= 0xA66F) and (theobj <= 0xA670)) or   // walnut leaves
+	    (theobj == 0xA671) or                            // willow leaves
+	    (theobj == 0xA676) or                            // o'hii tree
+	    ((theobj >= 0xA677) and (theobj <= 0xA679)) or   // leaves
+	    ((theobj >= 0xA67A) and (theobj <= 0xA67B)) or   // oak leaves
+	    ((theobj >= 0xA67C) and (theobj <= 0xA67D)) or   // walnut leaves
+	    (theobj == 0xA67E) or                            // willow leaves
+	    ((theobj >= 0xA6F1) and (theobj <= 0xA6F2)) or   // cypress tree
+	    ((theobj >= 0xA6FE) and (theobj <= 0xA6FF)) or   // cypress tree
+	    ((theobj >= 0xA708) and (theobj <= 0xA709)) or   // cedar tree
+	    (theobj == 0xA70A) or                            // o'hii tree
+	    ((theobj >= 0xA70B) and (theobj <= 0xA70D)) or   // tree
+	    ((theobj >= 0xA70E) and (theobj <= 0xA70F)) or   // oak tree
+	    ((theobj >= 0xA710) and (theobj <= 0xA711)) or   // walnut tree
+	    (theobj == 0xA712) or                            // willow tree
+	    ((theobj >= 0xA713) and (theobj <= 0xA716)) )   // cypress tree
 		return 1;
 	else
 		return 0;
@@ -710,47 +916,53 @@ function IsWater( theobj )
 
 endfunction
 
-function PlayMagicCircleEffect( who ) 
+// 2026-10-04: commented out - dead code, no callers. Hardcoded 1500ms variant
+// of the (also dead) CreateMagicCircleAround above.
+// function PlayMagicCircleEffect( who ) 
+//
+// 	var parms := {};
+// 	parms[1] := who;
+// 	parms[2] := 1500;
+// 	parms[3] := 0;
+// 	parms[4] := 0;
+// 	
+// 	Start_Script( ":summoning:magiccircleappear" , parms );
+// 	
+// endfunction
 
-	var parms := {};
-	parms[1] := who;
-	parms[2] := 1500;
-	parms[3] := 0;
-	parms[4] := 0;
-	
-	Start_Script( ":summoning:magiccircleappear" , parms );
-	
-endfunction
+// 2026-10-04: commented out - dead code, no callers. Hardcoded 5000ms/sfx 0x218
+// variant of the (also dead) CreateWaterfall above.
+// function PlayWaterfallEffect( who )
+//
+// 	var parms := {};
+// 	parms[1] := who;
+// 	parms[2] := 5000;
+// 	parms[3] := 0;
+// 	parms[4] := 0x218;
+// 	
+// 	Start_Script( ":summoning:waterfallappear" , parms );
+// 	
+// endfunction
 
-function PlayWaterfallEffect( who )
-
-	var parms := {};
-	parms[1] := who;
-	parms[2] := 5000;
-	parms[3] := 0;
-	parms[4] := 0x218;
-	
-	Start_Script( ":summoning:waterfallappear" , parms );
-	
-endfunction
-
-function ResetAllHitscriptPropsExcep( item , excep := "" )
-
-	var cprops := {	"ChanceOfEffect",
-				"EffectCircle"	,
-				"HitWithSpell"	,
-				"Poisonlvl"	,
-				"Powerlevel"	,
-				"ProtectedType"	,
-				"SlayType"	};
-				
-	foreach cprop in cprops
-		if( cprop != excep )
-			EraseObjProperty( item , cprop );
-		endif
-	endforeach
-	
-endfunction
+// 2026-10-04: commented out - dead code, no callers. Nothing bulk-clears these
+// hitscript cprops any more; .iteminfo erases them one at a time.
+// function ResetAllHitscriptPropsExcep( item , excep := "" )
+//
+// 	var cprops := {	"ChanceOfEffect",
+// 				"EffectCircle"	,
+// 				"HitWithSpell"	,
+// 				"Poisonlvl"	,
+// 				"Powerlevel"	,
+// 				"ProtectedType"	,
+// 				"SlayType"	};
+// 				
+// 	foreach cprop in cprops
+// 		if( cprop != excep )
+// 			EraseObjProperty( item , cprop );
+// 		endif
+// 	endforeach
+// 	
+// endfunction
 
 function GetCurseLevel( byref item )
 
@@ -769,6 +981,11 @@ function SetCurseLevel( byref item, byref level )
 	
 endfunction
 
+// Recursive: matches an item nested in a sub-container as well. Despite the
+// name it takes any container, and it is the deep counterpart of
+// IsInContainer() above, which is root level only. 2026-10-04: neither name
+// said which depth it used, and the 33 call sites between them were written
+// against whichever one the author happened to pick.
 function IsOnPlayer( container , item )
 
    	foreach thing in EnumerateItemsInContainer( container )
@@ -813,9 +1030,14 @@ endfunction
 
 function IsWoodEquipment(item)
 
-	var woodstuff := {0x0DF0, 0x0E81, 0x0E8A, 0x13b3, 0x13F9, 0x1B78, 0x1B79,
-	0x1B7A, 0x0f4f, 0x13fd, 0x1403, 0x6050, 0xb201, 0x0f4f, 0x13B2, 0x13fd,
-	0x1403, 0x6050, 0xb201};
+	// 2026-10-04: five graphics were listed twice (0x0f4f, 0x13fd, 0x1403,
+	// 0x6050, 0xb201) and the six archery weapons added 2026-08-23 were absent,
+	// so a Refining Varnish refused them. Deduplicated, and the six added.
+	var woodstuff := {0x0DF0, 0x0E81, 0x0E8A, 0x13B2, 0x13b3, 0x13F9, 0x1B78,
+	0x1B79, 0x1B7A, 0x0f4f, 0x13fd, 0x1403, 0x6050, 0xb201,
+	0xa915, 0x26c2, 0x26c3, 0x27a5, 0x2d1e, 0xb4dc};
+	// Shortbow, CompositeBow, RepeatingCrossbow, Yumi,
+	// ElvenCompositeLongbow, SkullCrossbow
 
 	if (item.graphic in woodstuff)
 		return 1;
@@ -827,8 +1049,16 @@ endfunction
 
 function IsLeatherEquipment(item)
 
+	// 2026-10-04: every tailoring item whose MaterialType is Hide now matches.
+	// The Shoes category and the Leather Misc masks were missing, so a Refining
+	// Compound refused them even though GetLeatherArmorGraphics already counted
+	// the masks as leather armour -- the two lists disagreed with each other.
 	var leatherstuff := {0x13C5, 0x13C6, 0x13C7, 0x13CB, 0x13CC, 0x13D4, 0x13D5,
-	0x13D6, 0x13DA, 0x13DB, 0x1C00, 0x1C02, 0x1C06, 0x1C08, 0x1C0A, 0x1C0C, 0x1DB9};
+	0x13D6, 0x13DA, 0x13DB, 0x1C00, 0x1C02, 0x1C06, 0x1C08, 0x1C0A, 0x1C0C, 0x1DB9,
+	0x170B, 0x170D, 0x170F, 0x1711,
+	0x141B, 0x141C, 0x1545, 0x1546, 0x1547, 0x1548, 0x1549, 0x154A, 0x154B, 0x154C};
+	// LeatherBoots, Sandals, Shoes, ThighBoots,
+	// then the orc / bear / deer / tribal / voodoo masks and their flip graphics
 
 	if (item.graphic in leatherstuff)
 		return 1;
@@ -839,11 +1069,11 @@ function IsLeatherEquipment(item)
 endfunction
 
 function IsSign (item)
+	// 2026-10-04: 0xbd0 and 0xbd2 dropped from the case -- both already fall
+	// inside the 0xba3-0xc0e range below.
 	case (item.objtype)
 		0xb95:
 		0xb96:
-		0xbd0:
-		0xbd2:
 		0xc43:
 		0xc44:
 		0x1f28:
@@ -869,10 +1099,20 @@ function IsJewel(item)
 		0x1088:
 		0x1089:
 		0x108A:
+		0x1F05:
+		0x1F06:
+		0x1F07:
+		0x1F08:
+		0x1F09:
+		0x1F0A:
 		0x5015:
 			return 1;
 	endcase
 
+	// 2026-10-04: 0x1F05-0x1F0A added. tinker.cfg makes twelve jewellery pieces
+	// and only the first six were listed, so the beaded necklace, bracelet2,
+	// earrings2, necklace3, ring2 and silver necklace were invisible to the
+	// ritual jewel checks, to vitalInfusion's skilladv read and to the tooltip.
 	return 0;
 endfunction
 
