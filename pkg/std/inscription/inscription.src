@@ -1059,16 +1059,16 @@ endfunction
 
 function CreateBulkOrderBook( character , blankscroll )
 
-	var elem			@:= FindConfigElem( config_file, UOBJ_BULKORDER_BOOK );
+	var elem			:= FindConfigElem( config_file, UOBJ_BULKORDER_BOOK );
 	if( !elem )
 		SendSysMessage( character , "You can't do that." );
 		return;
 	endif
 
 	var needed_blank	:= Cint( elem.BlankScrolls );
-	var needed_logs	@:= Cint( elem.Logs );
+	var needed_logs	:= Cint( elem.Logs );
 	var needed_cloth	:= Cint( elem.Cloth );
-	var idifficulty	@:= Cint( elem.Inscription );
+	var idifficulty	:= Cint( elem.Inscription );
 	var manacost			:= Cint( elem.Manacost );
 	var points				:= idifficulty * POINT_MULTIPLIER;
 
@@ -1092,7 +1092,7 @@ function CreateBulkOrderBook( character , blankscroll )
 	endif
 
 	var scrollreq := BookRequest( UOBJ_BLANK_SCROLL );
-	var logreq	@:= BookRequest( UOBJ_LOGS );
+	var logreq	:= BookRequest( UOBJ_LOGS );
 
 	// Everything is confirmed before the first item is consumed (ConsumeResource has no refund).
 	if( !HasCraftingResources( character , scrollreq , needed_blank , logreq , needed_logs ) )
