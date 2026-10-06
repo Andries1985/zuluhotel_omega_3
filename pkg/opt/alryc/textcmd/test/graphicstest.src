@@ -1,0 +1,190 @@
+// Synopsis: Spawn a range of graphic IDs in labelled rows to check relocated art, or clear them.
+
+// Added 2026-10-06: the custom art repack moved ~858 pieces into the 53000+
+// block. This lays them out in rows so every one can be eyeballed at once, and
+// flags the ones the server cannot see (no tiles.cfg entry = blank tiledata,
+// so uoconvert emitted nothing for them).
+
+use os;
+use uo;
+use cfgfile;
+
+const DEFAULT_START   := 53000;     // start of the relocated custom-art block
+const DEFAULT_END     := 53859;     // highest art record after the 2026-10-05 patch
+const DEFAULT_PER_ROW := 25;
+const MAX_PER_ROW     := 60;
+const MAX_SPAWN       := 2000;
+const X_SPACING       := 2;         // relocated art is large; 1 tile apart overlaps
+const Y_SPACING       := 3;
+const CLEAR_RADIUS    := 120;
+const TEST_TAG        := "GraphicsTestItem";
+
+program graphicstest( who, text )
+
+    var args := SplitWords( text );
+
+    if( Lower( text ) == "help" OR text == "?" )
+        SendSysMessage( who, "Usage: .graphicstest [start] [end] [perrow]", color := 88 );
+        SendSysMessage( who, "       .graphicstest            - spawns " + DEFAULT_START + ".." + DEFAULT_END );
+        SendSysMessage( who, "       .graphicstest clear      - removes test items within " + CLEAR_RADIUS + " tiles" );
+        return;
+    endif
+
+    if( len( args ) >= 1 )
+        if( Lower( args[1] ) == "clear" )
+            ClearTestItems( who );
+            return;
+        endif
+    endif
+
+    var start_id := DEFAULT_START;
+    var end_id   := DEFAULT_END;
+    var per_row  := DEFAULT_PER_ROW;
+
+    if( len( args ) >= 1 )
+        start_id := CInt( args[1] );
+    endif
+    if( len( args ) >= 2 )
+        end_id := CInt( args[2] );
+    endif
+    if( len( args ) >= 3 )
+        per_row := CInt( args[3] );
+    endif
+
+    if( start_id <= 0 OR end_id <= 0 )
+        SendSysMessage( who, "Start and end must be positive graphic IDs." );
+        return;
+    endif
+    if( end_id < start_id )
+        SendSysMessage( who, "End ID must not be lower than the start ID." );
+        return;
+    endif
+    if( per_row < 1 OR per_row > MAX_PER_ROW )
+        SendSysMessage( who, "perrow must be between 1 and " + MAX_PER_ROW + "." );
+        return;
+    endif
+
+    var total := ( end_id - start_id ) + 1;
+    if( total > MAX_SPAWN )
+        SendSysMessage( who, "That is " + total + " graphics; the limit is " + MAX_SPAWN + ". Narrow the range." );
+        return;
+    endif
+
+    var loc := TargetCoordinates( who );
+    if( !loc )
+        SendSysMessage( who, "Targeting canceled." );
+        return;
+    endif
+
+    SendSysMessage( who, "Spawning " + total + " graphics (" + start_id + ".." + end_id + ")..." );
+
+    SpawnGraphicRange( who, loc, start_id, end_id, per_row );
+
+endprogram
+
+
+function SpawnGraphicRange( who, loc, start_id, end_id, per_row )
+
+    var tiles_cfg := ReadConfigFile( "::tiles" );
+    if( !tiles_cfg )
+        SendSysMessage( who, "Warning: tiles.cfg could not be read; names will be unlabelled." );
+    endif
+
+    var created     := 0;
+    var failed      := 0;
+    var no_tiledata := 0;
+    var first_fail  := 0;
+    var gid;
+    var index := 0;
+
+    for( gid := start_id; gid <= end_id; gid := gid + 1 )
+
+        var col := index % per_row;
+        var row := CInt( index / per_row );
+        var x := loc.x + ( col * X_SPACING );
+        var y := loc.y + ( row * Y_SPACING );
+        index := index + 1;
+
+        // Look the tile up by integer, as iteminfo.src and packethook.src do.
+        // Fall back to the bare Hex() form (it already carries its own "0x")
+        // the way itemInfo.inc indexes the same config.
+        var tile_desc := "";
+        var has_entry := 0;
+        if( tiles_cfg )
+            var tile_elem := FindConfigElem( tiles_cfg, gid );
+            if( !tile_elem )
+                tile_elem := FindConfigElem( tiles_cfg, Hex( gid ) );
+            endif
+            if( tile_elem )
+                has_entry := 1;
+                tile_desc := GetConfigString( tile_elem, "Desc" );
+            endif
+        endif
+
+        if( !has_entry )
+            no_tiledata := no_tiledata + 1;
+        endif
+
+        var thing := CreateItemAtLocation( x, y, loc.z, gid, 1, loc.realm );
+        if( !thing )
+            failed := failed + 1;
+            if( !first_fail )
+                first_fail := gid;
+            endif
+            continue;
+        endif
+
+        created := created + 1;
+        // immovable also means it never decays (decay.cpp: an item must be
+        // movable to decay), so the whole set stays put until it is cleared
+        thing.movable := 0;
+        // test scaffolding: must never survive a world save or a restart
+        thing.saveonexit := 0;
+        SetObjProperty( thing, TEST_TAG, 1 );
+        SetObjProperty( thing, "StaffCreatedSerial", who.serial );
+
+        if( has_entry )
+            if( tile_desc )
+                thing.name := CStr( gid ) + " | " + tile_desc;
+            else
+                thing.name := CStr( gid ) + " | (no Desc)";
+            endif
+        else
+            thing.name := CStr( gid ) + " | *** NO TILES.CFG ENTRY ***";
+        endif
+
+        SleepMS( 1 );
+    endfor
+
+    SendSysMessage( who, "Created " + created + ", failed " + failed + ".", color := 68 );
+    if( no_tiledata )
+        SendSysMessage( who, no_tiledata + " have no tiles.cfg entry (blank tiledata - server cannot see them).", color := 38 );
+    endif
+    if( failed )
+        SendSysMessage( who, "First graphic that would not spawn: " + first_fail, color := 38 );
+    endif
+    SendSysMessage( who, "Use .graphicstest clear to remove them." );
+
+    Print( "[graphicstest] " + who.name + " spawned " + created + "/" + ( created + failed )
+           + " graphics " + start_id + ".." + end_id + ", " + no_tiledata + " without a tiles.cfg entry." );
+
+endfunction
+
+
+function ClearTestItems( who )
+
+    var nearby := ListItemsNearLocation( who.x, who.y, who.z, CLEAR_RADIUS, who.realm );
+    var removed := 0;
+
+    foreach thing in nearby
+        if( GetObjProperty( thing, TEST_TAG ) )
+            DestroyItem( thing );
+            removed := removed + 1;
+        endif
+        SleepMS( 1 );
+    endforeach
+
+    SendSysMessage( who, "Removed " + removed + " test graphics within " + CLEAR_RADIUS + " tiles.", color := 68 );
+    Print( "[graphicstest] " + who.name + " cleared " + removed + " test graphics." );
+
+endfunction
