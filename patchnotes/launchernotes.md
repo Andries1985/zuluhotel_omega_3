@@ -147,7 +147,13 @@ Patch 3.1.3 completes the ritual quests: every one of the 24 rituals can now be 
 ## Classes: Skill Gain, Strength and Rituals
 
 - Your class bonus now works on every skill your class lists. Before, the game could look at the wrong class: a Warrior training Swordsmanship, for example, got no class bonus at all. The bonus is faster skill gain and a second roll after a failed one, which raises your chance of success.
-- Warriors and Crafters now gain Strength faster and Intelligence slower. At class level 1 the Strength gain is 1.25 times as large (Intelligence 1.25 times smaller); at level 6 it is 2.5 times.
+- Stat gain now follows your class. Every class gains one stat faster and one or two slower; before this only Warriors and Crafters were affected. At class level 1 a faster stat gains 1.25 times the normal amount and a slower stat 1.25 times less; at level 6 it is 2.5 times.
+  - Warrior and Crafter: Strength faster, Intelligence slower.
+  - Bard: Dexterity faster, Strength slower.
+  - Bladesinger, Thief and Ranger: Dexterity faster, Strength and Intelligence slower.
+  - Mystic Archer: Intelligence faster, Strength slower.
+  - Paladin: Intelligence faster, Dexterity slower.
+  - Mage: Intelligence faster, Strength and Dexterity slower.
 - Powerplayer: `.classinfo` now tells you how many more in-class points you need for the next level. Level 1 needs 3,750 points (75 for each of the 50 skills), and each further level needs 750 more.
 - A Powerplayer still gets the class bonus only on Forensics, Throwing, Snooping and Detecting Hidden, plus its own bonus on everything at levels 3, 4 and 5.
 - Only Mages can perform rituals from a ritual scroll, and only from level 2. Other classes are told "Only Mages can perform rituals."
@@ -354,7 +360,7 @@ Some items were slipping past the armour and shield rules for your class. They a
 - Households work: two players on one connection can play together once registered. The password lockout now holds, and login refusals show the right reason.
 - Down-arrow skills lose 0.1 per use instead of a whole point; the client's skill arrows work; the verse book lists each verse's skills.
 - Quest-givers are protected from snooping and theft; town guards no longer ride; staff tools fixed.
-- Classes: the class bonus works on every skill your class lists; Warriors and Crafters gain Strength faster and Intelligence slower; Powerplayer `.classinfo` shows the points you need; only Mages can perform rituals.
+- Classes: the class bonus works on every skill your class lists; every class gains one stat faster and one or two slower; Powerplayer `.classinfo` shows the points you need; only Mages can perform rituals.
 - Item identification rolls on your class skill: a Warrior identifies with Anatomy and at 150 almost never fails; identifying does not train that skill, and Mages are unchanged.
 - Crafting: Crafter exceptional chance scales with level; bulk ammo is half price in the power hour and ammo cannot be duplicated; tailoring refuses hides that are too hard; silver and copper ingots are listed properly; Inscription makes the Bulk Order Book.
 - Spells and songs: form spells refuse while an armor buff runs and keep your mana; reagent failures refund mana; healing spells use the helpful target; Liche scales with Mage level; several song and Enticement fixes.

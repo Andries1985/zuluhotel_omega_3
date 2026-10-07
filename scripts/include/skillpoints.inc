@@ -122,30 +122,29 @@ function AwardSkillPoints( who, skillid, points )
 	
 endfunction
 
-// 2026-10-03: Warrior and Crafter stat affinity. They gain Strength faster and Intelligence slower:
-// the dice amount of a stat advancement is multiplied by ClasseBonus (1.25 at level 1 up to 2.5
-// at level 6) for Strength and divided by it for Intelligence. HaveStatAffinity/HaveStatDifficulty
-// in classes.inc hold the same idea for the other classes but nothing calls them, so only Warrior
-// and Crafter are switched on here until each class has been reviewed. A character holding both
-// uses the higher level.
+// 2026-10-07: stat affinity now covers every class, not just Warrior and Crafter. This
+// maps the attribute id onto the stat key and defers to GetStatPointsMultiplier in
+// classes.inc, which already handled affinity (faster) and difficulty (slower) for all
+// three stats but had no caller. A character holding two classes uses the first match.
 function ClassStatGainMultiplier( who, attributeid )
 
-	var level := CInt( GetObjProperty( who, CLASSEID_WARRIOR ) );
-	var crafterlevel := CInt( GetObjProperty( who, CLASSEID_CRAFTER ) );
-	if( crafterlevel > level )
-		level := crafterlevel;
-	endif
-	if( !level )
-		return 1.0;
-	endif
+	var stat;
 
-	if( attributeid == ATTRIBUTEID_STRENGTH )
-		return ClasseBonusByLevel( level );
-	elseif( attributeid == ATTRIBUTEID_INTELLIGENCE )
-		return CDbl( 1.0 ) / ClasseBonusByLevel( level );
-	endif
+	case( attributeid )
+		ATTRIBUTEID_STRENGTH:
+			stat := "str";
+			break;
+		ATTRIBUTEID_DEXTERITY:
+			stat := "dex";
+			break;
+		ATTRIBUTEID_INTELLIGENCE:
+			stat := "int";
+			break;
+		default:
+			return 1.0;
+	endcase
 
-	return 1.0;
+	return GetStatPointsMultiplier( who, stat );
 
 endfunction
 
@@ -208,7 +207,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, RandomDiceRoll(adv[2]));
+			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_DEXTERITY ) + 0.5 ));
 		endif
 	endif
 	

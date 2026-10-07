@@ -545,6 +545,10 @@ function HaveRestrictedModEnchantmentForClasse( item , classeid )
 endfunction
 
 
+// 2026-10-07: stat affinity reviewed per class and switched on for ALL classes (it was
+// Warrior/Crafter only). Each class now has exactly one faster stat: Str for Crafter and
+// Warrior, Dex for Bard, Bladesinger, Thief and Ranger, Int for Mage, Paladin and Mystic
+// Archer. Bard's old Int affinity was dropped so no class gains two stats faster.
 function HaveStatAffinity( who , stat )
 
 	var classeids;
@@ -559,13 +563,13 @@ function HaveStatAffinity( who , stat )
 					CLASSEID_BARD,
 					CLASSEID_BLADESINGER,
 					CLASSEID_THIEF,
-					CLASSEID_MYSTIC_ARCHER };	
+					CLASSEID_RANGER };	
 					break;
 
 		"int":	classeids := {  
-					CLASSEID_BARD,
 					CLASSEID_MAGE,
-					CLASSEID_PALADIN };	
+					CLASSEID_PALADIN,
+					CLASSEID_MYSTIC_ARCHER };	
 					break;
 
 		default:	classeids := {};
@@ -594,17 +598,24 @@ function HaveStatDifficulty( who , stat )
 				CLASSEID_BARD,
 				CLASSEID_BLADESINGER,
 				CLASSEID_MAGE,
-				CLASSEID_MYSTIC_ARCHER };
+				CLASSEID_MYSTIC_ARCHER,
+				CLASSEID_THIEF,
+				CLASSEID_RANGER };
 				break;
+
 		"dex":
 			classeids := {
 				CLASSEID_MAGE,
 				CLASSEID_PALADIN };
 				break;
+
 		"int":
 			classeids := {
 				CLASSEID_CRAFTER,
-				CLASSEID_WARRIOR };
+				CLASSEID_WARRIOR,
+				CLASSEID_THIEF,
+				CLASSEID_RANGER,
+				CLASSEID_BLADESINGER };
 				break;
 
 		default:	classeids := {};
