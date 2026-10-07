@@ -11,6 +11,7 @@ use polsys;
 include "include/math";
 include "include/attributes";
 include "include/classes";
+include "include/npcdifficulty";	// 2026-09-30: snoopme/stealme template fields (instance override first)
 include ":quests:queststate";
 
 
@@ -274,13 +275,13 @@ program mobiledata(parms)
 				allprops.append(prop);
 			endif
 			if(GetEffectiveSkill(who, SKILLID_SNOOPING) > 50)
-				var snoop := GetObjProperty(xObject, "snoopme");
+				var snoop := GetSnoopDifficulty(xObject);
 				if(snoop)	
 					prop.clilocid := 1063526; // 
 					prop.values := array {snoop};
 					allprops.append(prop);
 				endif
-				var steal := GetObjProperty(xObject, "stealme");
+				var steal := GetStealDifficulty(xObject);
 				if(steal)	
 					prop.clilocid := 1063527; // 
 					prop.values := array {steal};

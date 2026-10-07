@@ -24,6 +24,7 @@ include ":admin:include/adminpanel";
 include "include/classes";              // 2026-09-26: class name/level on the Status page
 include "include/res";                  // 2026-09-26: ResurrectMobile()
 include ":attributes:include/regen";    // 2026-09-26: regen-mod dictionary on the Status page
+include ":attributes:npcvitals";        // 2026-09-30: template HITS/MANA/STAM + overrides on the Status page
 
 const TEXTSTARTLOCY :=  70;
 
@@ -571,13 +572,7 @@ program textcmd_info( character , whom )
   if(!who.isa(POLCLASS_MOBILE)) SendSysmessage(character,"Invalid selection."); return; endif
 
   whoname := who.name;
-	if (GetObjProperty(who,"guardtype")==2)
-		data[1] := "Chaos " + whoname;
-	elseif (GetObjProperty(who,"guardtype")==1)
-		data[1] := "Order " + whoname;
-	else
-	  data[1] := whoname;
-	endif
+	data[1] := whoname; // 2026-09-29: Virtue Guard (guardtype) name prefix removed
 
   data[150] := who.gender;
   data[151] := who.title_prefix;
@@ -1429,6 +1424,21 @@ function PropNum( who , key )
 
 endfunction
 
+function NpcVitalCell( who , field )
+
+	var tmpl := GetNpcVitalTemplateValue( who , field );
+	var live := GetNpcVitalOverride( who , field );
+	if( !tmpl )
+		tmpl := "none";
+	endif
+	if( live >= 0 and CStr( live ) != tmpl )
+		return CStr( live ) + " (tmpl " + tmpl + ")";
+	endif
+
+	return tmpl;
+
+endfunction
+
 function AppendFlag( list , condition , name )
 
 	if( condition )
@@ -1531,24 +1541,11 @@ function AddStatusPages( who )
 	AddStatusRow( "FreeAct HealInc" , CStr( PropNum( who , "FreeAction" ) ) + " / " + CStr( PropNum( who , "HealingIncrease" ) ) );
 
 	if( who.npctemplate )
-		var overrides := "";
-		var cust := PropNum( who , "CustomHitsLevel" );
-		if( cust )
-			overrides := overrides + "HP " + CStr( cust / 100 ) + "  ";
-		endif
-		cust := PropNum( who , "CustomManaLevel" );
-		if( cust )
-			overrides := overrides + "Mana " + CStr( cust / 100 ) + "  ";
-		endif
-		cust := PropNum( who , "CustomStaminaLevel" );
-		if( cust )
-			overrides := overrides + "Stam " + CStr( cust / 100 ) + "  ";
-		endif
-		if( !overrides )
-			overrides := "none";
-		endif
-		AddStatusRow( "Vital overrides" , overrides );
-		AddStatusRow( "Base regen HP/Mana" , CStr( PropNum( who , "BaseHpRegen" ) ) + " / " + CStr( PropNum( who , "BaseManaRegen" ) ) );
+		// 2026-09-30: CustomHitsLevel & co. retired. Shows the template HITS/MANA/STAM field; when
+		// the instance's resolved value differs (tool override or dice roll) it shows "live (tmpl x)".
+		AddStatusRow( "HITS / MANA / STAM" , NpcVitalCell( who , "HITS" ) + " / " + NpcVitalCell( who , "MANA" ) + " / " + NpcVitalCell( who , "STAM" ) );
+		// 2026-09-30: regen template fields (points per minute), live value shown when a tool override differs
+		AddStatusRow( "Regen HITS/MANA/STAM" , NpcVitalCell( who , "HITSREGEN" ) + " / " + NpcVitalCell( who , "MANAREGEN" ) + " / " + NpcVitalCell( who , "STAMREGEN" ) );
 
 		var masterserial := GetObjProperty( who , "master" );
 		if( masterserial )

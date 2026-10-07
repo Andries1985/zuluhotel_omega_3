@@ -148,7 +148,7 @@ program testclassbooststone( who )
     endforeach
 
     var selectedclass;
-    var classid;
+    var classid := 0;
 
     case(playerchoice)
         100:    selectedclass := SetObjProperty(who, "StartingClass", "Ranger" );
@@ -174,6 +174,13 @@ program testclassbooststone( who )
         default: selectedclass := "The player must have canceled the gump without doing anything";
     endcase
 
+    // 2026-10-03: OK with no radio picked used to fall through, reset every skill and set the
+    // stats with no class chosen. Treat it as a cancel.
+    if( !classid )
+        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+        return 0;
+    endif
+
     var gump2 := SendDialogGump( who, gflayout2, gfdata2 );
     if( !gump2 )
         SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
@@ -191,7 +198,7 @@ program testclassbooststone( who )
         playerchoice2 := key2;
     endforeach
 
-    var classlevel;
+    var classlevel := -1;
     case(playerchoice2)
         100:    classlevel := 0;
         200:    classlevel := 1;
@@ -200,9 +207,14 @@ program testclassbooststone( who )
         500:    classlevel := 4;
         600:    classlevel := 5;
         700:    classlevel := 6;
-        default: classlevel := "The player must have canceled the gump without doing anything";
+        default: classlevel := -1;
     endcase
 
+
+    if( classlevel < 0 )
+        SendSysMessage( who, "Canceled.", FONT_NORMAL, 2595 );
+        return 0;
+    endif
 
     // Iterates the actual configured skill list rather than the raw 0..HIGHEST
     // numeric range -- ids 49-56 have no skillsdef.cfg entry (only Throwing/57
@@ -216,6 +228,7 @@ program testclassbooststone( who )
 
 
     var skillamount := 0;
+    var capskills := {};
 
     if(classlevel == 0)
          skillamount := 0;
@@ -235,14 +248,20 @@ program testclassbooststone( who )
 
     foreach skill in GetClasseSkills( classid )
         SetBaseSkill(who, skill, skillamount);
+        capskills.append( skill );
         if( classid == CLASSEID_RANGER )
             SetBaseSkill(who, SKILLID_FORENSICS, skillamount);
+            capskills.append( SKILLID_FORENSICS );
         elseif( classid == CLASSEID_CRAFTER )
             SetBaseSkill(who, SKILLID_MAGERY, skillamount);
             SetBaseSkill(who, SKILLID_MUSICIANSHIP, skillamount);
+            capskills.append( SKILLID_MAGERY );
+            capskills.append( SKILLID_MUSICIANSHIP );
         elseif( classid == CLASSEID_THIEF )
             SetBaseSkill(who, SKILLID_DETECTINGHIDDEN, skillamount);
             SetBaseSkill(who, SKILLID_SNOOPING, skillamount);
+            capskills.append( SKILLID_DETECTINGHIDDEN );
+            capskills.append( SKILLID_SNOOPING );
         endif
     endforeach
 
@@ -251,7 +270,10 @@ program testclassbooststone( who )
     SetBaseDexterity(who, 150);
 
     AssignClasse( who );
-    testmaxcaps(who);
+    // 2026-10-03: level 6 (150) needs +20 on those skills and level 5 (135) needs +5, or the hourly
+    // capper pulls them back to 130. testmaxcaps used to save the number 20 as the whole matrix,
+    // which collapsed every cap to the base cap.
+    RaiseSkillCapsTo( who, capskills, skillamount );
     testmaxstatcaps(who);
 
     selectedclass := GetObjProperty(who, "StartingClass");
@@ -260,20 +282,6 @@ program testclassbooststone( who )
     return;
 
 endprogram
-
-function testmaxcaps(who)
-	//var player;
-	//player := Target( who );
-	var matrix := GetObjProperty(who, "pScrollMatrix");
-	var x := 40, y := 30;
-	var skill, cap, i, count := 0;
-	for(i:=0; i<49; i:=i+1)
-        matrix[i] := 20;
-	endfor
-    SetObjProperty(who, "pScrollMatrix", 20);
-return;
-
-endfunction
 
 function testmaxstatcaps(who)
 

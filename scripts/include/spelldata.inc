@@ -1386,6 +1386,13 @@ function TryToCast( caster, spell, anim := ANIM_CAST_DIR )
 	//Consume the reagents
 	if( !FindOption( options, CASTINGOPT_NO_REAGENTS ) )
 		if( !ConsumeReagents( caster, spell ) )
+			// 2026-10-03: the spell fails, so the mana taken above comes back (as for a skill fizzle)
+			if( !FindOption( options, CASTINGOPT_NO_MANA ) )
+				SetMana(caster, GetMana(caster)+manacost);
+				if( GetMana(caster) > GetMaxMana(caster) )
+					SetMana(caster, GetMaxMana(caster));
+				endif
+			endif
 			PlayObjectCenteredEffect(caster, FX_SPELL_FIZZLE, SPEED_SPELL_FIZZLE , LOOP_SPELL_FIZZLE );
 			PlaySoundEffect(caster, SFX_SPELL_FIZZLE);
 			SendSysMessage( caster, ERROR_MSG_NOT_ENOUGH_REAGENTS );
@@ -1417,7 +1424,8 @@ function TryToCast( caster, spell, anim := ANIM_CAST_DIR )
 endfunction
 
 function SendBoostMessage( mobile, targ, spell, points, delay, a )
-points := CInt(points*0.8);
+// 2026-10-03: the x0.8 is gone; DoTempMod stopped scaling the amount in 3.0.3, so the message showed 80% of what was applied.
+points := CInt(points);
 	if(!delay)
         if( mobile.serial != targ.serial )
 			SendSysMessage( mobile, "You cast "+spell+" on "+targ.name+" for "+points+" points." );

@@ -82,12 +82,29 @@ function RecallWithCharges( who, runebook, byref charges, byref runes_def, index
 		// character. That flag was only cleared late in the cast, so an
 		// interrupted charged recall left it set and the character's next
 		// recall from a book skipped reagents, mana and the Magery check.
-		if( !CustomRecall( who, tox, toy, toz, torealm, 1 ) )
+		var result := CustomRecall( who, tox, toy, toz, torealm, 1 );
+		if( result == TRAVEL_REFUSED_BY_HOUSE )
+			RemoveRefusedEntry( who, runebook, runes_def, tox, toy, toz, torealm );	// 2026-10-02
+			return 0;
+		elseif( !result )
 			return 0;
 		endif
 	endif
 
 	return 1;
+
+endfunction
+
+
+// 2026-10-02: the entry points inside a house this character may not enter (CustomRecall /
+// CustomGate returned TRAVEL_REFUSED_BY_HOUSE). The entry is removed from the book, the same
+// way a refused loose rune is destroyed; runes_def is refreshed so the caller's copy matches.
+function RemoveRefusedEntry( who, runebook, byref runes_def, tox, toy, toz, torealm )
+
+	if( RemoveRunebookEntryAt( runebook, tox, toy, toz, torealm ) )
+		SendSysMessage( who, "That location has been removed from the book." );
+	endif
+	UpdateRunesDef( runebook, runes_def );
 
 endfunction
 
@@ -110,7 +127,11 @@ function RecallWithoutCharges( who, runebook, byref runes_def, index )
 		return 0;
 	endif
 
-	if( !CustomRecall( who, tox, toy, toz, torealm ) )
+	var result := CustomRecall( who, tox, toy, toz, torealm );
+	if( result == TRAVEL_REFUSED_BY_HOUSE )
+		RemoveRefusedEntry( who, runebook, runes_def, tox, toy, toz, torealm );	// 2026-10-02
+		return 0;
+	elseif( !result )
 		return 0;
 	endif
 
@@ -139,7 +160,12 @@ function GateWithoutCharges( who, runebook, byref runes_def, index, guild_only :
 	//A gate is about to be opened from this runebook: block Drop Rune until it
 	//has closed (see OPENGATE_GUARD_SECS).
 	SetObjProperty( runebook, "#opengate", ReadGameClock() + OPENGATE_GUARD_SECS );
-	if( !CustomGate( who, tox, toy, toz, torealm, guild_only ) )
+	var result := CustomGate( who, tox, toy, toz, torealm, guild_only );
+	if( result == TRAVEL_REFUSED_BY_HOUSE )
+		EraseObjProperty( runebook, "#opengate" );
+		RemoveRefusedEntry( who, runebook, runes_def, tox, toy, toz, torealm );	// 2026-10-02
+		return 0;
+	elseif( !result )
 		EraseObjProperty( runebook, "#opengate" );
 		return 0;
 	endif

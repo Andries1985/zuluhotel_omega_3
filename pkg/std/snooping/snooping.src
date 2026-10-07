@@ -16,6 +16,7 @@ include "include/attributes";
 include "include/difficulty";
 include "include/random";
 include "include/snoop";
+include "include/npcdifficulty";	// 2026-09-30: snoopme/stealme are template fields (instance override first)
 include "../pkg/opt/karmafame/karmafame";
 
 var stealme_cfg:= ReadConfigFile( "stealme" );
@@ -70,6 +71,14 @@ program snoop(who)
 		return;
 	endif
 
+	// 2026-09-30: quest-package NPCs (templates tagged QuestGiverTag, see pkg/opt/quests) are off
+	// limits -- this is also what keeps them out of the stealing skill, since stealing from an NPC
+	// only ever works on the pack a successful snoop produced.
+	if(GetObjProperty(victim, "QuestGiverTag"))
+		SendSysMessage(who, "You can't snoop quest givers.");
+		return;
+	endif
+
 	if (victim.npctemplate == "warriorforhire")
 		SendSysMessage(who, "You can't snoop warriors for hire.");
 		return;
@@ -100,7 +109,7 @@ program snoop(who)
 
 	var difficulty:= isaplayer(who, victim);
 
-	var stealdiff:= (getobjproperty(victim, "stealme"));
+	var stealdiff:= GetStealDifficulty(victim);	// 2026-09-30: template field via the helper
 
 	//debug message
 	//sendsysmessage(who, "snoop difficulty of this npc = "+difficulty);
@@ -331,8 +340,9 @@ function isaplayer(who, victim)
 	endif
 
 
-	if (getobjproperty(victim, "snoopme"))
-		var newdiff:= getobjproperty(victim, "snoopme");
+	// 2026-09-30: snoopme is a template field now; the helper reads an instance override first
+	var newdiff:= GetSnoopDifficulty(victim);
+	if (newdiff)
 		return newdiff;
 	else
 		sendsysmessage(who, "You are unable to snoop this target");

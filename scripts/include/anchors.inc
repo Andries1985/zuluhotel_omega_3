@@ -7,6 +7,10 @@ include "include/constants/locations";
 include "include/constants/propids";
 include "include/random";
 
+// 2026-09-30: the psub template field is gone (only healer ever set it, to 20); every leash uses
+// this: % chance per tile past dstart that a step further away fails.
+const ANCHOR_PSUB := 10;
+
 function drop_anchor(me)
 
         // assumes that var me = npc::self
@@ -14,14 +18,9 @@ function drop_anchor(me)
         var cfg := readconfigfile("npcdesc");
 
         var dstart := cfg[me.npctemplate].dstart;
-        var psub := cfg[me.npctemplate].psub;
-
-        if (!psub)
-                psub := 10;
-        endif
 
         if (dstart)
-                SetAnchor(me.x, me.y, dstart, psub);
+                SetAnchor(me.x, me.y, dstart, ANCHOR_PSUB);
         endif
 
 endfunction

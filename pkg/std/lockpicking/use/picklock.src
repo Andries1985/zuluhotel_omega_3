@@ -131,7 +131,8 @@ function PickTreasureChest(who, lockpick, chest)
 		SubtractAmount( lockpick, 1 );
 		SetLockpickDelay( who, LOCKPICK_DELAY_SUCCESS );
 		SendSysMessage( who, "You have 5 minutes to loot the chest.", FONT_NORMAL, 43 );
-		Start_Script( "::misc/deleter", {chest, 30} );
+		// 2026-10-04: the message says 5 minutes, the chest was deleted after 30 seconds
+		Start_Script( "::misc/deleter", {chest, 300} );
 		NotifyChestUnlocked( chest );
 		return;
 	else

@@ -26,6 +26,7 @@ program processtempmods( parms )
 	
 	plvl := cint(plvl);
 	
+	// The tier is capped at 6 here, so the hit script giving a Thief min(9, tier + class level) adds nothing past 6.
 	if ( plvl > 6 )
 		plvl := 6;
 	endif
@@ -75,7 +76,8 @@ program processtempmods( parms )
 			newPsnDmg := newPsnDmg * 3;
 		endif
 	else
-		// Based on Potion level (plvl) 6. Spec 1 = 18, 2 = 23, 3 = 24, 4 = 28, 5 = 33, 6 = 39 DMG.
+		// Based on Potion level (plvl) 6, with integer division (level * 4 / 6 = 0, 1, 2, 2, 3, 4):
+		// Spec 1 = 11, 2 = 16, 3 = 25, 4 = 26, 5 = 31, 6 = 39 DMG. (2026-10-04: the old comment said 18, 23, 24, 28, 33, 39.)
 		case(level)
 			1: newPsnDmg := (plvl*(2+(level * 4/6))-1);
 			2: newPsnDmg := (plvl*(2+(level * 4/6))-2);
@@ -86,7 +88,8 @@ program processtempmods( parms )
 		endcase
 
 		if(shuriken)
-			// Based on Potion level (plvl) 6. Spec 1 = 18, 2 = 23, 3 = 28, 4 = 33, 5 = 38, 6 = 45 DMG.
+			// Based on Potion level (plvl) 6, same integer division: Spec 1 = 15, 2 = 21, 3 = 29, 4 = 31, 5 = 38, 6 = 44 DMG.
+			// (2026-10-04: the old comment said 18, 23, 28, 33, 38, 45.)
 			case(level)
 				1: newPsnDmg := (plvl*(3+(level * 4/6))-3);
 				2: newPsnDmg := (plvl*(3+(level * 4/6))-3);

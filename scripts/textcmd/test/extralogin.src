@@ -1,22 +1,23 @@
-// Synopsis: Backward-compatible alias that adds target to household and sets cap to 2
+// Synopsis: Backward-compatible alias: put an account in a household and set its cap to 2: .extralogin [account] (no account name = target a player)
 use uo;
 
 include ":accounts:accounts";
 
-program textcmd_extralogin( who )
+program textcmd_extralogin( who, text )
 
 	ACCT_DebugPrint( "extralogin invoked by " + who.name );
-	SendSysMessage( who, "Target a player to grant household cap 2." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		ACCT_DebugPrint( "extralogin cancelled before target selection." );
-		SendSysMessage( who, "Cancelled." );
-		return 0;
+
+	// 2026-10-01: takes an account name, so it works on an offline account; with no name
+	// it targets a character, as before.
+	var account_name := "";
+	if( text )
+		account_name := ACCT_TrimDiscordID( text );
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a player to grant household cap 2.", picked_mobile );
+	if( !account )
+		ACCT_DebugPrint( "extralogin ended before an account was picked." );
 		return 0;
 	endif
 
@@ -28,7 +29,7 @@ program textcmd_extralogin( who )
 
 	var discord_norm := info["DiscordIDNorm"];
 	if( !discord_norm )
-		SendSysMessage( who, "Target has no DiscordID set." );
+		SendSysMessage( who, "Account " + account.name + " has no DiscordID set." );
 		return 0;
 	endif
 
@@ -37,13 +38,13 @@ program textcmd_extralogin( who )
 		household_id := "hh_" + discord_norm;
 	endif
 
-	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "extralogin", targ.acctname ))
+	if( !ACCT_ConfirmDiscordHouseholdReassign( who, discord_norm, household_id, "extralogin", account.name ))
 		return 0;
 	endif
 
 	var result := ACCT_AssignAccountToHousehold( account, household_id, who.name );
 	if( result.errortext )
-		ACCT_DebugPrint( "extralogin assign failed for " + targ.acctname + ": " + result.errortext );
+		ACCT_DebugPrint( "extralogin assign failed for " + account.name + ": " + result.errortext );
 		SendSysMessage( who, "Unable to assign household." );
 		return 0;
 	endif
@@ -51,10 +52,12 @@ program textcmd_extralogin( who )
 	var household := ACCT_GetHouseholdById( result["HouseholdId"], 1 );
 	household.SetProp( "HouseholdCap", 2 );
 	household.SetProp( "UpdatedBy", who.name );
-	ACCT_DebugPrint( "extralogin cap set to 2 for household=" + result["HouseholdId"] + " account=" + targ.acctname );
+	ACCT_DebugPrint( "extralogin cap set to 2 for household=" + result["HouseholdId"] + " account=" + account.name );
 
-	SendSysMessage( who, "Household cap set to 2 for " + targ.name + " (" + result["HouseholdId"] + ").", 3, 53 );
-	SendSysMessage( targ, "Your household login cap has been set to 2 by staff.", 3, 53 );
+	SendSysMessage( who, "Household cap set to 2 for account " + account.name + " (" + result["HouseholdId"] + ").", 3, 53 );
+	if( picked_mobile )
+		SendSysMessage( picked_mobile, "Your household login cap has been set to 2 by staff.", 3, 53 );
+	endif
 
 	return 1;
 

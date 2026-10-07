@@ -604,23 +604,11 @@ function FixName(player)
 		endif
 
 	endfor
-	if (GetObjProperty(player,"guardtype")==2)
-		data[6] := "CVG " + split[1];
-	elseif (GetObjProperty(player,"guardtype")==1)
-		data[6] := "OVG " + split[1];
-	else
-		data[6] := newname;
-	endif
+	data[6] := newname;
 */
 	var NewName;
 
-	if (GetObjProperty(player,"guardtype")==2)
-		NewName:= "CVG " + player.name;
-	elseif (GetObjProperty(player,"guardtype")==1)
-		NewName:= "OVG " + player.name;
-	else
-		 NewName:=player.name;
-	endif
+	NewName := player.name; // 2026-09-29: Virtue Guard (guardtype) name prefix removed
 data[6] :=NewName[1,30];
 endfunction
 

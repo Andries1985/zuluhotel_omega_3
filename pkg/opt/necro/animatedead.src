@@ -159,11 +159,9 @@ program cast_animate_dead( parms )
 	SetBaseStrength(thecritter, GetStrength(thecritter) / 2);
 	SetBaseIntelligence(thecritter, GetIntelligence(thecritter) / 2);
 	SetBaseDexterity(thecritter, GetDexterity(thecritter) / 2);
-	
-	SetStrengthMod(thecritter,GetObjProperty( thecritter , "BaseStrmod" ) / 2);
-	SetIntelligenceMod(thecritter, GetObjProperty( thecritter , "BaseIntmod" ) / 2);
-	SetDexterityMod(thecritter, GetObjProperty( thecritter , "BaseDexmod" ) / 2);
-	
+	// 2026-09-30: the halved Base*mod CProps used to go back on as mods here; they are folded into
+	// the template stats now, so halving the base already gives the same (base + mod) / 2.
+
 	SetHP(thecritter, GetMaxHP(thecritter));
 	SetMana(thecritter, GetMaxMana(thecritter));
 	SetStamina(thecritter, GetMaxStamina(thecritter));

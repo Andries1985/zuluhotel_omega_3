@@ -6,6 +6,7 @@ include "include/classes";
 include ":versebook:include/versefunctions";
 include ":versebook:include/verseconstants";
 include "include/constants/locations";
+include ":attributes:npcvitals";	// SetNpcVitalOverride: goat max HP from the Bard (2026-10-03)
 
 var stamina, diff, skills, element, instrument, musicianship, name, range;
 var flock := {};
@@ -23,6 +24,7 @@ var base_dex;
 var base_str;
 var damage := 30;
 var base_skills;
+var goat_hp;
 
 program Spirit_Flock(parms)
 
@@ -153,6 +155,7 @@ function SummonSpiritFlock(who)
 			
 			SetBaseDexterity(goat, base_dex);
 			SetBaseStrength(goat, base_str);
+			SetNpcVitalOverride(goat, "HITS", goat_hp); // 2026-10-03: max HP from the Bard's skills and level (the template is a flat 30)
 			SetHP(goat, GetMaxHP(goat));
 			SetStamina(goat, GetMaxStamina(goat));
 			SetBaseSKill(goat, SKILLID_MACEFIGHTING, base_skills);
@@ -198,14 +201,20 @@ function SetGoatdamage(who)
 
 	total_skills := (total_skills/skills.size());
 	var bard := IsBard(who);
+	goat_hp := CInt(total_skills); // 2026-10-03: the goat template is HITS 30, so max HP is set per goat below
 
 	if (bard)
 		var dmg_mod := 1.0 + (CDbl(bard)/10.0);
 		var skill_mod := 1.0 + (CDbl(bard)/20.0);
+		goat_hp := CInt(total_skills * dmg_mod); // average skill x (1 + level/10), same scaling as the goat damage
 		total_skills := total_skills * skill_mod;
 		damage := CInt(CDbl(damage) * dmg_mod);
 		var bonus := GetBardicEfficiency(who);
 		damage := bonus * damage;
+	endif
+
+	if (goat_hp < 1)
+		goat_hp := 1;
 	endif
 
 	base_dex := total_skills;

@@ -88,6 +88,20 @@ program textcmd_class(who, lvl)
 		SetBaseSkill(targ, SKILLID_SNOOPING, skillamount);
 	endif
 
+	// 2026-10-03: allow the skill values just set (level 5 = 135 needs +5, level 6 = 150 needs +20),
+	// otherwise the hourly capper pulls them back to 130.
+	var capskills := GetClasseSkills( classid );
+	if( classid == CLASSEID_RANGER )
+		capskills.append( SKILLID_FORENSICS );
+	elseif( classid == CLASSEID_CRAFTER )
+		capskills.append( SKILLID_MAGERY );
+		capskills.append( SKILLID_MUSICIANSHIP );
+	elseif( classid == CLASSEID_THIEF )
+		capskills.append( SKILLID_DETECTINGHIDDEN );
+		capskills.append( SKILLID_SNOOPING );
+	endif
+	RaiseSkillCapsTo( targ, capskills, skillamount );
+
 	AssignClasse( targ );
 	IncRevision(targ);
 	SendSysMessage(targ, "You are now a level " + lvl + " " + GetClasseName( classid ), 3, 53);

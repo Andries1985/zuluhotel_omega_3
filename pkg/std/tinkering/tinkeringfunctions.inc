@@ -702,9 +702,9 @@ function SetTrap( character , chest )
 		endif
 
 		SubtractAmount( trap_item , 1 );
-		SetObjProperty( chest , "trap_type" , cstr( trap_type ) );
-		SetObjProperty( chest , "trap_strength" , strength );
-		SetObjProperty( chest , "trapped_by" , character.serial );
+		SetObjProperty( chest , "Trap_Type" , cstr( trap_type ) );
+		SetObjProperty( chest , "Trap_Strength" , strength );
+		SetObjProperty( chest , "Trapped_By" , character.serial );
 		//if( permanent )
 		//	SendSysmessage( character , "You made the trap permanent!" );
 		//else

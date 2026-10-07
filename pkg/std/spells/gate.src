@@ -7,13 +7,14 @@ include "include/areas";
 include "include/client";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":multistatichousing:recallgatehelp";
 include "include/attributes";
+include "include/traveldebug";	// 2026-10-01 TEMP debug: console tracing for the recall-into-house report
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse / DestroyRefusedRune
 
 program spell_gate( caster, spell_id )
 
 	var circle := 7;
-	
+
 		// For scrolls, StartSpellScript isn't working >:(
 		if (TypeOf(caster) == "Array")
 			spell_id := caster[2];
@@ -33,29 +34,17 @@ program spell_gate( caster, spell_id )
 			return;
 		endif
 	endforeach
-	
-	var multi := GetStandingHeight( caster.x, caster.y, caster.z, caster.realm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_FROM) )
-				SendSysMessage( caster, "You can't gate from this house." );
-				return;
-			endif
-		endif
-	endif
-	// Same check as above for static houses
-	// var serialstatichouse := StaticHouseSerial( caster );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, GATE_FROM) )
-	// 			SendSysMessage( caster, "You can't gate from this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
 
-	
+	// 2026-10-02: house test by footprint (housetravel.inc) instead of the engine's
+	// supporting-multi test, so a courtyard and a static house count as "in a house" too.
+	// A gate is two-way, so opening one from inside a house lets everyone at the far end in.
+	var from_house := FindHouseAtSpot( caster.x, caster.y, caster.z, caster.realm );
+	if( !CanTravelIntoHouse( caster, from_house, GATE_FROM ) )
+		SendSysMessage( caster, "You can't gate from this house." );
+		return;
+	endif
+
+
 	if (TryToCast( caster, spell_id ) != SUCCESS);
 		EraseObjProperty(caster, "#Casting");
 		return 0;
@@ -76,7 +65,7 @@ program spell_gate( caster, spell_id )
 	elseif( !ReserveItem( cast_on ) )
 		return 0;
 	endif
-	
+
 	var tox := Cint(GetObjProperty( cast_on, "x" ));
 	var toy := Cint(GetObjProperty( cast_on, "y" ));
 	var toz := Cint(GetObjProperty( cast_on, "z" ));
@@ -119,42 +108,34 @@ program spell_gate( caster, spell_id )
 		endif
 	endforeach
 
-	multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_TO) )
-				SendSysMessage( caster, "You can't gate to this house." );
-				return;
-			endif
-		endif
+	TravelDebugDest( "GATE", caster, tox, toy, toz, torealm );	// 2026-10-01 TEMP debug
+
+	// 2026-10-02: the destination's house is found by footprint, ignoring the rune's z (see
+	// recall.src). A refused rune is destroyed; a runebook loses that entry.
+	var house := FindHouseAtSpot( tox, toy, toz, torealm );
+	var allowed := CanTravelIntoHouse( caster, house, GATE_TO );
+	TravelDebugHouse( "GATE", caster, house, allowed );	// 2026-10-01 TEMP debug
+	if( !allowed )
+		SendSysMessage( caster, "You can't gate to this house." );
+		DestroyRefusedRune( caster, cast_on, house, tox, toy, toz, torealm );
+		return;
 	endif
 
-	//Same check as above but for static houses
-	// serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, GATE_FROM) )
-	// 			SendSysMessage( caster, "You can't gate to this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
-	
 	set_critical(1);
-	
+
 	if( !caster )
 		return;
 	endif
-	
+
 	var gate1 := CreateItemAtLocation( caster.x, caster.y, caster.z, 0x99b1, 1, caster.realm );
-	var gate2 := CreateItemAtLocation( tox, toy, toz, 0x99b1, 1, torealm );	
+	var gate2 := CreateItemAtLocation( tox, toy, toz, 0x99b1, 1, torealm );
 	if( !gate1 || !gate2 || !caster )
 		DestroyItem(gate1);
 		DestroyItem(gate2);
         	return;
 	endif
-	
+
+	TravelDebugGate( "GATE", gate2, toz );	// 2026-10-01 TEMP debug
 	SetObjProperty( gate1, "GateDestX", gate2.x );
 	SetObjProperty( gate1, "GateDestY", gate2.y );
 	SetObjProperty( gate1, "GateDestZ", gate2.z );
@@ -172,7 +153,7 @@ program spell_gate( caster, spell_id )
 	PlaySoundEffect( caster, SFX_SPELL_GATE_TRAVEL );
 
 	sleep(30);
-    
+
 	set_critical(1);
 	DestroyItem(gate1);
 	DestroyItem(gate2);

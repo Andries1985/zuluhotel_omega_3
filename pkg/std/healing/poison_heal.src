@@ -17,7 +17,7 @@ var poison_amt := CInt(GetObjProperty(who, "#PoisonAmt"));
 
 // max poison a player can have in there body before its dangerous
 var limit := 6; // base limit to poison level
-limit := limit + (IsThief(who)*2); // limit is now 6 + thief level*2, min 8 max 16
+limit := limit + (IsThief(who)*2); // limit is now 6 + thief level*2, min 8 (level 1) max 18 (level 6)
 
 if ( (poison_amt + pznlevel) > limit)
 	foreach scr in pids

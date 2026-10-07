@@ -57,7 +57,7 @@ include "include/all";
 const RESPAWN_MINUTES := 30;              // In how many minutes will the NPC respawn if killed.
 const RESTOCK_INVENTORY_MINUTES := 10;    // In how many minutes will the NPC restock its inventory.
 const RESTOCK_GOLD_MINUTES := 120;        // In how many minutes will the NPC restock its gold.
-const MAX_SKILLS      := 48;              // There are currently 48 Skills.
+const MAX_SKILLS      := 57;              // 2026-10-04: highest skill id (SKILLID__HIGHEST, Throwing); 48 left Throwing and the last skills untrainable.
 Const REACT_THRESHOLD := 2;
 
 set_priority( 50 );
@@ -157,7 +157,7 @@ program animaltrainerai()
           else
             sellanimal( ev.source );
           endif
-        elseif ( ev.text["vendor train"] or ev.text["merchant train"] )
+        elseif ( text["vendor train"] or text["vendor teach"] or text["merchant train"] or text["merchant teach"] ) // 2026-10-04: lowercased like merchant.src (capital letters failed), and "teach" works too
           TurnToward( ev.source );
           MerchantTrain( me , ev.source , ev.text );
         elseif (ev.text["stable"])
@@ -185,7 +185,7 @@ program animaltrainerai()
           if (newpet)
             DestroyItem(item);
             SetObjProperty(newpet, "master", ev.source.serial);
-            SetObjProperty(newpet, "prevtamed", 1);
+            SetObjProperty(newpet, "PreviouslyTamed", 1);
             newpet.script := "tamed";
             RestartScript(newpet);
           endif
@@ -234,19 +234,19 @@ program animaltrainerai()
 endprogram
 
 // Used to inform a player if and how much a NPC can train a player
-function MerchantTrain( me , who , text )
+function MerchantTrain( me, who, text )
 
-   var skillcfg := ReadConfigFile( ":attributes:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
-    var elem;             // used to contain the skill structure for the skill in question.
-    var i;                // Counter for various operations
+	var skillcfg := ReadConfigFile( ":attributes:uoskills" ); // Link to the skills cfg file 'pol\config\skills.cfg'
 
-    // Get what the player says and divide it into words
-    var words := SplitWords( text );
+	// Get what the player says and divide it into words
+	var words := SplitWords( text );
 
-    // The third word is the skill we are looking for
-    var skill := words[3];
+	// The third word is the skill we are looking for
+	var skill := words[3];
+
+	var elem, i;
 	var skillstotrain := {};
-    // Test to see if it exists, if not then player wants to know what NPC an train them
+	// Player said 'Vendor Train', list what we can train
 	if( !skill )
 		var trainable := "";
 		// For each of the available skills
@@ -264,7 +264,6 @@ function MerchantTrain( me , who , text )
 			endif
 		endfor
 
-		
 		// If there where skills that the PC can be trained in, list them, else say so.
 		if (len(trainable) > 1)
 			say( "I can train thee in the following skills:" );
@@ -274,42 +273,44 @@ function MerchantTrain( me , who , text )
 		else
 			say("I can not train thee.");
 		endif
-    else
-        // The player wishes to train in a skill
-        skill := lower(skill);
-        // for each of the available skills
-        for( i := 0 ; i <= MAX_SKILLS ; i := i+1 )
-            // Acquire skill attributes
-            elem := FindConfigElem( skillcfg , i );
-            // Test to see if this skill is the one the player is referring to.
-            if( lower(GetConfigString( elem , "Name" )) == skill )
-                // Acquire the NPC's value at this skill.
-                var NPC_level := (GetEffectiveSkill(me , i) / 3);
-                // Test to see if there is a skill value <Redundant check>
-                if( NPC_level != 0 )
-                    // Get PC's skill
-                    var PC_level := GetEffectiveSkill( who , i );
-                    // if the pc's skill is greater then the NPC's we can do nothing
-                    if( PC_level >= NPC_level )
-                        say("I cannot teach you anymore.");
-                        return;
-                    else
-                        // Determine the cost for training the PC, and inform the PC of the cost
-                        var skillid := i;
-                        var trainmaxcost := GoldForSkillGain(NPC_level, PC_level, skillid);
-                        say( "I will train thee " + GetConfigString( elem , "Name" ) + " for " + trainmaxcost + " gold.");
-                        // Mark the PC with the skill and The cost to train in the skill
-                        SetObjProperty( who , "TrainMaxCost" , trainmaxcost );
-                        SetObjProperty( who , "TrainSkillID" , skillid );
-                        return;
-                    endif
-                endif
-            endif
-        endfor
 
-        // All else, The player named an unknown skill.
-        say("I know not of that skill.");
-     endif
+	// Player said 'Vendor Train skillname' - The old way, where the npc will then tell you the price
+	else
+		// The player wishes to train in a skill
+		skill := lower(skill);
+		// for each of the available skills
+		for( i := 0 ; i <= MAX_SKILLS ; i := i+1 )
+			// Acquire skill attributes
+			elem := FindConfigElem( skillcfg, i );
+			// Test to see if this skill is the one the player is referring to.
+			if( lower(GetAttributeIdBySkillId( i )) == skill )
+				// Acquire the NPC's value at this skill.
+				var NPC_level := (GetBaseSkillBaseValue(me, i) / 3);
+				// Test to see if there is a skill value <Redundant check>
+				if( NPC_level != 0 )
+					// Get PC's skill
+					var PC_level := GetBaseSkillBaseValue( who, i );
+					// if the pc's skill is greater then the NPC's we can do nothing
+					if( PC_level > NPC_level )
+						say("I cannot teach you anymore.");
+						return;
+					else
+						// Determine the cost for training the PC, and inform the PC of the cost
+						var skillid := i;
+						var trainmaxcost := GoldForSkillGain(NPC_level, PC_level, skillid);
+						say( "I will train thee " + lower(GetAttributeIdBySkillId( i )) + " for " + trainmaxcost + " gold.");
+						// Mark the PC with the skill and The cost to train in the skill
+						SetObjProperty( who, "TrainMaxCost", trainmaxcost );
+						SetObjProperty( who, "TrainSkillID", skillid );
+						return;
+					endif
+				endif
+			endif
+		endfor
+
+		// All else, The player named an unknown skill.
+		say("I know not of that skill.");
+	endif
 endfunction
 
 // // This handles the NPC's training of the PC or the PC's donation of gold to the NPC
@@ -416,8 +417,8 @@ endfunction
 // Note: This function is designed to handle different skills have different rates at different levels, etc.
 function GoldForSkillGain( NPC_Skill, PC_Skill, skillid )
 	skillid := skillid;
-  var maxskill := NPC_Skill - PC_Skill;
-  return maxskill*10; // Cost equals ten times the difference.
+	var maxskill := NPC_Skill - PC_Skill;
+	return maxskill; // Cost equals ten times the difference.
 endfunction
 
 // Used to determine what the skill level of the PC will be for the amount of gold they gave
@@ -513,7 +514,7 @@ function Load_Ticket_Data (me, who, ticket)
     newpet.color := GetObjProperty(ticket, "petcolor");
 
     SetObjProperty(newpet, "master", who.serial);
-    SetObjProperty(newpet, "prevtamed", 1);
+    SetObjProperty(newpet, "PreviouslyTamed", 1);
     newpet.script := "tamed";
     RestartScript(newpet);
 
@@ -551,7 +552,7 @@ function Load_Ticket_Data (me, who, ticket)
     newpet.color := GetObjProperty(ticket, "petcolor");
 
     SetObjProperty(newpet, "master", who.serial);
-    SetObjProperty(newpet, "prevtamed", 1);
+    SetObjProperty(newpet, "PreviouslyTamed", 1);
     newpet.script := "tamed";
     RestartScript(newpet);
   
@@ -654,159 +655,160 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////
 function TrainGump(who, skills)
 
-  SetObjProperty(who, "#TrainGump", {GetPid(), ReadGameClock()} );
+	SetObjProperty(who, "#TrainGump", {GetPid(), ReadGameClock()} );
 
-  var ysize := 120 + (skills.size()*40);
+	var ysize := 120 + (skills.size()*40);
 
-  if (ysize <= 160) // 1
-    ysize := ysize + 45;
-  elseif (ysize <= 200) // 2
-    ysize := ysize + 30;
-  elseif (ysize <= 240) // 3
-    ysize := ysize + 25;
-  endif
+	if (ysize <= 160) // 1
+		ysize := ysize + 45;
+	elseif (ysize <= 200) // 2
+		ysize := ysize + 30;
+	elseif (ysize <= 240) // 3
+		ysize := ysize + 25;
+	endif
 
-  var gump := GFCreateGump( 15, 15, 350, ysize);
-  GFResizePic(gump, 15, 15, 3500, 350, ysize);
-  GFHTMLArea(gump, 50, 25, 280, 40, "<BASEFONT SIZE=20><CENTER><u>"+me.name+"</u> can train you in the following skills..." , 0,0 );
+	var gump := GFCreateGump( 15, 15, 350, ysize);
+	GFResizePic(gump, 15, 15, 3500, 350, ysize);
+	GFHTMLArea(gump, 50, 25, 280, 40, "<BASEFONT SIZE=20><CENTER><u>"+me.name+"</u> can train you in the following skills..." , 0,0 );
 
-  GFTextLine(gump, 30, 70, 55, "Skill Name:");
-  GFTextLine(gump, 190, 70, 55, "Train Points:");
-  GFTextLine(gump, 285, 70, 55, "Train Max:");
-  var y := 95;
-  var skillamt := 0;
-  var skillamtdec := 0;
+	GFTextLine(gump, 30, 70, 55, "Skill Name:");
+	GFTextLine(gump, 190, 70, 55, "Train Points:");
+	GFTextLine(gump, 285, 70, 55, "Train Max:");
+	var y := 95;
+	var skillamt := 0;
+	var skillamtdec := 0;
 
-  foreach skill in skills
-    GFTextLine(gump, 30, y, 69, GetAttributeIdBySkillId(skill));
-    GFCheckBox(gump, 305, y, 2714, 2715, 0, skill+1000);
-    GFTextEntry(gump, 185, y, 25, 20, 0, "0.0", skill+2000);
-    skillamt := CDbl(CDbl((GetBaseSKillBaseValue(me, skill)/3.0)/10.0) - CDbl(GetBaseSKillBaseValue(who, skill) / 10.0));
-    skillamtdec := CStr(skillamt - CInt(skillamt));
-    if (CDbl(skillamtdec) > 0)
-      skillamtdec := skillamtdec[2]+""+skillamtdec[3];
-    else
-      skillamtdec := ".0";
-    endif
-    GFTextLine(gump, 220, y, 0, "/ "+CInt(skillamt)+""+skillamtdec);
-    y := y + 25;
-  endforeach
+	foreach skill in skills
+		GFTextLine(gump, 30, y, 69, GetAttributeIdBySkillId(skill));
+		GFCheckBox(gump, 305, y, 2714, 2715, 0, skill+1000);
+		GFTextEntry(gump, 185, y, 25, 20, 0, "0.0", skill+2000);
+		skillamt := CDbl(CDbl((GetBaseSKillBaseValue(me, skill)/3.0)/10.0) - CDbl(GetBaseSKillBaseValue(who, skill) / 10.0));
+		skillamtdec := CStr(skillamt - CInt(skillamt));
+		if (CDbl(skillamtdec) > 0)
+			skillamtdec := skillamtdec[2]+""+skillamtdec[3];
+		else
+			skillamtdec := ".0";
+		endif
+		GFTextLine(gump, 220, y, 0, "/ "+CInt(skillamt)+""+skillamtdec);
+		y := y + 25;
+	endforeach
 
-  GFAddbutton(gump, 270, ysize-75, 2128, 2129, 1, 10);
-  GFAddbutton(gump, 54, ysize-75, 2119, 2120, 1, 0);
+	GFAddbutton(gump, 270, ysize-75, 2128, 2129, 1, 10);
+	GFAddbutton(gump, 54, ysize-75, 2119, 2120, 1, 0);
 
-  GFHTMLArea(gump, 46, ysize-50, 290, 60, "<BASEFONT COLOR=DARKGRAY><CENTER>The cost per .1 skill point is 1 gold piece. You can either enter a skill level to train to, or check the box to train as high as you can." , 0,0 );
-  var data := GFSendGump(who, gump);
+	GFHTMLArea(gump, 46, ysize-50, 290, 60, "<BASEFONT COLOR=DARKGRAY><CENTER>The cost per .1 skill point is 1 gold piece. You can either enter a skill level to train to, or check the box to train as high as you can." , 0,0 );
+	var data := GFSendGump(who, gump);
 
-  // Check if 30 secs has passed
-  if ( GetObjProperty(who, "#TrainGump")[2]+30 < ReadGameClock() )
-    return 0;
-  elseif (Distance(me, who) > 10)
-    SendSysMessage(who, "You have moved too far away from "+me.name);
-    return 0;
-  endif
+	// Check if 30 secs has passed
+	if ( GetObjProperty(who, "#TrainGump")[2]+30 < ReadGameClock() )
+		return 0;
+	elseif (Distance(me, who) > 10)
+		SendSysMessage(who, "You have moved too far away from "+me.name);
+		return 0;
+	endif
 
-  // Cancel/or gump closed
-  if (data[0] != 10)
-    return 0;
-  endif
+	// Cancel/or gump closed
+	if (data[0] != 10)
+		return 0;
+	endif
 
-  var msgsent := 0;
-  var trained := 0;
-  var skillgained := 0;
+	var msgsent := 0;
+	var trained := 0;
+	var skillgained := 0;
 
-  foreach key in (data.keys)
+	foreach key in (data.keys()) // 2026-09-23: was data.keys, which compiles to a member read, not the method
 
-  // It's train as much as we can. NOTE: This is only here if box is ticked
-  if (key > 999 && key < 1999)
-    
-    skillgained := TrainMax(who, key-1000, trained);
+	// It's train as much as we can. NOTE: This is only here if box is ticked
+	if (key > 999 && key < 1999)
+		
+		skillgained := TrainMax(who, key-1000, trained);
 
-    if (skillgained < 1)
-      return 0; // This means player ran out of gold, stop it
-    endif
+		if (skillgained < 1)
+			return 0; // This means player ran out of gold, stop it
+		endif
 
-  // It's text entry train. NOTE: This is ALWAYS here, 0.0 is shown if not used
-  elseif (key > 1999)
-    
-    skillgained := TrainEntry(who, key-2000, data, trained);
-    
-  endif
+	// It's text entry train. NOTE: This is ALWAYS here, 0.0 is shown if not used
+	elseif (key > 1999)
+		
+		skillgained := TrainEntry(who, key-2000, data, trained);
+		
+	endif
 
-  if (msgsent == 0 && skillgained)
-    say("Let me show you how it's done.");  
-    SendSysmessage( who, "Your skill increases." ); // Note increase
-    msgsent := 1;
-  endif
+	if (msgsent == 0 && skillgained)
+		say("Let me show you how it's done.");  
+		SendSysmessage( who, "Your skill increases." ); // Note increase
+		msgsent := 1;
+	endif
 
-  skillgained := 0;
-  trained := trained + 1;
+	skillgained := 0;
+	trained := trained + 1;
 
-  endforeach
+	endforeach
 
 endfunction
 
 function TrainMax(who, skill, trained)
 
-  var skillamt := GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill);
+	var skillamt := GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill);
 
-  if (who.spendgold(skillamt))
-    SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+skillamt);
-  else
-    var goldamt := 0;
-    // Not enough gold for full skill, try less
-    foreach item in EnumerateItemsInContainer(who.backpack)
-      if (item.objtype == 0xeed)
-        goldamt := goldamt + item.amount;
-      endif
-    endforeach
+	if (who.spendgold(skillamt))
+		SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+skillamt);
+	else
+		var goldamt := 0;
+		// Not enough gold for full skill, try less
+		foreach item in EnumerateItemsInContainer(who.backpack)
+			if (item.objtype == 0xeed)
+				goldamt := goldamt + item.amount;
+			endif
+		endforeach
 
-    if (goldamt > 1 && goldamt <= skillamt)
-      if (who.spendgold(goldamt))
-        SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+goldamt);
-      else
-        return 0; // SHOULD never hit here
-      endif
-    elseif (!goldamt && trained > 0)
-      Say("You don't have enough gold to train anymore");
-      return 0;
-    elseif (!goldamt)
-      Say("You don't have enough gold!");
-      return 0;
-    else
-      return 0;
-      //broadcast("woah copernicus! Check the vendors skill training!", 3, 53);
-    endif
-  endif
+		if (goldamt > 1 && goldamt <= skillamt)
+			if (who.spendgold(goldamt))
+				SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+goldamt);
+			else
+				return 0; // SHOULD never hit here
+			endif
+		elseif (!goldamt && trained > 0)
+			Say("You don't have enough gold to train anymore");
+			return 0;
+		elseif (!goldamt)
+			Say("You don't have enough gold!");
+			return 0;
+		else
+			return 0;
+			//broadcast("woah copernicus! Check the vendors skill training!", 3, 53);
+		endif
+	endif
 
-  return 1;
+	return 1;
 
 endfunction
 
 function TrainEntry(who, skill, data, trained)
-              trained := trained;
-  // lols, add 2000 again
-  var skillamt := CDbl(GFExtractData(data, skill+2000));
 
-  var maxskillamt := CDbl(GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill))/10;
-  if (skillamt > maxskillamt)
-    skillamt := maxskillamt;
-  endif
+	trained := trained;
+	// lols, add 2000 again
+	var skillamt := CDbl(GFExtractData(data, skill+2000));
 
-  // players didn't enter skill
-  if (skillamt < 1)
-    return 0;
-  endif
+	var maxskillamt := CDbl(GetBaseSKillBaseValue(me, skill)/3 - GetBaseSKillBaseValue(who, skill))/10;
+	if (skillamt > maxskillamt)
+		skillamt := maxskillamt;
+	endif
 
-  if (who.spendgold(CInt(skillamt*10)))
-    SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+skillamt*10);
-    return 1;
-  else
-    Say("You don't have enough gold to train.");
-  endif
+	// players didn't enter skill
+	if (skillamt < 1)
+		return 0;
+	endif
 
-  return 0;
-	
+	if (who.spendgold(CInt(skillamt*10)))
+		SetBaseSkillBaseValue( who, skill, GetBaseSKillBaseValue(who, skill)+CInt(skillamt*10)); // 2026-09-23: the typed level is a double; the setter wants whole tenths
+		return 1;
+	else
+		Say("You don't have enough gold to train.");
+	endif
+
+	return 0;
+
 endfunction
 
 function walkhome()

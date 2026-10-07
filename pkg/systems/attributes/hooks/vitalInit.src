@@ -1,15 +1,17 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// vitalInit.src — Max-value and regen-rate hooks for Life/Mana/Stamina, wired via
+// vitalInit.src -- Max-value and regen-rate hooks for Life/Mana/Stamina, wired via
 // ../config/vitals.cfg. Replaces pkg/opt/shilhook/regen.src, which ran POLMD's own
 // deprecated pre-0.98 flat-CProp regen shim. This is the current ModernDistro
 // pattern instead: config-driven, dice-string-capable, per-instance-cached max
 // values, and a stacking-safe regen-rate modifier dictionary (see ../include/regen.inc).
 //
-// CustomHitsLevel/CustomManaLevel/CustomStaminaLevel (this shard's per-instance
-// GM/boss override, set statically in npcdesc.cfg or dynamically by areaspawner)
-// is checked FIRST, before the new HITS/MANA/STAM lookup, so every existing
-// override resolves to an identical number under this rewrite.
+// 2026-09-30: CustomHitsLevel/CustomManaLevel/CustomStaminaLevel are retired. Every NPC
+// template carries HITS/MANA/STAM fields; per-instance overrides go through
+// ../include/npcvitals.inc (SetNpcVitalOverride), which writes the same cache entry the
+// lookup below reads first. The old "firstTimeCustomHp"/"CustomHPFix" refill band-aid is
+// gone too -- it only existed because modsetup.inc used to reset current HP to Str at AI
+// start; that now fills to GetMaxHp instead.
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -17,54 +19,35 @@ use uo;
 use vitals;
 use attributes;
 use cfgfile;
-use util;                          // RandomDiceRoll
+use basicio;                       // Print
 
-var npcdesc := ReadConfigFile( "::npcdesc" );
 include "include/attributes";
 include ":attributes:regen";
+include ":attributes:npcvitals";
+
+// Decision 3 (2026-09-30): a template missing a vital field falls back to attribute x100 and
+// logs ONE console warning per template+field so the gap gets noticed and fixed in npcdesc.cfg.
+var npcvitals_warned := dictionary;
 
 program VitalInit()
 	Print( "using vitalInit.ecl..." );
 	return 1;
 endprogram
 
-// Real npcdesc.cfg vital field for this NPC's template, x100-scaled to match
-// CustomHitsLevel's own storage convention. Resolves a dice-string on first
-// use and caches the roll so it never drifts afterward. Returns -1 if the
-// template has no such field, so callers fall back to Strength/Intelligence/
-// Dexterity*100 exactly like they do today -- distinct from 0, which is a
-// real, explicit override a template author could legitimately set.
-function GetNpcVitalSetting( who, vitalfield )
+function NpcVitalOrFallback( who, vitalfield, fallback )
 
-	var cache := GetObjProperty(who, "RolledNpcVitals");
-	if (!cache)
-		cache := dictionary;
+	var value := GetNpcVitalSetting( who, vitalfield );
+	if( value >= 0 )
+		return value;
 	endif
 
-	if (cache.exists(vitalfield))
-		return Cint(cache[vitalfield]);
+	var key := CStr( who.npctemplate ) + ":" + vitalfield;
+	if( !npcvitals_warned.exists( key ) )
+		npcvitals_warned.insert( key, 1 );
+		Print( "vitalInit: npc template '" + who.npctemplate + "' has no " + vitalfield + " field -- using attribute x100. Add one to config/npcdesc.cfg." );
 	endif
 
-	var raw := GetConfigString(npcdesc[who.npctemplate], vitalfield);
-	if (!raw)
-		return -1;	// field absent -- distinct from a real, explicit "0" override
-	endif
-
-	var value;
-	if (Find(raw, "d", 1))
-		value := RandomDiceRoll(raw);
-		if (value.errortext)
-			value := 0;
-		endif
-	else
-		value := Cint(raw);
-	endif
-
-	value := value * 100;
-	cache.insert(vitalfield, value);
-	SetObjProperty(who, "RolledNpcVitals", cache);
-
-	return value;
+	return fallback;
 
 endfunction
 
@@ -93,18 +76,7 @@ exported function GetLifeMaximumValueExported( who )
 	var life := GetAttribute(who, ATTRIBUTEID_STRENGTH) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		if (GetObjProperty(who, "CustomHitsLevel"))
-			life := CInt(GetObjProperty(who, "CustomHitsLevel"));
-			if ((GetMaxHp(who) != GetHp(who) and !GetObjProperty(who, "firstTimeCustomHp")) || GetMaxHp(who) != GetHp(who) && GetGlobalProperty("CustomHPFix"))
-				SetHP(who, GetMaxHP(who));
-				SetObjProperty(who, "firstTimeCustomHp", 1);
-			endif
-		else
-			var hits := GetNpcVitalSetting(who, "HITS");
-			if (hits >= 0)
-				life := hits;
-			endif
-		endif
+		life := NpcVitalOrFallback( who, "HITS", life );
 	endif
 
 	return life;
@@ -120,14 +92,7 @@ exported function GetManaMaximumValueExported( who )
 	var mana := GetAttribute(who, ATTRIBUTEID_INTELLIGENCE) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		if (GetObjProperty(who, "CustomManaLevel"))
-			mana := CInt(GetObjProperty(who, "CustomManaLevel"));
-		else
-			var npcmana := GetNpcVitalSetting(who, "MANA");
-			if (npcmana >= 0)
-				mana := npcmana;
-			endif
-		endif
+		mana := NpcVitalOrFallback( who, "MANA", mana );
 	endif
 
 	return mana;
@@ -143,14 +108,7 @@ exported function GetStaminaMaximumValueExported( who )
 	var stam := GetAttribute(who, ATTRIBUTEID_DEXTERITY) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		if (GetObjProperty(who, "CustomStaminaLevel"))
-			stam := CInt(GetObjProperty(who, "CustomStaminaLevel"));
-		else
-			var npcstam := GetNpcVitalSetting(who, "STAM");
-			if (npcstam >= 0)
-				stam := npcstam;
-			endif
-		endif
+		stam := NpcVitalOrFallback( who, "STAM", stam );
 	endif
 
 	return stam;

@@ -8,6 +8,7 @@
 
 use uo;
 use guilds;
+use polsys;
 
 include ":guilds:include/guilds";
 include ":guilds:include/guildconstants";
@@ -1400,9 +1401,12 @@ endfunction
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 function ChangeGuildName(who)
 
-var settime := who.guild.getprop(GUILD_NAME_TIME_SET);
+// 2026-10-04: both guild locks are one week and use the wall clock (POLCORE().systime). They compared
+// minutes against ReadGameClock(), which counts seconds since the last server start, so the name lock
+// lasted 2.8 hours and the colour lock 24 minutes, and a restart reset the clock under the saved stamp.
+var settime := CInt(who.guild.getprop(GUILD_NAME_TIME_SET));
 
-if (  ((GUILD_NAME_TIME*24)*60)+settime > ReadGameClock() )
+if (  (GUILD_NAME_TIME*24*3600)+settime > POLCORE().systime )
 	SendSysMessage(who, "You can only change your guild name every "+GUILD_NAME_TIME+" days.");
 	return GuildMasterGump(who);
 endif
@@ -1463,7 +1467,7 @@ if (data[0] == 10)
 	
 	guild.setprop(GUILD_NAME, guildname);
 	guild.setprop(GUILD_ABV, guildabv);
-	guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+	guild.setprop(GUILD_NAME_TIME_SET, POLCORE().systime);
 	MoveGuildRegistryEntry(old_registry_name, guild);
 	SendSysMessage(who, "You have successfully renamed your guild.", 3, 53);
 else
@@ -1729,13 +1733,13 @@ endfunction
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function BuyGuildColour(who, colour)
 
-	var setcolourtime := who.guild.getprop("TimeGuildColour");
+	var setcolourtime := CInt(who.guild.getprop("TimeGuildColour"));
 	var currentcolour := who.guild.getprop("GuildColour");
 
 	// Staff bypass the cooldown -- everyone else has to wait GUILD_COLOUR_TIME
 	// hours between colour changes.
-	if (who.cmdlevel < 3 && ((GUILD_COLOUR_TIME * 60)+ setcolourtime) > ReadGameClock() )
-		SendSysMessage(who, "You have already set your guild colour within the last "+GUILD_COLOUR_TIME+" hours.");
+	if (who.cmdlevel < 3 && ((GUILD_COLOUR_TIME * 24 * 3600) + setcolourtime) > POLCORE().systime )
+		SendSysMessage(who, "You have already set your guild colour within the last "+GUILD_COLOUR_TIME+" days.");
 		return GuildMasterGump(who);
 	endif
 
@@ -1753,7 +1757,7 @@ function BuyGuildColour(who, colour)
 		endif
 	endforeach
 
-	if (!YesNoguild(who, "Select <BASEFONT COLOR=DARKBLUE>"+colour+"<BASEFONT COLOR=white> Guild Colour?", "Selecting this colour will make it unique to your guild.  You will have to wait "+GUILD_COLOUR_TIME+" hours before being able to choose a different one.", -10))
+	if (!YesNoguild(who, "Select <BASEFONT COLOR=DARKBLUE>"+colour+"<BASEFONT COLOR=white> Guild Colour?", "Selecting this colour will make it unique to your guild.  You will have to wait "+GUILD_COLOUR_TIME+" days before being able to choose a different one.", -10))
 		SendSysMessage(who, "Cancelled.");
 		return GuildMasterGump(who);
 	endif
@@ -1773,7 +1777,7 @@ function BuyGuildColour(who, colour)
 	endif
 
 	who.guild.setprop("GuildColour", colour);
-	who.guild.setprop("TimeGuildColour", ReadGameClock());
+	who.guild.setprop("TimeGuildColour", POLCORE().systime);
 	UpdateUniformColour(who.guild);
 
 	// first time guild has got a colour
@@ -2333,7 +2337,7 @@ SetObjProperty(house, "GuildHouse", guild.guildid);
 guild.setprop("GuildHouse", house.serial);
 guild.setprop("GuildName", guildname);
 guild.setprop("GuildAbv", guildabv);
-guild.setprop(GUILD_NAME_TIME_SET, ReadGameClock());
+guild.setprop(GUILD_NAME_TIME_SET, POLCORE().systime);
 SyncGuildRegistry(guild);
 // Add who to guild and set him as the master
 guild.addmember(who);

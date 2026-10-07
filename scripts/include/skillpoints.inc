@@ -45,16 +45,19 @@ function AwardSkillPoints( who, skillid, points )
 	
 	// Skill is set to drop
 	if( skill_state == "d" )
-		var baseskill := GetBaseSkill( who, skillid );
+		// 2026-10-02: 0.1 per check instead of a whole point. GetBaseSkill/SetBaseSkill work in
+		// whole points, so 75.9 used to become 74.0; the tenths accessors keep the fraction.
+		// Still every check, pass or fail, and still locked once it reaches zero.
+		var base_tenths := GetBaseSkillBaseValue( who, skillid );
 		var amount   := 1;
 		//amount to drop is more than the skill he has, set skill to 0 and LOCK the skill
-		if( amount > baseskill )
-			amount := baseskill;
+		if( amount > base_tenths )
+			amount := base_tenths;
 			skills_state_array[skillid+1] := "l";
 			SetObjProperty( who, "SkillsState", skills_state_array );
 		endif
 		// Reduce skill points
-		SetBaseSkill( who, skillid, Cint(baseskill - amount) );
+		SetBaseSkillBaseValue( who, skillid, Cint(base_tenths - amount) );
 		return 0;
 		
 		// Skill is set to locked, just return 0
@@ -119,6 +122,33 @@ function AwardSkillPoints( who, skillid, points )
 	
 endfunction
 
+// 2026-10-07: stat affinity now covers every class, not just Warrior and Crafter. This
+// maps the attribute id onto the stat key and defers to GetStatPointsMultiplier in
+// classes.inc, which already handled affinity (faster) and difficulty (slower) for all
+// three stats but had no caller. A character holding two classes uses the first match.
+function ClassStatGainMultiplier( who, attributeid )
+
+	var stat;
+
+	case( attributeid )
+		ATTRIBUTEID_STRENGTH:
+			stat := "str";
+			break;
+		ATTRIBUTEID_DEXTERITY:
+			stat := "dex";
+			break;
+		ATTRIBUTEID_INTELLIGENCE:
+			stat := "int";
+			break;
+		default:
+			return 1.0;
+	endcase
+
+	return GetStatPointsMultiplier( who, stat );
+
+endfunction
+
+
 /***********************************************************************************
 **
 ** function AwardPoints( who, skillid, skillpoints )
@@ -168,7 +198,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_STRENGTH, RandomDiceRoll(adv[2]));
+			AwardRawAttributePoints(who, ATTRIBUTEID_STRENGTH, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_STRENGTH ) + 0.5 ));
 		endif
 	endif
 	
@@ -177,7 +207,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, RandomDiceRoll(adv[2]));
+			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_DEXTERITY ) + 0.5 ));
 		endif
 	endif
 	
@@ -186,7 +216,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_INTELLIGENCE, RandomDiceRoll(adv[2]));
+			AwardRawAttributePoints(who, ATTRIBUTEID_INTELLIGENCE, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_INTELLIGENCE ) + 0.5 ));
 		endif
 	endif
 	

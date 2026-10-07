@@ -12,12 +12,27 @@ include "include/client";
 include "include/spellgrants";
 include ":accounts:accounts";
 include ":accounts:settings";
-
-// Toadstool ADD
-const BANNED_IPS := ":ipban:bannedips";
+include "include/ipban";
 
 program logon( who )
 	//Print("I am using scripts misc logon.src");
+
+	// 2026-10-01: login policy first (the DiscordID / IP / household rules in
+	// :accounts:accounts). A refused character is disconnected here, before it is
+	// announced or any player script starts; the check used to run after this whole
+	// script, from pkg/systems/accounts/logon.src. Its logoff marker is cleared as for
+	// any character entering the world; logoff.src puts a new one down when it leaves.
+	if( !ACCT_AdmitCharacter( who ) )
+		RemoveLogoff( who );
+		return 0;
+	endif
+
+	// 2026-10-04: IP ban list (.ipban). Checked before the character is announced or any
+	// player script starts, so a banned address never shows "has arrived!".
+	if( !IPBan_AdmitCharacter( who ) )
+		RemoveLogoff( who );
+		return 0;
+	endif
 
 	var stafflevel := who.cmdlevel;
 
@@ -44,9 +59,6 @@ program logon( who )
 		RemoveNOPK(who);
 	endif
 	
-	// Kick if IP banned
-	CheckIPBan(who);
-
 	var acc:=who.acct;
 	if(acc.getprop("acctjail"))
 		MoveObjectToLocation( who, DEFAULT_LOCATION_JAIL_X, DEFAULT_LOCATION_JAIL_Y, DEFAULT_LOCATION_JAIL_Z, DEFAULT_LOCATION_JAIL_R, MOVEOBJECT_FORCELOCATION);
@@ -109,6 +121,8 @@ program logon( who )
 	else
 		Broadcast( who.name + " has come online and is here to help!");
 	endif
+	// 2026-10-01: logoff.src announces a departure only when the arrival was announced.
+	SetObjProperty( who, "#ArrivalAnnounced", 1 );
 
 	// Resume personal powerhour if one was active when the player disconnected.
 	// The original activateph() instance (setph.src) does not survive a server
@@ -159,53 +173,6 @@ program logon( who )
 
 endprogram
 
-
-// Check data file for banned ip and kick
-function CheckIPBan(who)
-
-	// open banned datafile
-	var ipdfile := OpenDataFile( BANNED_IPS );
-
-	// open element
-	var bannedele := ipdfile.FindElement("BannedIPS");
-	var strip := CStr(who.ip);
-
-	UnloadDataFile( BANNED_IPS );
-
-	var iplist := bannedele.PropNames();
-
-	var i := 1;
-	var stop;
-
-	foreach ip in iplist	
-		if (ip[i] == strip[i]) // If first number is the same, check the whole thing
-
-			repeat
-				// even if this is the first one, it means entire world ban
-				if (CInt(ip[i]) == 2 && CInt(ip[(i+1)]) == 5 && CInt(ip[(i+2)]) == 5)
-					stop := 1;
-					
-					foreach person in EnumerateOnlineCharacters()
-						if (person.cmdlevel > 1)
-							SendSysMessage(person, "Account: "+who.acctname, 3, 53);
-							SendSysMessage(person, "Character: "+who.name, 3, 53);
-							SendSysMessage(person, "Tried logging in but is IP banned. Consider account ban?", 3, 43);
-						endif
-					endforeach
-					DisconnectClient( who );
-
-				elseif (strip[i] == ip[i])
-					i := i + 1;
-				else
-					stop := 1;
-				endif
-			until (stop || i > 100); //failsafe
-			stop := 0;
-			i := 1;	
-		endif
-	endforeach
-
-endfunction
 
 function RemoveLogoff( mobile )
 

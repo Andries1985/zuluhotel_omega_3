@@ -79,25 +79,25 @@ function MakeUpgrade(character, start_material, smithyretort)
 		endif
 		mat1_type := 0x0F7F;
 		mat1_name := "Brimstone";
-		product_type := 0x8B01; //Oil
+		product_type := 0x30381; //Oil
 	elseif (IsIngot(start_material))
 		material_cfg := ReadConfigFile( ":blacksmithy:blacksmithy" );
 		skilltype := SKILLID_BLACKSMITHY;
 		mat1_type := 0x0F7C;
 		mat1_name := "Bloodspawn";
-		product_type := 0x8B02; // Alloy
+		product_type := 0x30382; // Alloy
 	elseif(IsLog(start_material))
 		material_cfg := ReadConfigFile( ":carpentry:carpentry" );
 		skilltype := SKILLID_CARPENTRY;
 		mat1_type := 0x0F80;
 		mat1_name := "Daemon Bone";
-		product_type := 0x8B03; // Varnish
+		product_type := 0x30383; // Varnish
 	else
 		material_cfg := ReadConfigFile( ":tailoring:tailoring" );
 		skilltype := SKILLID_TAILORING;
 		mat1_type := 0x0F78;
 		mat1_name := "Bat Wing";
-		product_type := 0x8B04; // Compound
+		product_type := 0x30384; // Compound
 	endif
 	var mat2_type := material2.objtype;
 	var material_diff := material_cfg[mat2_type].Difficulty;

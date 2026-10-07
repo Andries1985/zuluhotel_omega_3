@@ -37,7 +37,12 @@ program alchemyplus ( character, myburner )
 	endif
 
 	//try to find out if they only have bottles or only have a keg, and other variables
-	var found_empty_bottle := FindItemInContainer( character.backpack , UOBJ_EMPTY_BOTTLE );
+	// 2026-10-05: FindItemInContainer -> the engine call FindObjtypeInContainer. Same
+	// recursion (both skip locked sub-containers) and a not-found error is falsy just
+	// like the old unset return, so the !x checks below are unchanged. The engine
+	// searches the top level before recursing, so where a match exists at both depths
+	// you now get the top-level one.
+	var found_empty_bottle := FindObjtypeInContainer( character.backpack , UOBJ_EMPTY_BOTTLE );
 	var potion_container;
 
 	//if it doesn't use up a bottle, we can just make it without a container
@@ -259,7 +264,7 @@ function CanMakePotion( character , current_potion )
 	
 	//if the potion requires a mortar to make, check to see if the character has a mortar
 	if (current_potion.needmortar)
-		var mortar := FindItemInContainer (character.backpack, 0x0e9b );
+		var mortar := FindObjtypeInContainer (character.backpack, 0x0e9b );
 		if (!mortar)
 			return 0;
 		else
@@ -302,7 +307,7 @@ function CanMakePotion( character , current_potion )
 		//use the FindObjtypeInContainer function to try to find what we need quickly.  If it
 		//fails, or finds less of the reagent than we need, fail this potion.  Otherwise, reserve
 		//what was found and try the next reagent
-		var found_reagent := FindItemInContainer (character.backpack, cint(current_reagent[1]));
+		var found_reagent := FindObjtypeInContainer (character.backpack, cint(current_reagent[1]));
 
 		// Doing a bandaid for the new potion levels. As they are different objtypes, you wouldn't
 		// be able to use a [level] greater heal potion to make a tamla.
@@ -366,7 +371,7 @@ function destroy_all_reagents (character, current_potion)
 		//is the number of that ingredien needed
 		current_reagent := splitwords(reagent_array[reagent_counter]);
 		
-		var the_reagent := FindItemInContainer( character.backpack , Cint(current_reagent[1]) );
+		var the_reagent := FindObjtypeInContainer( character.backpack , Cint(current_reagent[1]) );
 	
 		if (!the_reagent)
 			//if (cint(current_reagent[1]) in basicpots)
@@ -633,7 +638,7 @@ endcase
 
 
 foreach thing in group
-	basic := FindItemInContainer(who.backpack, cint(thing));
+	basic := FindObjtypeInContainer(who.backpack, cint(thing));
 	if (basic)
 		return basic;
 	endif

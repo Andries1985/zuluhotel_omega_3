@@ -8,6 +8,7 @@ use os;
 
 include ":containers:storageAreas";
 include ":house:utility";
+include "include/housetravel";	// FindHouseAtSpot
 
 program textcmd_redeed( mobile )
 
@@ -26,17 +27,22 @@ program textcmd_redeed( mobile )
 	
 	var bank_region := CP_DEFAULT_AREA;
 
- 	var house := GetStandingHeight( mobile.x, mobile.y, mobile.z, mobile.realm ).multi;
-	var oserial := GetObjProperty(house, "ownerserial");
+ 	// 2026-10-04: lock-down. The house is the one the caster stands in (the z-blind footprint test
+	// the travel scripts use), the caster must own it, and the item to redeed (and every part of it)
+	// has to be placed inside that same house. The command used to check only where the CASTER stood,
+	// so standing in your own house you could redeed a neighbour's deeded furniture, or anything lying
+	// in a pack. Staff (cmdlevel 3+) are exempt.
+	var is_staff := ( mobile.cmdlevel >= 3 );
+	var house := FindHouseAtSpot( mobile.x, mobile.y, mobile.z, mobile.realm );
+	var oserial := CInt( GetObjProperty( house, "ownerserial" ));
 
-	if( house )
-		if( mobile.serial != oserial)
-			SendSysMessage( mobile, "You cannot redeed anything in this house!" );
+	if( !is_staff )
+		if( !house )
+			SendSysMessage( mobile, "You must be in a house!" );
 			return 0;
 		endif
-	else
-		if( mobile.cmdlevel < 3 )
-			SendSysMessage( mobile, "You must be in a house!" );
+		if( mobile.serial != oserial )
+			SendSysMessage( mobile, "You cannot redeed anything in this house!" );
 			return 0;
 		endif
 	endif
@@ -49,6 +55,18 @@ program textcmd_redeed( mobile )
 	elseif( !targ.IsA( POLCLASS_ITEM ))
 		SendSysMessage( mobile, "You must select an item!" );
 		return 0;
+	endif
+
+	if( !is_staff )
+		if( targ.container )
+			SendSysMessage( mobile, "That has to be placed in your house before it can be redeemed." );
+			return 0;
+		endif
+		var targ_house := FindHouseAtSpot( targ.x, targ.y, targ.z, targ.realm );
+		if( !targ_house || targ_house.serial != house.serial )
+			SendSysMessage( mobile, "That is not in your house!" );
+			return 0;
+		endif
 	endif
 
 	// Trash Can Redeed -- unrelated to the deed mechanism itself, folded in
@@ -83,6 +101,14 @@ program textcmd_redeed( mobile )
 	foreach serial in the_serials
 		var part := SystemFindObjectBySerial( serial );
 		if( part )
+			if( !is_staff )
+				// every piece of the deeded item has to be in this house too
+				var part_house := FindHouseAtSpot( part.x, part.y, part.z, part.realm );
+				if( part.container || !part_house || part_house.serial != house.serial )
+					SendSysMessage( mobile, "Part of that item is no longer in your house. Ask staff for help." );
+					return 0;
+				endif
+			endif
 			created.Append( part );
 		endif
         SleepMS(5);

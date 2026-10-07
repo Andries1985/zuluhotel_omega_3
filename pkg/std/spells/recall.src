@@ -5,9 +5,10 @@ include "include/spelldata";
 include "include/areas";
 include "include/client";
 include "include/recalling";
+include "include/traveldebug";	// 2026-10-01 TEMP debug: console tracing for the recall-into-house report
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse / DestroyRefusedRune
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":multistatichousing:recallgatehelp";
 
 program cast_recall( caster, spell_id )
 
@@ -27,26 +28,14 @@ program cast_recall( caster, spell_id )
 		return 0;
 	endif
 
-	var multi2 := GetStandingHeight( caster.x, caster.y, caster.z, caster.realm ).multi;
-	if( multi2 )
-		if( !Iscowner( caster, multi2 )  )
-			if( !IsFriend( caster, multi2, RECALL_TO) )
-				SendSysMessage( caster, "You can't recall from this house." );
-				return;
-			endif
-		endif
+	// 2026-10-02: house test by footprint (housetravel.inc) instead of the engine's
+	// supporting-multi test, so a courtyard and a static house count as "in a house" too.
+	var from_house := FindHouseAtSpot( caster.x, caster.y, caster.z, caster.realm );
+	if( !CanTravelIntoHouse( caster, from_house, RECALL_TO ) )
+		SendSysMessage( caster, "You can't recall from this house." );
+		return;
 	endif
-	// Same check as above for static houses
-	// var serialstatichouse := StaticHouseSerial( caster );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, RECALL_TO) )
-	// 			SendSysMessage( caster, "You can't recall from this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
+
 	if (TryToCast( caster, spell_id ) != SUCCESS);
 		EraseObjProperty(caster, "#Casting");
 		return 0;
@@ -79,7 +68,7 @@ program cast_recall( caster, spell_id )
 	if( !tox && !toy && !toz && !torealm )
 		SendSysmessage( caster, "This is a blank rune!") ;
 		return 0;
-		
+
 	elseif( IsForbiddenAreaToRecallTo( caster, tox, toy, torealm ) )
 		SendSysMessage( caster, "You can't recall to this place." );
 		if( cast_on.objtype == UOBJ_RUNE || cast_on.objtype == 0x1f14)
@@ -89,15 +78,21 @@ program cast_recall( caster, spell_id )
 
 	endif
 
-	var multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, RECALL_TO) )
-				SendSysMessage( caster, "You can't recall to this house." );
-				return;
-			endif
-		endif
+	TravelDebugDest( "RECALL", caster, tox, toy, toz, torealm );	// 2026-10-01 TEMP debug
+
+	// 2026-10-02: the destination's house is found by footprint, ignoring the rune's z. The old
+	// test (GetStandingHeight at the rune's z) saw no house when the rune was marked higher than
+	// the floor of a house placed there later, and the move then dropped the caster inside.
+	// A refused rune is destroyed (a runebook loses that entry), as forbidden areas already do.
+	var house := FindHouseAtSpot( tox, toy, toz, torealm );
+	var allowed := CanTravelIntoHouse( caster, house, RECALL_TO );
+	TravelDebugHouse( "RECALL", caster, house, allowed );	// 2026-10-01 TEMP debug
+	if( !allowed )
+		SendSysMessage( caster, "You can't recall to this house." );
+		DestroyRefusedRune( caster, cast_on, house, tox, toy, toz, torealm );
+		return;
 	endif
+
 	var owner;
 	var lamp;
 	var Near_Items := ListItemsNearLocation(tox, toy, toz, 10, torealm);
@@ -113,21 +108,16 @@ program cast_recall( caster, spell_id )
 			return;
 		endif
 	endif
-	//Same check as above but for static houses
-	// serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, RECALL_TO) )
-	// 			SendSysMessage( caster, "You can't recall to this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
 
 	PlaySoundEffect( caster, SFX_SPELL_RECALL1 );
 	sleepms(250);
-	MoveObjectToLocation( caster, tox, toy, toz, torealm );
+	var moved := MoveObjectToLocation( caster, tox, toy, toz, torealm );
+	TravelDebugLanded( "RECALL", caster, moved );	// 2026-10-01 TEMP debug
+	// 2026-10-02: the move can fail (something now stands on that spot); it used to fail silently.
+	if( !moved )
+		SendSysMessage( caster, "Something blocks that location." );
+		return;
+	endif
 	PlaySoundEffect( caster, SFX_SPELL_RECALL2 );
 
 endprogram

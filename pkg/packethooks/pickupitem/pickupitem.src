@@ -25,7 +25,9 @@ var item := SystemFindObjectBySerial(packet.GetInt32(1));
 var newpacket;
 // Not staff, continue as normal
 if (who.cmdlevel < 1)
-	if(item.multi && !who.multi)
+	// 2026-10-04: the item's house has to be the house the player stands in. Standing in ANY house used
+	// to be enough, so a neighbour's loose items could be lifted from next door.
+	if(item.multi && item.multi.serial != who.multi.serial)
 		newpacket := CreatePacket(0x27, 2);
 		newpacket.SendPacket(who);
 		return 1;

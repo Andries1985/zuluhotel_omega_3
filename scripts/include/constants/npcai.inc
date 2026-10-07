@@ -31,7 +31,6 @@ const NPCAI_KILL_ANY		:= "killany";
 const NPCAI_KILL_PCS		:= "killpcs";
 const NPCAI_MERCHANT		:= "merchant";
 const NPCAI_PLAYER_MERCHANT	:= "playermerchant";
-const NPCAI_QUESTIE		:= "questie";
 const NPCAI_ROCK_THROWER	:= "rockthrower";
 const NPCAI_SLIME		:= "slime";
 const NPCAI_SPIDER		:= "spiders";

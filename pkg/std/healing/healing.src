@@ -95,7 +95,9 @@ program use_bandages( character , bandages )
 		return;
 	endif
 
-	// classed rangers may heal themselves and res animals
+	// classed rangers use Veterinary on animals and animal corpses. vet.src refuses a self-target,
+	// so a Ranger bandaging himself gets You can't do that. (2026-10-04: the old comment said
+	// rangers may heal themselves, which was never true).
 	if (GetObjProperty(character, "IsRanger"))
 		if (patient == character)
 			var parms := {};

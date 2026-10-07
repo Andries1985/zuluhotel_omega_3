@@ -1,12 +1,12 @@
 /*
         Maintened by *Edwards
         For FantasiaShard.com
-        
+
         Edwards@FantasiaShard.com
-        
+
         2008-11-03
 */
- 
+
 use uo;
 use os;
 
@@ -15,18 +15,10 @@ include ":alryc:include/speedwalk";
 
 program Logon( who )
 
-        //Print("I am using accounts logon.src");
-        var is_staff := ACCT_IsStaffCharacter( who );
-
-        ACCT_SetLastLogin( who.acct );
-
-        if( !CheckForMaxClientsOnline( who ))
-                if( !is_staff )
-                        SysLog( "LoginAccount() Error: trying to login too many accounts." );
-                        DisconnectClient( who );
-                        return 0;
-                endif
-        endif
+	// 2026-10-01: the login policy check that used to sit here now runs first thing in
+	// scripts/misc/logon.src (ACCT_AdmitCharacter), which the engine runs before this
+	// script, so a refused character is never announced. Only the bookkeeping is left.
+	ACCT_SetLastLogin( who.acct );
 
 	var speed_walk := GetObjProperty( who, "SpeedWalk" );
 	if( who.cmdlevel >= 2 )
@@ -34,6 +26,6 @@ program Logon( who )
 			SendSpeedWalk( who, speed_walk );
 		endif
 	endif
-        
-        return 1;
+
+	return 1;
 endprogram

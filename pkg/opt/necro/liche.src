@@ -41,6 +41,13 @@ program cast_liche( parms )
 			return;
 		endif
 	
+		// 2026-10-03: an armor buff conflicts with the poly mod; refuse before any mana is spent
+		if( !CanModNoConflict( caster, "poly" ) )
+			SendSysMessage( caster, "Another buff you are under conflicts with that form." );
+			EraseObjProperty( caster, "#Casting" );
+			return;
+		endif
+
 		var result := TryToCast( caster, SPELLID_LICHE );
 		if( result != SUCCESS )
 			if( result == NO_SKILL )
@@ -70,7 +77,7 @@ program cast_liche( parms )
 	var int_modulation	:= GetIntelligence(caster);
 
 	if( GetObjProperty( caster, CLASSEID_MAGE ) )
-		CInt( duration * ClasseBonus( caster, CLASSEID_MAGE ) );
+		duration		:= CInt( duration * ClasseBonus( caster, CLASSEID_MAGE ) ); // 2026-10-03: the result was thrown away, so Mage level never lengthened the form
 		str_modulation	:= CInt( str_modulation / ClasseBonus( caster, CLASSEID_MAGE ) );
 		dex_modulation	:= CInt( dex_modulation / ClasseBonus( caster, CLASSEID_MAGE ) );
 		int_modulation	:= CInt( int_modulation * ClasseBonus( caster, CLASSEID_MAGE ) );

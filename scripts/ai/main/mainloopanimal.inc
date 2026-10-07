@@ -67,14 +67,7 @@ function RunLikeHell(opponent)
 		SetObjProperty(me, "lbc", ReadGameClock()+5);
 		checkmymod(me);
 	endif
-	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
-	if (sleepdelay < 0) 
-		sleepdelay := 0; 
-	endif
-	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
-	if(MoveSpeed)
-		sleepdelay := GetSpeed(me, MoveSpeed);
-	endif
+	var sleepdelay := GetNpcMoveDelay(me);	// 2026-09-30: MoveSpeed template field / instance override / Dex default (attributes.inc)
 	    Runawayfrom( opponent );
 		Sleepms(sleepdelay);
         repeat

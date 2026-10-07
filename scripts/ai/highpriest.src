@@ -11,6 +11,7 @@ include "include/constants/locations";
 include "include/spelldata";
 include "include/dotempmods";
 include "include/speech";
+include ":warriorforhire:include/wfhvitals";	// 2026-09-30: SetWfhVitalCeilingsAndFill on restore
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/res";
 include "ai/setup/modsetup";
@@ -272,6 +273,7 @@ while (1)
 								SetBaseStrength(newwfh, Cint(wfhbackup["Str"]));
 								SetBaseIntelligence(newwfh, Cint(wfhbackup["Int"]));
 								SetBaseDexterity(newwfh, Cint(wfhbackup["Dex"]));
+								SetWfhVitalCeilingsAndFill(newwfh);	// 2026-09-30: HP = 2 x Str etc., then topped up
 								newwfh.name := wfhbackup["Name"];
 								var wfhsex := Cint(wfhbackup["Sex"]);
 								newwfh.gender := (wfhsex-400);
@@ -411,6 +413,7 @@ while (1)
 					SetBaseStrength(wfh, wstr);
 					SetBaseIntelligence(wfh, wint);
 					SetBaseDexterity(wfh, wdex);
+					SetWfhVitalCeilingsAndFill(wfh);	// 2026-09-30: HP = 2 x Str etc., then topped up
 					wfh.name := wname;
 					sex := GetObjProperty(heart,"Sex");
 					wfh.gender := (sex-400);

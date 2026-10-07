@@ -26,8 +26,6 @@ const AVERAGE_LEVEL_MOD   := 15;
 const BONUS_PER_LEVEL     := 0.25;
 const SMALL_BONUS_PER_LEVEL := 0.15;
 
-const THIEF_BACKSTAB_BONUS_DAMAGE := 10;
-const THIEF_AMBUSH_BONUS_DAMAGE := 10;
 const RANGER_LEVEL_ARCHERY_RANGE_BONUS := 1; 		//1 range per level further range before 1/4 base damage done
 
 const CRAFTER_REPAIR_DIFF_BONUS := 2.5; // used in util/repair.inc
@@ -167,32 +165,47 @@ endfunction
 
 function GetClasseIdForSkill( who, skillid )
 
-	// Detecting Hidden and Snooping left Thief's classe_skills (they're free
-	// coskills now, exempt from the class-cap dilution total) but an actual
-	// Thief should still get the specialization bonus (skill-gain rate,
-	// success chance) these two already gave. Throwing has the identical
-	// ambiguity from the other direction -- it's brand new to BOTH Thief's
-	// and Powerplayer's lists, and GetClasseIds()' fixed search order always
-	// hits CLASSEID_THIEF first, so a genuine Powerplayer would silently read
-	// (and always miss) Thief's level instead of their own. For all three,
-	// resolve to whichever of Thief/Powerplayer the mobile actually has a
-	// recorded level in, falling through to the generic per-class search
-	// only if neither does.
-	if( skillid == SKILLID_DETECTINGHIDDEN or skillid == SKILLID_SNOOPING or skillid == SKILLID_THROWING )
-		if( GetObjProperty(who, CLASSEID_THIEF) )
+	// 2026-10-03: look at the classes the CHARACTER has, not at the first class that lists the skill.
+	// The old lookup returned the first class in GetClasseIds() order whose list held the skill, so a
+	// Warrior's Swordsmanship resolved to Bladesinger (level 0) and got no class skill-gain bonus,
+	// failed-roll second chance or success bonus; only Healing and Wrestling counted. Of the classes
+	// the character has a level in, the one with the highest level that lists the skill wins, and
+	// 0 means none does. (This also covers the Thief/Powerplayer Throwing, Snooping and Detecting
+	// Hidden special case that 3.1.1 handled by hand.)
+	// 2026-10-04: Snooping and Detecting Hidden are free co-skills of the Thief now (not in its class list),
+	// so the loop below cannot find them for a Thief. The committed lookup resolved them to the Thief and my
+	// 2026-10-03 rewrite dropped that; restored so a Thief keeps the class bonus on both.
+	if( skillid == SKILLID_DETECTINGHIDDEN or skillid == SKILLID_SNOOPING )
+		if( CInt( GetObjProperty( who, CLASSEID_THIEF ) ) )
 			return CLASSEID_THIEF;
-		elseif( GetObjProperty(who, CLASSEID_POWERPLAYER) )
-			return CLASSEID_POWERPLAYER;
 		endif
 	endif
 
+	var best := 0;
+	var bestlevel := 0;
+
 	foreach id in GetClasseIds()
-		if( skillid in GetClasseSkills( id ) )
-			return id;
+		var level := CInt( GetObjProperty( who, id ) );
+		if( level > bestlevel )
+			if( skillid in GetClasseSkills( id ) )
+				// 2026-10-04: a Powerplayer keeps the old rule (decided): the class skill-gain bonus and
+				// second roll only on Forensics, Throwing, Snooping and Detecting Hidden; its own x1.1 to
+				// x1.3 at levels 3 to 5 in skillpoints.inc is its bonus on the rest.
+				var allowed := 1;
+				if( id == CLASSEID_POWERPLAYER )
+					if( skillid != SKILLID_FORENSICS and skillid != SKILLID_THROWING and skillid != SKILLID_SNOOPING and skillid != SKILLID_DETECTINGHIDDEN )
+						allowed := 0;
+					endif
+				endif
+				if( allowed )
+					best := id;
+					bestlevel := level;
+				endif
+			endif
 		endif
 	endforeach
 
-	return 0;
+	return best;
 
 endfunction
 
@@ -462,7 +475,11 @@ function HaveInvalidSkillEnchantmentForClasse( item , classeid )
 	var ret	:= 0;
 	var skillnum	:= GetObjProperty( item , "skilladv" );
 
-	if( (skillnum) or (skillnum == 0) and !(skillnum in GetGeneralSkills()) )
+	// 2026-10-03: the General-skills exemption never worked (and/or precedence: for any non-zero
+	// skill the old condition was always true), so it is commented out rather than fixed. A skill
+	// enchant outside the class skills is refused, as it effectively was.
+	//if( (skillnum) or (skillnum == 0) and !(skillnum in GetGeneralSkills()) )
+	if( (skillnum) or (skillnum == 0) )
 		if( !(skillnum in GetClasseSkills( classeid )) )
 			ret := 1;
 		endif
@@ -528,6 +545,10 @@ function HaveRestrictedModEnchantmentForClasse( item , classeid )
 endfunction
 
 
+// 2026-10-07: stat affinity reviewed per class and switched on for ALL classes (it was
+// Warrior/Crafter only). Each class now has exactly one faster stat: Str for Crafter and
+// Warrior, Dex for Bard, Bladesinger, Thief and Ranger, Int for Mage, Paladin and Mystic
+// Archer. Bard's old Int affinity was dropped so no class gains two stats faster.
 function HaveStatAffinity( who , stat )
 
 	var classeids;
@@ -542,13 +563,13 @@ function HaveStatAffinity( who , stat )
 					CLASSEID_BARD,
 					CLASSEID_BLADESINGER,
 					CLASSEID_THIEF,
-					CLASSEID_MYSTIC_ARCHER };	
+					CLASSEID_RANGER };	
 					break;
 
 		"int":	classeids := {  
-					CLASSEID_BARD,
 					CLASSEID_MAGE,
-					CLASSEID_PALADIN };	
+					CLASSEID_PALADIN,
+					CLASSEID_MYSTIC_ARCHER };	
 					break;
 
 		default:	classeids := {};
@@ -577,17 +598,24 @@ function HaveStatDifficulty( who , stat )
 				CLASSEID_BARD,
 				CLASSEID_BLADESINGER,
 				CLASSEID_MAGE,
-				CLASSEID_MYSTIC_ARCHER };
+				CLASSEID_MYSTIC_ARCHER,
+				CLASSEID_THIEF,
+				CLASSEID_RANGER };
 				break;
+
 		"dex":
 			classeids := {
 				CLASSEID_MAGE,
 				CLASSEID_PALADIN };
 				break;
+
 		"int":
 			classeids := {
 				CLASSEID_CRAFTER,
-				CLASSEID_WARRIOR };
+				CLASSEID_WARRIOR,
+				CLASSEID_THIEF,
+				CLASSEID_RANGER,
+				CLASSEID_BLADESINGER };
 				break;
 
 		default:	classeids := {};
@@ -611,6 +639,8 @@ function IsSpecialisedIn( who, skillid )
 	if( classeid )
 		return CInt( GetObjProperty( who, classeid ) );
 	endif
+
+	return 0; // 2026-10-03: explicit, so "no class for this skill" can never read as a truthy default
 
 endfunction
 
@@ -681,7 +711,10 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryal
 		endif
 	endfor
 
-	if( classe >= 3675 ) //3675 = lvl 1 PP threshold
+	// 2026-10-04: was a hard-coded 3675 (75 x 49 skills, before Throwing made it 50). The all-skills
+	// class (Powerplayer, the only list with more than 20 skills) now follows the length of its list:
+	// level 1 = 75 x number, then 15 x number more per level (3750, 4500, 5250, 6000, 6750, 7500).
+	if( number > 20 and classe >= AVERAGE_SKILL * number )
 		var level     := 1;
 		var average_t := CInt( (AVERAGE_SKILL + AVERAGE_LEVEL_MOD) * number );
 
@@ -751,7 +784,7 @@ function IsProhibitedByClasse( who , item )
 			ret := 1;
 		elseif( GetObjProperty( item , "dex" ) )
 			ret := 1;
-		elseif( GetObjProperty( item , "ar" ) )
+		elseif( GetObjProperty( item , "ar" ) or GetObjProperty( item , "ArBonus" ) ) // 2026-10-03: ArBonus is the property enchanted armor really carries
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MAGE ) )
 			ret := 1;
@@ -763,7 +796,7 @@ function IsProhibitedByClasse( who , item )
 			ret := 1;
 		elseif( GetObjProperty( item , "str" ) )
 			ret := 1;
-		elseif( GetObjProperty( item , "ar" ) )
+		elseif( GetObjProperty( item , "ar" ) or GetObjProperty( item , "ArBonus" ) ) // 2026-10-03: ArBonus is the property enchanted armor really carries
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MYSTIC_ARCHER ) )
 			ret := 1;
@@ -786,6 +819,8 @@ function IsProhibitedByClasse( who , item )
 		elseif( GetObjProperty( item , "str" ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )
+			ret := 1;
+		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )	// 2026-10-05: every other class tests the objtype too; without it the Navar Bloody Barrier (objtype 0x982a, graphic 0x2B01) was never barred for Rangers
 			ret := 1;
 		endif
 	elseif( GetObjProperty( who , CLASSEID_THIEF ) )

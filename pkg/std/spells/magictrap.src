@@ -105,9 +105,9 @@ program cast_strength( parms, spell_id )
 	endif
 	
 	PlaySoundEffect( caster , SFX_SPELL_MAGIC_TRAP1 );
-	SetObjProperty( cast_on , "trap_type"     , cstr( Random(3) + 1 ) );
-	SetObjProperty( cast_on , "trap_strength" , strength );
-	SetObjProperty( cast_on , "trapped_by"    , caster.serial );
+	SetObjProperty( cast_on , "Trap_Type"     , cstr( Random(3) + 1 ) );
+	SetObjProperty( cast_on , "Trap_Strength" , strength );
+	SetObjProperty( cast_on , "Trapped_By"    , caster.serial );
 	cast_on.usescript := ":traps:traps";
 	PrintTextAbovePrivate( cast_on , "*Trapped*" , caster );
 

@@ -8,55 +8,34 @@ use cfgfile;
 include "include/attributes";
 include "include/random";
 include ":attributes:regen";
+include ":attributes:npcvitals";	// 2026-09-30: HITSREGEN / MANAREGEN / STAMREGEN template fields
 
 var modnpc := Self();
 
-if( !GetStrengthMod(modnpc) )
-	var strmod := GetObjProperty( modnpc , "BaseStrmod" );
-	if (strmod)
-		SetStrengthMod(modnpc, strmod);
-		SetHP(modnpc, GetStrength(modnpc));
+// 2026-09-30: the BaseStrmod/BaseIntmod/BaseDexmod CProps were folded into each template's
+// STR/INT/DEX (and RunSpeed pinned to the old DEX), so there is no stat mod to apply here any
+// more. The engine fills HP/Mana/Stam to max itself when an NPC spawns (npc.cpp).
+
+
+// 2026-09-30: template regen comes from the HITSREGEN / MANAREGEN / STAMREGEN fields (points per
+// minute, dice allowed; the old BaseHpRegen/BaseManaRegen CProps were converted x12/100 in the
+// npcdesc reformat). GetNpcVitalSetting resolves the field x100 = the engine's hundredths per
+// minute, caches it per NPC, and honours a tool override (SetNpcVitalOverride) first. -1 = no
+// field: the engine default applies and any stale "template" entry is cleared.
+ApplyTemplateRegen( modnpc, "HITSREGEN", VITALID_LIFE );
+ApplyTemplateRegen( modnpc, "MANAREGEN", VITALID_MANA );
+ApplyTemplateRegen( modnpc, "STAMREGEN", VITALID_STAMINA );
+
+function ApplyTemplateRegen( who, field, vitalid )
+
+	var setting := GetNpcVitalSetting( who, field );
+	if( setting >= 0 )
+		SetVitalRegenRateMod( who, vitalid, "template", setting - CORE_SETTINGS_DEFAULT_REGEN_RATE );
+	else
+		ClearVitalRegenRateMod( who, vitalid, "template" );
 	endif
-endif
 
-
-if( !GetIntelligenceMod(modnpc) )	
-	var intmod := GetObjProperty( modnpc , "BaseIntmod" );
-	if (intmod)
-		SetIntelligenceMod(modnpc,  intmod);
-		SetMana(modnpc, GetIntelligence(modnpc));
-	endif
-endif
-
-
-if( !GetDexterityMod(modnpc) )
-	var dexmod := GetObjProperty( modnpc , "BaseDexmod" );
-	if (dexmod)
-		SetDexterityMod(modnpc, dexmod);
-		SetStamina(modnpc, GetDexterity(modnpc));
-	endif
-endif
-
-
-var base_hp_regen := GetObjProperty( modnpc , "BaseHpRegen" );
-if( base_hp_regen )
-	SetObjProperty( modnpc , "baseregen" , base_hp_regen );
-	SetVitalRegenRateMod( modnpc, VITALID_LIFE, "template", (Cint(base_hp_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
-endif
-
-
-var base_mana_regen := GetObjProperty( modnpc , "BaseManaRegen" );
-if( base_mana_regen )
-	SetObjProperty( modnpc , "basemanaregen" , base_mana_regen);
-	SetVitalRegenRateMod( modnpc, VITALID_MANA, "template", (Cint(base_mana_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
-endif
-
-
-var base_stamina_regen := GetObjProperty( modnpc , "BaseStaminaRegen" );
-if( base_stamina_regen )
-	SetObjProperty( modnpc , "basestaminaregen" , base_stamina_regen);
-	SetVitalRegenRateMod( modnpc, VITALID_STAMINA, "template", (Cint(base_stamina_regen) * 12) - CORE_SETTINGS_DEFAULT_REGEN_RATE );
-endif
+endfunction
 
 if(1)
 	var equip_cfg := ReadConfigFile(":*:equip");
@@ -106,18 +85,10 @@ if( !GetObjProperty( modnpc , "Karma" ) )
 		endif
 	endforeach
 
-	if( GetObjProperty( modnpc , "BaseHpRegen" ) )
-		bonus := bonus + GetObjProperty( modnpc , "BaseHpRegen" );
-	endif
-	
-	if( GetObjProperty( modnpc , "BaseManaRegen" ) )
-		bonus := bonus + GetObjProperty( modnpc , "BaseManaRegen" );
-	endif
-	
-	if( GetObjProperty( modnpc , "BaseStaminaRegen" ) )
-		bonus := bonus + GetObjProperty( modnpc , "BaseStaminaRegen" );
-	endif
-	
+	// 2026-09-30: the regen bonus (raw BaseHpRegen/BaseManaRegen CProp values, which put 46
+	// templates straight at the 15,000 cap) is out of the formula -- npcdesc reformat decision R3.
+	// Re-tune the affected templates when karma/fame is revisited.
+
 	var possible_prots := { "PermPoisonImmunity",
 			 	  "PermMagicImmunity",
 			 	  "Permmr",
@@ -145,7 +116,9 @@ if( !GetObjProperty( modnpc , "Karma" ) )
 	var karma := Cint( base * (Random(21)+90) / 100 );
 	var famodnpc  := Cint( base * (Random(21)+90) / 100 * 0.875 );
 
-	case( npc_cfg[modnpc.npctemplate].alignmodnpcnt )
+	// 2026-09-30: was ".alignmodnpcnt" (a mangled "alignment") -- it never matched, so every NPC
+	// fell through to the default (negative karma) branch, "alignment good" templates included.
+	case( npc_cfg[modnpc.npctemplate].alignment )
 		"evil":		karma := 0 - karma;	break;
 		"good":		break;
 		

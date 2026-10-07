@@ -8,6 +8,7 @@ include "include/spelldata";
 include "include/classes";
 include "include/client";
 include "include/constants/locations";
+include ":attributes:npcvitals";	// GetNpcVitalSetting/SetNpcVitalOverride - class-level HITS/MANA/STAM (2026-09-30)
 
 program summon_creature( parms )
 
@@ -68,7 +69,7 @@ program summon_creature( parms )
 		4: duration := 400;
 		5: duration := 500;
 		6: duration := 600;
-		default : duration := 60;
+		default : duration := 80; // 2026-10-03: no class level (was 60), between that and level 1 (100)
 	endcase	
 	//Print("Duration after: " + duration);
 
@@ -100,7 +101,7 @@ program summon_creature( parms )
 		4: power := 65;
 		5: power := 80;
 		6: power := 100;
-		default : power := 1;
+		default : power := 10; // 2026-10-03: no class level (was 1), between that and level 1 (20)
 	endcase	
 	
 	//Print("Power after case: " + power);
@@ -123,18 +124,23 @@ program summon_creature( parms )
 	
 	Set_Critical( 1 );
 	
-	var str	:= GetBaseStrength(thecritter)-GetStrengthMod(thecritter);
-	var int	:= GetBaseIntelligence(thecritter)-GetIntelligenceMod(thecritter);
-	var dex	:= GetBaseDexterity(thecritter)-GetDexterityMod(thecritter);
-	
+	// 2026-09-30: the Base*mod CProps are folded into the template stats, so the base IS the whole
+	// stat now. Was base-minus-mod scaled plus a scaled CProp mod, which cancelled the template bonus
+	// whenever the creature's AI had already applied it.
+	var str	:= GetBaseStrength(thecritter);
+	var int	:= GetBaseIntelligence(thecritter);
+	var dex	:= GetBaseDexterity(thecritter);
+
 	SetBaseStrength(thecritter,  Cint(str * power / 100));
 	SetBaseIntelligence(thecritter,  Cint(int * power / 100));
 	SetBaseDexterity(thecritter,  Cint(dex * power / 100));
-	
-	SetStrengthMod(thecritter,Cint(GetObjProperty( thecritter , "BaseStrmod" ) * power / 100 ));
-	SetIntelligenceMod(thecritter,Cint(GetObjProperty( thecritter , "BaseIntmod" ) * power / 100 ));
-	SetDexterityMod(thecritter,Cint(GetObjProperty( thecritter , "BaseDexmod" ) * power / 100 ));
-	
+
+	// 2026-09-30: HITS/MANA/STAM scale with class level too (they stopped following Str/Int/Dex
+	// in the HITS migration, so every summon had come out at the full template pools).
+	ScaleSummonVital( thecritter, "HITS", power );
+	ScaleSummonVital( thecritter, "MANA", power );
+	ScaleSummonVital( thecritter, "STAM", power );
+
 	SetHP(thecritter, GetMaxHP(thecritter));
 	SetMana(thecritter, GetMaxMana(thecritter));
 	SetStamina(thecritter, GetMaxStamina(thecritter));
@@ -170,3 +176,21 @@ program summon_creature( parms )
 	thecritter.kill(); // was ApplyRawDamage(x,GetMaxHP(x)+n), silently no-ops above 65535 HP
 
 endprogram
+
+
+// 2026-09-30: sets the summon's HITS/MANA/STAM ceiling to its template value x power%.
+function ScaleSummonVital( who, vitalfield, power )
+
+	var hundredths := GetNpcVitalSetting( who, vitalfield );
+	if( hundredths < 0 )
+		return 0;
+	endif
+
+	var points := Cint( hundredths / 100 * power / 100 );
+	if( points < 1 )
+		points := 1;
+	endif
+
+	return SetNpcVitalOverride( who, vitalfield, points );
+
+endfunction

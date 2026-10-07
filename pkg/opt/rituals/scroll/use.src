@@ -21,7 +21,11 @@ program use_scroll( mobile, scroll )
 		SendSysMessage( mobile, "You can not start a ritual here." );
 		return 0;
     //elseif( GetObjProperty( mobile, MAGE ) < 2 )
-	elseif( GetClasseLevel(mobile) < 2)
+	// 2026-10-03: rituals are for Mages only (they were open to any class at level 2); staff may test
+	elseif( !mobile.cmdlevel && !GetObjProperty( mobile, CLASSEID_MAGE ) )
+		SendSysMessage( mobile, "Only Mages can perform rituals." );
+		return 0;
+	elseif( !mobile.cmdlevel && CInt( GetObjProperty( mobile, CLASSEID_MAGE ) ) < 2 )
 		SendSysMessage( mobile, "You are not a good wizard yet." );
 		return 0;
 	endif

@@ -134,10 +134,14 @@ program banker();
 			elseif(Find(text, "help", 1))
 				ShowHelp(ev.source);
 			endif
-		elseif(SYSEVENT_ITEM_GIVEN)
+		elseif(ev.type == SYSEVENT_ITEM_GIVEN) // 2026-10-04: was the bare constant, true for every non-speech event
 		TurnToward (ev.source);
 			if ( GetObjProperty ( ev.item, "PurchaserSerial") )
 				CashBankersOrder( me, ev );
+			else
+				// anything else handed over goes back; it used to stay with the banker
+				PrintTextAbove(me, "I have no use for this.", 1, 39);
+				MoveItemToContainer(ev.item, ev.source.backpack);
 			endif
 		endif
 		if(ReadGameClock() >= next_wander)
@@ -608,16 +612,19 @@ function BuyBankersNote(who, me, currency)
 		return 0;
 	endif
 
-	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
-	if(!spentcoins)
-		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
-		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
+	// 2026-10-04: make the note first and take the coins second. A full backpack used to
+	// cost the coins and hand over no note.
+	var created := CreateItemInBackpack(who, "bankersorder");
+	if(!created)
+		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
 		return 0;
 	endif
 
-	var created := CreateItemInBackpack(who, "bankersorder");
-	if(created.errortext == "That container is full")
-		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
+	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
+	if(!spentcoins)
+		DestroyItem(created);
+		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
+		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
 		return 0;
 	endif
 
@@ -646,7 +653,7 @@ function CashBankersOrder(me, event)
 		var accept := confirmationSizable(event.source, "Do you wish to cancel this Banker's Order and get a refund?");
 		if(!accept)
 			PrintTextAbove(me, "Very well then. The Banker's Order has been returned to you.", 1, 39);
-			MoveItemToContainer(event.source.backpack, event.item);
+			MoveItemToContainer(event.item, event.source.backpack); // 2026-10-04: item first, container second (was reversed, so a refused note stayed with the banker)
 			return 0;
 		endif
 		type := CInt(GetObjProperty(event.item, "Currency"));
@@ -661,7 +668,7 @@ function CashBankersOrder(me, event)
 		if(!refund)
 			PrintTextAbove(me, "I could not fit the coins in your bank box.", 1, 33);
 			PrintTextAbove(me, "You might not have enough room.", 1, 33);
-			MoveItemToContainer(event.source.backpack, event.item);
+			MoveItemToContainer(event.item, event.source.backpack); // 2026-10-04: item first, container second (was reversed, so a refused note stayed with the banker)
 			return 0;
 		endif
 		PrintTextAbove(me, "The coins have been deposited in your bank box.", 1, 66);
@@ -672,7 +679,7 @@ function CashBankersOrder(me, event)
 		var accept := confirmationSizable(event.source, "Do you wish to redeem this Banker's Order for the coins?");
 		if(!accept)
 			PrintTextAbove(me, "Very well then. The Banker's Order has been returned to you.", 1, 39);
-			MoveItemToContainer(event.source.backpack, event.item);
+			MoveItemToContainer(event.item, event.source.backpack); // 2026-10-04: item first, container second (was reversed, so a refused note stayed with the banker)
 			return 0;
 		endif
 		type := CInt(GetObjProperty(event.item, "Currency"));
@@ -686,7 +693,7 @@ function CashBankersOrder(me, event)
 		if(!refund)
 			PrintTextAbove(me, "I could not fit the coins in your bank box.", 1, 33);
 			PrintTextAbove(me, "You might not have enough room.", 1, 33);
-			MoveItemToContainer(event.source.backpack, event.item);
+			MoveItemToContainer(event.item, event.source.backpack); // 2026-10-04: item first, container second (was reversed, so a refused note stayed with the banker)
 			return 0;
 		endif
 		PrintTextAbove(me, "The coins have been deposited in your bank box.", 1, 66);
@@ -754,16 +761,19 @@ function ConvertCopper(who, me, currency := 0x0EEA)
 		return 0;
 	endif
 
-	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
-	if(!spentcoins)
-		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
-		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
+	// 2026-10-04: make the note first and take the coins second. A full backpack used to
+	// cost the coins and hand over no note.
+	var created := CreateItemInBackpack(who, "bankersorder");
+	if(!created)
+		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
 		return 0;
 	endif
 
-	var created := CreateItemInBackpack(who, "bankersorder");
-	if(created.errortext == "That container is full")
-		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
+	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
+	if(!spentcoins)
+		DestroyItem(created);
+		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
+		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
 		return 0;
 	endif
 
@@ -809,16 +819,19 @@ function ConvertSilver(who, me, currency := 0x0EF0)
 		return 0;
 	endif
 
-	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
-	if(!spentcoins)
-		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
-		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
+	// 2026-10-04: make the note first and take the coins second. A full backpack used to
+	// cost the coins and hand over no note.
+	var created := CreateItemInBackpack(who, "bankersorder");
+	if(!created)
+		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
 		return 0;
 	endif
 
-	var created := CreateItemInBackpack(who, "bankersorder");
-	if(created.errortext == "That container is full")
-		PrintTextAbove(me, "Your backpack is full. Make room and come back later.", 1, 33);
+	var spentcoins := SpendCoin(who, amt + 10, box, CInt(currency));
+	if(!spentcoins)
+		DestroyItem(created);
+		SendSysMessage(who, "There was a problem extracting the coins from your bank box.", 1, 33);
+		SendSysMessage(who, "Please page a staff member and reprt this.", 1, 33);
 		return 0;
 	endif
 

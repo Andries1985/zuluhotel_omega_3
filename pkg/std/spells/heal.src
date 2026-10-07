@@ -41,7 +41,7 @@ program cast_heal( parms, spell_id )
 			EraseObjProperty(caster, "#Casting");
 			return 0;
 		endif
-		cast_on := CanTargetSpell(caster, circle, TGTOPT_NEUTRAL + TGTOPT_CHECK_LOS );
+		cast_on := CanTargetSpell(caster, circle, TGTOPT_HELPFUL + TGTOPT_CHECK_LOS );
 		if (!cast_on)
 			return;
 		endif
@@ -84,6 +84,8 @@ program cast_heal( parms, spell_id )
 		// spelldata.inc (a Liche-form PLAYER also has Type "Undead").
 		if( !IsSpellPvPBlockedByArea( caster , cast_on ) )
 			ApplyTheDamage( cast_on , caster , healed , DMGID_MAGIC );
+		else
+			SendSysMessage( caster , "That would harm them, and they are in a protected area." ); // 2026-10-03: the cursor is helpful now, so say why
 		endif
 	else
 		HealDamage( cast_on , healed );

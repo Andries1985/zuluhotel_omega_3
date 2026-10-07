@@ -43,6 +43,12 @@ program cast_poly( parms, spell_id )
 			caster := parms[1];
 			spell_id := parms[2];
 		endif
+		// 2026-10-03: an armor buff conflicts with the poly mod; refuse before any mana is spent
+		if( !CanModNoConflict( caster , "poly" ) )
+			EraseObjProperty( caster , "#Casting" );
+			SendSysMessage( caster , "Another buff you are under conflicts with that form." );
+			return;
+		endif
 		if (TryToCast( caster, spell_id ) != SUCCESS);
 			EraseObjProperty(caster, "#Casting");
 			return 0;

@@ -402,7 +402,12 @@ exported function BrewPoison( character, flask, via_station := 0 )
 		return;
 	endif
 
-	var nightshade := FindItemInContainer( character.backpack, UOBJ_NIGHTSHADE );
+	// 2026-10-05: FindItemInContainer -> the engine call FindObjtypeInContainer. Same
+	// recursion (both skip locked sub-containers) and a not-found error is falsy just
+	// like the old unset return, so the !x checks below are unchanged. The engine
+	// searches the top level before recursing, so where a match exists at both depths
+	// you now get the top-level one.
+	var nightshade := FindObjtypeInContainer( character.backpack, UOBJ_NIGHTSHADE );
 	if( !nightshade )
 		SendSysMessage( character, "You need Nightshade to brew poison." );
 		return;
@@ -497,7 +502,7 @@ endfunction
 
 function FindAndConsumeBottle( character )
 
-	var bottle := FindItemInContainer( character.backpack, UOBJ_EMPTY_BOTTLE );
+	var bottle := FindObjtypeInContainer( character.backpack, UOBJ_EMPTY_BOTTLE );
 	if( bottle )
 		SubtractAmount( bottle, 1 );
 		return 1;

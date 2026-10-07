@@ -9,13 +9,11 @@ include ":house:utility";
 // regular housing's ~150 individually named house types and custom
 // housing's foundationWxH types alike.
 //
-// Deliberately NOT including ":itemutils:itemtypes" for door detection --
-// it duplicates several function names (IsIngot/IsLog/IsOre/IsReagent/
-// IsSign) already defined in the older, still widely-used
-// scripts/include/itemutil.inc, which some other scripts pull in
-// transitively alongside this file; including both causes a
-// duplicate-function compile error. item.isa(POLCLASS_DOOR) below is a bare
-// uo.em check instead, needing no extra include.
+// Door detection is item.isa(POLCLASS_DOOR) below, a bare uo.em check needing no
+// extra include. It used to say ":itemutils:itemtypes" was deliberately left
+// out because it redefined IsIngot/IsLog/IsOre/IsReagent/IsSign from
+// scripts/include/itemutil.inc; that file was deleted 2026-10-04 (nothing
+// included it -- both include lines in customhousing were commented out).
 include ":itemutils:itemdesc";
 
 include ":mdgumps:include/gumps";

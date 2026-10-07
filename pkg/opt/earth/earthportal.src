@@ -7,8 +7,8 @@ include "include/objtype";
 include "include/client";
 //include ":housing:utility";
 include "../pkg/multis/house/include/utility";
-//include ":multistatichousing:recallgatehelp";
 include "include/attributes";
+include "include/housetravel";	// 2026-10-02: FindHouseAtSpot / CanTravelIntoHouse / DestroyRefusedRune
 
 program cast_earth_portal( caster )
 
@@ -22,7 +22,7 @@ program cast_earth_portal( caster )
 		EraseObjProperty( caster , "#Casting" );
 		return 0;
 	endif
-	
+
 	var antigate := ListItemsNearLocation(caster.x, caster.y, caster.z, 10, caster.realm);
 	foreach item in antigate
 		if (item.objtype == 0xa3c9)
@@ -32,28 +32,15 @@ program cast_earth_portal( caster )
 		endif
 	endforeach
 
-	var multi := GetStandingHeight( caster.x, caster.y, caster.z, caster.realm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_FROM) )
-				SendSysMessage( caster, "You can't gate from to this house." );
-				EraseObjProperty( caster , "#Casting" );
-				return;
-			endif
-		endif
+	// 2026-10-02: house test by footprint (housetravel.inc) instead of the engine's
+	// supporting-multi test, so a courtyard and a static house count as "in a house" too.
+	var from_house := FindHouseAtSpot( caster.x, caster.y, caster.z, caster.realm );
+	if( !CanTravelIntoHouse( caster, from_house, GATE_FROM ) )
+		SendSysMessage( caster, "You can't gate from this house." );
+		EraseObjProperty( caster , "#Casting" );
+		return;
 	endif
-	// Same check as above for static houses
-	// var serialstatichouse := StaticHouseSerial( caster );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, GATE_FROM) )
-	// 			SendSysMessage( caster, "You can't gate from this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
-	
+
 	if (TryToCast( caster, SPELLID_EARTH_PORTAL ) != SUCCESS);
 		Print("Cannot cast spell!");
 		EraseObjProperty(caster, "#Casting");
@@ -61,9 +48,9 @@ program cast_earth_portal( caster )
 	endif
 
 	SendSysmessage( caster, "Select a rune to gate from." );
-	
+
 	var cast_on := CanTargetThing( caster , circle , TGTOPT_CHECK_LOS );
-	
+
 	if (!cast_on)
 		EraseObjProperty( caster , "#Casting" );
 		return;
@@ -76,6 +63,7 @@ program cast_earth_portal( caster )
 		EraseObjProperty( caster , "#Casting" );
 		return 0;
 	elseif( !ReserveItem( cast_on ) )
+		EraseObjProperty( caster , "#Casting" );	// 2026-10-02: every exit clears #Casting (see the 2026-09-22 note above)
 		return 0;
 	endif
 
@@ -86,14 +74,16 @@ program cast_earth_portal( caster )
 
 	if( !tox and !toy and !toz and !torealm )
 		SendSysmessage(caster, "That is a blank rune!");
+		EraseObjProperty( caster , "#Casting" );	// 2026-10-02
 		return;
 	endif
-	
+
 	if( IsForbiddenAreaToGateTo( caster, tox, toy, torealm ) )
 		SendSysMessage(caster, "The destination is a magic place with protection.");
 		if( cast_on.objtype != 0x7100 && cast_on.objtype != UOBJ_RUNIC_ATLAS_EW && cast_on.objtype != UOBJ_RUNIC_ATLAS_NS )
 			DestroyItem( cast_on );
 		endif
+		EraseObjProperty( caster , "#Casting" );	// 2026-10-02
 		return;
 	endif
 
@@ -109,6 +99,7 @@ program cast_earth_portal( caster )
 	if (lamp and owner)
 		if (caster.serial != owner)
 			SendSysMessage( caster, "You can't gate to this house." );
+			EraseObjProperty( caster , "#Casting" );	// 2026-10-02
 			return;
 		endif
 	endif
@@ -117,32 +108,20 @@ program cast_earth_portal( caster )
 	foreach item in antigate2
 		if (item.objtype == 0xa3c9)
 			SendSysMessage( caster, "You can't gate there." );
+			EraseObjProperty( caster , "#Casting" );	// 2026-10-02
 			return;
 		endif
 	endforeach
 
-	multi := GetStandingHeight( tox, toy, toz, torealm ).multi;
-	if( multi )
-		if( !Iscowner( caster, multi )  )
-			if( !IsFriend( caster, multi, GATE_FROM) )
-				SendSysMessage( caster, "You can't gate to this house." );
-				EraseObjProperty( caster , "#Casting" );
-				return;
-			endif
-		endif
+	// 2026-10-02: the destination's house is found by footprint, ignoring the rune's z (see
+	// pkg/std/spells/recall.src). A refused rune is destroyed; a runebook loses that entry.
+	var house := FindHouseAtSpot( tox, toy, toz, torealm );
+	if( !CanTravelIntoHouse( caster, house, GATE_TO ) )
+		SendSysMessage( caster, "You can't gate to this house." );
+		DestroyRefusedRune( caster, cast_on, house, tox, toy, toz, torealm );
+		EraseObjProperty( caster , "#Casting" );
+		return;
 	endif
-
-	//Same check as above but for static houses
-	// serialstatichouse := StaticHouseSerialAtLocation( tox, toy, toz, torealm );
-	// if(serialstatichouse)
-	// 	var sign := SystemFindObjectBySerial(serialstatichouse);
-	// 	if( !Iscowner( caster, sign )  )
-	// 		if( !IsFriend( caster, sign, GATE_FROM) )
-	// 			SendSysMessage( caster, "You can't gate to this house." );
-	// 			return;
-	// 		endif
-	// 	endif
-	// endif
 
 	Set_critical( 1 );
 
@@ -150,13 +129,14 @@ program cast_earth_portal( caster )
 		EraseObjProperty( caster , "#Casting" );
 		return;
 	endif
-	
+
 	var gate1 := CreateItemAtLocation( caster.x, caster.y, caster.z, UOBJ_BLACK_MOONGATE, 1, caster.realm );
-	var gate2 := CreateItemAtLocation( tox, toy, toz, UOBJ_BLACK_MOONGATE2, 1, torealm );	
+	var gate2 := CreateItemAtLocation( tox, toy, toz, UOBJ_BLACK_MOONGATE2, 1, torealm );
 
 	if( !gate1 || !gate2 || !caster )
 		DestroyItem(gate1);
 		DestroyItem(gate2);
+		EraseObjProperty( caster , "#Casting" );	// 2026-10-02
         return;
 	endif
 
@@ -183,12 +163,12 @@ program cast_earth_portal( caster )
 	EraseObjProperty( caster , "#Casting" );
 
 	Sleep( 60 );
-    
+
 	set_critical( 1 );
-	
+
 	DestroyItem( gate1 );
 	DestroyItem( gate2 );
-	
+
 	set_critical(0);
-	
+
 endprogram

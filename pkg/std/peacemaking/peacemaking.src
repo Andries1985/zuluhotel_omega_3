@@ -33,7 +33,7 @@ program bard_peacemake( character )
 			if( !mobile.npctemplate and !mobile.cmdlevel )
 				difficulty := GetIntelligence(mobile);
 			elseif( elem and !(elem.Privs == "invul") )
-				difficulty := Cint( elem.provoke );
+				difficulty := Cint( elem.peacemake );	// 2026-09-30: own template field (seeded from provoke in the npcdesc reformat)
 			else
 				continue;
 			endif

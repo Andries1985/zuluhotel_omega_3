@@ -1183,6 +1183,9 @@ function ShowCustomNpcEntryEditor(who, realm, name, entry_id, prefix := "areaspa
 				ov.hits := loaded.hits;
 				ov.stam := loaded.stam;
 				ov.mana := loaded.mana;
+				// 2026-09-30: regen overrides are points per minute; NormalizeCustomNpcOverrides
+				// (areaspawner.inc) converts a definition saved in the old unit, same as the spawn path
+				loaded := NormalizeCustomNpcOverrides( loaded );
 				ov.hpregen := loaded.hpregen;
 				ov.manaregen := loaded.manaregen;
 				ov.color := loaded.color;
@@ -1481,9 +1484,9 @@ endfunction
 
 
 // Stats sub-page of the Custom NPC editor - str/dex/int, max hits/stam/mana,
-// and the regen bonuses (BaseHpRegen/BaseManaRegen - see
-// scripts/ai/setup/modsetup.inc, which is what actually turns these into a
-// regen rate and a Karma/Fame bonus once the critter's AI restarts).
+// and the regen overrides (points per minute since 2026-09-30, stored with
+// SetNpcVitalOverride as HITSREGEN/MANAREGEN - see scripts/ai/setup/modsetup.inc,
+// which turns them into the regen rate once the critter's AI restarts).
 function ShowCustomNpcStatsEditor(who, ov)
 
 	var gumpwidth := 380;
@@ -1498,7 +1501,7 @@ function ShowCustomNpcStatsEditor(who, ov)
 	tid := tid + 1;
 
 	var y := 55 + AS_GUMP_Y_SHIFT;
-	var fieldlabels := array{ "STR:", "DEX:", "INT:", "Max Hits:", "Max Stam:", "Max Mana:", "HP Regen Bonus:", "Mana Regen Bonus:" };
+	var fieldlabels := array{ "STR:", "DEX:", "INT:", "Max Hits:", "Max Stam:", "Max Mana:", "HP Regen /min:", "Mana Regen /min:" };	// 2026-09-30: points per minute (template default 12)
 	var fieldids := array{ AS_TXT_CSTR, AS_TXT_CDEX, AS_TXT_CINT, AS_TXT_CHITS, AS_TXT_CSTAM, AS_TXT_CMANA, AS_TXT_G1, AS_TXT_G2 };
 	var fieldvals := array{ CStr(ov.str), CStr(ov.dex), CStr(ov.intel), CStr(ov.hits), CStr(ov.stam), CStr(ov.mana), CStr(ov.hpregen), CStr(ov.manaregen) };
 
@@ -1528,8 +1531,8 @@ function ShowCustomNpcStatsEditor(who, ov)
 	ov.hits := Cint(keyret[AS_TXT_CHITS] - (CStr(AS_TXT_CHITS)+": "));
 	ov.stam := Cint(keyret[AS_TXT_CSTAM] - (CStr(AS_TXT_CSTAM)+": "));
 	ov.mana := Cint(keyret[AS_TXT_CMANA] - (CStr(AS_TXT_CMANA)+": "));
-	ov.hpregen := Cint(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));
-	ov.manaregen := Cint(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
+	ov.hpregen := CDbl(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));	// 2026-09-30: points per minute, decimals allowed (2.5)
+	ov.manaregen := CDbl(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
 
 	return ov;
 
@@ -1661,7 +1664,7 @@ function ShowCustomNpcOtherEditor(who, ov)
 
 		var y := 55 + AS_GUMP_Y_SHIFT;
 		layout.append( "text 20 "+CStr(y)+" "+CStr(Cint(COLOR_BLUE_LIGHT))+" "+CStr(tid) );
-		data.append( "Move Speed (0-300, 0 = dex-based default):" );
+		data.append( "Move Speed (Fastest/Fast/Normal/Slow/Slowest, blank = template):" );
 		tid := tid + 1;
 		layout.append( "textentry 260 "+CStr(y-2)+" 90 20 "+CStr(Cint(COLOR_GREEN))+" "+CStr(AS_TXT_G1)+" "+CStr(tid) );
 		data.append( CStr(ov.movespeed) );
@@ -1714,7 +1717,7 @@ function ShowCustomNpcOtherEditor(who, ov)
 
 		// same "read whatever's in the fields before branching" rule as the
 		// main editor, so Pick Slayer Type doesn't discard hand-typed values
-		ov.movespeed := Cint(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));
+		ov.movespeed := CStr(keyret[AS_TXT_G1] - (CStr(AS_TXT_G1)+": "));	// 2026-09-30: a MoveSpeed word, not a number
 		ov.runspeed := Cint(keyret[AS_TXT_CRUNSPEED] - (CStr(AS_TXT_CRUNSPEED)+": "));
 		ov.snoopme := Cint(keyret[AS_TXT_G2] - (CStr(AS_TXT_G2)+": "));
 		ov.stealme := Cint(keyret[AS_TXT_G3] - (CStr(AS_TXT_G3)+": "));

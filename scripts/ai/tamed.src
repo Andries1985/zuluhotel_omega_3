@@ -18,6 +18,8 @@ include "include/attributes";
 include ":house:utility";
 
 const HALT_THRESHOLD := 10;
+// 2026-10-04: gold fine to reclaim a pet confiscated in a safe area = Strength x this (min 100).
+const PET_CONFISCATION_FINE_PER_STR := 5;
 Const MOVING_EFFECT_FIREBALL	:= 0x36D4;
 
 var me := Self();
@@ -144,7 +146,7 @@ function Fight( opponent )
 	var oldguarding := guarding;
 	var oldstaying := staying;
 
-	SetDexterityMod(me, 0);
+	//SetDexterityMod(me, 0);
 	following := 0;
 
 	if ( (opponent.serial == me.serial) or (opponent.serial == master.serial) )
@@ -269,14 +271,7 @@ function Fight( opponent )
 endfunction
 
 function CloseDistance( opponent )
-	var sleepdelay := 300 - (CInt(GetDexterity(me)) * 1.5);
-	if (sleepdelay < 0) 
-		sleepdelay := 0; 
-	endif
-	var MoveSpeed := GetObjProperty(me, "MoveSpeed");
-	if(MoveSpeed)
-		sleepdelay := GetSpeed(me, MoveSpeed);
-	endif
+	var sleepdelay := GetNpcMoveDelay(me);	// 2026-09-30: MoveSpeed template field / instance override / Dex default (attributes.inc)
 	// casters are better off not meleeing their opponent! 
 	//replicate the movement from spellkill
 	if (caster)
@@ -403,6 +398,47 @@ function Transfer()
 endfunction
 
 
+// 2026-10-04: a pet released or over the pet limit inside a safe area used to be destroyed outright.
+// It is confiscated now: the owner gets a Pet confiscation notice (objtype 0xDF0C) and can hand it
+// to an Animal Trainer and pay the fine to get the pet back (the branch already in
+// animaltrainer.src Load_Ticket_Data). Returns 0, and leaves the pet alone, if no notice could be made.
+function ConfiscatePet()
+
+	var fine := GetStrength( me ) * PET_CONFISCATION_FINE_PER_STR;
+	if( fine < 100 )
+		fine := 100;
+	endif
+
+	var ticket := 0;
+	if( master.backpack )
+		ticket := CreateItemInBackpack( master , 0xDF0C , 1 );
+	endif
+	if( !ticket )
+		ticket := CreateItemAtLocation( master.x , master.y , master.z , 0xDF0C , 1 , master.realm );
+	endif
+	if( !ticket )
+		return 0;
+	endif
+
+	ticket.name := "Pet confiscation notice - Name: " + me.name + " - " + me.npctemplate;
+	SetObjProperty( ticket , "petname" , me.name );
+	SetObjProperty( ticket , "pethp" , GetHP( me ) );
+	SetObjProperty( ticket , "petmana" , GetMana( me ) );
+	SetObjProperty( ticket , "petcolor" , me.color );
+	SetObjProperty( ticket , "pettemplate" , me.npctemplate );
+	SetObjProperty( ticket , "owner_serial" , master.serial );
+	SetObjProperty( ticket , "confiscation_fine" , fine );
+
+	SendSysmessage( master , me.name + " was confiscated by the guards. Give the notice to an animal trainer and pay the fine of " + fine + " gold to get it back." );
+	PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
+	MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
+	RevokePrivilege( me, "invul" );
+	me.kill();
+	return 1;
+
+endfunction
+
+
 function Release()
 
 	if( GetObjProperty( me, "DonatorMount") )
@@ -445,11 +481,9 @@ function Release()
 		me.kill();
 	else
 		if( IsInSafeArea(me) || IsInSafeArea(me.master) )
-			SendSysmessage( master , "You can't release an animal here, it has been destroyed." );
-			PlayStationaryEffect( me.x, me.y, me.z, FX_SMOKE, 0xA, 0xA, 0, me.realm );
-			MoveObjectToLocation(me, DEFAULT_LOCATION_NPC_RELOCATION_X, DEFAULT_LOCATION_NPC_RELOCATION_Y, DEFAULT_LOCATION_NPC_RELOCATION_Z, DEFAULT_LOCATION_NPC_RELOCATION_R, MOVEOBJECT_FORCELOCATION);
-			RevokePrivilege( me, "invul" );
-			me.kill();
+			if( !ConfiscatePet() )
+				SendSysmessage( master , "You can't release an animal here!" );
+			endif
 			return;
 		elseif( IsInNOPKArea(me) || IsInGuardedArea(me) )
 			SendSysmessage( master , "You can't release an animal here!" );

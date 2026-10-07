@@ -65,13 +65,9 @@ function TakeItem(me, you, it, speech)
 		PrintTextAbovePrivate(me, reply, you);
 	else
 		if(speech)
-			if( GetObjproperty(it,"slave") )
-				TurnToward( you );
-				GiveQuestieDirections( you, it );
-			else
-				TurnToward( you );
-				PrintTextAbovePrivate( me, "Eh? What's this?", you );
-			endif
+			// 2026-09-30: the questie escort-quest branch ("slave" cprop) was removed with the questie npc
+			TurnToward( you );
+			PrintTextAbovePrivate( me, "Eh? What's this?", you );
 		endif
 		MoveItemToContainer( it, you.backpack );
 		return;
@@ -459,41 +455,6 @@ function DefaultHello(me, speaker, text)
 		SetObjProperty( me, "#lastgreet", ReadGameClock()+30 );
 		return 1;
 	endif
-
-endfunction
-
-function GiveQuestieDirections(you, it)
-	var me := self();
-
-	var questie := SystemFindObjectBySerial(cint(GetObjproperty(it,"slave")));
-	if (!questie)
-		PrintTextAbovePrivate(me, "I don't think you'll ever find who you are looking for.", you); // 2026-09-23: was the item
-		return;
-	endif
-
-	var ns_desc := "";
-	var ew_desc := "";
-	var dir;
-
-	if (questie.y < you.y)
-        	ns_desc := "north";
-	elseif  (questie.y > you.y)
-		ns_desc := "south";
-	endif
-
-	if (questie.x < you.x)
-		ew_desc := "west";
-	elseif  (questie.x > you.x)
-		ew_desc := "east";
-	endif
-
-	if (ns_desc == "" and ew_desc == "")
-		dir := "nearby";
-	else 
-		dir := ns_desc + ew_desc ;
-	endif
-
-	PrintTextAbovePrivate(me, "Looking for " + questie.name + "?  I think they are " + dir, you ); // 2026-09-23: was the item
 
 endfunction
 

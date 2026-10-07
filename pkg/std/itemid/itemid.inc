@@ -11,21 +11,30 @@ include ":containers:checks";
 // 2026-09-21: which skill stands in for Item ID depends on the class. This was
 // an if-chain inside SelectItemToID; it is shared now so do_itemid's cooldown
 // can use the same value (at 100+ there is no wait at all).
-function ItemIDClassSkill( who )
+// 2026-10-05: split so ItemID() can roll on the same skill. ItemIDClassSkillId
+// returns the skill id, ItemIDClassSkill its effective value.
+function ItemIDClassSkillId( who )
 
 	if ( GetObjProperty( who , CLASSEID_BARD ) )
-		return GetEffectiveSkill( who, SKILLID_TASTEID );
+		return SKILLID_TASTEID;
 	elseif ( GetObjProperty( who , CLASSEID_WARRIOR ) )
-		return GetEffectiveSkill( who, SKILLID_ANATOMY );
+		return SKILLID_ANATOMY;
 	elseif ( GetObjProperty( who , CLASSEID_THIEF ) )
-		return GetEffectiveSkill( who, SKILLID_REMOVETRAP );
+		return SKILLID_REMOVETRAP;
 	elseif ( GetObjProperty( who , CLASSEID_CRAFTER ) )
-		return GetEffectiveSkill( who, SKILLID_ARMSLORE );
+		return SKILLID_ARMSLORE;
 	elseif ( GetObjProperty( who , CLASSEID_RANGER ) )
-		return GetEffectiveSkill( who, SKILLID_CAMPING );
+		return SKILLID_CAMPING;
 	endif
 
-	return GetEffectiveSkill( who, SKILLID_ITEMID );
+	return SKILLID_ITEMID;
+
+endfunction
+
+
+function ItemIDClassSkill( who )
+
+	return GetEffectiveSkill( who, ItemIDClassSkillId( who ) );
 
 endfunction
 
@@ -152,7 +161,16 @@ endfunction
 
 function ItemID( who, the_item )
 
-	var thepoints := get_default_points( SKILLID_ITEMID );
+	// 2026-10-05: the roll uses the class's stand-in skill (Anatomy for a Warrior,
+	// Taste ID for a Bard...), the same one the wait and the batch gate already read;
+	// it was always Item ID before, so a 150 Anatomy Warrior identified 2% of tries.
+	// A stand-in class rolls with 0 points and gains nothing from identifying; a
+	// character rolling on Item ID itself (Mage and everyone else) gains as before.
+	var skillid := ItemIDClassSkillId( who );
+	var thepoints := 0;
+	if( skillid == SKILLID_ITEMID )
+		thepoints := get_default_points( SKILLID_ITEMID );
+	endif
 	var ided := GetObjProperty( the_item , "IDed" );
 
 	if( !ided )		
@@ -160,7 +178,7 @@ function ItemID( who, the_item )
 			SendSysmessage( who , "This is a normal item." );
 			SetObjProperty( the_item , "IDed" , 1 );
 			return 1;
-		elseif( !CheckSkill( who , SKILLID_ITEMID , -2 , thepoints ) )
+		elseif( !CheckSkill( who , skillid , -2 , thepoints ) )
 			SendSysmessage (who, "I'm not sure . . .");
 			return 0;
 		endif

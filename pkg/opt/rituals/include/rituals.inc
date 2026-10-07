@@ -22,6 +22,7 @@ include "include/string";
 // people within ten tiles; the next step refreshes it, a bystander who
 // walks off sees it expire (it used to be an override until logoff).
 const RITUAL_LIGHT_STEP_SECONDS := 120;
+const RITUAL_MAX_CRYSTALS := 4; // 2026-10-04: filled mana crystals that count towards a ritual's mana floor
 
 var magic_circle := array{},
     captor;
@@ -713,17 +714,28 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
                 item.SaveOnExit := 0;
         endif
         
-	if( YesNo( mobile, "Use mana crystals?" ))
-		while( mobile.connected )
-			SendSysMessage( mobile, "Select a mana crystal to access, Hit Esc to cancel." );
+	// 2026-10-04: crystal mana is pooled, not poured into the caster. It used to go through SetMana,
+	// which clamps to the caster's maximum, so a crystal could never lift anyone to a ritual's mana
+	// floor. Up to RITUAL_MAX_CRYSTALS filled crystals are selected, their charge is added to the
+	// caster's own mana for the floor check below, and the crystals are only emptied once the check
+	// has passed (a refused ritual keeps its crystals).
+	var crystals := array;
+	var crystal_serials := array;
+	var crystal_pool := 0;
+	if( YesNo( mobile, "Use mana crystals? (up to "+RITUAL_MAX_CRYSTALS+")" ))
+		while( mobile.connected && crystals.size() < RITUAL_MAX_CRYSTALS )
+			SendSysMessage( mobile, "Select a mana crystal to access ("+crystals.size()+"/"+RITUAL_MAX_CRYSTALS+" chosen), Hit Esc to finish." );
 			var crystal := Target( mobile );
 			if( !crystal )
-                                SendSysMessage( mobile, "Cancelled the use of a mana crystal." );
+                                SendSysMessage( mobile, "Done choosing mana crystals." );
 				break;
        			elseif( !useItem_check( mobile, crystal, ITEM_INCONTAINER ))
 				continue;
                         elseif( !crystal.IsCrystalMana() )
 				SendSysMessage( mobile, "That is not a mana crystal." );
+				continue;
+                        elseif( crystal.serial in crystal_serials )
+				SendSysMessage( mobile, "You already chose that crystal." );
 				continue;
                         endif
 
@@ -733,9 +745,10 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
 				continue;
 			endif
 
-                        SetMana( mobile, GetMana( mobile ) + crystal_level );
-                        SendSysMessage( mobile, "The crystal's stored energy flows into you." );
-                        EraseObjProperty( crystal, "ManaLevel" );
+                        crystals.append( crystal );
+                        crystal_serials.append( crystal.serial );
+                        crystal_pool := crystal_pool + crystal_level;
+                        SendSysMessage( mobile, "The crystal's stored energy is ready: "+crystal_pool+" mana pooled from "+crystals.size()+" crystal(s)." );
 		endwhile
 	endif
 
@@ -750,10 +763,18 @@ function ProcessRitual( mobile, spell_id, item, gate_info )
         // Mana cost comes from gate_info[4] rather than spells.cfg's
         // ManaCost - 9 of these rituals need it to scale with the target's
         // current tier, which a single flat per-spell value can't express.
-        if( mobile.cmdlevel < 4 && GetMana( mobile ) < gate_info[4] )
-                SendSysMessage( mobile, "You don't have enough mana to continue this ritual!" );
+        if( mobile.cmdlevel < 4 && ( GetMana( mobile ) + crystal_pool ) < gate_info[4] )
+                SendSysMessage( mobile, "You don't have enough mana to continue this ritual! It needs "+gate_info[4]+" (your mana plus your crystals: "+( GetMana( mobile ) + crystal_pool )+")." );
                 RITUAL_EndCircleSurvivingItem( mobile, item, 0 );
                 return -1;
+        endif
+
+        // the floor is met: the chosen crystals are spent
+        foreach used_crystal in crystals
+                EraseObjProperty( used_crystal, "ManaLevel" );
+        endforeach
+        if( crystals.size() )
+                SendSysMessage( mobile, "The crystals' stored energy is spent on the ritual." );
         endif
 
 	PrintTextAbove( item, "*The ritual has started*" );

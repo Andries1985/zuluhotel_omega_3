@@ -58,95 +58,103 @@ function GetVerseInfo(gump, verse)
 	1: // Sonic Disturbance
 	GFTextLine(gump, 245, 25, 64, "Sonic Disturbance");
 	GFHTMLAREA(gump, 245, 50, 160, 100, "<BASEFONT SIZE=4>Emits an ear piercing sound wave.  While the damage isn't high, the verse is a simple one to master", 0, 0);
-	GFGumpPic(gump, 352, 160, 2270);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFGumpPic(gump, 408, 30, 2270);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	2: // Lesser Healing
 	GFTextLine(gump, 245, 25, 64, "Lesser Healing");
 	GFHTMLAREA(gump, 240, 50, 160, 100, "<BASEFONT SIZE=4>Lightly heals nearby friends.  Useful for helping the lightly wounded without a high stamina consumption.", 0, 0);
-	GFTilePic(gump, 323, 140, 2);
-	GFTilePic(gump, 345, 140, 3);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 386, 30, 2);
+	GFTilePic(gump, 408, 30, 3);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	3: // Shadows
 	GFTextLine(gump, 245, 25, 64, "Shadows");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>All nearby friends are instantly cast into the shadows.  Nothing can be seen, but music is always heard...", 0, 0);
-	GFGumpPic(gump, 352, 160, 2274);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFGumpPic(gump, 408, 30, 2274);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	4: // corpse distention
 	GFTextLine(gump, 245, 25, 64, "Corpse Distention");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Increases the pressure inside nearby corpses. The result is messy, and in certain situations, very deadly.", 0, 0);
-	GFTilePic(gump, 330, 170, 15722);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 15722);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	5: // Spirit Flock
 	GFTextLine(gump, 245, 25, 64, "Spirit Flock");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Summons a flock of spirit goats. Protective of their master, the goats flock together to attack their enemies. ", 0, 0);
-	GFTilePic(gump, 350, 165, 9600);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 9600);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	6: // Dragon Skin
 	GFTextLine(gump, 245, 25, 64, "Dragon Skin");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Strengthens nearby allies skin with the strength of dragon skin.  Enabling them to sustain greater physical damage.", 0, 0);
-	GFTilePic(gump, 355, 155, 8406);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 8406);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	7: // Life Balance
 	GFTextLine(gump, 245, 25, 64, "Life Balance");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Evenly balances all nearby allies health between them. A very effective verse at keeping everyone in the group alive.", 0, 0);
-	GFTilePic(gump, 355, 155, 6225);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 6225);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	8: // Bardic Boulders
 	GFTextLine(gump, 245, 25, 64, "Bardic Boulders");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Summons a boulder to be dropped on a targets head, very painfull. The first verse allowing selective targetting.", 0, 0);
-	GFTilePic(gump, 350, 150, 6006);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 6006);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	9: // Beastal Bond
 	GFTextLine(gump, 245, 25, 64, "Beastal Bond");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>Creates a bond between the bard and the beast. The beast acts as a 'spy' of sorts for the bard.", 0, 0);
-	GFTilePic(gump, 350, 150, 8484);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 8484);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	10: // Not Implemented
 	GFTextLine(gump, 245, 25, 64, "Not Implemented");
 	GFHTMLAREA(gump, 243, 50, 160, 100, "<BASEFONT SIZE=4>This verse hasn't been created yet. The below fellow is someone who has been waiting for it...", 0, 0);
-	GFTilePic(gump, 350, 150, 6659);
-	GFTextLine(gump, 245, 160, 0, "Stamina:");
-	GFTextLine(gump, 310, 160, 44, info[1]);
-	GFTextLine(gump, 245, 180, 0, "Difficulty:");
-	GFTextLine(gump, 310, 180, 44, info[2]);
+	GFTilePic(gump, 408, 30, 6659);
+	GFTextLine(gump, 245, 152, 0, "Stamina:");
+	GFTextLine(gump, 310, 152, 44, info[1]);
+	GFTextLine(gump, 245, 168, 0, "Difficulty:");
+	GFTextLine(gump, 310, 168, 44, info[2]);
 
 	endcase
+
+	// 2026-10-02: the skills the verse rolls (verses.cfg UseSkill), which players were never
+	// told. Stamina and Difficulty moved up a row and the icons to the top right to make room.
+	GFTextLine(gump, 245, 184, 0, "Uses:");
+	GFTextLine(gump, 285, 184, 44, info[3]);
+	if( info[4] )
+		GFTextLine(gump, 285, 198, 44, info[4]);
+	endif
 
 	return gump;
 

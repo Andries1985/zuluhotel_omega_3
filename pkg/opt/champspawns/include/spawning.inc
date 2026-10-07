@@ -3,6 +3,7 @@ use uo;
 
 include "titles";
 include "include/attributes";
+include ":attributes:npcvitals";	// GetNpcVitalSetting/SetNpcVitalOverride - 2x HITS on wave creatures (2026-09-30)
 include "include/random";
 include ":champspawns:skulls";
 
@@ -102,10 +103,11 @@ function SpawnCreature(altar)
   PlayStationaryEffect(loc[1], loc[2], loc[3], 0x3728, 7, 0x10, 0, altar.realm);
   var creature := CreateNPCFromTemplate(getSpawnTemplateName(altar), loc[1], loc[2], loc[3], 0, altar.realm);
   if(creature)
-    if(GetObjProperty(creature, "BaseStrmod") > 50)
-      SetObjProperty(creature, "BaseStrmod", (GetObjProperty(creature, "BaseStrmod")*2));
-    else
-      SetObjProperty(creature, "BaseStrmod", 100);
+    // 2026-09-30: wave creatures get 2x their template HITS. Was a doubled BaseStrmod CProp, which
+    // raised HP through Str until the HITS migration and did nothing after; the CProp is gone now.
+    var champ_hits := GetNpcVitalSetting(creature, "HITS");
+    if(champ_hits > 0)
+      SetNpcVitalOverride(creature, "HITS", Cint(champ_hits / 100) * 2);
     endif
 	  SetHP(creature, GetMaxHP(creature));
     SetObjProperty(creature, "iChampSpawn", 1);

@@ -25,6 +25,12 @@ include ":datafile:datafile";
 // Max numbers of characters an account can have.
 CONST ACCT_MAX_CHARACTERS	:= 7;
 
+// 2026-10-01: the login policy's numbers come from settings.cfg ("Settings" block); these
+// are the fallbacks for a missing key.
+CONST ACCT_DEFAULT_MAX_DISCORDS_ONLINE		:= 2;	// characters online per DiscordID
+CONST ACCT_DEFAULT_MAX_ACCOUNTS_PER_DISCORD	:= 2;	// accounts one DiscordID may hold
+CONST ACCT_DEFAULT_HOUSEHOLD_CAP		:= 2;	// DiscordIDs a new household lets share an IP
+
 function ACCT_IsDebugEnabled()
 
 	var settings := ACCT_GetSettingsCfgElem( "Settings" );
@@ -46,7 +52,31 @@ function ACCT_DebugPrint( message )
 	return 1;
 endfunction
 
+// 2026-10-01: one whole-number policy key from settings.cfg. A missing key, or a value
+// under lowest, gives the fallback.
+function ACCT_GetPolicySetting( key, fallback, lowest:=1 )
+
+	var settings := ACCT_GetSettingsCfgElem( "Settings" );
+	var value := GetConfigInt( settings, key );
+	if( value == error )
+		return fallback;
+	endif
+
+	value := CInt( value );
+	if( value < lowest )
+		return fallback;
+	endif
+
+	return value;
+endfunction
+
 function CreateNewAccount( username, password, discordID, pin, expansion:="" )
+
+	// 2026-10-01: a DiscordID may hold only MaxAccountsPerDiscord accounts (settings.cfg).
+	var limit_reason := ACCT_DiscordAccountLimitReason( discordID );
+	if( limit_reason )
+		return error{ "errortext" := limit_reason };
+	endif
 
 	var account := CreateAccount( username, password, 1 );
 	if( account.errortext )
@@ -56,7 +86,7 @@ function CreateNewAccount( username, password, discordID, pin, expansion:="" )
 	account := FindAccount(UserName);
 	account.setprop("DiscordID", discordID);
 	account.setprop("Pin", CInt(pin));
-	account.setprop("Login ", NowString());
+	account.setprop("Login", NowString()); // 2026-10-01: was "Login " with a trailing space, a property nothing reads
 	account.setprop("Notes", "<none>");
 	account.setprop("Release", 0);
 	account.SetProp( "CreatedAt", NowString());
@@ -64,7 +94,7 @@ function CreateNewAccount( username, password, discordID, pin, expansion:="" )
 	if( expansion )
 		account.Set_UO_Expansion( expansion );
 	endif
-	
+
 	//account.SetProp( "SignupIP", signup_ip );
 	ACCT_SetLastLogin( account );
 
@@ -272,9 +302,14 @@ function ACCT_AccountHasStaffAccess( account_or_who )
 		return 0;
 	endif
 
-	var default_cmdlevel := account.GetProp( "DefaultCmdLevel" );
-	if( ACCT_IsStaffCmdLevel( default_cmdlevel ))
-		return 1;
+	// 2026-10-01: DefaultCmdLevel is a built-in account field holding a number, not a custom
+	// property -- account.GetProp( "DefaultCmdLevel" ) never found anything, so this test
+	// never matched. Only a real number counts, so nothing unexpected can mark everyone staff.
+	var default_cmdlevel := account.defaultcmdlevel;
+	if( TypeOf( default_cmdlevel ) == "Integer" )
+		if( default_cmdlevel > 0 )
+			return 1;
+		endif
 	endif
 
 	for i := 1 to ACCT_MAX_CHARACTERS
@@ -404,35 +439,6 @@ function ACCT_HouseholdContainsDiscord( household_id, discord_norm )
 	return 0;
 endfunction
 
-function ACCT_GetHouseholdForDiscord( discord_norm )
-
-	discord_norm := ACCT_NormalizeDiscordID( discord_norm );
-	if( !discord_norm )
-		return dictionary{ "errortext" -> "Missing discord id." };
-	endif
-
-	foreach acct_name in ( ListAccounts() )
-		var account := FindAccount( acct_name );
-		if( account.errortext )
-			continue;
-		endif
-
-		var account_discord_norm := ACCT_NormalizeDiscordID( account.GetProp( "DiscordID" ));
-		if( account_discord_norm != discord_norm )
-			continue;
-		endif
-
-		var household_id := ACCT_TrimDiscordID( account.GetProp( "HouseholdId" ));
-		if( !household_id )
-			return dictionary{ "errortext" -> "No household assigned." };
-		endif
-
-		return ACCT_GetHouseholdById( household_id, 0 );
-	endforeach
-
-	return dictionary{ "errortext" -> "Discord id not found in accounts." };
-endfunction
-
 function ACCT_FindDiscordHouseholdConflict( discord_norm, desired_household_id )
 
 	discord_norm := ACCT_NormalizeDiscordID( discord_norm );
@@ -547,17 +553,9 @@ function ACCT_AssignAccountToHousehold( account_or_who, household_id, actor_name
 		return household;
 	endif
 
-	var members := household.GetProp( "Members" );
-	if( TypeOf( members ) != "Array" )
-		members := array;
-	endif
-	if( !members.contains( discord_norm ))
-		members.append( discord_norm );
-	endif
-
-	household.SetProp( "Members", members );
 	if( CInt( household.GetProp( "HouseholdCap" )) < 1 )
-		household.SetProp( "HouseholdCap", 1 );
+		// 2026-10-01: a new household lets two players share an IP (was 1, which let nobody).
+		household.SetProp( "HouseholdCap", ACCT_GetPolicySetting( "DefaultHouseholdCap", ACCT_DEFAULT_HOUSEHOLD_CAP ));
 	endif
 	if( actor_name )
 		household.SetProp( "UpdatedBy", actor_name );
@@ -565,8 +563,19 @@ function ACCT_AssignAccountToHousehold( account_or_who, household_id, actor_name
 		household.SetProp( "UpdatedBy", "system" );
 	endif
 
+	var previous_household := ACCT_TrimDiscordID( info["HouseholdId"] );
+
 	account.SetProp( "DiscordIDNorm", discord_norm );
 	account.SetProp( "HouseholdId", household_id );
+
+	// 2026-10-01: the member list is rebuilt from the accounts, so it cannot drift from
+	// them; a household this account just left is rebuilt too.
+	var members := ACCT_SyncHouseholdMembers( household_id );
+	if( previous_household )
+		if( previous_household != household_id )
+			ACCT_SyncHouseholdMembers( previous_household );
+		endif
+	endif
 
 	return dictionary
 	{
@@ -595,42 +604,188 @@ function ACCT_RemoveAccountFromHousehold( account_or_who, actor_name:="" )
 	endif
 
 	var discord_norm := info["DiscordIDNorm"];
-	var household := ACCT_GetHouseholdById( household_id, 0 );
-	if( household.errortext )
-		account.EraseProp( "HouseholdId" );
-		return dictionary
-		{
-			"HouseholdId" -> household_id,
-			"DiscordIDNorm" -> discord_norm,
-			"MemberCount" -> 0
-		};
-	endif
-
-	var members := household.GetProp( "Members" );
-	if( TypeOf( members ) != "Array" )
-		members := array;
-	endif
-
-	for i := 1 to members.size()
-		if( members[i] == discord_norm )
-			members.erase( i );
-			break;
-		endif
-	endfor
-
-	household.SetProp( "Members", members );
-	if( actor_name )
-		household.SetProp( "UpdatedBy", actor_name );
-	else
-		household.SetProp( "UpdatedBy", "system" );
-	endif
 	account.EraseProp( "HouseholdId" );
+
+	// 2026-10-01: the member list is rebuilt from the accounts still in the household.
+	// Erasing this DiscordID from it was wrong while the player's other account stayed in.
+	var members := ACCT_SyncHouseholdMembers( household_id );
+
+	var household := ACCT_GetHouseholdById( household_id, 0 );
+	if( household )
+		if( !household.errortext )
+			if( actor_name )
+				household.SetProp( "UpdatedBy", actor_name );
+			else
+				household.SetProp( "UpdatedBy", "system" );
+			endif
+		endif
+	endif
 
 	return dictionary
 	{
 		"HouseholdId" -> household_id,
 		"DiscordIDNorm" -> discord_norm,
 		"MemberCount" -> members.size()
+	};
+endfunction
+
+// 2026-10-01: rebuilds a household's member list (DiscordIDs) from the accounts that carry
+// its id, so the record cannot drift from the accounts. Returns the list.
+function ACCT_SyncHouseholdMembers( household_id )
+
+	var member_set := dictionary{};
+
+	household_id := ACCT_TrimDiscordID( household_id );
+	if( !household_id )
+		return array;
+	endif
+
+	var acct_names := ListAccounts();
+	foreach acct_name in acct_names
+		var account := FindAccount( acct_name );
+		if( account.errortext )
+			continue;
+		endif
+
+		var info := ACCT_GetAccountDiscordInfo( account );
+		if( info.errortext )
+			continue;
+		endif
+
+		if( info["HouseholdId"] != household_id )
+			continue;
+		endif
+
+		var member_discord := info["DiscordIDNorm"];
+		if( member_discord )
+			member_set[member_discord] := 1;
+		endif
+	endforeach
+
+	// keys(), not a foreach over the dictionary: that would hand back the values.
+	var members := member_set.keys();
+
+	var household := ACCT_GetHouseholdById( household_id, 0 );
+	if( household )
+		if( !household.errortext )
+			household.SetProp( "Members", members );
+		endif
+	endif
+
+	return members;
+endfunction
+
+// 2026-10-01: names of the accounts whose DiscordID is discord_norm, leaving out
+// ignore_account_name.
+function ACCT_ListAccountsWithDiscord( discord_norm, ignore_account_name:="" )
+
+	var holder_names := array;
+
+	discord_norm := ACCT_NormalizeDiscordID( discord_norm );
+	if( !discord_norm )
+		return holder_names;
+	endif
+
+	ignore_account_name := Lower( CStr( ignore_account_name ));
+
+	var acct_names := ListAccounts();
+	foreach acct_name in acct_names
+		if( Lower( CStr( acct_name )) == ignore_account_name )
+			continue;
+		endif
+
+		var account := FindAccount( acct_name );
+		if( account.errortext )
+			continue;
+		endif
+
+		var info := ACCT_GetAccountDiscordInfo( account );
+		if( info.errortext )
+			continue;
+		endif
+
+		if( info["DiscordIDNorm"] == discord_norm )
+			holder_names.append( CStr( acct_name ));
+		endif
+	endforeach
+
+	return holder_names;
+endfunction
+
+// 2026-10-01: "" when discord_id may take one more account, otherwise the reason it may
+// not. The limit is MaxAccountsPerDiscord in settings.cfg; 0 there switches it off.
+function ACCT_DiscordAccountLimitReason( discord_id, ignore_account_name:="" )
+
+	var discord_norm := ACCT_NormalizeDiscordID( discord_id );
+	if( !discord_norm )
+		return "";
+	endif
+
+	var max_accounts := ACCT_GetPolicySetting( "MaxAccountsPerDiscord", ACCT_DEFAULT_MAX_ACCOUNTS_PER_DISCORD, 0 );
+	if( max_accounts < 1 )
+		return "";
+	endif
+
+	var holder_names := ACCT_ListAccountsWithDiscord( discord_norm, ignore_account_name );
+	if( holder_names.size() < max_accounts )
+		return "";
+	endif
+
+	var name_list := "";
+	foreach holder_name in holder_names
+		if( name_list )
+			name_list := name_list + ", ";
+		endif
+		name_list := name_list + holder_name;
+	endforeach
+
+	return "DiscordID " + discord_norm + " already has " + CStr( holder_names.size() ) + " account(s): " + name_list + " (limit " + CStr( max_accounts ) + ").";
+endfunction
+
+// 2026-10-01: sets or changes the DiscordID of an existing account (.setdiscord). The
+// account stays in its household, and that household's member list follows.
+function ACCT_SetAccountDiscordID( account_or_who, new_discord_id )
+
+	var account := ACCT_ResolveAccountRef( account_or_who );
+	if( account.errortext )
+		return account;
+	endif
+
+	var new_raw := ACCT_TrimDiscordID( new_discord_id );
+	var new_norm := ACCT_NormalizeDiscordID( new_raw );
+	if( !new_norm )
+		return dictionary{ "errortext" -> "Missing DiscordID." };
+	endif
+
+	var info := ACCT_GetAccountDiscordInfo( account );
+	if( info.errortext )
+		return info;
+	endif
+
+	var old_norm := info["DiscordIDNorm"];
+	if( old_norm == new_norm )
+		return dictionary{ "errortext" -> "Account " + account.name + " already has DiscordID " + new_norm + "." };
+	endif
+
+	var limit_reason := ACCT_DiscordAccountLimitReason( new_norm, account.name );
+	if( limit_reason )
+		return dictionary{ "errortext" -> limit_reason };
+	endif
+
+	account.SetProp( "DiscordID", new_raw );
+
+	var household_id := ACCT_TrimDiscordID( info["HouseholdId"] );
+	if( household_id )
+		account.SetProp( "DiscordIDNorm", new_norm );
+		ACCT_SyncHouseholdMembers( household_id );
+	endif
+
+	return dictionary
+	{
+		"AccountName" -> account.name,
+		"OldDiscordIDNorm" -> old_norm,
+		"DiscordIDNorm" -> new_norm,
+		"HouseholdId" -> household_id
 	};
 endfunction
 
@@ -711,165 +866,13 @@ function ACCT_IsCharacterCurrentlyOnline( character )
 	return 0;
 endfunction
 
-function ACCT_IsCharacterSerialCurrentlyOnline( serial )
-
-	if( !serial )
-		return 0;
-	endif
-
-	foreach online_char in EnumerateOnlineCharacters()
-		if( online_char.serial == serial )
-			return 1;
-		endif
-		SleepMS(2);
-	endforeach
-
-	return 0;
-endfunction
-
-function ACCT_IsAccountCurrentlyOnline( account_name )
-
-	account_name := Lower( ACCT_TrimDiscordID( account_name ));
-	if( !account_name )
-		return 0;
-	endif
-
-	foreach online_char in EnumerateOnlineCharacters()
-		if( Lower( CStr( online_char.acct.name )) == account_name )
-			return 1;
-		endif
-		SleepMS(2);
-	endforeach
-
-	return 0;
-endfunction
-
-function ACCT_ClearPendingLoginReservation( account_or_who )
-
-	var account := ACCT_ResolveAccountRef( account_or_who );
-	if( account.errortext )
-		return 0;
-	endif
-
-	account.EraseProp( "#PendingPolicyLoginUntil" );
-	account.EraseProp( "#PendingPolicyLoginDiscord" );
-	account.EraseProp( "#PendingPolicyLoginIP" );
-
-	return 1;
-endfunction
-
-function ACCT_CountPendingPolicyByDiscord( discord_norm, now_systime, byref pending_ips )
-
-	discord_norm := ACCT_NormalizeDiscordID( discord_norm );
-	if( !discord_norm )
-		pending_ips := array;
-		return 0;
-	endif
-
-	pending_ips := array;
-	var pending_count := 0;
-
-	foreach acct_name in ( ListAccounts() )
-		var account := FindAccount( acct_name );
-		if( account.errortext )
-			continue;
-		endif
-
-		var account_discord_norm := ACCT_NormalizeDiscordID( account.GetProp( "DiscordID" ));
-		if( account_discord_norm != discord_norm )
-			continue;
-		endif
-
-		var pending_until := CInt( account.GetProp( "#PendingPolicyLoginUntil" ));
-		// systime resets to 0 on server restart. A real reservation is set to
-		// now_systime + 180, so anything more than ~5 minutes in the future is
-		// a stale prop from a previous uptime and must be discarded.
-		if( pending_until < now_systime || pending_until > now_systime + 300 )
-			account.EraseProp( "#PendingPolicyLoginUntil" );
-			account.EraseProp( "#PendingPolicyLoginDiscord" );
-			account.EraseProp( "#PendingPolicyLoginIP" );
-			continue;
-		endif
-
-		pending_count := pending_count + 1;
-		var pending_ip := ACCT_TrimDiscordID( account.GetProp( "#PendingPolicyLoginIP" ));
-		if( pending_ip && !pending_ips.contains( pending_ip ))
-			pending_ips.append( pending_ip );
-		endif
-		SleepMS(2);
-	endforeach
-
-	return pending_count;
-endfunction
-
-function ACCT_CountPendingPolicyByIP( player_ip, now_systime, byref pending_discords )
-
-	player_ip := ACCT_TrimDiscordID( player_ip );
-	if( !player_ip )
-		pending_discords := array;
-		return 0;
-	endif
-
-	pending_discords := array;
-	var pending_count := 0;
-
-	foreach acct_name in ( ListAccounts() )
-		var account := FindAccount( acct_name );
-		if( account.errortext )
-			continue;
-		endif
-
-		var pending_until := CInt( account.GetProp( "#PendingPolicyLoginUntil" ));
-		// systime resets to 0 on server restart; bound the future window to
-		// catch stale props from a previous uptime.
-		if( pending_until < now_systime || pending_until > now_systime + 300 )
-			account.EraseProp( "#PendingPolicyLoginUntil" );
-			account.EraseProp( "#PendingPolicyLoginDiscord" );
-			account.EraseProp( "#PendingPolicyLoginIP" );
-			continue;
-		endif
-
-		var account_pending_ip := ACCT_TrimDiscordID( account.GetProp( "#PendingPolicyLoginIP" ));
-		if( account_pending_ip != player_ip )
-			continue;
-		endif
-
-		var account_discord_norm := ACCT_NormalizeDiscordID( account.GetProp( "DiscordID" ));
-		if( !account_discord_norm )
-			continue;
-		endif
-
-		if( !pending_discords.contains( account_discord_norm ))
-			pending_discords.append( account_discord_norm );
-			pending_count := pending_count + 1;
-		endif
-		SleepMS(2);
-	endforeach
-
-	return pending_count;
-endfunction
-
-function ACCT_AcquirePolicyLoginGate()
-	var spins := 0;
-	while( CInt( GetGlobalProperty( "acct_policy_login_gate" )) == 1 )
-		spins := spins + 1;
-		if( spins >= 240 )
-			SetGlobalProperty( "acct_policy_login_gate", 0 );
-			break;
-		endif
-		SleepMS(25);
-	endwhile
-
-	SetGlobalProperty( "acct_policy_login_gate", 1 );
-	return 1;
-endfunction
-
-function ACCT_ReleasePolicyLoginGate()
-	SetGlobalProperty( "acct_policy_login_gate", 0 );
-	return 1;
-endfunction
-
-function ACCT_CheckAccountLoginPolicy( account_or_who, ip )
+// Login screen (packet 0x80, hook/onLogin.src). 2026-10-01: refuses only the certain case --
+// the DiscordID already has its full number of characters online and none of them is on
+// this account, so this login could only add one more. Everything else is decided on
+// entering the world (ACCT_CheckForMaxClientsOnline_NewEngine) from the characters actually
+// online. The 3-minute "pending login" stamp this used to set is gone: it fed the
+// login-screen address into the one-IP rule and held a slot after an abandoned login.
+function ACCT_CheckAccountLoginPolicy( account_or_who )
 
 	var account := ACCT_ResolveAccountRef( account_or_who );
 	if( account.errortext )
@@ -891,58 +894,51 @@ function ACCT_CheckAccountLoginPolicy( account_or_who, ip )
 		return 0;
 	endif
 
-	if( !ACCT_AcquirePolicyLoginGate() )
-		return 0;
-	endif
-
-	var now_systime := POLCore().systime;
-	var player_ip := CStr( ip );
-
-	// Clear any prior reservation belonging to this same account BEFORE counting
-	// pending peers, so the candidate is never counted as its own peer. We then
-	// re-establish the reservation only if the policy allows the login.
-	account.EraseProp( "#PendingPolicyLoginUntil" );
-	account.EraseProp( "#PendingPolicyLoginDiscord" );
-	account.EraseProp( "#PendingPolicyLoginIP" );
-
-	var snapshot := ACCT_CountOnlineByDiscordAndIP();
-	var pending_ips := array;
-	var pending_count := ACCT_CountPendingPolicyByDiscord( discord_norm, now_systime, pending_ips );
-
+	var account_name := Lower( CStr( account.name ));
 	var live_online_count := 0;
-	if( snapshot["DiscordCharCount"].exists( discord_norm ))
-		live_online_count := snapshot["DiscordCharCount"][discord_norm];
+	var account_online := 0;
+
+	var online_chars := EnumerateOnlineCharacters();
+	foreach player in online_chars
+		if( ACCT_IsStaffCharacter( player ))
+			continue;
+		endif
+
+		var player_info := ACCT_GetAccountDiscordInfo( player );
+		if( player_info.errortext )
+			continue;
+		endif
+
+		if( player_info["DiscordIDNorm"] != discord_norm )
+			continue;
+		endif
+
+		live_online_count := live_online_count + 1;
+		if( Lower( CStr( player_info["AccountName"] )) == account_name )
+			account_online := 1;
+		endif
+	endforeach
+
+	var max_discords_online := ACCT_GetPolicySetting( "MaxDiscordsOnline", ACCT_DEFAULT_MAX_DISCORDS_ONLINE );
+
+	ACCT_DebugPrint( "Login screen counts for " + account.name + " discord=" + discord_norm + " online=" + CStr( live_online_count ) + " account_online=" + CStr( account_online ) + " cap=" + CStr( max_discords_online ));
+
+	if( live_online_count >= max_discords_online )
+		// With a character of this account online the login may be a reconnect to it,
+		// which adds nothing; the world-entry check sorts that out.
+		if( !account_online )
+			ACCT_DebugPrint( "Login screen refusal for " + account.name + ": discord=" + discord_norm + " already has " + CStr( live_online_count ) + " character(s) online on its other account." );
+			return 0;
+		endif
 	endif
 
-	var settings := ACCT_GetSettingsCfgElem( "Settings" );
-	var max_discords_online := GetConfigInt( settings, "MaxDiscordsOnline" );
-	if( max_discords_online < 1 )
-		max_discords_online := 2;
-	endif
-
-	// Cap is on count of concurrent logins per DiscordID, not on IP spread.
-	// One person legitimately playing two characters from two devices is allowed.
-	// effective_total includes the candidate (+1).
-	var effective_total := live_online_count + pending_count + 1;
-
-	ACCT_DebugPrint( "Account preflight counts for " + account.name + " discord=" + discord_norm + " live_online_count=" + CStr( live_online_count ) + " pending_others=" + CStr( pending_count ) + " effective_total=" + CStr( effective_total ) + " cap=" + CStr( max_discords_online ));
-
-	if( live_online_count >= max_discords_online || effective_total > max_discords_online )
-		ACCT_ReleasePolicyLoginGate();
-		ACCT_DebugPrint( "Disconnecting: account preflight denied for " + account.name + " discord=" + discord_norm );
-		return 0;
-	endif
-
-	// Policy passed — register the reservation as a concurrency guard for any
-	// other login that races in before this one reaches the world.
-	account.SetProp( "#PendingPolicyLoginUntil", now_systime + 180 );
-	account.SetProp( "#PendingPolicyLoginDiscord", discord_norm );
-	account.SetProp( "#PendingPolicyLoginIP", player_ip );
-
-	ACCT_ReleasePolicyLoginGate();
 	return 1;
 endfunction
 
+// Entering the world (scripts/misc/logon.src and reconnect.src, through ACCT_AdmitCharacter).
+// The rules, per DiscordID: staff are exempt and never counted; at most MaxDiscordsOnline
+// characters online; all of them from one IP; and no other DiscordID on that IP unless every
+// DiscordID there has an account in this account's household.
 function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 
 	if( ACCT_IsStaffCharacter( who ))
@@ -966,16 +962,11 @@ function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 
 	var household_id := account_info["HouseholdId"];
 	var player_ip := CStr( who.ip );
-	var now_systime := POLCore().systime;
 
-	// This account is now reaching the world. Its own auth-time reservation
-	// is stale (it was set with the auth-time IP which may differ from the
-	// in-game IP, e.g. 127.0.0.1 vs the client's LAN IP). Clear it BEFORE
-	// building the snapshot so we don't double-count this account as both
-	// live and pending, and do NOT re-set a new pending reservation — the
-	// live snapshot is the source of truth from here on.
-	ACCT_ClearPendingLoginReservation( who );
-
+	// 2026-10-01: judged only from the characters that are online right now. The logon
+	// scripts run one login at a time, start to finish, so this snapshot is exact. The
+	// "pending login" stamps that used to be mixed in carried the login-screen address
+	// (127.0.0.1 against the LAN address on the host machine) and tripped the one-IP rule.
 	var snapshot := ACCT_CountOnlineByDiscordAndIP();
 	if( snapshot.errortext )
 		ACCT_DebugPrint( "Disconnecting: unable to build online snapshot." );
@@ -987,6 +978,8 @@ function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 	var discord_to_ips := snapshot["DiscordToIPs"];
 	var discord_char_count := snapshot["DiscordCharCount"];
 
+	// The engine attaches the character to its client before the logon script runs, so it
+	// is normally in the snapshot already; it is added here if it is not.
 	var already_online := ACCT_IsCharacterCurrentlyOnline( who );
 
 	if( !already_online )
@@ -1017,52 +1010,36 @@ function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 	// Use a dict-as-set keyed by CStr(ip) for true value-equality dedup;
 	// Array.contains has been observed to miss duplicates when player.ip
 	// returns instances that don't compare equal as Array elements.
-	var effective_discord_ip_set := dictionary{};
+	var discord_ip_set := dictionary{};
 	if( discord_to_ips.exists( discord_norm ))
 		var existing_ips := discord_to_ips[discord_norm];
 		foreach existing_ip in ( existing_ips )
-			effective_discord_ip_set[CStr( existing_ip )] := 1;
+			discord_ip_set[CStr( existing_ip )] := 1;
 		endforeach
 	endif
+	// keys(), not a foreach over the dictionary: that would hand back the values.
+	var discord_ips := discord_ip_set.keys();
 
-	var pending_ips := array;
-	var pending_same_discord_count := ACCT_CountPendingPolicyByDiscord( discord_norm, now_systime, pending_ips );
-	foreach pending_ip in ( pending_ips )
-		effective_discord_ip_set[CStr( pending_ip )] := 1;
-	endforeach
-
-	var effective_discord_ips := array;
-	foreach ip_key in ( effective_discord_ip_set )
-		effective_discord_ips.append( ip_key );
-	endforeach
-
-	var effective_discord_char_count := 0;
+	var discord_online_count := 0;
 	if( discord_char_count.exists( discord_norm ))
-		effective_discord_char_count := discord_char_count[discord_norm];
+		discord_online_count := CInt( discord_char_count[discord_norm] );
 	endif
-	effective_discord_char_count := effective_discord_char_count + pending_same_discord_count;
 
-	ACCT_DebugPrint( "Policy counts for " + who.name + " discord=" + discord_norm + " ip=" + player_ip + " online_count=" + CStr( effective_discord_char_count ) + " pending_count=" + CStr( pending_same_discord_count ) + " ip_count=" + CStr( effective_discord_ips.size() ));
+	ACCT_DebugPrint( "Policy counts for " + who.name + " discord=" + discord_norm + " ip=" + player_ip + " online_count=" + CStr( discord_online_count ) + " ips=" + CStr( discord_ips ));
 
-	var settings_policy := ACCT_GetSettingsCfgElem( "Settings" );
-	var max_discords_online := GetConfigInt( settings_policy, "MaxDiscordsOnline" );
-	if( max_discords_online < 1 )
-		max_discords_online := 2;
-	endif
+	var max_discords_online := ACCT_GetPolicySetting( "MaxDiscordsOnline", ACCT_DEFAULT_MAX_DISCORDS_ONLINE );
 
 	// Same DiscordID may not appear from more than one IP at a time.
-	if( effective_discord_ips.size() > 1 )
-		ACCT_ClearPendingLoginReservation( who );
-			ACCT_DebugPrint( "Disconnecting: DiscordID " + discord_norm + " is active from multiple IPs (" + CStr( effective_discord_ips ) + ")." );
-			SysLog( "LoginAccount() Error: discord active from multiple IPs for " + who.name );
-			return 0;
+	if( discord_ips.size() > 1 )
+		ACCT_DebugPrint( "Disconnecting: DiscordID " + discord_norm + " is active from multiple IPs (" + CStr( discord_ips ) + ")." );
+		SysLog( "LoginAccount() Error: discord active from multiple IPs for " + who.name );
+		return 0;
 	endif
 
-	if( effective_discord_char_count > max_discords_online )
-		ACCT_ClearPendingLoginReservation( who );
-			ACCT_DebugPrint( "Disconnecting: DiscordID " + discord_norm + " exceeded " + CStr( max_discords_online ) + " online chars." );
-			SysLog( "LoginAccount() Error: discord exceeded cap for " + who.name );
-			return 0;
+	if( discord_online_count > max_discords_online )
+		ACCT_DebugPrint( "Disconnecting: DiscordID " + discord_norm + " exceeded " + CStr( max_discords_online ) + " online chars." );
+		SysLog( "LoginAccount() Error: discord exceeded cap for " + who.name );
+		return 0;
 	endif
 
 	if( !ip_to_discords.exists( player_ip ))
@@ -1078,15 +1055,12 @@ function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 	foreach ip_discord in ( ip_discords )
 		ip_discord_set[CStr( ip_discord )] := 1;
 	endforeach
-	var ip_unique_discord_count := 0;
-	foreach ip_discord_key in ( ip_discord_set )
-		ip_unique_discord_count := ip_unique_discord_count + 1;
-	endforeach
+	var ip_discord_list := ip_discord_set.keys();
+	var ip_unique_discord_count := ip_discord_list.size();
 
 	if( !household_id )
 		if( ip_unique_discord_count > 1 )
-			ACCT_ClearPendingLoginReservation( who );
-			ACCT_DebugPrint( "Disconnecting: non-household account cannot share IP with another DiscordID." );
+			ACCT_DebugPrint( "Disconnecting: non-household account cannot share IP with another DiscordID (" + CStr( ip_discord_list ) + ")." );
 			SysLog( "LoginAccount() Error: non-household IP share denied for " + who.name );
 			return 0;
 		endif
@@ -1094,30 +1068,31 @@ function ACCT_CheckForMaxClientsOnline_NewEngine( who )
 		return 1;
 	endif
 
+	// 2026-10-01: a household with no record, or no cap on its record, gets the default
+	// cap. (The old "household record missing" refusal could never fire: a missing record
+	// comes back as 0, not as an error.)
+	var household_cap := 0;
 	var household := ACCT_GetHouseholdById( household_id, 0 );
-	if( household.errortext )
-		ACCT_ClearPendingLoginReservation( who );
-		ACCT_DebugPrint( "Disconnecting: household record missing for " + who.name + " (" + household_id + ")." );
-		SysLog( "LoginAccount() Error: household record missing for " + who.name );
-		return 0;
+	if( household )
+		if( !household.errortext )
+			household_cap := CInt( household.GetProp( "HouseholdCap" ));
+		endif
 	endif
-
-	var household_cap := CInt( household.GetProp( "HouseholdCap" ));
 	if( household_cap < 1 )
-		household_cap := 1;
+		household_cap := ACCT_GetPolicySetting( "DefaultHouseholdCap", ACCT_DEFAULT_HOUSEHOLD_CAP );
 	endif
 
 	if( ip_unique_discord_count > household_cap )
-		ACCT_ClearPendingLoginReservation( who );
-		ACCT_DebugPrint( "Disconnecting: household cap exceeded for " + who.name + " cap=" + CStr( household_cap ) + "." );
+		ACCT_DebugPrint( "Disconnecting: household cap exceeded for " + who.name + " cap=" + CStr( household_cap ) + " discords on ip=" + CStr( ip_discord_list ) + "." );
 		SysLog( "LoginAccount() Error: household cap exceeded for " + who.name );
 		return 0;
 	endif
 
-	foreach ip_discord in ( ip_discord_set )
+	// 2026-10-01: walk the DiscordIDs themselves. This loop used to run over the set
+	// dictionary, which hands back its values (all 1), so no household member ever passed.
+	foreach ip_discord in ( ip_discord_list )
 		if( !ACCT_HouseholdContainsDiscord( household_id, ip_discord ))
-			ACCT_ClearPendingLoginReservation( who );
-			ACCT_DebugPrint( "Disconnecting: mixed-household IP use denied for " + who.name + "." );
+			ACCT_DebugPrint( "Disconnecting: mixed-household IP use denied for " + who.name + ": discord=" + CStr( ip_discord ) + " has no account in household " + CStr( household_id ) + "." );
 			SysLog( "LoginAccount() Error: mixed-household IP use denied for " + who.name );
 			return 0;
 		endif
@@ -1140,27 +1115,56 @@ function CheckForMaxClientsOnline( who )
 	return ACCT_CheckForMaxClientsOnline_NewEngine( who );
 endfunction
 
-function ACCT_FindValidPlayer(player)
+// 2026-10-01: the world-entry gate. scripts/misc/logon.src and reconnect.src call it first
+// thing, so a refused character is disconnected before it is announced or any player script
+// starts (the check used to run later, from this package's own logon.src). Returns 1 when
+// the character may stay.
+function ACCT_AdmitCharacter( who )
 
-	var playerserial := 0;
-	var acctlist := ListAccounts();
-	var i := 1;
+	if( CheckForMaxClientsOnline( who ))
+		return 1;
+	endif
 
-	// Stuff for verifying that the player exists
-	foreach acctnam in acctlist
-		var acctref := FindAccount(acctnam);
-		for ( i := 1; i<=ACCT_MAX_CHARACTERS; i:=i+1 )
-			var playername := CStr(acctref.GetCharacter(i).name);
-			if(!playername)
-				continue;
-			endif
-			if ( Lower(playername) == Lower(player) )
-				playerserial := acctref.GetCharacter(i).serial;
-				break;
-			endif
-		endfor
-	endforeach
+	SysLog( "LoginAccount() Error: " + who.name + " (account " + who.acctname + ") refused on entering the world, client disconnected." );
+	DisconnectClient( who );
+	return 0;
+endfunction
 
-  return playerserial;
+// 2026-10-01: staff commands take an account name so they work on an offline account; with
+// no name they fall back to targeting a character. Returns the AccountRef, or 0 after
+// telling the staff member what went wrong. picked_mobile comes back as the targeted
+// character, or 0 when the account was named.
+function ACCT_PickAccountForCommand( who, account_name, prompt, byref picked_mobile )
 
+	picked_mobile := 0;
+
+	account_name := ACCT_TrimDiscordID( account_name );
+	if( account_name )
+		var named_account := FindAccount( account_name );
+		if( !named_account )
+			SendSysMessage( who, "There is no account named " + account_name + "." );
+			return 0;
+		endif
+		return named_account;
+	endif
+
+	SendSysMessage( who, prompt );
+	var targetted := Target( who );
+	if( !targetted )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+	if( !targetted.acctname )
+		SendSysMessage( who, "That is not a player character." );
+		return 0;
+	endif
+
+	var targetted_account := FindAccount( targetted.acctname );
+	if( !targetted_account )
+		SendSysMessage( who, "Unable to resolve account." );
+		return 0;
+	endif
+
+	picked_mobile := targetted;
+	return targetted_account;
 endfunction

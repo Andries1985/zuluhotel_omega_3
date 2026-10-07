@@ -140,8 +140,15 @@ program merchant()
 					ProcessSpeech(ev);
 				SYSEVENT_MERCHANT_SOLD:
 					TurnToward( ev.source );
-					PrintTextAbovePrivate( me, "The total of your purchase is " + ev.amount, ev.source );
-					TakeSale(ev.amount, ev.source);
+					if( ev.source.serial == master )
+						// 2026-10-04: the owner buys their own stock out for free. The engine has
+						// already taken the price from the owner by the time this event arrives, so
+						// the gold is handed back and nothing goes into the wage pool.
+						RefundOwnerPurchase( ev.source, ev.amount );
+					else
+						PrintTextAbovePrivate( me, "The total of your purchase is " + ev.amount, ev.source );
+						TakeSale(ev.amount, ev.source);
+					endif
 				SYSEVENT_ITEM_GIVEN:
 					if(ev.source.serial == master)
 						StockItem(ev.item, ev.source);
@@ -705,7 +712,7 @@ function IsStackableWithOtherItems(byref item)
 
 	var old_item := FindObjtypeInContainer(inv_fs, item.objtype);
 
-	if(item.objtype == 0x8B01)
+	if(item.objtype == 0x30381)
 		return 0;
 	endif
 
@@ -1518,6 +1525,34 @@ function ViewMessageLog(byref you)
 		sleep(1);
 	endforeach
 	EraseObjProperty(me, "messagelog");
+endfunction
+
+// 2026-10-04: the owner is not charged for taking their own stock back. Gold goes to the backpack,
+// or onto the ground at the owner's feet when the pack is full.
+function RefundOwnerPurchase( byref who, goldamount )
+	goldamount := CInt( goldamount );
+	if( goldamount <= 0 )
+		return;
+	endif
+
+	PrintTextAbovePrivate( me, "That is your own stock, " + who.name + ". There is no charge.", who );
+
+	var left := goldamount;
+	while( left > 0 )
+		var chunk := left;
+		if( chunk > 60000 )
+			chunk := 60000;
+		endif
+		var pile := CreateItemInBackpack( who, UOBJ_GOLD_COIN, chunk );
+		if( !pile )
+			pile := CreateItemAtLocation( who.x, who.y, who.z, UOBJ_GOLD_COIN, chunk, who.realm );
+		endif
+		if( !pile )
+			Print( "[PLAYERMERCHANT] owner refund failed: " + chunk + " gold for " + who.serial + " (vendor " + me.serial + ")" );
+			SysLog( "PlayerMerchant owner refund failed: " + chunk + " gold for " + who.serial );
+		endif
+		left := left - chunk;
+	endwhile
 endfunction
 
 function TakeSale(goldamount, byref who)

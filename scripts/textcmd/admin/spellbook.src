@@ -1,4 +1,4 @@
-// Synopsis: Create a new spellbook in your backpack
+// Synopsis: Create all spellbooks, a bag of infinite reagents and a travel test kit (runes, recall and gate scrolls) in your backpack
 use uo;
 
 program textcmd_spellbook( who )
@@ -41,4 +41,31 @@ program textcmd_spellbook( who )
 	SetObjProperty( versebook , "LFucker",who.serial + " - " + who.name);
 	var verses := {1,1,1,1,1,1,1,1,1,1};
 	SetObjProperty( versebook , "Verses" , verses );
+
+	// 2026-10-01: travel test kit for the recall-into-house investigation.
+	// Bag of infinite reagents (:shilitems: 0xba30) -- its control script keeps its own
+	// refilling normal / pagan / gem sub-bags, so creating it is all that is needed.
+	var regbag := CreateItemInBackpack(who, 0xba30, 1);
+	if( regbag )
+		SetObjProperty( regbag , "LFucker",who.serial + " - " + who.name);
+	endif
+
+	// A plain bag holding 100 blank recall runes, 100 recall scrolls and 100 gate scrolls.
+	var kit := CreateItemInBackpack(who, 0x0E76, 1);
+	if( kit )
+		SetName( kit, "travel test kit" );
+		SetObjProperty( kit , "LFucker",who.serial + " - " + who.name);
+
+		var runes := CreateItemInContainer(kit, 0x1f17, 100);	// blank recall runes
+		if( !runes )
+			// not created as one stack: make them one at a time
+			for (i := 1; i <= 100; i := i + 1)
+				CreateItemInContainer(kit, 0x1f17, 1);
+			endfor
+		endif
+		CreateItemInContainer(kit, 0x1f4c, 100);	// recall scrolls
+		CreateItemInContainer(kit, 0x1f60, 100);	// gate travel scrolls
+	else
+		SendSysMessage( who, "Your backpack had no room for the travel test kit." );
+	endif
 endprogram

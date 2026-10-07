@@ -7,7 +7,9 @@ use cliloc;
 //include "include/client";
 //include "include/objtype";
 //include "include/utility";
-//include ":itemutils:itemtypes";
+// 2026-10-04: the file this disabled include pointed at (itemUtils/include/
+// itemtypes.inc) was deleted -- nothing in the repo included it, and it
+// redefined six helpers that scripts/include/itemutil.inc already provides.
 include "include/house";
 include "include/housefriends";
 //include ":doors:doors";

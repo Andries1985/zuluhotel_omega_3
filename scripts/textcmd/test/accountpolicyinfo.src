@@ -1,20 +1,20 @@
-// Synopsis: Show account policy fields for a targeted account
+// Synopsis: Show an account's login policy fields: .accountpolicyinfo [account] (no account name = target a player)
 use uo;
 
 include ":accounts:accounts";
 
-program textcmd_accountpolicyinfo( who )
+program textcmd_accountpolicyinfo( who, text )
 
-	SendSysMessage( who, "Target a player to inspect account policy data." );
-	var targ := Target( who );
-	if( !targ || !targ.acctname )
-		SendSysMessage( who, "Cancelled." );
-		return 0;
+	// 2026-10-01: takes an account name, so it works on an offline account; with no name
+	// it targets a character, as before.
+	var account_name := "";
+	if( text )
+		account_name := ACCT_TrimDiscordID( text );
 	endif
 
-	var account := FindAccount( targ.acctname );
-	if( account.errortext )
-		SendSysMessage( who, "Unable to resolve account." );
+	var picked_mobile := 0;
+	var account := ACCT_PickAccountForCommand( who, account_name, "Target a player to inspect account policy data.", picked_mobile );
+	if( !account )
 		return 0;
 	endif
 
@@ -30,10 +30,28 @@ program textcmd_accountpolicyinfo( who )
 	SendSysMessage( who, "HouseholdId: " + CStr( info["HouseholdId"] ));
 
 	if( info["HouseholdId"] )
+		// 2026-10-01: the same rule the login check uses -- no record, or no cap on it,
+		// means the default cap.
+		var household_cap := 0;
 		var household := ACCT_GetHouseholdById( info["HouseholdId"], 0 );
-		if( !household.errortext )
-			SendSysMessage( who, "Effective HouseholdCap: " + CStr( CInt( household.GetProp( "HouseholdCap" ))));
+		if( household )
+			if( !household.errortext )
+				household_cap := CInt( household.GetProp( "HouseholdCap" ));
+			endif
 		endif
+		if( household_cap < 1 )
+			household_cap := ACCT_GetPolicySetting( "DefaultHouseholdCap", ACCT_DEFAULT_HOUSEHOLD_CAP );
+		endif
+		SendSysMessage( who, "Effective HouseholdCap: " + CStr( household_cap ));
+	endif
+
+	// 2026-10-01: the other accounts on the same DiscordID (at most MaxAccountsPerDiscord in all).
+	if( info["DiscordIDNorm"] )
+		var other_accounts := ACCT_ListAccountsWithDiscord( info["DiscordIDNorm"], account.name );
+		SendSysMessage( who, "Other accounts on this DiscordID: " + CStr( other_accounts.size() ));
+		foreach other_account in other_accounts
+			SendSysMessage( who, " - " + other_account );
+		endforeach
 	endif
 
 	return 1;

@@ -23,7 +23,12 @@ program infinitenormals( bag )
 		for( i := 1 ; i <= len(gems) ; i := i + 1 )
 			set_critical(1);
 			
-			var found_it := FindItemInContainer( bag , gems[i] );
+			// 2026-10-05: FindItemInContainer -> the engine call FindObjtypeInContainer.
+			// Same recursion (both skip locked sub-containers) and a not-found error is
+			// falsy just like the old unset return, so the !x checks below are unchanged.
+			// The engine searches the top level before recursing, so where a match exists at
+			// both depths you now get the top-level one.
+			var found_it := FindObjtypeInContainer( bag , gems[i] );
 			if( !found_it )
 				found_it := CreateItemInContainer( bag , gems[i] , GEM_AMOUNT );
 				found_it.movable := 1;

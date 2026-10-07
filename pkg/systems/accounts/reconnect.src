@@ -1,7 +1,7 @@
 /*
         Maintened by *Edwards
         For FantasiaShard.com
-        
+
         2009-06-04
 */
 use uo;
@@ -12,13 +12,10 @@ include ":accounts:accounts";
 
 program Reconnect( who )
 
+	// 2026-10-01: the login policy check that used to sit here now runs first thing in
+	// scripts/misc/reconnect.src (ACCT_AdmitCharacter), which the engine runs before this
+	// script. Only the bookkeeping is left.
 	ACCT_SetLastLogin( who.acct );
- 
-        if( !CheckForMaxClientsOnline( who ))
-                SysLog( "LoginAccount() Error: trying to login too many accounts." );
-                DisconnectClient( who );
-                return 0;
-        endif
 
 	return 1;
 endprogram

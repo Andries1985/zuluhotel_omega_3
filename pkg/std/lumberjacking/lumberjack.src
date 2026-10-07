@@ -27,7 +27,9 @@ program use_axe( character , axe )
 		return;
 	endif
 
-	if( !IsEquipped( character , axe ) )
+	// 2026-10-04: IsEquipped renamed to EquipIfNeeded -- it equips the axe here,
+	// it does not just test for it.
+	if( !EquipIfNeeded( character , axe ) )
 		SendSysmessage( character, "You have to equip that to lumberjack!" );
 		return;
 	endif
