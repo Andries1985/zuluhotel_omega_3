@@ -10,6 +10,7 @@ include "include/itemutil";
 include "include/attributes";
 include "include/skillpoints";
 include ":quests:questfishing";
+include ":fishing:fishsteaks";
 
 //Dead code - superseded by PickCaughtFish()/ResolveFishCatch() below.
 //function RandomFish(character)
@@ -30,7 +31,7 @@ include ":quests:questfishing";
 //return fishtype;
 //endfunction
 
-function createfish( who,fish,fish_amount, equipped, deepwater := 1, tier := "Regular" )
+function createfish( who,fish,fish_amount, equipped, location := "", tier := "Regular" )
 
 	//A blade equipped for something unrelated shouldn't silently carve a rare/legendary
 	//catch - players opt in via :togglerarecarve.
@@ -44,25 +45,20 @@ function createfish( who,fish,fish_amount, equipped, deepwater := 1, tier := "Re
 		//Returned so ResolveFishCatch can read .desc for the catch message; 0 (below) means
 		//it was carved into steaks instead.
 		var kept_whole := CreateItemInBackpack(who, cint(fish), cint(fish_amount));
-		if (kept_whole)
-			// 2026-09-14: remember whether this was a deep or shore catch, and
-			// its rarity tier, so a manual knife-carve later
-			// (bladed.src:CarveFish) yields the same steak count it would
-			// have if auto-carved right now instead of kept whole -- no
-			// penalty either way for the player's choice. Tier is separate
-			// from location: Rare/Legendary catches carve for more steaks
-			// regardless of where they were caught.
-			SetObjProperty(kept_whole, "DeepWaterCatch", CInt(deepwater));
-			SetObjProperty(kept_whole, "FishTier", tier);
+		// 2026-10-19: Regular fish get no CProps -- any non-default CProp stops
+		// CreateItemInBackpack merging the catch onto the existing stack. The
+		// knife reads their steak count from the species' itemdesc Location.
+		// Rare/Legendary keep where they were caught (some species have no
+		// Location); their itemdesc FishTier already carries the tier.
+		if (kept_whole and tier != "Regular")
+			SetObjProperty(kept_whole, "CatchLocation", location);
 		endif
 		return kept_whole;
 	else
 		PlaySoundEffect(who, SFX_57);
 		PerformAction( who, ANIM_SALUTE );
-		var steaks_per_fish := 4;
-		if (!deepwater)
-			steaks_per_fish := 1;
-		endif
+		// 2026-10-19: same 2x/10x Rare/Legendary bonus as a later knife carve.
+		var steaks_per_fish := GetSteaksPerFish(location) * GetFishTierSteakMultiplier(tier);
 		CreateItemInBackpack(who, UOBJ_FISHSTEAK, (steaks_per_fish * fish_amount));
 		SendSysmessage(who, "You carve up the fish.");
 		return 0;
@@ -211,8 +207,9 @@ endfunction
 //Preserves the old "magic" stat-boost fish (0xA84-0xA8C) as an independent roll ahead of the
 //tiered tables, unchanged from its original odds.
 //
-//location is pre-computed by the caller (see PickCaughtFish); deep_water is passed separately
-//since createfish()'s carve-into-steaks math cares specifically about deep water.
+//location is pre-computed by the caller (see PickCaughtFish) and also sizes createfish()'s
+//carve-into-steaks count (fishsteaks.inc). deep_water is no longer read here (2026-10-19)
+//but stays in the signature so the pole/net callers don't change.
 //
 //big_lure: when set, a Big lure is charged on the catching gear -- rolls the trophy weight
 //twice and keeps the higher result instead of replacing RollTrophyWeight()'s own Min() with
@@ -231,7 +228,7 @@ function ResolveFishCatch(character, fish_amount, equipped, deep_water, location
 		// (0x2270-0x2278; 0x2279 is reserved and deliberately excluded from
 		// this roll). Matches the rare/legendary catch messages below in
 		// reusing .desc rather than hardcoding each name a second time.
-		var scroll_caught := createfish(character, Random(9) + 0x2270, fish_amount, equipped, deep_water);
+		var scroll_caught := createfish(character, Random(9) + 0x2270, fish_amount, equipped, location);
 		if (scroll_caught)
 			SendSysmessage(character, "The depths yield up a "+scroll_caught.desc+"!", 3, 1153);
 		endif
@@ -258,7 +255,7 @@ function ResolveFishCatch(character, fish_amount, equipped, deep_water, location
 
 	//0 if createfish() carved the catch into steaks instead of handing it over - no name
 	//message in that case.
-	var caughtitem := createfish(character, caught_objtype, fish_amount, equipped, deep_water, caught_tier);
+	var caughtitem := createfish(character, caught_objtype, fish_amount, equipped, location, caught_tier);
 
 	if (caught_tier == "Rare")
 		AwardSkillPoints(character, SKILLID_FISHING, Cint(thepoints * 2));
