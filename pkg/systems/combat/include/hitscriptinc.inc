@@ -719,11 +719,22 @@ endfunction
 
 // Warrior for Hire damage moderation, isolated here so DealDamage() itself
 // stays free of template-specific branching. Halves damage between a WFH
-// and its own master, and applies the admin-tunable NPC/Boss knobs otherwise.
+// and its own master (both ways since 2026-10-10), and applies the admin-tunable NPC/Boss knobs otherwise.
 function WFHModifyDamage(attacker, defender, rawdamage)
 
+	// 2026-10-19: each master read once and compared only when set; an absent CProp and an
+	// errored serial compared equal (gotcha #20), halving hits on masterless warriors.
+	var attacker_master := 0;
 	if (attacker.npctemplate == "warriorforhire")
-		if (GetObjProperty(attacker,"master") == defender.serial)
+		attacker_master := CInt(GetObjProperty(attacker,"master"));
+	endif
+	var defender_master := 0;
+	if (defender.npctemplate == "warriorforhire")
+		defender_master := CInt(GetObjProperty(defender,"master"));
+	endif
+
+	if (attacker.npctemplate == "warriorforhire")
+		if (attacker_master and attacker_master == defender.serial)
 			rawdamage := CInt(rawdamage / 2);
 		elseif (defender.isa(POLCLASS_NPC))
 			if (GetObjProperty(defender,"Boss") or GetObjProperty(defender,"SuperBoss"))
@@ -732,6 +743,10 @@ function WFHModifyDamage(attacker, defender, rawdamage)
 				rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageToNPCs"));
 			endif
 		endif
+	elseif (defender_master and defender_master == attacker.serial)
+		// 2026-10-10 (from ZH2.5 1.1.4, your pick): the master's hits on their own warrior are halved
+		// too, so sparring is even both ways.
+		rawdamage := CInt(rawdamage / 2);
 	elseif (defender.npctemplate == "warriorforhire" and attacker.isa(POLCLASS_NPC))
 		if (GetObjProperty(attacker,"Boss") or GetObjProperty(attacker,"SuperBoss"))
 			rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageFromBosses"));

@@ -13,6 +13,7 @@ include "include/spellgrants";
 include ":accounts:accounts";
 include ":accounts:settings";
 include "include/ipban";
+include ":powerhour:include/powerhour"; // 2026-10-08: PPH_ClearFlags for the powerhour resume below
 
 program logon( who )
 	//Print("I am using scripts misc logon.src");
@@ -141,13 +142,13 @@ program logon( who )
 	// is re-set from it below (in the same still-running session) so
 	// resumeph.src and every crafting-skill-gain check that reads #PPHH/
 	// #PPHC/#PPHS directly keep working unchanged.
-	var active_type := GetObjProperty(who, "pph_active_type");
+	var active_type := GetObjProperty(who, PPH_PROP_ACTIVE);
 	if(active_type && !active_type.errortext)
 		// A plain disconnect (not a reboot) does NOT kill the original activateph()
 		// instance -- it keeps sleeping toward the same end time. Kill it here so
 		// resumeph.src below is the only thing still counting down; otherwise both
 		// finish at once and the player gets the "has ended!" message twice.
-		var old_pid := GetObjProperty(who, "#PPHPid");
+		var old_pid := GetObjProperty(who, PPH_PROP_PID);
 		if(old_pid)
 			var old_process := GetProcess(CInt(old_pid));
 			if(old_process)
@@ -157,18 +158,24 @@ program logon( who )
 
 		SetObjProperty(who, active_type, 1);
 
-		var pph_start := CInt(GetObjProperty(who, "pph_use_time"));
-		var remaining := (pph_start + 3600) - POLCore().systime;
+		var pph_start := PPH_UseTime(who);
+		var remaining := (pph_start + PH_DURATION) - POLCore().systime;
+		var resume_process := 0;
+		EraseObjProperty(who, PPH_PROP_SETTING);
+		EraseObjProperty(who, PPH_PROP_PID);
 		if( remaining > 0 )
-			start_script(":powerhour:resumeph", {who, remaining});
+			// 2026-10-08: pass the start time so resumeph can tell a later powerhour apart from this one
+			resume_process := start_script(":powerhour:resumeph", {who, remaining, pph_start});
+			// 2026-10-08: record the resume timer like activateph does, so .resetph and the next logon can kill it
+			if( resume_process )
+				SetObjProperty(who, PPH_PROP_PID, resume_process.pid);
+			endif
+			// 2026-10-08: pph_active_type is kept until the hour really ends (PPH_Finish). It used to be erased
+			// here, so a second restart inside a resumed hour lost the rest of it while the week stayed used.
 		else
-			EraseObjProperty(who, "#PPHH");
-			EraseObjProperty(who, "#PPHC");
-			EraseObjProperty(who, "#PPHS");
+			PPH_ClearFlags(who);
+			EraseObjProperty(who, PPH_PROP_ACTIVE);
 		endif
-		EraseObjProperty(who, "#SettingPH");
-		EraseObjProperty(who, "#PPHPid");
-		EraseObjProperty(who, "pph_active_type");
 	endif
 
 endprogram

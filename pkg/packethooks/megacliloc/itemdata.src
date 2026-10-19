@@ -132,29 +132,39 @@ program itemdata(parms)
 				endif
 				allprops.append(prop);
 				var BE := GetObjProperty(xObject, "BardicEfficiency");
-				if(BE && (IsBard(who) || IsBladesinger(who) || IsPowerPlayer(who)))
-					prop.clilocid := 1070722; // Nothing
-					prop.values := array {"Bardic Efficency: " + BE};
-					allprops.append(prop);
+				// 2026-10-08: nested (no short-circuit, so every tooltip ran the class checks even without the property), and the
+				// class levels AssignClasse stored are read instead of re-scanning all 50 skills per Is<Class>() call.
+				if(BE)
+					if(HighestHeldClasseLevel(who, {CLASSEID_BARD, CLASSEID_BLADESINGER, CLASSEID_POWERPLAYER}))
+						prop.clilocid := 1070722; // Nothing
+						prop.values := array {"Bardic Efficency: " + BE};
+						allprops.append(prop);
+					endif
 				endif
 				var MP := GetObjProperty(xObject, "MagicPenalty");
-				if(MP && (IsMage(who) || IsPaladin(who) || IsMysticArcher(who) || IsPowerPlayer(who)))
-					prop.clilocid := 1070722; // Nothing
-					prop.values := array {"Magic Efficency: " + MP};
-					allprops.append(prop);
+				if(MP)
+					if(HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_PALADIN, CLASSEID_MYSTIC_ARCHER, CLASSEID_POWERPLAYER}))
+						prop.clilocid := 1070722; // Nothing
+						prop.values := array {"Magic Efficency: " + MP};
+						allprops.append(prop);
+					endif
 				endif
 			elseif(xObject.isa(POLCLASS_WEAPON))
 				var BE := GetObjProperty(xObject, "BardicEfficiency");
-				if(BE && (IsBard(who) || IsBladesinger(who) || IsPowerPlayer(who)))
-					prop.clilocid := 1070722; // Nothing
-					prop.values := array {"Bardic Efficency: " + BE};
-					allprops.append(prop);
+				if(BE)
+					if(HighestHeldClasseLevel(who, {CLASSEID_BARD, CLASSEID_BLADESINGER, CLASSEID_POWERPLAYER}))
+						prop.clilocid := 1070722; // Nothing
+						prop.values := array {"Bardic Efficency: " + BE};
+						allprops.append(prop);
+					endif
 				endif
 				var MP := GetObjProperty(xObject, "MagicPenalty");
-				if(MP && (IsMage(who) || IsPaladin(who) || IsMysticArcher(who) || IsPowerPlayer(who)))
-					prop.clilocid := 1070722; // Nothing
-					prop.values := array {"Magic Efficency: " + MP};
-					allprops.append(prop);
+				if(MP)
+					if(HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_PALADIN, CLASSEID_MYSTIC_ARCHER, CLASSEID_POWERPLAYER}))
+						prop.clilocid := 1070722; // Nothing
+						prop.values := array {"Magic Efficency: " + MP};
+						allprops.append(prop);
+					endif
 				endif
 				var weapondesc := GetItemDescriptor(xObject.objtype);
 				//Damage
@@ -257,13 +267,14 @@ program itemdata(parms)
 				prop.values := array {poison};
 				allprops.append(prop);
 			endif
-			if(poison && IsThief(who))
+			// 2026-10-08: stored class levels below (was Is<Class>(), a 50-skill re-scan per call, all run on every tooltip)
+			if(poison && HighestHeldClasseLevel(who, {CLASSEID_THIEF}))
 				prop.clilocid := 1063498; // Poison level: ~1_VAL~
 				prop.values := array {GetObjProperty(xObject, "SkillPoisoned")};
 				allprops.append(prop);
 			endif
 			var spellcast := GetObjProperty(xObject, "HitWithSpell");
-			if (spellcast && ( IsMage(who) || IsCrafter(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who) ) )
+			if (spellcast && HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_CRAFTER, CLASSEID_PALADIN, CLASSEID_POWERPLAYER, CLASSEID_MYSTIC_ARCHER}) )
 				var spell_cfg := ReadConfigFile(":*:spells");
 				var elem := FindConfigElem(spell_cfg, spellcast);
 				if(elem)
@@ -274,7 +285,7 @@ program itemdata(parms)
 				endif
 			endif
 			var chanceofeffect := GetObjProperty(xObject, "ChanceOfEffect");
-			if (chanceofeffect && ( IsMage(who) || IsCrafter(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who) ) )
+			if (chanceofeffect && HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_CRAFTER, CLASSEID_PALADIN, CLASSEID_POWERPLAYER, CLASSEID_MYSTIC_ARCHER}) )
 				prop.clilocid := 1063500; // Chance of Effect: ~1_VAL~
 				prop.values := array {chanceofeffect};
 				allprops.append(prop);
@@ -286,7 +297,7 @@ program itemdata(parms)
 				endif
 			endif
 			var powerlevel := GetObjProperty(xObject, "Powerlevel");
-			if (powerlevel && ( IsBard( who ) || IsBladesinger( who ) || IsCrafter( who ) || IsRanger( who ) || IsThief( who ) || IsWarrior( who ) || IsPowerplayer( who ) ) )
+			if (powerlevel && HighestHeldClasseLevel(who, {CLASSEID_BARD, CLASSEID_BLADESINGER, CLASSEID_CRAFTER, CLASSEID_RANGER, CLASSEID_THIEF, CLASSEID_WARRIOR, CLASSEID_POWERPLAYER}) )
 				prop.clilocid := 1070722; ; // Nothing
 				prop.values := array {"Power Level: " + powerlevel};
 				allprops.append(prop);
@@ -389,24 +400,24 @@ program itemdata(parms)
 				allprops.append(prop);
 			endif
 			elem_prot := GetObjProperty(xObject, "PoisonImmunity");
-			if(elem_prot && (IsMage(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who)))
+			if(elem_prot && HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_PALADIN, CLASSEID_POWERPLAYER, CLASSEID_MYSTIC_ARCHER}))
 				prop.clilocid := 1063510; // "Poison Immunity Charges:
 				prop.values := array {elem_prot};
 				allprops.append(prop);
 			endif
 			elem_prot := GetObjProperty(xObject, "MagicImmunity");
-			if(elem_prot && (IsMage(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who)))
+			if(elem_prot && HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_PALADIN, CLASSEID_POWERPLAYER, CLASSEID_MYSTIC_ARCHER}))
 				prop.clilocid := 1063511; // "Magic Absorption Charges: 
 				prop.values := array {elem_prot};
 				allprops.append(prop);
 			endif
 			elem_prot := GetObjProperty(xObject, "SpellReflect");
-			if(elem_prot && (IsMage(who) || IsPaladin(who) || IsPowerPlayer(who) || IsMysticArcher(who)))
+			if(elem_prot && HighestHeldClasseLevel(who, {CLASSEID_MAGE, CLASSEID_PALADIN, CLASSEID_POWERPLAYER, CLASSEID_MYSTIC_ARCHER}))
 				prop.clilocid := 1063512; // Magic Reflection Charges: 
 				prop.values := array {elem_prot};
 				allprops.append(prop);
 			endif
-			if(xObject.isa(POLCLASS_EQUIPMENT) && (IsCrafter(who) || IsWarrior(who) || IsBladesinger(who) ))
+			if(xObject.isa(POLCLASS_EQUIPMENT) && HighestHeldClasseLevel(who, {CLASSEID_CRAFTER, CLASSEID_WARRIOR, CLASSEID_BLADESINGER}))
 				prop.clilocid := 1060639; // durability ~1_val~ / ~2_val~
 				prop.values := array {xObject.hp, xObject.maxhp};
 				allprops.append(prop);

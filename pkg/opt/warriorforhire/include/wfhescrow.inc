@@ -2,13 +2,14 @@ use uo;
 use os;
 use storage;
 use datafile;
+use basicio;
 
 include ":containers:storageAreas";
 include ":playervendor:include/escrow";
 include "include/objtype";
 include "include/random";
 
-const WFH_ESCROW_VENDOR_NAME := "Warrior for Hire";
+// 2026-10-10: WFH_ESCROW_VENDOR_NAME now lives in :playervendor:include/escrow (included above).
 const WFH_ESCROW_STORAGE_NAME := "Merchant Escrow";
 const WFH_ESCROW_REGISTRY_DATAFILE := "wfhescrowregistry";
 const WFH_ESCROW_EXPIRE_SECONDS := 7776000; //90 days
@@ -376,5 +377,75 @@ function WFH_RemoveEscrowEntryById(who, entry_id)
 	endforeach
 
 	UnloadDataFile(df_name);
+
+endfunction
+
+
+// 2026-10-10: what WFH_EscrowCorpseGear did with a warrior's gear.
+const WFH_GEAR_NONE := 0;	// nothing to save (no owner, or the corpse held nothing)
+const WFH_GEAR_ESCROWED := 1;	// in the High Priest's escrow
+const WFH_GEAR_BANKED := 2;	// escrow failed; moved to the owner's bank box
+const WFH_GEAR_GROUND := 3;	// both failed; left on the ground
+
+// 2026-10-10: moves every root item of a Warrior for Hire corpse (worn gear and pack contents) into
+// the owner's escrow, falling back to the owner's bank box if the escrow cannot be written, and
+// only then to the ground. Shared by corpsedecay.src (a dead warrior's corpse decaying) and
+// death.src (a warrior its owner gave up, which has no corpse to wait for). Tells the owner where
+// the gear went if he is online. Returns one of the WFH_GEAR_ codes.
+function WFH_EscrowCorpseGear(corpse, ownerserial)
+
+	var rootitems := EnumerateItemsInContainer(corpse, ENUMERATE_ROOT_ONLY);
+	if (!ownerserial or !len(rootitems))
+		return WFH_GEAR_NONE;
+	endif
+
+	var warriorname := GetObjProperty(corpse, "Name");
+	if (!warriorname)
+		warriorname := "Your warrior";
+	endif
+
+	var payout := CreateItemAtLocation(corpse.x, corpse.y, corpse.z, UOBJ_BACKPACK, 1, corpse.realm);
+	if (!payout)
+		// Cannot build the carrying pack: drop the gear where the warrior fell rather than lose it with the corpse.
+		foreach item in rootitems
+			MoveObjectToLocation(item, corpse.x, corpse.y, corpse.z, corpse.realm, MOVEOBJECT_FORCELOCATION);
+		endforeach
+		Print("WFH gear: could not create a carrying pack for " + warriorname + " (owner " + CStr(ownerserial) + "); gear left on the ground at " + corpse.x + "," + corpse.y + "," + corpse.z);
+		return WFH_GEAR_GROUND;
+	endif
+
+	foreach item in rootitems
+		MoveItemToContainer(item, payout);
+	endforeach
+
+	var owner := SystemFindObjectBySerial(CInt(ownerserial));	// online only: nobody to message otherwise
+
+	if (WFH_SaveToEscrow(payout, ownerserial, corpse.serial))
+		if (owner)
+			SendSysMessage(owner, warriorname + "'s belongings were left with the High Priest. Ask him to 'recover belongings' for 20,000 gold within 90 days.");
+		endif
+		return WFH_GEAR_ESCROWED;
+	endif
+
+	// Escrow failed: do not destroy the gear. Try the owner's bank box.
+	var ownerobj := owner;
+	if (!ownerobj)
+		ownerobj := SystemFindObjectBySerial(CInt(ownerserial), SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+	if (ownerobj)
+		var bankbox := CP_GetStorageContainerForMobile(ownerobj, CP_DEFAULT_AREA, CP_CREATE);
+		if (bankbox)
+			if (MoveItemToContainer(payout, bankbox))
+				Print("WFH gear: escrow failed for " + warriorname + " (owner " + CStr(ownerserial) + "); gear moved to the owner's bank box.");
+				if (owner)
+					SendSysMessage(owner, warriorname + "'s belongings could not be escrowed and were placed in your bank box.");
+				endif
+				return WFH_GEAR_BANKED;
+			endif
+		endif
+	endif
+
+	Print("WFH gear: escrow AND bank box failed for " + warriorname + " (owner " + CStr(ownerserial) + "); gear left on the ground at " + corpse.x + "," + corpse.y + "," + corpse.z);
+	return WFH_GEAR_GROUND;
 
 endfunction

@@ -8,6 +8,7 @@ include "include/spelldata";
 include "include/classes";
 include "include/client";
 include "include/random";
+include ":house:utility";	// 2026-10-19: GetHouseSignFromObject
 
 program cast_strength( parms, spell_id )
 
@@ -70,7 +71,25 @@ program cast_strength( parms, spell_id )
 		endif
 	endif
 
-	if( cast_on.multi and GetObjProperty( cast_on.multi , "ownerserial" ) != caster.serial )
+	// 2026-10-09: the owner (any character on its account), co-owners and friends
+	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
+	// 2026-10-19: the sign comes from GetHouseSignFromObject, which also finds signs
+	// linked only by houseserial (it used to read the multi's signserial alone).
+	var is_allowed := 0;
+	if( cast_on.multi )
+		if( GetObjProperty( cast_on.multi , "ownerserial" ) == caster.serial )
+			is_allowed := 1;
+		else
+			var trap_house := cast_on.multi;
+			var hsign := GetHouseSignFromObject( trap_house );
+			if( hsign )
+				if( hsign.IsAffiliated( caster ))
+					is_allowed := 1;
+				endif
+			endif
+		endif
+	endif
+	if( cast_on.multi and !is_allowed )
 		var co_owners := {};
 		var friends := {};
 		var i;

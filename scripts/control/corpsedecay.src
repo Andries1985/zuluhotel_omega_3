@@ -79,18 +79,9 @@ function ProcessNpcCorpseDecaying( corpse )
 
 	if (GetObjProperty(corpse, "npctemplate") == "warriorforhire" and !GetObjProperty(corpse,"AbandonedByOwner"))
 		var ownerserial := GetObjProperty(corpse,"master");
-		var rootitems := EnumerateItemsInContainer(corpse, ENUMERATE_ROOT_ONLY);
-		if (ownerserial and len(rootitems))
-			var payout := CreateItemAtLocation(corpse.x, corpse.y, corpse.z, UOBJ_BACKPACK, 1, corpse.realm);
-			if (payout)
-				foreach item in rootitems
-					MoveItemToContainer(item, payout);
-				endforeach
-				if (!WFH_SaveToEscrow(payout, ownerserial, corpse.serial))
-					DestroyItem(payout);
-				endif
-			endif
-		endif
+		// 2026-10-10: a failed escrow used to destroy the gear pack. WFH_EscrowCorpseGear falls back to
+		// the owner's bank box (then the ground) instead and logs it.
+		WFH_EscrowCorpseGear(corpse, ownerserial);
 	endif
 
 	DestroyItem(corpse);

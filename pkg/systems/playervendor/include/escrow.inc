@@ -6,6 +6,9 @@ use util;
 use datafile;
 
 const PLAYERVENDOR_ESCROW_DF_PREFIX := "merchantescrow_";
+// 2026-10-10: the one copy of the Warrior for Hire escrow vendor name. wfhescrow.inc files gear
+// under it and .escrow (escrow.src) hides those entries; each used to define its own copy.
+const WFH_ESCROW_VENDOR_NAME := "Warrior for Hire";
 
 function BuildEscrowLegacyDatafileName(player_obj)
 	if(!player_obj)

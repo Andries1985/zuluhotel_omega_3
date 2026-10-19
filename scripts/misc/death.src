@@ -20,6 +20,8 @@ include "../pkg/opt/rituals/include/altarquest";
 include ":champspawns:death";
 include ":lootlottery:lootlottery";
 include ":containers:storageAreas";
+include ":warriorforhire:include/wfhcommon";	// 2026-10-10: WFH_MAX_DEATHS
+include ":warriorforhire:include/wfhescrow";	// 2026-10-10: WFH_EscrowCorpseGear for a warrior its owner gave up
 
 program npcdeath(corpse)
 
@@ -102,7 +104,18 @@ program npcdeath(corpse)
 			resnum := 0;
 		endif
 		resnum := resnum + 1;
-		if (resnum < 11 and corpsemasterserial != 0 and corpsemaster)
+		// 2026-10-10: deaths 1-10 write the backup and drop a heart, both stamped with this corpse's
+		// serial (WFHDeathId) so only this death's heart matches the High Priest's memory
+		// (IsCurrentWfhHeart); either revival spends both. The eleventh death is final: nothing is
+		// written and any older memory is erased so the priest cannot bring the warrior back.
+		if (resnum > WFH_MAX_DEATHS)
+			if (corpsemaster)
+				EraseObjProperty(corpsemaster, "WFHBackup");
+				if (mastermonline)
+					SendSysMessage(corpsemaster, GetObjProperty(corpse,"Name")+" has fallen for the last time. Neither heart nor priest can bring them back.");
+				endif
+			endif
+		elseif (corpsemasterserial != 0 and corpsemaster)
 			heart := CreateItemAtLocation(corpse.x,corpse.y,corpse.z,0x1CED,1,corpse.realm);
 			heart.newbie := 1;
 			heart.color := 2750;
@@ -116,6 +129,7 @@ program npcdeath(corpse)
 			SetObjProperty(heart,"Sex",GetObjProperty(corpse,"Sex"));
 			SetObjProperty(heart,"master",corpsemasterserial);
 			SetObjProperty(heart,"Skills",GetObjProperty(corpse,"Skills"));
+			SetObjProperty(heart,"WFHDeathId",corpse.serial);	// 2026-10-10: only the current death's heart revives
 
 			var backup := dictionary;
 			backup.insert("Str", GetObjProperty(corpse,"Str"));
@@ -125,6 +139,7 @@ program npcdeath(corpse)
 			backup.insert("Sex", GetObjProperty(corpse,"Sex"));
 			backup.insert("resnum", resnum);
 			backup.insert("Skills", GetObjProperty(corpse,"Skills"));
+			backup.insert("WFHDeathId", corpse.serial);
 			SetObjProperty(corpsemaster, "WFHBackup", backup);
 
 			if (mastermonline)
@@ -137,8 +152,6 @@ program npcdeath(corpse)
 					SendSysMessage(corpsemaster, heart.name+" has been placed in your bank box.");
 				endif
 			endif
-		elseif (corpsemaster)
-			SendSysMessage(corpsemaster, GetObjProperty(corpse,"Name")+"'s heart has disintegrated and could not be recovered.");
 		endif
 
 		if(IsInSafeArea(corpse) and corpsemaster)
@@ -179,6 +192,23 @@ program npcdeath(corpse)
 		PlaySoundEffect( corpse, soundFx ); 
 	endif
 	
+	// 2026-10-10: a warrior its owner released or gave up has no corpse worth waiting for (guardkill
+	// destroys it below), so its gear goes to the owner's escrow now instead of vanishing with it.
+	// No heart and no backup exist for it; any memory of an earlier death is erased too.
+	if (GetObjProperty(corpse,"WarriorForHire") and npctemplate == "warriorforhire" and GetObjProperty(corpse,"AbandonedByOwner"))
+		var abandonedowner := GetObjProperty(corpse,"master");
+		if (abandonedowner)
+			var abandonedobj := SystemFindObjectBySerial(abandonedowner);
+			if (!abandonedobj)
+				abandonedobj := SystemFindObjectBySerial(abandonedowner, SYSFIND_SEARCH_OFFLINE_MOBILES);
+			endif
+			if (abandonedobj)
+				EraseObjProperty(abandonedobj, "WFHBackup");
+			endif
+			WFH_EscrowCorpseGear(corpse, abandonedowner);
+		endif
+	endif
+
 	if ( guardkill || summoned )
 		zapstorageareas(corpse);
 		return DestroyItem(corpse);

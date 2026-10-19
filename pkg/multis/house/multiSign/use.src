@@ -438,8 +438,9 @@ function AddFriend(hsign, who)
   endif
   // 2026-09-22: checked BEFORE adding -- it used to run after hsign.AddFriend,
   // so the owner's own account was added and then told "Cancelled".
-  if(targetchr.acctname == GetObjProperty(hsign, "owneracct"))
-    SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+  // 2026-10-09: same-account characters are owners now (IsOwner), so say so.
+  if(hsign.IsOwner(targetchr))
+    SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
 	return;
   endif
   var result := hsign.AddFriend(targetchr);
@@ -532,7 +533,7 @@ function AddBan(hsign, who)
 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
 		return;
 	endif
-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
+	if(hsign.IsOwner(targetchr)) // 2026-10-09: was the owner serial only; same account counts
 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
 		return;
 	endif
@@ -635,16 +636,18 @@ function AddCoowner(hsign, who)
 		SendSysMessageCL(who,501362, color := 33); // That can't be a co-owner of the house.
 		return;
 	endif
+	// 2026-10-09: checked BEFORE adding (it used to add the owner, then say
+	// "Cancelled"); same-account characters are already owners.
+	if(hsign.IsOwner(targetchr))
+		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
+		return;
+	endif
 	var result := hsign.AddCoOwner(targetchr);
 	if(!result)
 		SendSysMessageCL(who, 501369, color := 33); // This person is already on your co-owner list!
 		return;
 	elseif(result < 0)
 		SendSysMessageCL(who, 501368, color := 33); // Your co-owner list is full!
-		return;
-	endif
-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
-		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
 		return;
 	endif
 	SendSysMessage(who, targetchr.name + " is now a co-owner of your house", color := 66);
@@ -715,7 +718,8 @@ function ChangeHouseOwner(oldowner, newowner, sign, bank_region)
 	endif
 	if(oldownerserial == newowner.serial)
 		return 0;
-	elseif((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap(newowner.acctname))
+	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
+	elseif((newowner.cmdlevel == 0) and !sign.IsOwner(newowner) and !IsAccountUnderHouseCap(newowner.acctname))
 		SendSysMessage(newowner, "You already own the maximum number of houses allowed on this account.", color := 33);
 		return 0;
 	else
@@ -1734,7 +1738,7 @@ function ToggleCoOwnerStatus(sign, who)
 		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
 		return;
 	endif
-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
 		return;
 	endif
@@ -1779,7 +1783,7 @@ function ToggleHousePermission(sign, who, perm_key, label)
 		SendSysMessage(who, "That cannot be modified.", color := 33);
 		return;
 	endif
-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "Owner always has full permissions.", color := 33);
 		return;
 	endif

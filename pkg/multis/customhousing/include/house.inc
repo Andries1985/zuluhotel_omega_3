@@ -667,7 +667,8 @@ function ChangeOwner (who, sign)
 		return;
 	endif
 
-	if ((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap (newowner.acctname))
+	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
+	if ((newowner.cmdlevel == 0) and !sign.IsOwner (newowner) and !IsAccountUnderHouseCap (newowner.acctname))
 		SendSysMessage (who, "That person already owns the maximum number of houses allowed on their account!");
 		return;
 	endif

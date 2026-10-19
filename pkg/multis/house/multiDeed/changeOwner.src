@@ -13,13 +13,14 @@ program change_owner(who, deed)
 		SendSysMessageCL(who, 1042010, color := 33); // You must have the object in your backpack to use it.
 		return 0;
 	endif
-	if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
+	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
+	var sign := SystemFindObjectBySerial(GetObjProperty(deed, "signserial"));
+	if((who.cmdlevel == 0) and !sign.IsOwner(who) and !IsAccountUnderHouseCap(who.acctname))
 		SendSysMessageCL(who, 1042010, {}, 3, 33); // You cannot use that.
 		SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", color := 33);
 		return 0;
 	endif
-	// Begin sign CProps
-	var sign := SystemFindObjectBySerial(GetObjProperty(deed, "signserial"));
+	// Begin sign CProps (sign resolved above, before the cap check)
 	var old_owner_serial := GetObjProperty(sign, "ownerserial");
 	var old_owner := SystemFindObjectBySerial(old_owner_serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
 	SetObjProperty(sign, "lastownername", old_owner.name);

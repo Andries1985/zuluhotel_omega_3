@@ -51,6 +51,20 @@ function NpcVitalOrFallback( who, vitalfield, fallback )
 
 endfunction
 
+// 2026-10-10: a Warrior for Hire's vitals work like a player's (your rule): max HP = Strength,
+// max Mana = Intelligence, max Stamina = Dexterity, buffs included, so a Bless raises both the
+// stat and the vital and both drop back together. It skips the template/override lookup that
+// every other NPC uses. Stat mods call RecalcVitals (include/attributes Set*Mod), which re-runs
+// these hooks.
+function UsesPlayerVitals( who )
+
+	if( who.npctemplate == "warriorforhire" )
+		return 1;
+	endif
+	return 0;
+
+endfunction
+
 exported function GetLifeRegenRateExported( who )
 
 	var dict := GetVitalRegenRateModDict(who, VITALID_LIFE);
@@ -76,7 +90,9 @@ exported function GetLifeMaximumValueExported( who )
 	var life := GetAttribute(who, ATTRIBUTEID_STRENGTH) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		life := NpcVitalOrFallback( who, "HITS", life );
+		if (!UsesPlayerVitals( who ))	// 2026-10-10: warriors for hire follow their stats
+			life := NpcVitalOrFallback( who, "HITS", life );
+		endif
 	endif
 
 	return life;
@@ -92,7 +108,9 @@ exported function GetManaMaximumValueExported( who )
 	var mana := GetAttribute(who, ATTRIBUTEID_INTELLIGENCE) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		mana := NpcVitalOrFallback( who, "MANA", mana );
+		if (!UsesPlayerVitals( who ))	// 2026-10-10: warriors for hire follow their stats
+			mana := NpcVitalOrFallback( who, "MANA", mana );
+		endif
 	endif
 
 	return mana;
@@ -108,7 +126,9 @@ exported function GetStaminaMaximumValueExported( who )
 	var stam := GetAttribute(who, ATTRIBUTEID_DEXTERITY) * 100;
 
 	if (who.isa(POLCLASS_NPC))
-		stam := NpcVitalOrFallback( who, "STAM", stam );
+		if (!UsesPlayerVitals( who ))	// 2026-10-10: warriors for hire follow their stats
+			stam := NpcVitalOrFallback( who, "STAM", stam );
+		endif
 	endif
 
 	return stam;

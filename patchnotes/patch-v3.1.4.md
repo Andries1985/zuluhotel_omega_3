@@ -1,0 +1,179 @@
+# Patch Notes - v3.1.4
+**Zuluhotel Omega 3 | Beta Shard**
+
+**Date: October 19, 2026**
+
+---
+
+## What Changed
+
+Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, and the vanity shop sells scrolls that copy a runebook or Runic Atlas.
+
+---
+
+## Server-Wide Powerhour
+
+- A server-wide powerhour no longer stays on after a server restart. Until now, a restart in the middle of one left its bonus switched on with nothing to switch it off, sometimes for up to a week. Its end time is now kept, so after a restart it carries on and ends on time. A restart during the 2-minute warning still gives you the powerhour you were promised.
+- If the server was down for more than 30 minutes past a powerhour's end, it is simply over when the server comes back. You won't get an "ended" message for an hour you never saw.
+- The bonus "second powerhour" now follows its rule: a 50% chance after a half-resources powerhour, 10% after a hunting or double-skillgain one. Until now the game rolled against a random type instead of the one that had run, so every week got the same blended odds. Over many weeks the number of bonus hours stays about the same; they just land where they were meant to.
+- Only the weekly powerhour can earn a bonus hour. Powerhours started by staff, bonus hours themselves, and a weekly powerhour that staff ended early or re-timed never do. That keeps it to at most one bonus hour a week.
+- A weekly powerhour is no longer lost when another powerhour is running at its scheduled time, or the server is down. It starts as soon as the server is free, as long as that is within 6 hours of its usual time.
+- `.ph` now shows how long the server-wide powerhour has left, and says when one is about to start during the 2-minute warning. Countdowns skip the empty parts: "3 hours and 12 minutes" rather than "0 days, 3 hours, 12 minutes and 0 seconds".
+- The weekly powerhour stays on Sunday at 19:00 GMT. Staff can now move it. If they do, `.ph` shows the new time.
+
+### Player Impact
+
+- No more week-long "stuck" powerhours after a restart.
+- Half-resources weeks are the ones most likely to bring a second powerhour.
+- Expect to see powerhours around events more often, now that staff can start them without a restart.
+
+## Personal Powerhour
+
+- A personal powerhour now ends on time after you log out and back in. Before, relogging during one left it running until the next server restart.
+- A personal powerhour now survives more than one server restart within the same hour. Before, the second restart ended it early and the week still counted as used.
+- If staff reset your powerhour and you start a new one, the old hour's timer no longer cuts the new one short.
+- After using your personal powerhour on a Sunday, `.ph` now shows the real time until you can start the next one. It could be up to a day short.
+- Your weekly lock now lifts at the next Sunday 00:00 GMT (a full week later if you used it on a Sunday) and stays lifted. Before, if you didn't start a new one by then, the lock came back the following week on the weekday you last used it, until the hour you used it, while `.ph` said you could start one in less than a minute.
+- `.setph` and `.ph` now use the same names for the three types everywhere: Hunting, Half-resources and Double skillgain.
+
+### Player Impact
+
+- If you relogged during a personal powerhour and it kept going, that will stop happening.
+- The weekly rule for `.setph` has not changed.
+
+## Classes
+
+- Powerplayers no longer get the class bonus on Forensics, Throwing, Snooping and Detecting Hidden. That bonus was faster gain and a second roll after a failed check, and those four skills were the last ones that had it. A Powerplayer's skill-gain bonus is now its own one on every skill, and it starts a level sooner and keeps growing: 1.1 times at level 2, 1.2 at level 3, 1.3 at level 4, 1.4 at level 5 and 1.5 at level 6. Before, it was 1.1 at level 3, 1.2 at level 4, 1.3 at level 5 and nothing at levels 1, 2 or 6.
+- If you qualify for two classes, the game now treats you as the one you are strongest in. That applies to which items you may wear and every other rule that looks at your class. Until now it took whichever came first in the class list, so a level 3 Ranger who was also a level 1 Mystic Archer was judged as a level 1 Mystic Archer. This is rare: it needs two closely related classes and a narrow build.
+- When your two classes disagree on a stat, the higher-level class decides whether it grows faster or slower.
+- Your class is now looked up from your last class check, not recounted from all your skills every time. This affects hits, spells, healing, songs, the guild window and item tooltips. When you reach a new class level, it counts from your next class check: when you log in, use `.showclasse`, or within 10 minutes.
+- Hits, spells and item tooltips no longer re-check all your worn gear for items your class may not wear. That check now runs only when your class is checked: at login, on the class commands, and every 10 minutes. Expect combat and hovering over items to feel snappier.
+- Characters without a class are now also checked at login for items marked for role-players. Anyone who is not a role-player has such an item moved to their backpack.
+
+### Player Impact
+
+- Powerplayers: expect slower gains on Forensics, Throwing, Snooping and Detecting Hidden than before, and faster gains everywhere else from level 2.
+- Single-class characters see no change in rules, only in speed.
+- Just reached a new class level? Log out and back in, or use `.showclasse`, to use it straight away.
+
+## Housing
+
+- Every character on the same account as a house's owner now has full owner rights in that house: locking down and securing items, house teleporters, ejecting, banning, managing friends and co-owners, redeeding, trapping, and relinquishing the house. Until now only the owning character had most of these, and your other characters could not even be added to the friend list.
+- Your other characters can no longer be banned or ejected from your house. If one of them was already on your ban list, the ban no longer applies.
+- Trying to add one of your own characters as a friend or co-owner now tells you it already has full owner rights, instead of saying "Cancelled."
+- You can hand a house to another character on your own account even when your account is at its house limit, since your house count does not change.
+- Co-owners and friends of a house can now set traps on containers in it, with the trap spell or a trap kit. Until now only the owner could in most houses.
+- The house sign still shows the owning character's name.
+
+### Player Impact
+
+- Log in on any character on your account and your house works for it the same as for the owner.
+
+## Warriors for Hire
+
+- A warrior can now be brought back ten times in all, by its heart or by the High Priest, and the eleventh death is final. Until now the High Priest could rebuild a warrior from memory for 10,000 gold as often as you paid, and a heart and the priest could both bring back the same death.
+- Only the heart from your warrior's latest death works. An older heart you kept crumbles when you use it, and bringing your warrior back destroys any other hearts you still hold.
+- Hearts from before this patch no longer bring a warrior back; they crumble. If your warrior died before the patch, ask the High Priest to resurrect it from memory instead.
+- Only the warrior's own master can hand its heart to the High Priest. A heart given to him by anyone else crumbles, so don't pass your warrior's heart to a friend.
+- A warrior revived from its heart, or from the High Priest's memory, now loses one point of each stat per death so far, never below 10. Before, the first heart revival actually added a point, and a memory revival kept every stat.
+- A warrior that died while blessed no longer comes back with the blessing added to its base stats for good.
+- The High Priest no longer stops working when he refuses a heart (for example because you already have a henchman); he hands the heart back. His questions now close after 30 seconds, so one unanswered window no longer freezes him for everyone.
+- When you release a warrior or give it up at the High Priest, its gear now goes to your escrow, where the High Priest returns it for 20,000 gold, as after any other death. It used to vanish.
+- If your dead warrior's gear cannot be filed into escrow, it now goes to your bank box instead of being destroyed.
+- Saying "stop" during a fight now really stops your warrior guarding you, so it no longer jumps back in. "Stop" outside a fight works as before.
+- Warriors now recognise every bow and crossbow, not just about 20 of them, and use them as ranged weapons.
+- Warriors drink one heal potion at a time. They used to use up the whole stack for one drink. They now use Light Heal, Heal, Greater Heal, the true-mage potions and Tamla, weakest first.
+- Warriors no longer try to bandage a dead master, and no longer start a new self-heal every second while one is already running.
+- NPC healers no longer use bandages they are no longer carrying.
+- Your warrior keeps fighting, following and healing while its status window is open. The window no longer lists its backpack, hair and beard, and now shows its hits.
+- Your hits on your own warrior now do half damage, the same as its hits on you.
+- A warrior's hits, mana and stamina now work like yours: they equal its Strength, Intelligence and Dexterity. A Bless or the Staff of Nagash raises both the stat and the vital, and both drop back when it ends. Warriors used to have twice their Strength in hits, so expect about half the hits you are used to.
+
+### Player Impact
+
+- Keep your warrior's newest heart, and bring it to the High Priest yourself; old hearts are worthless now.
+- Releasing a warrior no longer costs you its gear.
+- Warriors with bows and potions are much better at staying alive.
+- Warriors have about half the hits they used to; Bless them to raise it.
+
+## Eon-Prism
+
+- The Eon-Prism comes to this shard. Using it lets you start another personal powerhour this week with `.setph`. It can't be used during a personal or server-wide powerhour, or when you can already start one, and it must be in your backpack. It can be found in the strange box, like other artifacts.
+
+### Player Impact
+
+- One more way to get a second personal powerhour in a week.
+
+## Townstones
+
+- A mayor can now resign and leave the town. The mayor's townstone window has a new "Resign and leave town" button. After you confirm, you stop being mayor and give up your citizenship, and the server is told you resigned. Before, a mayor had no way to leave.
+- An election or poll that is already running carries on. With no mayor, citizens can call a new election straight away.
+
+### Player Impact
+
+- Mayors who want out no longer need staff to remove them.
+
+## Vanity Shop: Transcription Scrolls
+
+- New Runebook Transcription Scroll (5 tokens) and Runic Atlas Transcription Scroll (10 tokens). Use one, pick the book to copy, then pick an empty book of the same kind: every rune is copied into it and the scroll is used up.
+- Runebook to runebook and Runic Atlas to Runic Atlas only. The book you copy from must have runes, the book you copy into must be empty, and both must be in your backpack. The scroll does not make a new book.
+- Only the runes are copied. The new book keeps its own charges, name and colour, and has no default rune set.
+- Close both books first: a book with its window open can't be copied. While the scroll is working, the two books can't be moved or opened.
+- Copied runes follow the same travel rules as the originals, so a copy can't take you anywhere the original couldn't.
+
+### Player Impact
+
+- Share a rune library with friends, or keep a backup, without marking every rune again.
+
+## Guards and Areas
+
+- Guards called on a criminal now record the right player's account. They looked it up by character name, so two characters with the same name could get the wrong account blamed.
+- Checking which area rules apply where you stand (safe zones, no-PK areas, guarded towns, forbidden areas) is now much cheaper for the server. Every monster, spell and skill gain does this check, so the shard should run lighter under load.
+- Recalling or gating onto a courtyard tile of a house without a house sign footprint is now checked against that house.
+
+### Player Impact
+
+- No direct gameplay change expected from the area work, apart from a smoother server.
+
+## Doors
+
+- Two elven door entries shared their names with two other doors. They now have names of their own.
+
+### Player Impact
+
+- No direct gameplay change expected.
+
+## Staff Tools
+
+- Administrators have a new `.phadmin` window. It starts a server-wide powerhour of a chosen type (always after the usual 2-minute warning), extends, shortens or ends the one that is running, and changes the day and time of the weekly powerhour. A new end time is announced to everyone.
+- `.resetph` now also clears a personal powerhour's saved resume state, so a reset hour can't come back at the player's next login.
+- `.speedwalk` (Seer) now only accepts 0 to 4. Anything else used to switch it off, and a negative number was saved and sent again at every login.
+- `.setwfhdamage` refuses anything that is not a number from 0.1 to 10. A typo used to set a multiplier to 0, and a negative one made warriors heal bosses.
+- `.phadmin`'s window is laid out properly: title, panels and buttons line up with the frame.
+- Staff can say "<name> status" to any warrior to see its status window. Testers have `.maxwfh`, which maxes a warrior's stats and fighting skills.
+- `.areas` Save only rewrites the areas you changed.
+- Developers have `.classbonusinfo`. It targets a character and lists their classes, primary class, stat multipliers and every skill that carries a class bonus.
+
+### Player Impact
+
+- Powerhours can now be run, re-timed and rescheduled without a server restart.
+
+## Summary
+
+- Server-wide powerhours survive restarts and end on time. A weekly powerhour crowded out by another one, or by downtime, starts later instead of being lost.
+- The bonus second powerhour is 50% likely after a half-resources week and 10% after the others, and only the weekly powerhour can earn one.
+- `.ph` shows time left on the server-wide powerhour, warns when one is about to start, and has an accurate Sunday countdown.
+- Personal powerhours end on time after a relog, survive more than one restart, and are no longer cut short by an old timer after a reset; the weekly lock lifts at Sunday 00:00 GMT and stays lifted.
+- Powerplayers no longer get the per-skill class bonus on any skill; their bonus on every skill now runs from 1.1 times at level 2 to 1.5 times at level 6.
+- Characters with two classes are judged by their stronger one, for gear and for stat growth.
+- Class effects use your last class check, refreshed at login, on `.showclasse` and every 10 minutes; combat, spells and tooltips no longer re-check your gear each time.
+- Every character on a house owner's account has full owner rights in that house and cannot be banned or ejected from it; houses can move between your own characters at the house limit; co-owners and friends can set traps.
+- Two elven doors got names of their own.
+- Warriors for Hire: ten revivals in all, only the newest heart works and only from its master's hand, pre-patch hearts are void, the same stat loss by heart or by memory, no permanent blessings, a High Priest that keeps working, gear kept on release, every bow, one potion at a time, half damage both ways when sparring, and hits, mana and stamina that follow their stats like a player's.
+- The Eon-Prism lets you start another personal powerhour this week, used from your backpack.
+- Mayors can resign and leave their town from the townstone.
+- The vanity shop sells Transcription Scrolls that copy a runebook (5 tokens) or Runic Atlas (10 tokens) into an empty book of the same kind.
+- Guards record the right account; area checks are much cheaper for the server.
+- Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; developers have `.classbonusinfo`.
+
+Thanks for playing Zuluhotel Omega 3.

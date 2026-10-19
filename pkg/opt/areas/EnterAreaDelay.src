@@ -35,27 +35,36 @@ program EnterAreaDelay(who)
 
 	*/
 
+	// 2026-10-10: resolve the area ONCE and test every bit against that mask; the four
+	// IsIn...Area(who) calls below used to each walk the whole area list again.
+	var match := ResolveAreaMatchAtLocation(who.x, who.y, who.realm);
+	var mask := 0;
+	if (match)
+		mask := CInt(match.mask);
+	endif
+
 	// Safe area, no more messages atm
-	if (IsInSafeArea(who))
+	if (HasPolicy(mask, AREA_POLICY_SAFE_AREA))
 		SendSysMessage(who, "This is a SAFE area.", 3, 1001);
 		SetSafeAreaProperties(who);
 		return 1;
 	endif
 
 	// Safe area, no more messages atm
-	if (IsInNOPKArea(who))
+	if (HasPolicy(mask, AREA_POLICY_NO_PK))
 		SendSysMessage(who, "This is a NO-PK area.", 3, 1001);
 		SetNOPK(who);
 	endif
 
 	// Yes or no to guards
-	if (IsInGuardedArea( who ))
+	if (HasPolicy(mask, AREA_POLICY_GUARDED))
 		SendSysMessage(who, "This is a guarded area.", 3, 1001);
 	else
 		SendSysMessage(who, "This is NOT a guarded area.", 3, 1001);
 	endif
 
-	if (IsInForbiddenArea( who ))
+	// same test as IsInForbiddenArea(): staff are never "in" a forbidden area
+	if (!who.cmdlevel && HasPolicy(mask, AREA_POLICY_FORBIDDEN))
 		SendSysMessage(who, "This is a FORBIDDEN area.", 3, 1001);
 	endif
 

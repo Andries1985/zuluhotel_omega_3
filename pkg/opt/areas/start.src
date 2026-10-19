@@ -1,0 +1,41 @@
+////////////////////////////////////////////////////////////////////////////////
+// areas package start script (POL runs every package's start.ecl on boot)
+// 2026-10-10: the mask cache lives in the AreaPolicyCache_<realm> global
+// properties, which survive a restart (and are saved with the world). Rebuild
+// it from the datafile for every realm in areas.cfg at boot, which also bumps
+// AreaPolicyCacheVer_<realm>, so a stale copy from before a config or datafile
+// edit made while the server was down can never be served, and the cache is
+// populated before the first policy check instead of on first use.
+////////////////////////////////////////////////////////////////////////////////
+use uo;
+use os;
+use cfgfile;
+use basicio;
+
+include ":areas:include/areapolicy";
+
+program areas_start()
+	var areas_cfg := ReadConfigfile(CFGFILE_AREAS);
+	if (!areas_cfg)
+		Print("[areas.start] cannot read areas config; caches left as-is");
+		return 0;
+	endif
+
+	var realms := GetConfigStringKeys(areas_cfg);
+	if (!realms || !realms.size())
+		Print("[areas.start] no realms in areas config; caches left as-is");
+		return 0;
+	endif
+
+	foreach realm in realms
+		var masks := RefreshRealmPolicyCache(realm);
+		if (masks == error)
+			Print("[areas.start] mask cache rebuild failed realm=" + CStr(realm) + " : " + CStr(masks.errortext));
+			continue;
+		endif
+
+		Print("[areas.start] realm=" + CStr(realm) + " areas=" + CStr(masks.size()));
+	endforeach
+
+	return 1;
+endprogram

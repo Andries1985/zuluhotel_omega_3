@@ -933,8 +933,9 @@ function AddFriend (hsign, who)
 		return;
 	endif
 	// 2026-09-22: checked BEFORE adding (it used to add, then say "Canceled").
-	if (targetchr.acctname == GetObjProperty (hsign, "owneracct"))
-		SendSysMessage (who, "Canceled.", color := 33);
+	// 2026-10-09: same-account characters are owners now (IsOwner), so say so.
+	if (hsign.IsOwner (targetchr))
+		SendSysMessage (who, "That character shares the owner's account and already has full owner rights.", color := 33);
 		return;
 	endif
 	var result := hsign.AddFriend (targetchr);
@@ -965,7 +966,7 @@ function AddBan (hsign, who)
 		SendSysMessage (who, "This person is already banned!", color := 42);
 		return;
 	endif
-	if (targetchr.serial == GetObjProperty (hsign, "ownerserial"))
+	if (hsign.IsOwner (targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage (who, "You cannot ban the house owner!", color := 33);
 		return;
 	endif

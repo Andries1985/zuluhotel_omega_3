@@ -14,16 +14,14 @@ program textcmd_speedwalk( mobile, text )
 			text := CInt( 1 );
 		endif
 	else
-		text := CInt( text );
-		if( text.errortext )
+		// 2026-10-10 (from ZH2.5 1.1.4): CInt() never errors ("abc" -> 0, "-3" -> -3, both got
+		// through and -3 was saved and re-sent at every login), so check the text: one digit 0-4.
+		var words := SplitWords( CStr( text ) );
+		if( words.size() != 1 or Len( words[1] ) != 1 or words[1] < "0" or words[1] > "4" )
 			SendSysMessage( mobile, "Invalid value, must be an integer between 0 - 4.", 0x3, 0x22 );
 			return 0;
 		endif
-	endif
-
-	if( CInt( text ) > 4 )
-		SendSysMessage( mobile, "Invalid value, must be an integer between 0 - 4.", 0x3, 0x22 );
-		return 0;
+		text := CInt( words[1] );
 	endif
 
 	SendSpeedWalk( mobile, text );

@@ -58,6 +58,21 @@ function ClasseSmallBonusByLevel( level )
 
 endfunction
 
+// 2026-10-10 (from ZH2.5 1.1.4 c92a74d, your pick): the Powerplayer's skill-gain multiplier on
+// every skill, by Powerplayer level. Was x1.1 / 1.2 / 1.3 at levels 3-5 only.
+function PowerplayerGainMultiplier( level )
+
+	case( CInt(level) )
+		2: return 1.1;
+		3: return 1.2;
+		4: return 1.3;
+		5: return 1.4;
+		6: return 1.5;
+	endcase
+	return 1.0;
+
+endfunction
+
 
 function ClasseBonusBySkillId( who, skillid )
 
@@ -185,22 +200,17 @@ function GetClasseIdForSkill( who, skillid )
 	var bestlevel := 0;
 
 	foreach id in GetClasseIds()
+		// 2026-10-08: a Powerplayer never gets the specialist skill bonus or the second roll, on any skill
+		// (was: Forensics, Throwing, Snooping and Detecting Hidden). Its only skill-gain bonus is the
+		// x1.1 to x1.3 at levels 3 to 5 in skillpoints.inc.
+		if( id == CLASSEID_POWERPLAYER )
+			continue;
+		endif
 		var level := CInt( GetObjProperty( who, id ) );
 		if( level > bestlevel )
 			if( skillid in GetClasseSkills( id ) )
-				// 2026-10-04: a Powerplayer keeps the old rule (decided): the class skill-gain bonus and
-				// second roll only on Forensics, Throwing, Snooping and Detecting Hidden; its own x1.1 to
-				// x1.3 at levels 3 to 5 in skillpoints.inc is its bonus on the rest.
-				var allowed := 1;
-				if( id == CLASSEID_POWERPLAYER )
-					if( skillid != SKILLID_FORENSICS and skillid != SKILLID_THROWING and skillid != SKILLID_SNOOPING and skillid != SKILLID_DETECTINGHIDDEN )
-						allowed := 0;
-					endif
-				endif
-				if( allowed )
-					best := id;
-					bestlevel := level;
-				endif
+				best := id;
+				bestlevel := level;
 			endif
 		endif
 	endforeach
@@ -453,19 +463,18 @@ endfunction
 
 function GetStatPointsMultiplier( who , stat )
 
-	var level   := HaveStatAffinity( who , stat );
-	var mult    := 1.0;
+	// 2026-10-08 (from ZH2.5 1.1.4): when a character's classes disagree on a stat, the higher-level
+	// class decides (a tie favours the affinity). Before, any affinity beat any difficulty.
+	var affinity   := HaveStatAffinity( who , stat );
+	var difficulty := HaveStatDifficulty( who , stat );
 
-	if( level )
-		mult  := ClasseBonusByLevel( level );
-	else
-		level := HaveStatDifficulty( who , stat );
-		if( level )
-			mult := CDbl( 1.0 / ClasseBonusByLevel( level ) );
-		endif
+	if( affinity and affinity >= difficulty )
+		return ClasseBonusByLevel( affinity );
+	elseif( difficulty )
+		return CDbl( 1.0 / ClasseBonusByLevel( difficulty ) );
 	endif
 
-	return mult;
+	return 1.0;
 
 endfunction
 
@@ -575,22 +584,14 @@ function HaveStatAffinity( who , stat )
 		default:	classeids := {};
 	endcase
 
-	foreach id in classeids
-		var level := CInt( GetObjProperty( who , id ) );
-
-		if( level )
-			return level;
-		endif
-	endforeach
-
-	return 0;
+	return HighestHeldClasseLevel( who, classeids ); // 2026-10-08: was the first held class in list order
 
 endfunction
 
 
 function HaveStatDifficulty( who , stat )
 
-	var classeids, level;
+	var classeids;
 
 	case( stat )
 		"str":
@@ -621,14 +622,24 @@ function HaveStatDifficulty( who , stat )
 		default:	classeids := {};
 	endcase
 
+	return HighestHeldClasseLevel( who, classeids ); // 2026-10-08: was the first held class in list order
+
+endfunction
+
+
+// 2026-10-08 (from ZH2.5 1.1.4): the highest level "who" holds in any of classeids, 0 if none.
+// Replaces the first-match walk the stat tables used, which let list order decide for a dual class.
+function HighestHeldClasseLevel( who, classeids )
+
+	var best := 0;
 	foreach id in classeids
-		level := CInt( GetObjProperty( who , id ) );
-		if( level )
-			return level;
+		var level := CInt( GetObjProperty( who, id ) );
+		if( level > best )
+			best := level;
 		endif
 	endforeach
 
-	return 0;
+	return best;
 
 endfunction
 
@@ -645,44 +656,55 @@ function IsSpecialisedIn( who, skillid )
 endfunction
 
 
+// 2026-10-08: a player's class level is the one AssignClasse stored (login, the class commands, the
+// 10-minute recheck in :summoning:checkclasse), so a threshold crossed mid-session counts from the next
+// recheck. Before, every Is<Class>() call (~120 sites in combat, spells, tooltips) re-scanned all skills.
+// NPCs never get a stored class, so they keep the live scan they always had.
+function HeldOrLiveClasseLevel( who, classeid, forensicsallowed := 0, mageryallowed := 0, musicianshipallowed := 0, detectinghiddenallowed := 0, snoopingallowed := 0 )
+	if( who.isa(POLCLASS_NPC) )
+		return IsFromThatClasse( who, GetClasseSkills( classeid ), forensicsallowed, mageryallowed, musicianshipallowed, detectinghiddenallowed, snoopingallowed );
+	endif
+	return CInt( GetObjProperty( who, classeid ) );
+endfunction
+
 function IsBard( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_BARD ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_BARD );
 endfunction
 
 function IsBladesinger( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_BLADESINGER ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_BLADESINGER );
 endfunction
 
 function IsCrafter( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_CRAFTER ), 0, 1, 1 );
+	return HeldOrLiveClasseLevel( who, CLASSEID_CRAFTER, 0, 1, 1 );
 endfunction
 
 function IsMage( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_MAGE ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_MAGE );
 endfunction
 
 function IsMysticArcher( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_MYSTIC_ARCHER ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_MYSTIC_ARCHER );
 endfunction
 
 function IsPaladin( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_PALADIN ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_PALADIN );
 endfunction
 
 function IsRanger( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_RANGER ), 1, 0, 0 );
+	return HeldOrLiveClasseLevel( who, CLASSEID_RANGER, 1, 0, 0 );
 endfunction
 
 function IsThief( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_THIEF ), 0, 0, 0, 1, 1 );
+	return HeldOrLiveClasseLevel( who, CLASSEID_THIEF, 0, 0, 0, 1, 1 );
 endfunction
 
 function IsWarrior( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_WARRIOR ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_WARRIOR );
 endfunction
 
 function IsPowerplayer( who )
-	return IsFromThatClasse( who , GetClasseSkills( CLASSEID_POWERPLAYER ) );
+	return HeldOrLiveClasseLevel( who, CLASSEID_POWERPLAYER );
 endfunction
 
 
@@ -722,9 +744,9 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryal
 			level     := level + 1;
 			average_t := CInt( average_t + AVERAGE_LEVEL_MOD * number );
 		endwhile
-		unequipRestrictedItems(who);
+		// 2026-10-08: gear sweep moved to the end of AssignClasse (every IsMage()/IsThief()... call paid for it)
 		return level;
-	elseif ( classe < AVERAGE_SKILL * number )	
+	elseif ( classe < AVERAGE_SKILL * number )
 		return 0;
 	elseif( classe < CInt(total * number * EACH_MUST_REPRESENT * 0.01) )
 		return 0;
@@ -740,7 +762,7 @@ function IsFromThatClasse( who , classe_skills , forensicsallowed := 0, mageryal
 			percent   := CInt( total * number * represent * 0.01 );
 			average_t := CInt( average_t + AVERAGE_LEVEL_MOD * number );
 		endwhile
-		unequipRestrictedItems(who);
+		// 2026-10-08: gear sweep moved to the end of AssignClasse
 		return level;
 	endif
 
@@ -750,8 +772,10 @@ endfunction
 function IsProhibitedByClasse( who , item )
 
 	var ret := 0;
+	// 2026-10-08 (from ZH2.5 1.1.4): the rules of the highest-level class, not the first held one in list order
+	var primary := GetPrimaryClasseId( who );
 
-	if( GetObjProperty( who , CLASSEID_BARD	) )
+	if( primary == CLASSEID_BARD )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_BARD ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_BARD ) )
@@ -759,7 +783,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_BARD ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_BLADESINGER	) )
+	elseif( primary == CLASSEID_BLADESINGER )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_BLADESINGER ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_BLADESINGER ) )
@@ -769,7 +793,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( GetObjProperty( item , "int" ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_CRAFTER ) )
+	elseif( primary == CLASSEID_CRAFTER )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_CRAFTER ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_CRAFTER ) )
@@ -777,7 +801,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_CRAFTER ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_MAGE ) )
+	elseif( primary == CLASSEID_MAGE )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_MAGE ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "str" ) )
@@ -791,7 +815,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MAGE ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_MYSTIC_ARCHER ) )
+	elseif( primary == CLASSEID_MYSTIC_ARCHER )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_MYSTIC_ARCHER ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "str" ) )
@@ -803,7 +827,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_MYSTIC_ARCHER ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_PALADIN ) )
+	elseif( primary == CLASSEID_PALADIN )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_PALADIN ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "dex" ) )
@@ -813,7 +837,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_PALADIN ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_RANGER ) )
+	elseif( primary == CLASSEID_RANGER )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_RANGER ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "str" ) )
@@ -823,7 +847,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( item.objtype in EnumerateRestrictedItemTypesFromClasse( CLASSEID_RANGER ) )	// 2026-10-05: every other class tests the objtype too; without it the Navar Bloody Barrier (objtype 0x982a, graphic 0x2B01) was never barred for Rangers
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_THIEF ) )
+	elseif( primary == CLASSEID_THIEF )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_THIEF ) )
 			ret := 1;
 		elseif( item.graphic in EnumerateRestrictedItemTypesFromClasse( CLASSEID_THIEF ) )
@@ -833,7 +857,7 @@ function IsProhibitedByClasse( who , item )
 		elseif( GetObjProperty( item , "int" ) )
 			ret := 1;
 		endif
-	elseif( GetObjProperty( who , CLASSEID_WARRIOR ) )
+	elseif( primary == CLASSEID_WARRIOR )
 		if( HaveInvalidSkillEnchantmentForClasse( item , CLASSEID_WARRIOR ) )
 			ret := 1;
 		elseif( GetObjProperty( item , "int" ) )
@@ -869,9 +893,12 @@ function AssignClasse( character )
 		endif
 		if( t )
 			SetObjProperty( character , classe , t );
-			unequipRestrictedItems(character);
 		endif
 	endforeach
+
+	// 2026-10-08 (from ZH2.5 1.1.4): the one gear sweep, once every class is stamped. It used to run per
+	// class here and inside IsFromThatClasse, so every Is<Class>() call (combat, spells, tooltips) swept.
+	unequipRestrictedItems(character);
 
 endfunction
 
@@ -896,15 +923,31 @@ function ClassWeapons(classString)
 endfunction
 
 
-function GetClass(who)
+// 2026-10-08 (from ZH2.5 1.1.4): the class a character "is" for level-based rules: the held class with
+// the highest level, ties going to GetClasseIds() order (so a single-class character is unchanged).
+// GetClass used to return the first held class in list order, so a Ranger 3 / Mystic Archer 1 was
+// judged as a level 1 Mystic Archer.
+function GetPrimaryClasseId( who )
+
+	var best := 0;
+	var bestlevel := 0;
 
 	foreach key in GetClasseIds()
-		if (GetObjProperty(who, key))
-			return key; // returns "Isranger" etc
+		var level := CInt( GetObjProperty( who, key ) );
+		if( level > bestlevel )
+			best := key;
+			bestlevel := level;
 		endif
 	endforeach
 
-	return 0; //no class found
+	return best;
+
+endfunction
+
+
+function GetClass(who)
+
+	return GetPrimaryClasseId( who ); // returns "IsRanger" etc, 0 when no class
 
 endfunction
 

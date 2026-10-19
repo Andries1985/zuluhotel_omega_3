@@ -1,0 +1,69 @@
+// 2026-10-10: ported from ZH2.5 (1.1.2 item, 1.1.4 version), your pick. Using the Eon-Prism
+// clears the weekly personal powerhour lock so the player can .setph again; it is consumed.
+// Refused while a personal or server-wide powerhour is running, or when the player is already
+// eligible. Staff add prisms to the artifact box (.openartifact) like any other artifact.
+use uo;
+use os;
+
+include "include/client";
+include "include/itemutil";
+include ":powerhour:include/powerhour";
+
+const EONPRISM_FONT_COLOR := 43;
+
+program eonprism(character, prism)
+
+	if(!ReserveItem(prism))
+		return 0;
+	endif
+
+	// 2026-10-19: anyone in reach could use a prism lying on the floor or in an open chest.
+	if(!IsOnPlayer(character.backpack, prism))
+		SendSysMessage(character, "The Eon-Prism must be in your backpack to use it.", FONT_NORMAL, EONPRISM_FONT_COLOR);
+		ReleaseItem(prism);
+		return 0;
+	endif
+
+	if(PPH_ActiveType(character))
+		SendSysMessage(character, "You cannot use the Eon-Prism while a personal powerhour is already active.", FONT_NORMAL, EONPRISM_FONT_COLOR);
+		ReleaseItem(prism);
+		return 0;
+	endif
+
+	if(PH_ActiveType())
+		SendSysMessage(character, "You cannot use the Eon-Prism while a server-wide powerhour is active.", FONT_NORMAL, EONPRISM_FONT_COLOR);
+		ReleaseItem(prism);
+		return 0;
+	endif
+
+	// Same eligibility rule .setph and .ph use.
+	if(PPH_IsEligible(character, POLCore().systime))
+		SendSysMessage(character, "You don't need the Eon-Prism right now - you can already start a new personal powerhour with .setph!", FONT_NORMAL, EONPRISM_FONT_COLOR);
+		ReleaseItem(prism);
+		return 0;
+	endif
+
+	var phrases := {
+		"An Ex Por - Undo the passing hour!",
+		"Rel Por Wis... Rel Por Wis... Time shifts to my will!",
+		"Mundain's shadow fades, the gods grant me another hour!",
+		"Ascension awaits! Spirits, restore my fading drive!",
+		"By the Light of the Virtues, grant me the strength to transcend!"
+	};
+
+	// The weekly lock (what .resetph erases); no hour is running, so the runtime flags are clear.
+	EraseObjProperty(character, PPH_PROP_USE_TIME);
+	EraseObjProperty(character, PPH_PROP_WEEKDAY);
+	EraseObjProperty(character, PPH_PROP_SETTING);
+
+	PrintTextAbove(character, phrases.randomentry());
+	PlaySoundEffect(character, SFX_SPELL_RESURRECTION);
+	SendSysMessage(character, "Your personal powerhour is ready again. Use .setph to start it.", FONT_NORMAL, EONPRISM_FONT_COLOR);
+
+	// DestroyItem runs ::maindestroy, which sends an Artifact item back to the artifact box, so a
+	// used prism returns to the pool (as in ZH2.5). ReleaseItem first (ZH2.5 marks that order load-bearing).
+	ReleaseItem(prism);
+	DestroyItem(prism);
+	return 1;
+
+endprogram

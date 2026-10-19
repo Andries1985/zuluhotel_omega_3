@@ -1,15 +1,12 @@
 // Synopsis: Activate your hunting power hour bonus
 use uo;
 use os;
-use math;
 
 include "include/client";
 include ":mdgumps:gumps_ex";
-
-const minute := 60;
-const hour := 3600;
-const week := 604800;
-const starttime := 1543172400; //2018/11/25 19:00 gmt (sunday)
+// 2026-10-08: eligibility, type names and the end-of-hour cleanup come from the shared include
+// (same rule .ph shows); the local week/hour/starttime constants and their copy of the rule are gone.
+include ":powerhour:include/powerhour";
 
 const ph_gump_id := 3900;
 const ph_title_color := 1097;
@@ -23,23 +20,11 @@ const btn_okay := 2;
 program textcmd_setPH(who)
 
 	var time_now := POLCore().systime;
-	// CInt: both props are unset (error) on a character that never used a PH
-	// (or after .resetph) -- "error + week" threw a runtime error. 0 = eligible.
-	var use_time := CInt(GetObjProperty(who, "pph_use_time"));
-	var use_time_nextweek := use_time + week;
-	var weekday_now := cint(Floor(time_now/86400)+4) % 7;
-	var use_weekday := CInt(GetObjProperty(who, "pph_use_weekday"));
 
-	if(GetObjProperty(who, "#PPHH") || GetObjProperty(who, "#PPHC") || GetObjProperty(who, "#PPHS"))
-		var remaining := (use_time + hour - time_now)/60;
-		if(GetObjProperty(who, "#PPHH"))
-			SendSysMessage( who, "You are already under the influence of the Hunting Powerhour!", FONT_BOLD, 2595 );
-		elseif(GetObjProperty(who,"#PPHC"))
-			SendSysMessage( who, "You are already under the influence of the Half-Resources Powerhour!", FONT_BOLD, 2595 );
-		elseif(GetObjProperty(who, "#PPHS"))
-			SendSysMessage( who, "You are already under the influence of the Double-Skillgain Powerhour!", FONT_BOLD, 2595 );
-		endif
-		SendSysMessage( who, "Remaining minutes left: "+remaining, FONT_BOLD, 2601 );
+	var active := PPH_ActiveType(who);
+	if(active)
+		SendSysMessage( who, "You are already under the influence of the " + PH_TypeName(active) + " Powerhour!", FONT_BOLD, PH_MSG_COLOR_BAD );
+		SendSysMessage( who, "Remaining minutes left: " + CInt(PPH_SecondsRemaining(who, time_now) / PH_MINUTE), FONT_BOLD, PH_MSG_COLOR_GOOD );
 		return;
 	endif
 
@@ -48,7 +33,7 @@ program textcmd_setPH(who)
 		return 0;
 	endif
 
-	if ((weekday_now < use_weekday) || (time_now > use_time_nextweek) )
+	if( PPH_IsEligible(who, time_now) )
 
 		SetObjProperty(who, "#SettingPH", 1);
 
@@ -59,12 +44,16 @@ program textcmd_setPH(who)
 			return;
 		endif
 
-		var playerchoice;
-		foreach key in (gumpdata.keys)
-			if(key != btn_okay && key != btn_cancel)
-				playerchoice := key;
-			endif
-		endforeach
+		// 2026-10-10: the radios are read directly (as ZH2.5 1.1.4 does); the old loop over
+		// "gumpdata.keys" had no parentheses, a member read that may yield nothing (gotcha 22).
+		var playerchoice := 0;
+		if(gumpdata[100])
+			playerchoice := 100;
+		elseif(gumpdata[200])
+			playerchoice := 200;
+		elseif(gumpdata[300])
+			playerchoice := 300;
+		endif
 
 		case(playerchoice)
 			100:	activateph(who, "#PPHH");
@@ -130,11 +119,10 @@ function activateph(who, choice)
 
 	var use_time := POLCore().systime;
 
-	var setph := SetObjProperty(who, choice, 1);
-	var use_weekday :=  cint(Floor(use_time/86400)+4) % 7;
+	SetObjProperty(who, choice, 1);
 
 	SetObjProperty(who, "pph_use_time", use_time);
-	SetObjProperty(who, "pph_use_weekday", use_weekday);
+	SetObjProperty(who, "pph_use_weekday", PH_WeekdayOf(use_time));
 	SetObjProperty(who, "#PPHPid", GetPid());		// Lets .resetph kill this sleeping instance directly
 	// Durable (non-"#") record of which type is active -- "#"-prefixed
 	// properties like "choice" itself aren't reliably persisted across a
@@ -143,27 +131,15 @@ function activateph(who, choice)
 	// durable source of truth; logon.src reads it instead of the "#" flags.
 	SetObjProperty(who, "pph_active_type", choice);
 
-	if(GetObjProperty(who, "#PPHH"))
-		SendSysMessage( who, "Your Hunting Powerhour has started!", FONT_BOLD, 2601 );
-	elseif(GetObjProperty(who,"#PPHC"))
-		SendSysMessage( who, "Your Half-Resources Powerhour has started!", FONT_BOLD, 2601 );
-	elseif(GetObjProperty(who, "#PPHS"))
-		SendSysMessage( who, "Your Double-Skillgain Powerhour has started!", FONT_BOLD, 2601 );
+	SendSysMessage( who, "Your " + PH_TypeName(PPH_ActiveType(who)) + " Powerhour has started!", FONT_BOLD, PH_MSG_COLOR_GOOD );
+
+	Sleep(PH_DURATION);
+
+	// 2026-10-08 (from ZH2.5 1.1.4): reset (.resetph) and started again while we slept -- the new
+	// powerhour, its flags and its pid are not ours to end.
+	if(CInt(GetObjProperty(who, "pph_use_time")) != use_time)
+		return;
 	endif
 
-	Sleep(hour);
-
-	if(GetObjProperty(who, "#PPHH"))
-		SendSysMessage( who, "Your Hunting Powerhour has ended!", FONT_BOLD, 2595 );
-	elseif(GetObjProperty(who,"#PPHC"))
-		SendSysMessage( who, "Your Half-Resources Powerhour has ended!", FONT_BOLD, 2595 );
-	elseif(GetObjProperty(who, "#PPHS"))
-		SendSysMessage( who, "Your Double-Skillgain Powerhour has ended!", FONT_BOLD, 2595 );
-	endif
-	EraseObjProperty(who, "#PPHH");
-	EraseObjProperty(who, "#PPHC");
-	EraseObjProperty(who, "#PPHS");
-	EraseObjProperty(who, "#SettingPH");
-	EraseObjProperty(who, "#PPHPid");
-	EraseObjProperty(who, "pph_active_type");
+	PPH_Finish(who); // 2026-10-08: shared with resumeph.src -- "has ended" message + flags, pid, active type
 endfunction

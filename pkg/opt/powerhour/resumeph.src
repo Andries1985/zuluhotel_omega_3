@@ -6,34 +6,32 @@ use uo;
 use os;
 
 include "include/client";
+include ":powerhour:include/powerhour";
 
 program resumeph(params)
 
-	var who       := params[0];
-	var remaining := CInt(params[1]);
+	// 2026-10-08: EScript arrays start at 1. This read params[0] and params[1], so "who" was always an
+	// error and the script quit at once -- after a relog nothing ended the hour until a server restart.
+	var who       := params[1];
+	var remaining := CInt(params[2]);
+	var use_time  := CInt(params[3]); // pph_use_time of the hour being resumed
 
 	if( !who )
 		return;
 	endif
 	if( remaining <= 0 )
-		EraseObjProperty(who, "#PPHH");
-		EraseObjProperty(who, "#PPHC");
-		EraseObjProperty(who, "#PPHS");
+		PPH_Finish(who);
 		return;
 	endif
 
 	Sleep(remaining);
 
-	if(GetObjProperty(who, "#PPHH"))
-		SendSysMessage( who, "Your Hunting Powerhour has ended!", FONT_BOLD, 2595 );
-	elseif(GetObjProperty(who, "#PPHC"))
-		SendSysMessage( who, "Your Half-Resources Powerhour has ended!", FONT_BOLD, 2595 );
-	elseif(GetObjProperty(who, "#PPHS"))
-		SendSysMessage( who, "Your Double-Skillgain Powerhour has ended!", FONT_BOLD, 2595 );
+	// 2026-10-08 (from ZH2.5 1.1.4): reset (.resetph) and started again while we slept -- the new
+	// powerhour is not ours to end. Before this, it wiped the new hour's flags early.
+	if( CInt(GetObjProperty(who, "pph_use_time")) != use_time )
+		return;
 	endif
 
-	EraseObjProperty(who, "#PPHH");
-	EraseObjProperty(who, "#PPHC");
-	EraseObjProperty(who, "#PPHS");
+	PPH_Finish(who); // 2026-10-08: shared with activateph() in setph.src
 
 endprogram

@@ -13,7 +13,7 @@ include "include/randname";
 include "include/anchors";
 include "../pkg/mobiles/npcs/include/NPCBackpacks";
 include "include/dotempmods";
-include ":warriorforhire:include/wfhvitals";	// 2026-09-30: HP = 2 x Str ceilings, re-stamped on hire/growth
+include ":warriorforhire:include/wfhvitals";	// 2026-10-10: vitals follow Str/Int/Dex like a player's (vitalInit.src)
 include "include/myutil";
 include ":mdgumps:yesNo";
 include ":mdgumps:gumps";
@@ -29,6 +29,8 @@ Const DRINK_SOUND := 0x32;
 Const SOUND_EFFECT_HEAL	:= 0x1f3; 
 Const SOUND_EFFECT_CURE	:= 0x1e1;
 Const EFFECT_SPARKLE  := 0x374a;
+const UOBJ_TAMLA_POTION := 0xff86;		// 2026-10-10: plain; 0xff87-0xff8b are the true mage's Level 1-5, two doses each
+const UOBJ_TAMLA_POTION_LAST := 0xff8b;
 
 var speech := 5;
 var me := Self();
@@ -39,14 +41,21 @@ var master;
 var chaseloop := 0;
 var following := 0;
 var guarding := 0;
+var passive := 0;	// 2026-10-10: after "stop" in a fight: follows the master and guards no one until told to guard or attack
 var nextwatch := ReadGameClock();
 var laststrengthgain := ReadGameClock();
 var lastskillgain := ReadGameClock();
 var lastmodwipe := ReadGameClock();
 var wasownerOnline := 0;
 
-var TRACKED_SKILLS := {1,5,17,27,31,40,41,42,43,57};
-const WFH_SKILL_CAP_TENTHS := 1300; //130.0 displayed -- hard ceiling regardless of the master's own skill
+// 2026-10-19: the list and WFH_SKILL_CAP_TENTHS now come from include/wfhcommon (were local copies).
+var TRACKED_SKILLS := WfhTrackedSkills();
+
+// 2026-10-19: per-script caches for the fight loop. Weapon objtype -> ammo objtype (0 = not a
+// bow), and heal potion objtype -> Strength, built from :alchemy:itemdesc on the first drink.
+var gWeaponAmmoTypes := dictionary;
+var gHealPotionPowers := dictionary;
+var gHealPotionsLoaded := 0;
 
 program Warrior()
 
@@ -120,9 +129,14 @@ endprogram
 
 function SyncStatusMirror()
 
-	if (GetObjProperty(me,"Str") != GetStrength(me)) SetObjProperty(me,"Str",GetStrength(me)); endif
-	if (GetObjProperty(me,"Int") != GetIntelligence(me)) SetObjProperty(me,"Int",GetIntelligence(me)); endif
-	if (GetObjProperty(me,"Dex") != GetDexterity(me)) SetObjProperty(me,"Dex",GetDexterity(me)); endif
+	// 2026-10-10: stats are mirrored without their mods. A revival/backup sets these as the new warrior's
+	// base stats, so a warrior that died blessed (or Nagash-boosted) used to come back with it baked in.
+	var basestr := GetStrength(me) - GetStrengthMod(me);
+	var baseint := GetIntelligence(me) - GetIntelligenceMod(me);
+	var basedex := GetDexterity(me) - GetDexterityMod(me);
+	if (GetObjProperty(me,"Str") != basestr) SetObjProperty(me,"Str",basestr); endif
+	if (GetObjProperty(me,"Int") != baseint) SetObjProperty(me,"Int",baseint); endif
+	if (GetObjProperty(me,"Dex") != basedex) SetObjProperty(me,"Dex",basedex); endif
 	if (GetObjProperty(me,"Name") != me.name) SetObjProperty(me,"Name",me.name); endif
 	if (GetObjProperty(me,"Sex") != (400+me.gender)) SetObjProperty(me,"Sex",(400+me.gender)); endif
 
@@ -183,48 +197,32 @@ function CloseDistance( opponent )
 
 endfunction
 
+// 2026-10-10: a ranged weapon is any non-throwing weapon whose itemdesc entry fires projectiles, with
+// the ammo that entry names (ProjectileType) -- the same fields the attack hook spends ammo by
+// (omegaattack.inc). It used to be a hand-kept list of 20 objtypes, so ~95 bows and crossbows counted
+// as melee. Throwing weapons stay with HasThrowing(); ProjectileType 1 is the explosive-potion marker
+// (no single ammo objtype to look for), so it is left alone too.
 function HasBow()
 
-	var ammotype := 0;
-	var bowarmed := 0;
 	var weapon := me.weapon;
 	if (!weapon.objtype)
 		say("I don't have a weapon!");
 		ChangeWeapons();
 		return 0;
 	endif
-	case (weapon.objtype)
-		0x13B2:
-		0x7600:
-		0x7656:
-		0x762B:
-			bowarmed := 1;
-			ammotype := 0xf3f;//bow and arrows
-		0x0F4F:
-		0x13FD:
-		0x7603:
-		0x762E:
-		0x7659:
-		0x7604:
-		0x762F:
-		0x766A:
-			bowarmed := 1;
-			ammotype := 0x1bfb;//xbow and bolts
-		0x6050:
-		0x7601:
-		0x762C:
-		0x7657:
-			bowarmed := 1;
-			ammotype := 0x6051;//firebow and firearrows
-		0xB201:
-		0x759F:
-		0x762A:
-		0x7655:
-			bowarmed := 1;
-			ammotype := 0xB200;//icebow and icearrows
-		default: return 0;
-	endcase
-	if (!bowarmed) return 0; endif
+
+	if (weapon.attribute == ATTRIBUTEID_THROWING)
+		return 0;
+	endif
+
+	var ammotype := WeaponAmmoType(weapon.objtype);	// 2026-10-19: cached per objtype
+	if (!ammotype or ammotype == 1)
+		return 0;
+	endif
+
+	if (GetObjProperty(weapon, "NonConsumingProjectile"))
+		return 1;
+	endif
 
 	var myammo := EnumerateItemsInContainerOfObjtype(me.backpack, ammotype);
 
@@ -338,7 +336,7 @@ function SetMeUp()
 	SetBaseSkill(me, 57, 50);  //Throwing
 
 	SetObjProperty(me,"WarriorForHire",1);
-	SetWfhVitalCeilingsAndFill(me);	// 2026-09-30: was SetHP(me, GetMaxHP(me)); ceilings are HP = 2 x Str, Mana = Int, Stam = Dex
+	SetWfhVitalCeilingsAndFill(me);	// 2026-09-30: was SetHP(me, GetMaxHP(me)); 2026-10-10: vitals = Str/Int/Dex like a player
 endfunction
 
 function FixStuff()
@@ -466,9 +464,7 @@ function fight(opponent)
 					say("Okay");
 					setwarmode(0);
 					opponent := 0;
-					sleep(1);
-					following := wasfollowing;
-					if ( distance(following,me)>15 ) following:=0;endif
+					StopGuarding();	// 2026-10-10: was restoring following but leaving guarding set, so Guard() re-engaged at once
 					chaseloop := 0;
 					return;
 				elseif (evtext[mename + " rearm"] )
@@ -602,6 +598,8 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 			if (!ObeyCommand(ev))
 				check_speech(me, ev.source, ev.text, speech);
 			endif
+		elseif (ev.source.cmdlevel and evtext[lower(me.name) + " status"])
+			ShowStatus(ev.source);	// 2026-10-10: staff can inspect any warrior, squelched or not
 		else
 			if (!GetObjProperty(me,"squelch"))
 				check_speech(me, ev.source, ev.text, speech);
@@ -623,6 +621,7 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 	SYSEVENT_ENTEREDAREA:
 		return;
 	EVID_ALL_ATTACK_CMD:
+		passive := 0;	// 2026-10-10
 		Fight(ev.target);
 	SYSEVENT_ITEM_GIVEN:
 		wanders := 0;
@@ -641,6 +640,7 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 	EVID_ALL_FOLLOW_CMD:
 		following := ev.target;
 	EVID_ALL_GUARD_CMD:
+		passive := 0;	// 2026-10-10
 		guarding := ev.target;
 	endcase
 
@@ -723,7 +723,11 @@ function Follow()
 		SetDexterityMod(me, GetDexterityMod(me)-5000);//me.dexterity_mod := me.dexterity_mod - 5000;
 	endif
 
-	if ( (master) and (!guarding) )
+	// 2026-10-10: following the master means guarding them too, unless "stop" in a fight made the warrior
+	// passive. Any guard command sets guarding again, which ends the passive state.
+	if (guarding)
+		passive := 0;
+	elseif ( (master) and (!passive) )
 		guarding := master;
 	endif
 
@@ -732,6 +736,19 @@ function Follow()
 	endif
 
 	
+
+endfunction
+
+// 2026-10-10: "stop" in a fight: the warrior drops whatever it was guarding and attacks nothing on its
+// own, but keeps following its master. It still fights back if attacked (ProcessMasterEvents); "guard"
+// or "kill" end the passive state.
+function StopGuarding()
+
+	passive := 1;
+	guarding := 0;
+	if (master)
+		following := master;
+	endif
 
 endfunction
 
@@ -756,6 +773,7 @@ function ObeyCommand(ev)
 
 	if (evtext[mename + " kill"] or evtext[mename + " attack"] or 
 	    evtext["all kill"] or evtext["all attack"] )
+		passive := 0;	// 2026-10-10
 		var what := Target( you , TGTOPT_HARMFUL + TGTOPT_CHECK_LOS );
 		if (what)
 			if (evtext["all kill"] or evtext["all attack"] )
@@ -833,6 +851,7 @@ function ObeyCommand(ev)
 		TurnToward(you);
 		say("I'm afraid I'm not comfortable with mounts, master.");
 	elseif (evtext[mename + " guard"])
+		passive := 0;	// 2026-10-10
 		if (evtext["guard me"])
 			guarding := you;
 			say("Gotcha covered, " + guarding.name);
@@ -844,6 +863,7 @@ function ObeyCommand(ev)
 			endif
 		endif		
 	elseif (evtext["all guard"])
+		passive := 0;	// 2026-10-10
 		if (evtext["guard me"])
 			guarding := you;
 			say("Gotcha covered, " + guarding.name);
@@ -956,6 +976,14 @@ endfunction
 
 function ApplyHealing(who)
 
+	// 2026-10-10: nobody to bandage if either of us is dead (it used to chase and bandage a dead master)
+	if (me.dead)
+		return 0;
+	endif
+	if (who.dead)
+		return 0;
+	endif
+
 	if (distance(me,who) > 2)
 		var tth := 0;
 		while (distance(me,who) > 1 and tth < 10)
@@ -983,7 +1011,7 @@ function ApplyHealing(who)
 		return 0;
 	endif
 	if (who == me)
-		SetObjProperty(me,"#heal", ReadGameClock()+1);
+		SetObjProperty(me,"#heal", ReadGameClock()+16);	// 2026-10-10: was +1, but the self-heal bandage takes ~15 s (npchealing)
 	else
 		SetObjProperty(me,"#heal", ReadGameClock()+20);
 	endif
@@ -1138,9 +1166,18 @@ function ShowStatus(you)
 	var fire := Cint(GetObjProperty(me,"FireProtection"));
 	var poison := Cint(GetObjProperty(me,"PermPoisonImmunity"));
 
-	var equipped := ListEquippedItems(me);
+	// 2026-10-10: backpack, hair and beard are not equipment worth listing
+	var equipped := {};
+	var worn := ListEquippedItems(me);
+	foreach item in worn
+		if (item.tile_layer == LAYER_PACK or item.tile_layer == LAYER_HAIR or item.tile_layer == LAYER_BEARD)
+			continue;
+		endif
+		equipped.append(item);
+	endforeach
+
 	var resnum := Cint(GetObjProperty(me,"resnum"));
-	var deathsleft := 10 - resnum;
+	var deathsleft := WFH_MAX_DEATHS - resnum;	// 2026-10-19: was a literal 10
 	if (deathsleft < 0) deathsleft := 0; endif
 
 	var ysize := 380 + (len(equipped)*22);
@@ -1152,6 +1189,7 @@ function ShowStatus(you)
 	GFTextLine(gump, 20, 50, 0, "Strength: "+GetStrength(me));
 	GFTextLine(gump, 20, 70, 0, "Intelligence: "+GetIntelligence(me));
 	GFTextLine(gump, 20, 90, 0, "Dexterity: "+GetDexterity(me));
+	GFTextLine(gump, 20, 110, 0, "Hits: "+GetHP(me)+" / "+GetMaxHP(me));	// 2026-10-10
 
 	GFTextLine(gump, 220, 50, 0, "Armor: "+ar);
 	GFTextLine(gump, 220, 70, 0, "Physical Prot: "+phys);
@@ -1191,11 +1229,13 @@ function ShowStatus(you)
 	endforeach
 
 	y := y + 10;
-	GFTextLine(gump, 20, y, 0, "Deaths survived: "+resnum+" / 10 (" +deathsleft+ " remaining)");
+	GFTextLine(gump, 20, y, 0, "Deaths survived: "+resnum+" / "+WFH_MAX_DEATHS+" (" +deathsleft+ " remaining)");
 
 	GFAddButton(gump, 190, ysize-35, 2128, 2129, 1, 0);
 
-	GFSendGump(you, gump);
+	// 2026-10-10: GFSendGump blocks until the reader closes the window, which froze this AI (no healing,
+	// following or fighting); a separate script sends it.
+	Start_Script(":warriorforhire:showstatus", {you, gump});
 
 endfunction
 
@@ -1245,7 +1285,7 @@ function GainStat()
 			say("Ha! I liked that move!");
 		endif
 	endif
-	SetWfhVitalCeilings(me);	// 2026-09-30: max HP/Mana/Stam follow the grown stats (HP = 2 x Str)
+	SetWfhVitalCeilings(me);	// 2026-09-30: max HP/Mana/Stam follow the grown stats (2026-10-10: = Str/Int/Dex, buffs included)
 	SyncStatusMirror();
 endfunction
 
@@ -1420,32 +1460,135 @@ function RemoveIt(it)
 
 endfunction
 
+// 2026-10-10: drinks the weakest heal potion in the pack, ONE potion from the stack: Light Heal, Heal and
+// Greater Heal potions of every true-mage level first, weakest first, then a Tamla (a full heal).
+// Poisoned potions are left alone. A heal potion heals what it heals a player (yellowpotion.src):
+// 12d(power+1), power being the potion's Strength plus its ByTrueMage level. This used to know only the
+// plain 0xDC02/0xDC03 at fixed 2d12+3 / 5d12+3, ignore Light Heal, every true-mage level (each is its
+// own objtype) and every Tamla, and destroy the whole stack for a single drink.
 function DrinkHeal()
 
 	if ( cint(getobjproperty(me, "#potion")) > ReadGameClock()  )
         	return 0;
 	endif
 
-	foreach item in EnumerateItemsInContainer(me.backpack)
-		if ( ( item.objtype == 0xDC03 ) or ( item.objtype == 0xDC02 ) )
-			PlaySoundEffect (me, DRINK_SOUND);
-			PerformAction(me, ANIM_EAT);
+	var potion := FindHealPotion();
+	if (!potion)
+		return 0;
+	endif
+
+	PlaySoundEffect (me, DRINK_SOUND);
+	PerformAction(me, ANIM_EAT);
+	if (IsTamlaPotion(potion))
+		SetHP(me, GetMaxHP(me));
+		// A true mage's Tamla holds two doses: drinking it leaves a plain Tamla behind, as for a
+		// player (newpotions.src DoFullHeal).
+		if (GetObjProperty(potion, "ByTrueMage"))
+			CreateItemInBackpack(me, UOBJ_TAMLA_POTION, 1);
+		else
 			CreateItemInBackpack(me, UOBJ_EMPTY_BOTTLE, 1);
-			var heal_amount;
-			if (item.objtype == 0xDC02)
-				heal_amount := RandomDiceStr("2d12+3");
-			else
-				heal_amount := RandomDiceStr("5d12+3");
-			endif			
-			HealDamage(me, heal_amount);
-			DestroyItem(item);
-			PlaySoundEffect( me,  SOUND_EFFECT_HEAL );
-			setobjproperty(me, "#potion", (ReadGameClock() + 20));
-			return 1;
+		endif
+	else
+		var healed := RandomDiceStr("12d" + CStr(HealPotionPower(potion) + 1));
+		var bonus := GetObjProperty(me, "HealingIncrease");
+		if (bonus)
+			healed := healed + CInt(healed * bonus * 0.1);
+		endif
+		HealDamage(me, healed);
+		CreateItemInBackpack(me, UOBJ_EMPTY_BOTTLE, 1);
+	endif
+	SubtractAmount(potion, 1);
+	PlaySoundEffect( me,  SOUND_EFFECT_HEAL );
+	setobjproperty(me, "#potion", (ReadGameClock() + 20));
+	return 1;
+
+endfunction
+
+// The weakest drinkable heal in the pack: heal potions by power, any Tamla after all of them.
+function FindHealPotion()
+
+	var best := 0;
+	var bestrank := 0;
+	var pack := EnumerateItemsInContainer(me.backpack);
+	foreach item in pack
+		var rank := 0;
+		if (!GetObjProperty(item, "Poisoned"))
+			var power := HealPotionPower(item);
+			if (power)
+				rank := power;
+			elseif (IsTamlaPotion(item))
+				rank := 1000;
+			endif
+		endif
+		if (rank)
+			if (!bestrank or rank < bestrank)
+				best := item;
+				bestrank := rank;
+			endif
+		endif
+	endforeach
+	return best;
+
+endfunction
+
+// 0 unless the item is a heal potion, i.e. an :alchemy:itemdesc entry drunk by yellowpotion (Light Heal,
+// Heal, Greater Heal and their true-mage levels). Otherwise its power, as drinkpotion.inc's
+// GetPotionStrength works it out: itemdesc Strength + ByTrueMage.
+// 2026-10-19: reads a table built once per script instead of one cfg lookup per pack item.
+function HealPotionPower(potion)
+
+	if (!gHealPotionsLoaded)
+		LoadHealPotionPowers();
+	endif
+	if (!gHealPotionPowers.exists(potion.objtype))
+		return 0;
+	endif
+	return gHealPotionPowers[potion.objtype] + CInt(GetObjProperty(potion, "ByTrueMage"));
+
+endfunction
+
+function LoadHealPotionPowers()
+
+	gHealPotionsLoaded := 1;
+	var cfg := ReadConfigFile(":alchemy:itemdesc");
+	if (!cfg)
+		return;
+	endif
+	var keys := GetConfigIntKeys(cfg);
+	foreach key in keys
+		var elem := FindConfigElem(cfg, key);
+		if (elem)
+			if (lower(GetConfigString(elem, "Script")) == "yellowpotion")
+				gHealPotionPowers[key] := GetConfigInt(elem, "Strength");
+			endif
 		endif
 	endforeach
 
-	return 0;
+endfunction
+
+// 2026-10-19: a weapon's ammo objtype from its itemdesc (0 when it fires nothing), looked up once
+// per weapon objtype; HasBow used to read the merged :*:itemdesc on every fight-loop call.
+function WeaponAmmoType(objtype)
+
+	if (gWeaponAmmoTypes.exists(objtype))
+		return gWeaponAmmoTypes[objtype];
+	endif
+
+	var ammotype := 0;
+	var elem := FindConfigElem(ReadConfigFile(":*:itemdesc"), objtype);
+	if (elem)
+		if (GetConfigInt(elem, "Projectile"))
+			ammotype := CInt(GetConfigInt(elem, "ProjectileType"));
+		endif
+	endif
+	gWeaponAmmoTypes[objtype] := ammotype;
+	return ammotype;
+
+endfunction
+
+function IsTamlaPotion(item)
+
+	return (item.objtype >= UOBJ_TAMLA_POTION and item.objtype <= UOBJ_TAMLA_POTION_LAST);
 
 endfunction
 
