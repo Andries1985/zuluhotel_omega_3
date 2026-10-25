@@ -8,8 +8,8 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 
 ## Scope Summary
 
-- Total files changed: 75 (22 added, 53 modified, 0 deleted, 0 renamed), counting themes 14-15 (2026-10-25).
-  - 2026-10-25 update: the themes 1-13 working tree has since been committed as `9fbf224` ("Bug fixes for WFH, PH, Housing and other things"). Two later commits are not described in this changelog yet: `ca3b0d3` "Fish Fix" (4 files, +128 / -37) and `e26c8fa` "Bowcraft update" (`pkg/std/bowcraft/bowcraft.cfg`, +7 / -6).
+- Total files changed: 80 (23 added, 57 modified, 0 deleted, 0 renamed), counting themes 14-17 (2026-10-25).
+  - 2026-10-25 update: the themes 1-13 working tree has since been committed as `9fbf224` ("Bug fixes for WFH, PH, Housing and other things"). Later commits: `ca3b0d3` "Fish Fix" (theme 16, 4 files, +128 / -37), `e26c8fa` "Bowcraft update" (theme 17, 1 file, +7 / -6) and `bef42e6` Arcomage (themes 14-15).
   - Theme 14 (Arcomage, 2026-10-25): 14 new files in `pkg/opt/arcomage/` (4,695 lines, 2,410 of them cfg data), plus `config/npcdesc.cfg` +996 (30 templates, 6 commented out), `pkg/packethooks/megacliloc/mobiledata.src` +14 and `config/command_synopses.cfg` +21 (three new commands).
   - Theme 15 (2026-10-25): `pkg/opt/warriorforhire/warrior.src` +2 / -2.
   - Committed, `db9607a..e2b8bdb` (theme 8): 1 file, `pkg/items/doors/config/itemdesc.cfg`, +2 / -2.
@@ -113,6 +113,10 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - M | pkg/opt/warriorforhire/warrior.src (working tree, themes 10 and 13; theme 15)
 - M | pkg/packethooks/megacliloc/itemdata.src (working tree, theme 5)
 - M | pkg/packethooks/megacliloc/mobiledata.src (2026-10-25, theme 14)
+- M | pkg/std/bowcraft/bowcraft.cfg (commit `e26c8fa`, theme 17)
+- M | pkg/std/fishing/fishing.inc (commit `ca3b0d3`, theme 16)
+- A | pkg/std/fishing/fishsteaks.inc (commit `ca3b0d3`, theme 16)
+- M | pkg/std/fishing/itemdesc.cfg (commit `ca3b0d3`, theme 16)
 - M | pkg/std/healing/npchealing.src (working tree, theme 10)
 - M | pkg/std/spells/magictrap.src (working tree, themes 9 and 13)
 - M | pkg/std/traps/trapScripts/setTrap.src (working tree, themes 9 and 13)
@@ -125,6 +129,7 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - M | scripts/include/classes.inc (working tree, themes 5 and 6, theme 10)
 - M | scripts/include/housetravel.inc (working tree, theme 10)
 - M | scripts/include/skillpoints.inc (working tree, theme 6, theme 10)
+- M | scripts/items/bladed.src (commit `ca3b0d3`, theme 16)
 - M | scripts/misc/death.src (working tree, theme 10)
 - M | scripts/misc/logon.src (working tree, theme 4)
 - M | scripts/textcmd/seer/speedwalk.src (working tree, theme 10)
@@ -374,10 +379,33 @@ Design picked over three rounds on a picker page (decisions recorded in the sess
 
 **Expected impact:** The theme 10 and 13 warrior changes take effect once the script compiles; no other change.
 
+### 16. Fishing: steaks by habitat, stacking (commit `ca3b0d3`, 2026-10-19)
+
+**Files involved:** `pkg/std/fishing/fishsteaks.inc` (new), `pkg/std/fishing/fishing.inc`, `pkg/std/fishing/itemdesc.cfg`, `scripts/items/bladed.src`
+
+**Notable functional changes:**
+- New `fishsteaks.inc`, shared by the catch-time auto-carve and the knife: `GetSteaksPerFish(location)` returns 6 for `"Dungeons"`, 4 for `"Deep Water"` and 1 for anything else (shores, unset, quest fish); `GetFishTierSteakMultiplier(tier)` returns 10 for Legendary, 2 for Rare, else 1, and accepts either the catch-tier word or the itemdesc `FishTier` text ("Rare Fish").
+- `createfish()` takes `location` instead of `deepwater`. Auto-carve now gives `GetSteaksPerFish(location) * GetFishTierSteakMultiplier(tier)` per fish; it was a flat 4 in deep water, 1 elsewhere, with no tier bonus. `ResolveFishCatch` passes `location` to both `createfish` calls; `deep_water` stays in its signature for the pole and net callers.
+- A fish kept whole no longer gets the `DeepWaterCatch` / `FishTier` CProps. Any non-default CProp stopped `CreateItemInBackpack` from merging the catch onto an existing stack. Only Rare and Legendary catches get `CatchLocation` (some rare species have no itemdesc `Location`).
+- `bladed.src` `CarveFish` reads `CatchLocation`, falling back to the species' itemdesc `Location` CProp, then the shared helpers. A pre-patch fish carrying the old `DeepWaterCatch` CProp is now judged by its species' `Location` instead.
+- `itemdesc.cfg`: `StackLimit 1` on every Rare and Legendary fish and crustacean (70 entries), since each catch carries its own `TrophyWeight`.
+
+**Expected impact:** Steaks per fish follow the species' habitat: shore 1, deep water 4, dungeons 6 (dungeon fish used to give 4). Rare 2x and Legendary 10x now also apply to auto-carving. Regular fish stack again; Rare and Legendary ones never stack.
+
+### 17. Bowcraft: elemental ammunition skill (commit `e26c8fa`, 2026-10-22)
+
+**Files involved:** `pkg/std/bowcraft/bowcraft.cfg`
+
+**Notable functional changes:**
+- `Skill` lowered by 40 on the three elemental ammunition recipes and their matching Improve recipes: Fire Arrow `0x6051` and Improve `0x700001` 114 to 74, Ice Arrow `0xb200` and `0x700002` 119 to 79, Thunder Bolt `0x824e` and `0x700003` 124 to 84. A dated comment marks the change.
+
+**Expected impact:** Elemental arrows and bolts can be crafted, from scratch or by improving a plain arrow or bolt, 40 skill points earlier.
+
 ---
 
 ## Validation Notes
 
+- Themes 16-17 (2026-10-25): read from `git show ca3b0d3` and `git show e26c8fa`, counts from `git show --numstat`; the 70 `StackLimit 1` lines counted from the diff. Written after the fact from the commits, not compiled or tested by the author.
 - Themes 14-15 (2026-10-25): `git status --porcelain -uall` and `git diff --numstat` for the modified files, `wc -l` for the 14 new files; compiled `.ecl`, `.lst`, `.dbg`, `.dep` files are ignored by `.gitignore`. The arcomage package compiled with 0 errors and 0 warnings on 2026-10-25 (`scripts\ecompile.exe -f -b -r pkg\opt\arcomage`), and `warrior.src` with 0 errors; later edits that day (log text, table watcher, titles, debug off, Lords commented out) were compiled and tested in game by the user except the last two, which were checked by reading. Tested in game: games at 30, 60 and 90 traced on the console, daily gold limit, dressing, titles and tooltips, `.arcomage`, and the walk-away forfeit. Not tested yet: `.arcomagenpcs` placement, which needs coordinates.
 - Diff range: `git log --format="%h %p %an %ad %s" db9607a..HEAD` (HEAD `e2b8bdb`), `git diff --numstat db9607a..HEAD` for the committed file, `git diff db9607a a4d9778` (empty) to confirm the PR #116 merge carries nothing, `git diff --numstat HEAD` and `wc -l` on the three untracked files for the working tree.
 - File-status counts (recounted 2026-10-19): 51 M (1 committed, 50 working tree) and 8 A (working tree) = 59, matching the Scope Summary. Cross-checked against `git status --porcelain -uall`: every inventory entry has the listed status, and the only working-tree changes outside the inventory are notes and docs (`ainotes/`, `patchnotes/`, `.claude/subagent-briefing.md`), which the inventory does not list. Theme 9 lines from `git diff --numstat` over its 17 files.

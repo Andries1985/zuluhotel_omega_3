@@ -5,7 +5,7 @@ Always check Discord announcements for all the patch notes.
 
 ## What Changed
 
-Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, and the vanity shop sells scrolls that copy a runebook or Runic Atlas. And Arcomage, the tower-building card game, opens in taverns across Britannia.
+Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, the vanity shop sells scrolls that copy a runebook or Runic Atlas, fish steaks and fish stacks are sorted out, and elemental arrows come earlier for bowyers. And Arcomage, the tower-building card game, opens in taverns across Britannia.
 
 ---
 
@@ -123,6 +123,26 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 
 - Share a rune library with friends, or keep a backup, without marking every rune again.
 
+## Fishing
+
+- How many fish steaks you get now depends on where the fish lives: 1 for a shore fish, 4 for a deep-water fish and 6 for a dungeon fish. Dungeon fish used to give 4 at most. This is the same whether you carve the catch as you fish or later with a knife.
+- Rare fish give twice the steaks and Legendary fish ten times, now also when you carve them as you fish. Before, that bonus only came from a knife.
+- Ordinary fish stack in your backpack again. Each new catch used to land as a separate pile.
+- Rare and Legendary fish and crustaceans never stack, so every one keeps its own trophy weight.
+
+### Player Impact
+
+- Dungeon fishing is the best source of steaks.
+- No more backpacks full of single fish.
+
+## Bowcraft
+
+- Fire Arrows, Ice Arrows and Thunder Bolts now need 40 less skill, whether you craft them from scratch or improve a plain arrow or bolt: 74 for Fire Arrows (was 114), 79 for Ice Arrows (was 119) and 84 for Thunder Bolts (was 124).
+
+### Player Impact
+
+- Bowyers can make elemental ammunition much earlier.
+
 ## Arcomage
 
 - Arcomage, the tower-building card game, comes to Britannia. 24 card players wait in taverns across the land, from Sherry the Mouse and Chuckles the Jester to Mondain and Captain Hook. Hover over one to see their title in gold, from Arcomage Novice to Arcomage Grandmaster, and say "arcomage" next to them to play.
@@ -189,6 +209,8 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - The Eon-Prism lets you start another personal powerhour this week, used from your backpack.
 - Mayors can resign and leave their town from the townstone.
 - The vanity shop sells Transcription Scrolls that copy a runebook (5 tokens) or Runic Atlas (10 tokens) into an empty book of the same kind.
+- Fish steaks follow where the fish lives (shore 1, deep water 4, dungeon 6), with the Rare and Legendary bonus also when you carve as you fish; ordinary fish stack again and rare ones never do.
+- Fire Arrows, Ice Arrows and Thunder Bolts need 40 less Bowcraft (74, 79 and 84).
 - Arcomage: 24 card players in taverns, difficulty 30 to 150, daily gold for your first win at each difficulty, and `.arcomage` for your record and the leaderboard.
 - Guards record the right account; area checks are much cheaper for the server.
 - Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; `.arcomagenpcs` places and removes the card players; developers have `.classbonusinfo`.
