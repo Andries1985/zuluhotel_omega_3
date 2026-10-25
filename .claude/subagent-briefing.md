@@ -10,6 +10,8 @@ Reference this file at the top of every subagent prompt so it doesn't have to re
 ## EScript gotchas — read before touching any .src/.inc
 - `foreach x in record.entries` fails on a dotted RHS. Pre-assign to a local var first: `var e := record.entries; foreach x in e`.
 - Flat global namespace: never name a function/const/var/struct-field the same as an .em module builtin OR any other function anywhere in this repo. `target`/`Target` is a repeat offender — use `targetted`.
+- Reserved words can't be used as variable or struct-member names: `out`, `use`, `in`, `error`, `struct`, `array`, `dictionary`, `default`, `case`, `exit`, `do`, `to`, `class`, `enum`, `byref`, `unused`, `this`, `new`... ("Did not expect reserved word" then a cascade of fake endif/endfor errors). `"use" := 1` in a struct literal compiles but `x.use` does not (2026-10-25).
+- "Unknown identifier" = missing `use` line. Grep `scripts/modules/*.em` for the function first: `GetItemDescriptor` is polsys.em, `POLCore` uo.em, `StrFormatTime`/`RandomInt`/`RandomFloat` util.em, `Max`/`Min` math.em, `Print` basicio.em.
 - `foreach x in arr` implicitly creates `_x_iter` — that's not a stray/dead variable if you see it.
 - cfgfile.em: `FindConfigElem(cfg, "Global")` fails on a one-token block header — the real key is `""`, not the type word.
 - cfgfile.em: `foreach elem in cfg` iterates a whole config file (named blocks only). Use `GetConfigIntArray` for numeric lists — it parses the `0x09d0` form; `GetConfigStringArray` does not. Check the file has `use cfgfile;` first.

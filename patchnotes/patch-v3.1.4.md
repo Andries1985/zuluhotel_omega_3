@@ -7,7 +7,7 @@
 
 ## What Changed
 
-Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, and the vanity shop sells scrolls that copy a runebook or Runic Atlas.
+Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, and the vanity shop sells scrolls that copy a runebook or Runic Atlas. And Arcomage, the tower-building card game, opens in taverns across Britannia.
 
 ---
 
@@ -125,6 +125,23 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 
 - Share a rune library with friends, or keep a backup, without marking every rune again.
 
+## Arcomage
+
+- Arcomage, the tower-building card game, comes to Britannia. 24 card players wait in taverns across the land, from Sherry the Mouse and Chuckles the Jester to Mondain and Captain Hook. Hover over one to see their title in gold, from Arcomage Novice to Arcomage Grandmaster, and say "arcomage" next to them to play.
+- You and your opponent each have a tower and a wall. Damage hits the wall first and the rest comes off the tower. Your Mine makes Ore, your Grove makes Reagents and your Barracks make Recruits, and every card costs one of the three.
+- On your turn you draw a card, then play one you can afford or throw one away. Some cards let you play again. You win by building your tower to the goal, gathering the goal in any one resource, or bringing the enemy tower down to nothing. There are 102 cards.
+- Every card player has their own rules: starting tower, wall, resources and goals. The better-known names play the longer games.
+- Before each game you pick a difficulty, from 30 to 150 like a skill. At 30 your opponent plays almost at random; at 150 it makes its best move every time.
+- Your first win at each difficulty each day pays 100 gold per point of difficulty: 3,000 gold at 30, up to 15,000 at 150. It doesn't matter who you beat. This is per account and resets at server midnight; later wins that day still count for your record.
+- The board shows the last few moves, with exactly what each card did to each side.
+- Walking more than 8 tiles from the table, logging out or dying ends the game as a loss. You can also resign.
+- `.arcomage` shows your wins against every card player at every difficulty, and the shard's top 20.
+
+### Player Impact
+
+- A new way to earn gold every day: up to 45,000 an account if you win at all five difficulties.
+- Records and the leaderboard are per character.
+
 ## Guards and Areas
 
 - Guards called on a criminal now record the right player's account. They looked it up by character name, so two characters with the same name could get the wrong account blamed.
@@ -153,6 +170,7 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - Staff can say "<name> status" to any warrior to see its status window. Testers have `.maxwfh`, which maxes a warrior's stats and fighting skills.
 - `.areas` Save only rewrites the areas you changed.
 - Developers have `.classbonusinfo`. It targets a character and lists their classes, primary class, stat multipliers and every skill that carries a class bonus.
+- Administrators have `.arcomagenpcs`. It places, lists, removes or respawns all the Arcomage card players at once, touching no other spawns, and `.arcomagenpcs here <n>` prints a ready-made spawn entry for where you stand. Testers have `.arcomagelineup`, which spawns every card player in a row to look them over.
 
 ### Player Impact
 
@@ -173,7 +191,8 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - The Eon-Prism lets you start another personal powerhour this week, used from your backpack.
 - Mayors can resign and leave their town from the townstone.
 - The vanity shop sells Transcription Scrolls that copy a runebook (5 tokens) or Runic Atlas (10 tokens) into an empty book of the same kind.
+- Arcomage: 24 card players in taverns, difficulty 30 to 150, daily gold for your first win at each difficulty, and `.arcomage` for your record and the leaderboard.
 - Guards record the right account; area checks are much cheaper for the server.
-- Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; developers have `.classbonusinfo`.
+- Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; `.arcomagenpcs` places and removes the card players; developers have `.classbonusinfo`.
 
 Thanks for playing Zuluhotel Omega 3.

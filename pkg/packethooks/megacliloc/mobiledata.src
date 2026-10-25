@@ -60,6 +60,20 @@ program mobiledata(parms)
 		allprops.append(prop);
 	endif
 
+	// 2026-10-25: Arcomage card players (pkg/opt/arcomage): their title in gold, and how to play.
+	// ArcomageTitle is set by the NPC's AI from its rule set.
+	if(npc)
+		var arco_title := GetObjProperty(xObject, "ArcomageTitle");
+		if(arco_title)
+			prop.clilocid := 1070722; // ~1_NOTHING~
+			prop.values := array {"<BASEFONT COLOR=#E8C24A>" + arco_title + "</BASEFONT>"};
+			allprops.append(prop);
+			prop.clilocid := 1070722;
+			prop.values := array {"<BASEFONT COLOR=#B0B0B0>Say 'arcomage' to play</BASEFONT>"};
+			allprops.append(prop);
+		endif
+	endif
+
 	var boss;
 	var superboss;
 	var lesserboss;

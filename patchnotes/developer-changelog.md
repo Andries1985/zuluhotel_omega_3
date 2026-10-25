@@ -2,13 +2,16 @@
 
 Range: Patch-3.1.3..Patch-3.1.4 (commit `db9607a`..`e2b8bdb`) plus the uncommitted working tree
 Branch: Patch-3.1.4
-Date: 2026-10-19
+Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 
 ---
 
 ## Scope Summary
 
-- Total files changed: 59 (8 added, 51 modified, 0 deleted, 0 renamed).
+- Total files changed: 75 (22 added, 53 modified, 0 deleted, 0 renamed), counting themes 14-15 (2026-10-25).
+  - 2026-10-25 update: the themes 1-13 working tree has since been committed as `9fbf224` ("Bug fixes for WFH, PH, Housing and other things"). Two later commits are not described in this changelog yet: `ca3b0d3` "Fish Fix" (4 files, +128 / -37) and `e26c8fa` "Bowcraft update" (`pkg/std/bowcraft/bowcraft.cfg`, +7 / -6).
+  - Theme 14 (Arcomage, 2026-10-25): 14 new files in `pkg/opt/arcomage/` (4,695 lines, 2,410 of them cfg data), plus `config/npcdesc.cfg` +996 (30 templates, 6 commented out), `pkg/packethooks/megacliloc/mobiledata.src` +14 and `config/command_synopses.cfg` +21 (three new commands).
+  - Theme 15 (2026-10-25): `pkg/opt/warriorforhire/warrior.src` +2 / -2.
   - Committed, `db9607a..e2b8bdb` (theme 8): 1 file, `pkg/items/doors/config/itemdesc.cfg`, +2 / -2.
   - Working tree, uncommitted (themes 1-7, 2026-10-08 and 2026-10-09): 14 files (11 modified, 3 added), +1,302 / -272. Of that, 872 insertions are the three new files.
   - Working tree, uncommitted (theme 9, 2026-10-09): 17 housing and trap files, all modified, +140 / -49.
@@ -51,7 +54,8 @@ Date: 2026-10-19
 Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "working tree" and the theme(s) below.
 
 - M | config/cmds.cfg (working tree, theme 2)
-- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10)
+- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10, theme 14)
+- M | config/npcdesc.cfg (2026-10-25, theme 14)
 - M | pkg/items/deed/commands/player/redeed.src (working tree, theme 9)
 - M | pkg/items/doors/config/itemdesc.cfg (commit `1571348`, theme 8)
 - M | pkg/items/houseExtras/hteleporter/teleporterFunctions.src (working tree, theme 9)
@@ -69,6 +73,20 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - M | pkg/multis/staticHousing/sign/use.src (working tree, theme 9)
 - M | pkg/multis/staticHousing/transferdeed/staticTransferDeed.src (working tree, theme 9)
 - A | pkg/opt/alryc/textcmd/test/classbonusinfo.src (working tree, theme 7, theme 10)
+- A | pkg/opt/arcomage/ai/arcomagenpc.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/config/cards.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/config/rulesets.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/config/spawnpoints.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/include/arcoai.inc (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/include/arcocards.inc (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/include/arcogump.inc (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/include/arcorecords.inc (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/match.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/pkg.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/tablewatch.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/textcmd/admin/arcomagenpcs.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/textcmd/player/arcomage.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/textcmd/test/arcomagelineup.src (2026-10-25, theme 14)
 - M | pkg/opt/areas/callguards.src (working tree, theme 10)
 - M | pkg/opt/areas/EnterAreaDelay.src (working tree, theme 10)
 - M | pkg/opt/areas/include/areapolicy.inc (working tree, themes 10 and 13)
@@ -92,8 +110,9 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - A | pkg/opt/warriorforhire/textcmd/test/maxwfh.src (working tree, themes 10 and 13)
 - M | pkg/opt/warriorforhire/include/wfhvitals.inc (working tree, theme 10)
 - M | pkg/opt/warriorforhire/textcmd/test/setwfhdamage.src (working tree, theme 10)
-- M | pkg/opt/warriorforhire/warrior.src (working tree, themes 10 and 13)
+- M | pkg/opt/warriorforhire/warrior.src (working tree, themes 10 and 13; theme 15)
 - M | pkg/packethooks/megacliloc/itemdata.src (working tree, theme 5)
+- M | pkg/packethooks/megacliloc/mobiledata.src (2026-10-25, theme 14)
 - M | pkg/std/healing/npchealing.src (working tree, theme 10)
 - M | pkg/std/spells/magictrap.src (working tree, themes 9 and 13)
 - M | pkg/std/traps/trapScripts/setTrap.src (working tree, themes 9 and 13)
@@ -323,10 +342,43 @@ Ten findings, all confirmed against the code; picks from the "Patch 3.1.4 Review
 
 **Expected impact:** The weekly personal-powerhour lock lifts at Sunday 00:00 GMT and stays lifted, and `.ph` agrees with `.setph`. Pre-3.1.4 warrior hearts no longer revive. A heart handed to the priest by anyone but the warrior's master is destroyed. A warrior revived from the priest's memory loses one point of each stat per death, floor 10, like a heart revival. Co-owners and friends can trap in houses whose multi lacks the sign link. The Eon-Prism works only from your backpack. No player-visible effect from the damage compare, constants, area-cache and AI-lookup changes, apart from a lighter server.
 
+### 14. Arcomage card game, phase 1: solo play against NPCs (2026-10-23 to 2026-10-25)
+
+**Files involved:** `pkg/opt/arcomage/` (new package: `pkg.cfg`, `config/cards.cfg`, `config/rulesets.cfg`, `config/spawnpoints.cfg`, `include/arcocards.inc`, `include/arcoai.inc`, `include/arcorecords.inc`, `include/arcogump.inc`, `match.src`, `tablewatch.src`, `ai/arcomagenpc.src`, `textcmd/admin/arcomagenpcs.src`, `textcmd/player/arcomage.src`, `textcmd/test/arcomagelineup.src`), `config/npcdesc.cfg`, `pkg/packethooks/megacliloc/mobiledata.src`, `config/command_synopses.cfg`
+
+Design picked over three rounds on a picker page (decisions recorded in the session memory `project_arcomage_minigame_plan`). Rules, card numbers, tavern presets and the AI follow the arcomage-hd remake (github.com/arcomage/arcomage-hd, MIT code). Card names and texts are a UO reskin; no 3DO card text or art is used.
+
+**Notable functional changes:**
+- `config/cards.cfg`: 102 cards, generated once from the remake's `src/data/cards.ts`. Each block has `Name`, `Text`, `Resource` (ore / reagents / recruits), `Cost`, `Weight` (the remake's draw `prob`), `Effect <self|enemy> <stat|damage> <n>` lines, or `Special <name>` for the 15 conditional cards, plus `PlayAgain` (8 cards), `DrawDiscard` (2) and `Undiscardable` (1). A `// #n Original Name` line above each block points back to the remake.
+- `config/rulesets.cfg`: the remake's 30 tavern presets (`src/data/preSettings.ts`) as `RuleSet 1-30`: start tower / wall / production / resources, `WinTower`, `WinResource`, `CardsInHand`, `Tier`, `NpcName`, `Town`, `Original`, `Title`. Each block opens with a comment naming the original tavern, location and game. Rule sets 25-30 (the remake's six Enroth Lords) are commented out, so 24 are live. The rule-set number is the permanent key used by records, templates and spawnpoints.
+- `include/arcocards.inc`: card and rule-set loading (`ArcoGetCards` fills a lazy global on first use), weighted draw with replacement (`ArcoDrawCardId`), side dictionaries, `ArcoSetStat` floors (stats 0, production 1, the remake's `minGeneratorIsOne`), `ArcoDamage` (wall first, remainder to tower), `ArcoPlayCard`, the 15 specials in `ArcoApplySpecial`, `ArcoCheckVictory` (win, loss or tie when both reach a goal on one card), difficulty 30/60/90/120/150 to AI level 4..0, `ArcoAtTable` (logged in, alive, same realm, within 8 tiles), `ArcoEffectText` (the per-side stat change a card made, cost excluded), and `ArcoDebug`, gated by `ARCO_DEBUG` (0).
+- `include/arcoai.inc`: port of the remake's AI (`src/ai/main.ts`, `coefs.ts`, `getMaxScore.ts`). Each card is tried on copies of both sides and scored as own gains minus enemy gains times 1.08, weighted ore 1, reagents 1.28, recruits 1.05, production x18, tower 3.67, wall 2.02, play-again +46, draw-discard +27.6, undiscardable +2.03, tie +999, losing -999. A discard scores -(score / 2.18). A card that wins outright is played at once. Levels 1-3 add the remake's bell-curve noise (multiplier from 8 dice, multiplier from 2 dice, additive noise as wide as the score spread). Level 4 deviates from the remake: it plays a random affordable card 3 times in 4 and otherwise discards a random card, because choosing uniformly among all legal moves almost always discarded.
+- `match.src`: one script per game, started by the NPC AI. Player goes first; each later turn pays production to the active side, then draws one card (hands hold `CardsInHand` between turns). Play-again draws and continues; draw-discard draws, forces a discard, draws again and continues. No legal move means a loss for the player, or a concession for the NPC. The NPC pauses 700 ms per action. `#ArcomageMatch` (pid) blocks a second game per character. Walking away, logging out or dying is a forfeit, and so is resigning (with a confirm gump).
+- `tablewatch.src`: started by each match. Once a second it checks `ArcoAtTable` and, when the player has left, calls `CloseGump(who, match_pid, 0)` so the blocking gump returns and the match forfeits. Same idea as `:loot:lootgumpdistance`. The match kills it before the result gump.
+- `include/arcorecords.inc`: per-character records in the datafile `:arcomage:records` keyed by serial: `Name`, `Wins`, `Losses`, `Ties`, `Grid` (dictionary `"<ruleset>-<difficulty>"` to wins). `ArcoLeaderboard` insertion-sorts by wins, then fewer losses. Daily gold: the first win at each difficulty per server day pays difficulty x100 gold (backpack, else at the feet), marked in the account property `ArcomageGoldDays` (difficulty to `StrFormatTime("%Y-%m-%d")`, server local time) only after the gold exists.
+- `include/arcogump.inc`: setup gump (rules summary, radio per difficulty showing daily gold or "claimed today" and wins against this NPC, a How to play page), the 900 x 680 board (side panels, towers and walls as a share of the tower goal drawn on the panels' bottom edge at full panel height, numbers and names under the bars, the last 3 log lines, up to 8 cards with Play / Discard), resign confirm, result gump, and the `.arcomage` stats gump (win grid over 2 pages, top 20 page).
+- `ai/arcomagenpc.src`: stationary, speech-only AI modelled on the quest givers. "arcomage", "game" or "cards" within 4 tiles starts `:arcomage:match`, so the NPC never blocks on a gump. Applies the template's `dress` once (`ReadConfigFile("::npcdesc")`; the bare name looked in the package's own config folder) and sets `title_suffix` and the `ArcomageTitle` CProp from the rule set's `Title` on every start. Idle line every 180 s when a player is near.
+- `config/npcdesc.cfg`: 30 templates `arcomage01`-`arcomage30` appended (24 live; 25-30 commented out), invulnerable, `noloot`, `guardignore`, CProp `ArcomageRuleSet`. Humans use skin hue 33784 (`Color` / `TrueColor`, the barkeeper's) and a `dress` outfit; Sherry the Mouse is body 0xEE, Smith the Horse 0xC8, Lord Draxinusom 0x04.
+- `pkg/packethooks/megacliloc/mobiledata.src`: an NPC with an `ArcomageTitle` CProp gets two tooltip lines (cliloc 1070722): the title in gold and "Say 'arcomage' to play", for players and staff.
+- Commands: `.arcomage` (Player) stats gump. `.arcomagenpcs place|remove|respawn|list|here <n>` (Admin): creates objtype 0xA300 spawnpoints from `spawnpoints.cfg` (type NPC, max 1, appear and wander range 0, 1-minute respawn, despawn-on-destroy on), tagged `ArcomagePoint` and listed in the global property `ArcomagePoints`, then starts `:spawnpoint:checkpoint` on each; entries left at X 0 / Y 0 are skipped and listed. Remove destroys only tagged points, and the spawnpoint's own destroy script kills their NPCs with `guardkill`, so no corpse is left. `here` prints a ready-to-paste block to the console and as a message. `.arcomagelineup [south] | clear` (Test) creates one NPC per live rule set in a row, 2 tiles apart, and removes them again.
+- All `spawnpoints.cfg` coordinates are still 0, to be filled in before the card players are placed.
+
+**Expected impact:** Players can play Arcomage against 24 card players once they are placed, at difficulty 30 to 150, and earn up to 45,000 gold a day per account from their first win at each difficulty. `.arcomage` shows records and the leaderboard. Staff place and remove the card players with one command.
+
+### 15. Warrior for Hire: compile fix (2026-10-25)
+
+**Files involved:** `pkg/opt/warriorforhire/warrior.src`
+
+**Notable functional changes:**
+- `FindHealPotion` (theme 10) declared `var pack`, which the compiler rejects because it is the name of basic.em's `Pack()`, so `warrior.src` did not compile. Renamed to `pack_items`.
+
+**Expected impact:** The theme 10 and 13 warrior changes take effect once the script compiles; no other change.
+
 ---
 
 ## Validation Notes
 
+- Themes 14-15 (2026-10-25): `git status --porcelain -uall` and `git diff --numstat` for the modified files, `wc -l` for the 14 new files; compiled `.ecl`, `.lst`, `.dbg`, `.dep` files are ignored by `.gitignore`. The arcomage package compiled with 0 errors and 0 warnings on 2026-10-25 (`scripts\ecompile.exe -f -b -r pkg\opt\arcomage`), and `warrior.src` with 0 errors; later edits that day (log text, table watcher, titles, debug off, Lords commented out) were compiled and tested in game by the user except the last two, which were checked by reading. Tested in game: games at 30, 60 and 90 traced on the console, daily gold limit, dressing, titles and tooltips, `.arcomage`, and the walk-away forfeit. Not tested yet: `.arcomagenpcs` placement, which needs coordinates.
 - Diff range: `git log --format="%h %p %an %ad %s" db9607a..HEAD` (HEAD `e2b8bdb`), `git diff --numstat db9607a..HEAD` for the committed file, `git diff db9607a a4d9778` (empty) to confirm the PR #116 merge carries nothing, `git diff --numstat HEAD` and `wc -l` on the three untracked files for the working tree.
 - File-status counts (recounted 2026-10-19): 51 M (1 committed, 50 working tree) and 8 A (working tree) = 59, matching the Scope Summary. Cross-checked against `git status --porcelain -uall`: every inventory entry has the listed status, and the only working-tree changes outside the inventory are notes and docs (`ainotes/`, `patchnotes/`, `.claude/subagent-briefing.md`), which the inventory does not list. Theme 9 lines from `git diff --numstat` over its 17 files.
 - ZH2.5 source: `git fetch --depth 60 origin Patch-1.1.4` in the `pol25` clone (commit `c3ffa40`), files extracted with `git archive` and diffed against ZH3.0 with `diff --strip-trailing-cr`.

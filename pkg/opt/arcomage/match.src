@@ -1,0 +1,405 @@
+// Arcomage: one game between a player and an Arcomage NPC. 2026-10-23: new package.
+// Started by the NPC's AI (ai/arcomagenpc.src) when a player asks for a game:
+//   Start_Script( ":arcomage:match", array{ player, npc } )
+// Turn order follows the arcomage-hd remake: the player goes first; at the start of each
+// later turn the active side's producers pay out, then it draws one card and plays or
+// discards one. "Play again" cards give another action; draw-discard cards draw one,
+// force a discard, then play again. Walking away, logging out or resigning is a loss.
+use uo;
+use os;
+use util;
+
+include ":arcomage:arcocards";
+include ":arcomage:arcoai";
+include ":arcomage:arcorecords";
+include ":arcomage:arcogump";
+
+const ARCO_MATCH_PROP := "#ArcomageMatch";
+const ARCO_LAST_DIFF_PROP := "ArcomageLastDifficulty";
+const ARCO_LOG_KEEP := 4;
+const ARCO_AI_PAUSE_MS := 700;
+const ARCO_MAX_EMPTY_REPLIES := 3;
+
+const ARCO_TURN_NEXT := 1;
+const ARCO_TURN_OVER := 2;       // a win condition was reached
+const ARCO_TURN_RESIGN := 3;     // the player resigned or had no legal move
+const ARCO_TURN_ABANDON := 4;    // the player left the table or logged out
+const ARCO_TURN_NPC_RESIGN := 5; // the NPC had no legal move
+
+program ArcomageMatch( params )
+
+	var who := params[1];
+	var npc := params[2];
+	if( !who || !npc )
+		return 0;
+	endif
+
+	var rules := ArcoGetRuleSet( CInt( GetObjProperty( npc, "ArcomageRuleSet" ) ) );
+	if( !rules )
+		Print( "[Arcomage] " + npc.name + " (" + npc.npctemplate + ") has no valid ArcomageRuleSet: " + rules.errortext );
+		SendSysMessage( who, npc.name + " can't seem to remember the rules today.", 3, 38 );
+		return 0;
+	endif
+
+	if( ArcoIsPlaying( who ) )
+		SendSysMessage( who, "You are already playing a game of Arcomage.", 3, 38 );
+		return 0;
+	endif
+	SetObjProperty( who, ARCO_MATCH_PROP, GetPid() );
+
+	var npc_serial := npc.serial;
+	var npc_name := npc.name;
+
+	// 2026-10-25: a gump waits for a click, so walking away left it open. The watcher closes
+	// this script's gump as soon as the player leaves the table; the game then forfeits.
+	var watcher := Start_Script( ":arcomage:tablewatch", array{ who, npc_serial, GetPid() } );
+
+	var last := CInt( GetObjProperty( who, ARCO_LAST_DIFF_PROP ) );
+	if( !( last in ArcoDifficulties() ) )
+		last := 90;
+	endif
+	var difficulty := ArcoSetupGump( who, npc_name, rules, ArcoGetRecord( who ), last );
+	if( !difficulty || !ArcoAtTable( who, npc_serial ) )
+		if( difficulty )
+			SendSysMessage( who, "You need to stay at the table to play.", 3, 38 );
+		endif
+		ArcoStopWatcher( watcher );
+		EraseObjProperty( who, ARCO_MATCH_PROP );
+		return 0;
+	endif
+	SetObjProperty( who, ARCO_LAST_DIFF_PROP, difficulty );
+
+	var outcome := ArcoRunGame( who, npc_serial, npc_name, rules, difficulty );
+	ArcoStopWatcher( watcher );	// the result gump may stay open wherever the player is
+
+	ArcoRecordResult( who, rules.id, difficulty, outcome.result );
+	var gold := 0;
+	var headline;
+	var npc_line;
+	case( outcome.result )
+		"win":
+			gold := ArcoPayDailyGold( who, difficulty );
+			headline := "You win!";
+			npc_line := "Well played. Again sometime?";
+		"tie":
+			headline := "A draw.";
+			npc_line := "Neither of us, then. Another round?";
+		default:
+			headline := "You lose.";
+			npc_line := "Better luck next time.";
+	endcase
+
+	npc := SystemFindObjectBySerial( npc_serial );
+	if( npc )
+		PrintTextAbove( npc, npc_line );
+	endif
+
+	EraseObjProperty( who, ARCO_MATCH_PROP );
+	if( who )
+		ArcoResultGump( who, headline, outcome.reason, gold, ArcoGetRecord( who ) );
+	endif
+	return 1;
+
+endprogram
+
+function ArcoIsPlaying( who )
+
+	var pid := CInt( GetObjProperty( who, ARCO_MATCH_PROP ) );
+	if( !pid || pid == GetPid() )
+		return 0;
+	endif
+	if( GetProcess( pid ) )
+		return 1;
+	endif
+	return 0;
+
+endfunction
+
+function ArcoStopWatcher( watcher )
+
+	if( watcher )
+		watcher.kill();
+	endif
+
+endfunction
+
+function ArcoLog( byref match, line )
+
+	ArcoDebug( "  " + line );	// 2026-10-25: every board message also goes to the console trace
+	var lines := match.log;
+	lines.append( line );
+	while( lines.size() > ARCO_LOG_KEEP )
+		lines.erase( 1 );
+	endwhile
+	match.log := lines;
+
+endfunction
+
+function ArcoDrawInto( byref side )
+
+	var hand := side["hand"];
+	hand.append( ArcoDrawCardId() );
+	side["hand"] := hand;
+
+endfunction
+
+function ArcoRemoveFromHand( byref side, slot )
+
+	var hand := side["hand"];
+	hand.erase( slot );
+	side["hand"] := hand;
+
+endfunction
+
+function ArcoHasLegalMove( side, discard_mode )
+
+	var hand := side["hand"];
+	foreach id in hand
+		var card := ArcoGetCard( id );
+		if( !discard_mode )
+			if( ArcoCanAfford( side, card ) )
+				return 1;
+			endif
+		endif
+		if( !card.undiscardable )
+			return 1;
+		endif
+	endforeach
+	return 0;
+
+endfunction
+
+// Returns struct{ result "win"/"loss"/"tie", reason } from the player's side.
+function ArcoRunGame( who, npc_serial, npc_name, rules, difficulty )
+
+	var match := struct{ "who_name" := who.name, "npc_name" := npc_name, "rules" := rules,
+		"difficulty" := difficulty, "log" := array, "discard_mode" := 0, "end_reason" := "" };
+	var level := ArcoDifficultyToLevel( difficulty );
+
+	var p := ArcoNewSide( rules );
+	var n := ArcoNewSide( rules );
+	var i;
+	for( i := 1; i <= rules.handsize; i := i + 1 )
+		ArcoDrawInto( p );
+		ArcoDrawInto( n );
+	endfor
+
+	ArcoDebug( "=== " + who.name + " vs " + npc_name + ", rule set " + CStr( rules.id ) + ", difficulty " + CStr( difficulty )
+		+ " (AI level " + CStr( level ) + "), goal tower " + CStr( rules.wintower ) + " / resource " + CStr( rules.winresource ) );
+	ArcoLog( match, npc_name + " deals the cards. You go first." );
+	var active := 1;
+	var first_turn := 1;
+	var turn;
+	while( 1 )
+		if( active == 1 )
+			turn := ArcoPlayerTurn( who, npc_serial, match, p, n, first_turn );
+		else
+			turn := ArcoNpcTurn( match, n, p, level );
+		endif
+		first_turn := 0;
+
+		if( turn == ARCO_TURN_NEXT )
+			active := 3 - active;
+		elseif( turn == ARCO_TURN_OVER )
+			var over := ArcoGameOver( p, n, rules, npc_name );
+			ArcoDebug( "=== Game over: " + over.result + " - " + over.reason );
+			ArcoDebug( "    " + who.name + ": " + ArcoSideSummary( p ) );
+			ArcoDebug( "    " + npc_name + ": " + ArcoSideSummary( n ) );
+			return over;
+		elseif( turn == ARCO_TURN_RESIGN )
+			return struct{ "result" := "loss", "reason" := match.end_reason };
+		elseif( turn == ARCO_TURN_ABANDON )
+			return struct{ "result" := "loss", "reason" := "You left the table, so the game is forfeit." };
+		elseif( turn == ARCO_TURN_NPC_RESIGN )
+			return struct{ "result" := "win", "reason" := npc_name + " had no card to play and concedes." };
+		else
+			Print( "[Arcomage] Unexpected turn result " + CStr( turn ) );
+			return struct{ "result" := "tie", "reason" := "The game was called off." };
+		endif
+	endwhile
+
+endfunction
+
+function ArcoGameOver( p, n, rules, npc_name )
+
+	case( ArcoCheckVictory( p, n, rules ) )
+		ARCO_RESULT_A:
+			return struct{ "result" := "win", "reason" := ArcoWinReason( p, n, rules, "You", "your" ) };
+		ARCO_RESULT_B:
+			return struct{ "result" := "loss", "reason" := ArcoWinReason( n, p, rules, npc_name, "their" ) };
+	endcase
+	return struct{ "result" := "tie", "reason" := "Both sides reached a goal with the same card." };
+
+endfunction
+
+function ArcoWinReason( winner, loser, rules, label, possessive )
+
+	if( loser["tower"] <= 0 )
+		return label + " brought the enemy tower down.";
+	elseif( winner["tower"] >= rules.wintower )
+		return label + " raised " + possessive + " tower to " + CStr( winner["tower"] ) + ".";
+	endif
+	var resources := array{ "ore", "reagents", "recruits" };
+	foreach resource in resources
+		if( winner[resource] >= rules.winresource )
+			return label + " gathered " + CStr( winner[resource] ) + " " + Lower( ArcoResourceLabel( resource ) ) + ".";
+		endif
+	endforeach
+	return label + " won.";
+
+endfunction
+
+function ArcoPlayerTurn( who, npc_serial, byref match, byref p, byref n, first_turn )
+
+	var rules := match.rules;
+	if( !first_turn )
+		ArcoProduce( p );
+		if( ArcoCheckVictory( p, n, rules ) )
+			return ARCO_TURN_OVER;
+		endif
+	endif
+	ArcoDrawInto( p );
+	match.discard_mode := 0;
+	ArcoDebug( "-- " + match.who_name + "'s turn: " + ArcoSideSummary( p ) );
+	ArcoDebug( "   " + match.npc_name + ": " + ArcoSideSummary( n ) );
+
+	var empty_replies := 0;
+	var data, hand, btn, slot, card, p_before, n_before;
+	while( 1 )
+		if( !ArcoHasLegalMove( p, match.discard_mode ) )
+			match.end_reason := "You had no card you could play or discard.";
+			return ARCO_TURN_RESIGN;
+		endif
+		if( !ArcoAtTable( who, npc_serial ) )
+			return ARCO_TURN_ABANDON;
+		endif
+
+		data := GFSendGump( who, ArcoBoardGump( match, p, n ) );
+		if( !ArcoAtTable( who, npc_serial ) )
+			return ARCO_TURN_ABANDON;
+		endif
+		if( data.errortext )
+			Print( "[Arcomage] Board gump failed for " + who.name + ": " + data.errortext );
+			return ARCO_TURN_ABANDON;
+		endif
+
+		hand := p["hand"];
+		btn := CInt( data[0] );
+		if( btn == ARCO_BTN_RESIGN )
+			if( ArcoConfirmResign( who ) )
+				match.end_reason := "You resigned.";
+				return ARCO_TURN_RESIGN;
+			endif
+			continue;
+		elseif( btn > ARCO_BTN_DISCARD && btn <= ARCO_BTN_DISCARD + hand.size() )
+			empty_replies := 0;
+			slot := btn - ARCO_BTN_DISCARD;
+			card := ArcoGetCard( hand[slot] );
+			if( card.undiscardable )
+				continue;
+			endif
+			ArcoRemoveFromHand( p, slot );
+			ArcoLog( match, "You discarded " + card.name + ": " + card.text );
+			if( match.discard_mode )
+				match.discard_mode := 0;
+				ArcoDrawInto( p );
+				continue;
+			endif
+			return ARCO_TURN_NEXT;
+		elseif( btn > ARCO_BTN_PLAY && btn <= ARCO_BTN_PLAY + hand.size() )
+			empty_replies := 0;
+			if( match.discard_mode )
+				continue;
+			endif
+			slot := btn - ARCO_BTN_PLAY;
+			card := ArcoGetCard( hand[slot] );
+			if( !ArcoCanAfford( p, card ) )
+				continue;
+			endif
+			ArcoRemoveFromHand( p, slot );
+			p_before := ArcoCopyStats( p );
+			n_before := ArcoCopyStats( n );
+			ArcoPlayCard( p, n, card );
+			ArcoLog( match, "You played " + card.name + ": "
+				+ ArcoEffectText( card, "your", match.npc_name + "'s", p_before, p, n_before, n ) );
+			if( ArcoCheckVictory( p, n, rules ) )
+				return ARCO_TURN_OVER;
+			endif
+			if( card.drawdiscard )
+				ArcoDrawInto( p );
+				match.discard_mode := 1;
+				continue;
+			elseif( card.playagain )
+				ArcoDrawInto( p );
+				continue;
+			endif
+			return ARCO_TURN_NEXT;
+		else
+			// The gump came back with no choice. Re-send it, but don't spin forever.
+			empty_replies := empty_replies + 1;
+			if( empty_replies >= ARCO_MAX_EMPTY_REPLIES )
+				return ARCO_TURN_ABANDON;
+			endif
+			SleepMS( 250 );
+		endif
+	endwhile
+
+endfunction
+
+function ArcoNpcTurn( byref match, byref n, byref p, level )
+
+	var rules := match.rules;
+	ArcoProduce( n );
+	if( ArcoCheckVictory( p, n, rules ) )
+		return ARCO_TURN_OVER;
+	endif
+	ArcoDrawInto( n );
+	ArcoDebug( "-- " + match.npc_name + "'s turn: " + ArcoSideSummary( n ) );
+	ArcoDebug( "   " + match.who_name + ": " + ArcoSideSummary( p ) );
+
+	var discard_mode := 0;
+	var actions := 0;
+	while( actions < 20 )
+		actions := actions + 1;
+		SleepMS( ARCO_AI_PAUSE_MS );
+
+		var choice := ArcoAIChoose( n, p, rules, level, discard_mode );
+		if( !choice )
+			return ARCO_TURN_NPC_RESIGN;
+		endif
+
+		var hand := n["hand"];
+		var card := ArcoGetCard( hand[choice.index] );
+		ArcoRemoveFromHand( n, choice.index );
+		if( !choice.play )
+			ArcoLog( match, match.npc_name + " discarded " + card.name + ": " + card.text );
+			if( discard_mode )
+				discard_mode := 0;
+				ArcoDrawInto( n );
+				continue;
+			endif
+			return ARCO_TURN_NEXT;
+		endif
+
+		var n_before := ArcoCopyStats( n );
+		var p_before := ArcoCopyStats( p );
+		ArcoPlayCard( n, p, card );
+		ArcoLog( match, match.npc_name + " played " + card.name + ": "
+			+ ArcoEffectText( card, match.npc_name + "'s", "your", n_before, n, p_before, p ) );
+		if( ArcoCheckVictory( p, n, rules ) )
+			return ARCO_TURN_OVER;
+		endif
+		if( card.drawdiscard )
+			ArcoDrawInto( n );
+			discard_mode := 1;
+		elseif( card.playagain )
+			ArcoDrawInto( n );
+		else
+			return ARCO_TURN_NEXT;
+		endif
+	endwhile
+
+	// Safety net: a chain of 20 extra actions in one turn ends the turn.
+	return ARCO_TURN_NEXT;
+
+endfunction

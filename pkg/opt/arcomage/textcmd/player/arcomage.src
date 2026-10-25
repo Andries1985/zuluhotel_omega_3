@@ -1,0 +1,12 @@
+// Synopsis: Show your Arcomage record against every card player, and the shard leaderboard
+// 2026-10-23: new package.
+use uo;
+use os;
+
+include ":arcomage:arcogump";
+
+program textcmd_arcomage( who )
+
+	ArcoStatsGump( who );
+
+endprogram

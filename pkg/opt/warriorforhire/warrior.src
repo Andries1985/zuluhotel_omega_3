@@ -1509,8 +1509,8 @@ function FindHealPotion()
 
 	var best := 0;
 	var bestrank := 0;
-	var pack := EnumerateItemsInContainer(me.backpack);
-	foreach item in pack
+	var pack_items := EnumerateItemsInContainer(me.backpack); // 2026-10-25: was "pack", which collides with basic.em Pack()
+	foreach item in pack_items
 		var rank := 0;
 		if (!GetObjProperty(item, "Poisoned"))
 			var power := HealPotionPower(item);
