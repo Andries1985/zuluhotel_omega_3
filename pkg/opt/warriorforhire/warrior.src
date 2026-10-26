@@ -41,7 +41,7 @@ var master;
 var chaseloop := 0;
 var following := 0;
 var guarding := 0;
-var passive := 0;	// 2026-10-10: after "stop" in a fight: follows the master and guards no one until told to guard or attack
+var passive := 0;	// 2026-10-10: after "stop": guards no one until told to guard or attack (2026-10-25: and stands still)
 var nextwatch := ReadGameClock();
 var laststrengthgain := ReadGameClock();
 var lastskillgain := ReadGameClock();
@@ -739,16 +739,14 @@ function Follow()
 
 endfunction
 
-// 2026-10-10: "stop" in a fight: the warrior drops whatever it was guarding and attacks nothing on its
-// own, but keeps following its master. It still fights back if attacked (ProcessMasterEvents); "guard"
-// or "kill" end the passive state.
+// 2026-10-10: "stop": the warrior drops whatever it was guarding and attacks nothing on its own. It
+// still fights back if attacked (ProcessMasterEvents); "guard" or "kill" end the passive state.
+// 2026-10-25: in or out of a fight it now stands still; only a follow command makes it follow again (user's rule).
 function StopGuarding()
 
 	passive := 1;
 	guarding := 0;
-	if (master)
-		following := master;
-	endif
+	following := 0;
 
 endfunction
 
@@ -794,8 +792,7 @@ function ObeyCommand(ev)
 			endif
 		endif
 	elseif( evtext[mename + " stop"] or evtext["all stop"])
-		guarding := 0;
-		following := 0;
+		StopGuarding();	// 2026-10-25: stand still; passive too, so ProcessMasterEvents doesn't re-guard the master at once
 	elseif( evtext[mename + " heal"] or evtext["heal me"])
 		if ( evtext["heal me"] )
 			TurnToward(you);
@@ -1162,9 +1159,9 @@ endfunction
 function ShowStatus(you)
 
 	var ar := me.ar;
-	var phys := Cint(GetObjProperty(me,"PhysicalProtection"));
+	var phys := GetPhysicalProtection(me);	// 2026-10-25: includes an active Dragon Skin (spellprots.inc via dotempmods)
 	var fire := Cint(GetObjProperty(me,"FireProtection"));
-	var poison := Cint(GetObjProperty(me,"PermPoisonImmunity"));
+	var poison := GetPoisonImmunityLevel(me);	// 2026-10-25: includes an active Sanctuary/Antidote
 
 	// 2026-10-10: backpack, hair and beard are not equipment worth listing
 	var equipped := {};

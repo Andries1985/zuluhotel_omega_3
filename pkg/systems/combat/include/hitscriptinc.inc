@@ -616,7 +616,7 @@ endfunction
 
 function ModByProt( defender, basedamage )
 
-	var physicalprot := GetObjProperty( defender , "PhysicalProtection" );
+	var physicalprot := GetPhysicalProtection( defender );	// 2026-10-25: higher of gear and Dragon Skin (spellprots.inc, ZH2.5 1.1.5 port)
 	if( !physicalprot )
 		return basedamage;
 	else
@@ -852,6 +852,8 @@ function DealDamage( attacker, defender, weapon, armor, basedamage, rawdamage )
 		//Check if reactive armor spell is on
 		if( reactive )
 			EraseObjProperty( defender , "ReactiveArmor" );
+			EraseObjProperty( defender , "#ReactiveArmorPid" );	// 2026-10-25: buff used up, icon off (ZH2.5 1.1.5 port)
+			BuffOff( defender , "reactivearmor" );
 			start_script( ":combat:reactivearmoronhit" , { attacker, defender, basedamage, rawdamage, reactive} );
 		endif
 

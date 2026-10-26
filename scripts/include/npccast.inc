@@ -12,6 +12,7 @@ include "include/attributes";
 include "include/classes";
 include "include/npccastspells";
 
+// 2026-10-25: new spell names here or in GetSpellID() also go in include/npcspellnames.inc, the .newmobedit spell list (ZH2.5 1.1.5 port)
 function castspell( caster, cast_on, spellname )
 
 	case (spellname)
@@ -517,7 +518,8 @@ Function GetSpellID(spellname)
 	"songofair"     : spellid := 192;
 	"songoffire"    : spellid := 193;
 	"songofwater"   : spellid := 194;
-	"songofbeckon"  : spellid := 195;
+	// 2026-10-25: songofbeckon (195) is players only, an NPC's fairies were uncapped and had no realm (ZH2.5 1.1.5 port)
+	//"songofbeckon"  : spellid := 195;
 	"songoffright"  : spellid := 196;
 	"songofsalvation" : spellid := 197;
 	endcase
@@ -565,13 +567,54 @@ endfunction
 
 function cast_offensive_spell(caster, cast_on)
 
-	var thespell := spells[Random( len(spells) +1 )];
+	// 2026-10-25: a per-NPC list (CustomSpells, set with .newmobedit) replaces the template's spell lines; an empty one means no spells (ZH2.5 1.1.5 port)
+	var spell_list := GetObjProperty( caster, "CustomSpells" );
+	if( spell_list == error )
+		var npccfg := readconfigfile("npcdesc");
+		spell_list := GetConfigStringArray( npccfg[caster.npctemplate], "spell" );
+	endif
 
-	if( thespell == "gheal" )
+	if( !len(spell_list) )
+		return 0;
+	endif
+
+	// 2026-10-25: Random(n) is 0..n-1, so +1 for the 1-based array; Random(len+1) could pick the empty spells[0] and waste the cast (ZH2.5 1.1.5 port)
+	var thespell := spell_list[Random( len(spell_list) ) + 1];
+
+	// 2026-10-25: all helpful spells go on the caster, not just gheal (ZH2.5 1.1.5 port)
+	if( IsNpcSelfSpell( thespell ) )
 		CastSpell(caster, caster, thespell);
 	else
 		CastSpell(caster, cast_on, thespell);
 	endif
+
+endfunction
+
+// 2026-10-25: helpful spells land on whoever they're cast at, so a mob casts these on itself instead of its opponent (ZH2.5 1.1.5 port)
+function IsNpcSelfSpell( spellname )
+
+	case( spellname )
+		"heal":
+		"gheal":
+		"cure":
+		"archcure":
+		"agility":
+		"cunning":
+		"strength":
+		"bless":
+		"protection":
+		"archprot":
+		"nightsight":
+		"reflect":
+		"invisibility":
+		"owlsight":
+		"earthblessing":
+		"naturestouch":
+		"antidote":
+			return 1;
+	endcase
+
+	return 0;
 
 endfunction
 

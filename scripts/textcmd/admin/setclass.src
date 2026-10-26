@@ -36,6 +36,9 @@ program textcmd_class(who, lvl)
 	var targ := Target( who );
 	if( !targ )
 		return;
+	elseif( !targ.acctname ) // 2026-10-25: an NPC's class assignment broke every world save (ZH2.5 1.1.5 port)
+		SendSysMessage(who, "You must target a player.");
+		return;
 	endif
 
 	var gump := GFCreateGump(15, 15, 200, 400);

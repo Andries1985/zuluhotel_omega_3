@@ -4,6 +4,7 @@ use cfgfile;
 
 include "include/drinkpotion";
 include "include/client";
+include "include/buffs";	// 2026-10-25: BuffOn / BuffOff (ZH2.5 1.1.5 port)
 
 program drink_blue( character , potion )
 
@@ -21,6 +22,7 @@ program drink_blue( character , potion )
 		else
 			PlaySoundEffect( character , SFX_SPELL_NIGHT_SIGHT );
 			character.setlightlevel( 0 , 1000 );
+			BuffOn( character , "nightsight" , 0 , 1000 );	// 2026-10-25: buff bar icon (ZH2.5 1.1.5 port)
 		endif
 	endif
 

@@ -5,6 +5,7 @@ include "include/spelldata";
 include "include/classes";
 include "include/client";
 include "include/attributes";
+include "include/buffs";	// 2026-10-25: BuffOn / BuffOff (ZH2.5 1.1.5 port)
 
 program cast_reflect( caster, spell_id )
 
@@ -38,5 +39,6 @@ program cast_reflect( caster, spell_id )
 	PlaySoundEffect( caster, SFX_SPELL_MAGIC_REFLECTION );
 	PlayObjectCenteredEffect( caster , FX_SPELL_MAGIC_REFLECTION , 10 , 10 );
 	SetObjProperty( caster , "mr" , amount );
+	BuffOn( caster , "magicreflection" , amount , 0 );	// 2026-10-25: no timer, it lasts until it reflects a spell (ZH2.5 1.1.5 port)
 
 endprogram

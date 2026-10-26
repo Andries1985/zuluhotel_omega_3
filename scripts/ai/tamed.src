@@ -112,7 +112,11 @@ program TamedAI()
 
 	var npccfg := readconfigfile("npcdesc");
 	var poison_skill := GetConfigInt( npccfg[me.npctemplate], "Poisoning" );
-	spells := GetConfigStringArray( npccfg[me.npctemplate], "spell" );
+	// 2026-10-25: a per-NPC CustomSpells list (.newmobedit) overrides the template's spells (ZH2.5 1.1.5 port)
+	spells := GetObjProperty( me, "CustomSpells" );
+	if (spells == error)
+		spells := GetConfigStringArray( npccfg[me.npctemplate], "spell" );
+	endif
 	if (Len(spells))
 		caster := 1;
 		saywords := npccfg[me.npctemplate].saywords;

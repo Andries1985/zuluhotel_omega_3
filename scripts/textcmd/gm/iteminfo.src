@@ -15,7 +15,7 @@ include "include/itemutil";
 include ":mdgumps:yesNo";
 
 //Set to 0 to silence all [iteminfo] console debug prints once this is verified working.
-const DBG_ON := 1;
+const DBG_ON := 0;	// 2026-10-25: silenced on the user's request; set back to 1 to trace
 
 function Dbg( msg )
 
@@ -792,7 +792,9 @@ program iteminfo( who )
 			break;
 
 		48:	//Set a Spell Hitscript/OnHitscript
-			if( SetSpellFromList( who , item ) )
+			// 2026-10-25: the picker only returns the spell id now; SetSpellHitscriptProps writes HitWithSpell and the config row (ZH2.5 1.1.5 port)
+			selecttype := SetSpellFromList( who );
+			if( selecttype )
 				if( item.ar )
 					SetObjProperty( item , "OnHitScript" , ":combat:spellonhit" );
 
@@ -800,10 +802,12 @@ program iteminfo( who )
 					item.hitscript := ":combat:spellstrikescript";
 				endif
 
-				ResetHitscriptPropsExcep( item , "HitWithSpell" );
+				ResetHitscriptPropsExcep( item );
+				SetSpellHitscriptProps( item , selecttype );
 				var one := AskForIntPropVal( who , item , "ChanceOfEffect" , "What is the chance of effect? Hit Esc to cancel." , "Enter a value." );
 				var two := AskForIntPropVal( who , item , "EffectCircle" , "Use with which circle efficiency? Hit Esc to cancel." , "Enter a value." );
 				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Set Spell Hitscript: "+one+" "+two);
+				DebugRenameItem( item );
 			endif
 			break;
 
@@ -849,8 +853,13 @@ program iteminfo( who )
 			break;
 			
 		53:	//Change the casted spell
-			selecttype := SetSpellFromList( who , item );
-			LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change Casted Spell: "+selecttype);
+			// 2026-10-25: a cancelled pick changes nothing (it used to log a blank change); the config row follows the new spell (ZH2.5 1.1.5 port)
+			selecttype := SetSpellFromList( who );
+			if( selecttype )
+				SetSpellHitscriptProps( item , selecttype );
+				LogCommand(who, GetProcess(GetPid()).name, item.desc+"/"+item.serial, "Change Casted Spell: "+selecttype);
+				DebugRenameItem( item );
+			endif
 			break;
 			
 		54:	//Change the Slay/Protected Type
@@ -1242,12 +1251,14 @@ function FillInArrays( item )
 	
 	//OnUseScript
 	if( item.usescript )
-		var usecfg := ReadConfigFile( ":magic:usescriptdesc" );
+		// 2026-10-25: :magic:usescriptdesc doesn't exist; the file is :shilitems:usescriptdesc, keyed by short names (castspell, regeneration...), so match on the Script line and show Desc (ZH2.5 1.1.5 port)
+		var usecfg := ReadConfigFile( ":shilitems:usescriptdesc" );
 		var usescripts := GetConfigStringKeys( usecfg );
+		data[109] := TruncPkgName( item.usescript );
 		
 		foreach usescript in usescripts
-			if( item.usescript == usescript )
-				data[109] := usecfg[usescript].Name;
+			if( item.usescript == usecfg[usescript].Script )
+				data[109] := usecfg[usescript].Desc;
 				if( usecfg[usescript].RequireCharges )
 					data[110] := "Nb Charges";
 					layout[231] := "button 260 170 2640 2641 1 1 31";
@@ -1584,9 +1595,12 @@ function FillInArrays( item )
 					var scriptnum := GetObjProperty( item , "OnHitscriptNumber" );
 					var CProp := hitcfg[scriptnum].CProp;
 					Dbg( "FillInArrays (armor): OnHitscriptNumber=" + scriptnum + " CProp=" + CProp );
-					data[57] := CProp;
-					data[58] := GetObjProperty( item , CProp );
-					layout[133] := "button 260 195 2640 2641 1 1 38";
+					// 2026-10-25: no edit button for a row without a CProp, same as the weapon branch (ZH2.5 1.1.5 port)
+					if( CProp )
+						data[57] := CProp;
+						data[58] := GetObjProperty( item , CProp );
+						layout[133] := "button 260 195 2640 2641 1 1 38";
+					endif
 				endif
 
 			else
@@ -2941,6 +2955,7 @@ function SetUseScriptFromList( who , item )
 		layout2.append( "text 75 " + y + " 0 " + len(data2) );
 		layout2.append( "button 250 " + (y + 5) + " 2118 2117 1 1 " + buttonret );
 		data2.append( usecfg[usescript].Desc );
+		buttonret := buttonret + 1;	// 2026-10-25: never incremented, so every button returned 1 and the first script was always picked (ZH2.5 1.1.5 port)
 
 		y 	:= y + 20;
 		done 	:= done + 1;
@@ -2956,7 +2971,7 @@ function SetUseScriptFromList( who , item )
 	endif
 	
 	var script := usescripts[result[0]];
-	item.usescript := script.Script;
+	item.usescript := usecfg[script].Script;	// 2026-10-25: script is the cfg key (a string), so script.Script read nothing (ZH2.5 1.1.5 port)
 	
 	if( usecfg[script].RequireCharges )
 		if( YesNo( who , "Use Charges?" ) )
@@ -2968,13 +2983,10 @@ function SetUseScriptFromList( who , item )
 	endif
 	
 	if( usecfg[script].CastSpell )
-		var previous := GetObjProperty( item , "HitWithSpell" );
-		if( SetSpellFromList( who , item ) )
-			var current := GetObjProperty( item , "HitWithSpell" );
-			SetObjProperty( item , "SpellId" , current );
-			if( previous )
-				SetObjProperty( item , "HitWithSpell" , previous );
-			endif
+		// 2026-10-25: the picker no longer writes HitWithSpell, so there is nothing to save and restore around it (ZH2.5 1.1.5 port)
+		var spellid := SetSpellFromList( who );
+		if( spellid )
+			SetObjProperty( item , "SpellId" , spellid );
 		endif
 	endif
 		
@@ -3001,7 +3013,9 @@ function SetUseScriptFromList( who , item )
 
 endfunction
 
-function SetSpellFromList( who , item )
+function SetSpellFromList( who )
+//2026-10-25: only picks the spell and returns its id (0 on cancel); the callers decide which props to set,
+//since the hitscript buttons and the spell-casting usescript store it differently (ZH2.5 1.1.5 port).
 
 	var layout2 := array(
 				"page 0",
@@ -3090,8 +3104,35 @@ function SetSpellFromList( who , item )
 		return 0;
 	endif
 	
-	SetObjProperty( item , "HitWithSpell" , result[0] );
 	return result[0];
+
+endfunction
+
+function SetSpellHitscriptProps( item , spellid )
+//2026-10-25: loot stores the spell id in HitWithSpell and the hitscriptdesc/onhitscriptdesc row in
+//(On)HitscriptNumber, which is what naming reads (see ApplySpellHitscript in starteqp.inc). Only spells
+//that have a row get a name; a stale row from the previous spell is cleared (ZH2.5 1.1.5 port).
+
+	var cfg;
+	var numprop;
+	if( item.ar )
+		cfg	:= ReadConfigFile( ":combat:onhitscriptdesc" );
+		numprop	:= "OnHitscriptNumber";
+	else
+		cfg	:= ReadConfigFile( ":combat:hitscriptdesc" );
+		numprop	:= "HitscriptNumber";
+	endif
+
+	SetObjProperty( item , "HitWithSpell" , spellid );
+	EraseObjProperty( item , numprop );
+
+	var i;
+	for( i := 1 ; i <= Cint(cfg["data"].NbSpell) ; i := i + 1 )
+		if( Cint(cfg[i].Spellid) == spellid )
+			SetObjProperty( item , numprop , i );
+			break;
+		endif
+	endfor
 
 endfunction
 
@@ -3411,7 +3452,12 @@ function SetASpecialScriptFromList( who , item )
 		cfg	:= ReadConfigFile( ":combat:hitscriptdesc" );
 	endif
 	
-	var amount	:= cfg["data"].NbSpecial;
+	// 2026-10-25: neither hitscriptdesc.cfg nor onhitscriptdesc.cfg defines NbSpecial or any special rows, so the list was always empty; say so instead (ZH2.5 1.1.5 port)
+	var amount	:= Cint(cfg["data"].NbSpecial);
+	if( !amount )
+		SendSysmessage( who , "There are no special hitscripts defined." );
+		return 0;
+	endif
 	var start	:= cfg["data"].NbSpell + cfg["data"].NbSlayer + cfg["data"].NbEffect + cfg["data"].NbGreater + 1;
 	var last	:= start + amount;
 	var count	:= 0;
@@ -3543,13 +3589,16 @@ endfunction
 
 function GetMiscPropForUseScript( item )
 
-	var usecfg := ReadConfigFile( ":usescripts:usescriptdesc" );
-	var elem := FindConfigElem( usecfg , TruncPkgName( item.usescript ) );
-	if( elem )
-		return elem.MiscProp;
-	else
-		return 0;
-	endif
+	// 2026-10-25: :usescripts:usescriptdesc doesn't exist; read :shilitems:usescriptdesc and match on the Script line (ZH2.5 1.1.5 port)
+	var usecfg := ReadConfigFile( ":shilitems:usescriptdesc" );
+	var usescripts := GetConfigStringKeys( usecfg );
+	foreach usescript in usescripts
+		if( item.usescript == usecfg[usescript].Script )
+			return usecfg[usescript].MiscProp;
+		endif
+	endforeach
+
+	return 0;
 		
 endfunction
 

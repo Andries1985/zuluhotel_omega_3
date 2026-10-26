@@ -98,6 +98,9 @@ program logon( who )
 	// 2026-09-22: take back what a restart left behind: a Dragon Skin grant on
 	// PhysicalProtection and an Antidote/Sanctuary poison immunity, durable
 	// properties that only their sleeping script used to remove (spellgrants.inc).
+	// 2026-10-25: the spells no longer write those markers (they keep their own level, see spellprots.inc, ZH2.5
+	// 1.1.5 port). These two calls only clean up markers saved by the old code; remove them, the include above and
+	// spellgrants.inc after the next release.
 	ReclaimDragonSkinGrant( who );
 	ReclaimSpellPoisonImmunity( who );
 	

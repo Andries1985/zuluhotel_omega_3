@@ -28,6 +28,7 @@ include "include/skillpoints";
 include "include/attributes";
 include "include/difficulty";
 include "include/report";
+include "include/buffs";  // 2026-10-25: BuffOff for the Magic Reflection icon in Reflected() (ZH2.5 1.1.5 port, 07e7bc6)
 
 
 ////////////////////////////////
@@ -974,6 +975,7 @@ function Reflected( caster, cast_on, circle )
 
 	elseif( Cint(GetObjProperty( targ, "mr" )) >= circle )
 		EraseObjProperty(targ, "mr");
+		BuffOff( targ , "magicreflection" );  // 2026-10-25: Magic Reflection icon off (ZH2.5 1.1.5 port, 07e7bc6)
 		source := cast_on;
 		targ := caster;
 		Reflect( source, targ );
@@ -1460,6 +1462,11 @@ endfunction
 
 function SmartAoE( caster, victims)
 
+	// 2026-10-25: NPC casters follow the monster-side / player-side rules in NpcSmartAoE (ZH2.5 1.1.5 port)
+	if( caster.isa(POLCLASS_NPC) )
+		return NpcSmartAoE( caster, victims );
+	endif
+
 	var caster_RPer := GetObjProperty(caster, "IsRPer");
 	var caster_noPK := GetObjProperty(caster, "NOPKAREA");
 	var caster_CW := GetObjProperty(caster, "cwarring");
@@ -1536,6 +1543,11 @@ endfunction
 
 function SmartBoost(caster, affected)
 
+	// 2026-10-25: NPC casters boost their own side only, see NpcSmartBoost (ZH2.5 1.1.5 port)
+	if( caster.isa(POLCLASS_NPC) )
+		return NpcSmartBoost( caster, affected );
+	endif
+
 	var caster_RPer := GetObjProperty(caster, "IsRPer");
 	var caster_CW := GetObjProperty(caster, "cwarring");
 	var caster_CWcolor := GetObjProperty(caster,"cwcolor");
@@ -1581,6 +1593,159 @@ function SmartBoost(caster, affected)
 	endfor
 
 	return affected;
+
+endfunction
+
+// 2026-10-25: NPC versions of SmartAoE/SmartBoost (ZH2.5 1.1.5 port). SmartAoE and SmartBoost hand NPC casters
+// to these, so every area spell and song an NPC casts follows the same rules. Monsters (NPCs with no master) are
+// on one side, players and their pets on the other: a monster's area spells hit players and pets and boost
+// monsters, a pet's do the reverse. Town NPCs, guards and vendors are bystanders that NPC area spells never touch.
+// The boss mass specials in npccast.inc (Massgust, Massvatten...) still use their own inline filter.
+function IsBystanderNpc( mobile )
+
+	if( !mobile.isa(POLCLASS_NPC) || mobile.master )
+		return 0;
+	endif
+
+	if( mobile.enabled("invul") )	// 2026-10-25: invul is a privilege; mobiles have no .invul member
+		return 1;
+	endif
+
+	// Townsfolk, guards, merchants, healers, shrines and player vendors are all alignment good in npcdesc.cfg
+	// (also some good creatures: pixies, wisps, unicorns, humuc). Package templates (:pkg:name) are never bystanders.
+	var npccfg := ReadConfigFile( "::npcdesc" );
+	if( npccfg[mobile.npctemplate].alignment == "good" )
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+// 2026-10-25: a monster's own minions (animate dead, NPC summons: master is an NPC) are monster side too.
+// Pass is_bystander when the caller already has it, to skip a second npcdesc lookup (-1 = work it out).
+function IsMonsterSide( mobile, is_bystander := -1 )
+
+	if( !mobile.isa(POLCLASS_NPC) )
+		return 0;
+	endif
+
+	var owner := mobile.master;
+	if( owner )
+		if( owner.isa(POLCLASS_NPC) )
+			return 1;
+		endif
+		return 0;
+	endif
+
+	if( is_bystander == -1 )
+		is_bystander := IsBystanderNpc( mobile );
+	endif
+	if( is_bystander )
+		return 0;
+	endif
+
+	return 1;
+
+endfunction
+
+// 2026-10-25: the player who owns an NPC caster, or 0 for a wild monster or a monster's minion
+function NpcCasterPlayerMaster( caster )
+
+	var owner := caster.master;
+	if( !owner || owner.isa(POLCLASS_NPC) )
+		return 0;
+	endif
+
+	return owner;
+
+endfunction
+
+// A pet's area spell treats players the way its master's own would (party, faction, no-pk areas,
+// clan war), so a pet can't hit what its master couldn't.
+function NpcPetCanHitPlayer( master, victim )
+
+	if( master.party && victim.party == master.party )
+		return 0;
+	elseif( master.cmdlevel )
+		return 1;
+	endif
+
+	var same_faction := GetObjProperty( master, "IsRPer" ) == GetObjProperty( victim, "IsRPer" );
+	var same_CWcolor := 0;
+	if( GetObjProperty( master, "cwarring" ) && GetGlobalProperty("cwtype") != "k" )
+		same_CWcolor := GetObjProperty( victim, "cwcolor" ) == GetObjProperty( master, "cwcolor" );
+	endif
+
+	if( GetObjProperty( master, "NOPKAREA" ) || GetObjProperty( victim, "NOPKAREA" ) || !same_faction || same_CWcolor )
+		return 0;
+	endif
+
+	return 1;
+
+endfunction
+
+function NpcSmartAoE( caster, victims )
+
+	var master := NpcCasterPlayerMaster( caster );	// 2026-10-25: a monster's minion casts like a monster
+	var kept := array;
+	foreach victim in victims
+		// The caster and bystanders are never hit; safe areas stay safe (same as the player path in SmartAoE)
+		if( victim.serial == caster.serial )
+			continue;
+		endif
+		var bystander := IsBystanderNpc( victim );	// 2026-10-25: looked up once per victim
+		if( bystander || IsInSafeArea( victim ) )
+			continue;
+		endif
+
+		if( !master )
+			// A monster hits players and pets, never other monsters or its own side's minions
+			if( !IsMonsterSide( victim, bystander ) )
+				kept.append( victim );
+			endif
+		elseif( victim.isa(POLCLASS_NPC) )
+			// A pet hits monsters and other players' pets, not its master's or his party's pets
+			if( !victim.master )
+				kept.append( victim );
+			elseif( victim.master != master && !(master.party && victim.master.party == master.party) )
+				kept.append( victim );
+			endif
+		elseif( victim.serial != master.serial && NpcPetCanHitPlayer( master, victim ) )
+			kept.append( victim );
+		endif
+	endforeach
+
+	return kept;
+
+endfunction
+
+function NpcSmartBoost( caster, affected )
+
+	var master := NpcCasterPlayerMaster( caster );	// 2026-10-25: a monster's minion boosts like a monster
+	var kept := array;
+	foreach mobile in affected
+		if( !master )
+			// A monster boosts itself and other monsters
+			if( mobile.serial == caster.serial || IsMonsterSide( mobile ) )
+				kept.append( mobile );
+			endif
+		elseif( mobile.isa(POLCLASS_NPC) )
+			// A pet boosts itself and other pets (2026-10-25: players' pets, not a monster's minions)
+			if( mobile.serial == caster.serial || ( mobile.master && !IsMonsterSide( mobile ) ) )
+				kept.append( mobile );
+			endif
+		elseif( mobile.serial == master.serial || master.cmdlevel || ( master.party && mobile.party == master.party ) )
+			kept.append( mobile );
+		elseif( GetObjProperty( mobile, "IsRPer" ) == GetObjProperty( master, "IsRPer" ) )
+			// Same rule as SmartBoost: not across factions or opposing clan war colors
+			if( !GetObjProperty( master, "cwarring" ) || GetGlobalProperty("cwtype") == "k" || GetObjProperty( mobile, "cwcolor" ) == GetObjProperty( master, "cwcolor" ) )
+				kept.append( mobile );
+			endif
+		endif
+	endforeach
+
+	return kept;
 
 endfunction
 

@@ -6,6 +6,7 @@ include "include/client";
 include ":mdgumps:include/gumps";
 include ":mdgumps:include/gumps_ex";
 include "include/spelldata";
+include "include/spellprots";	// 2026-10-25: GetPhysicalProtection / GetPoisonImmunityLevel (ZH2.5 1.1.5 port)
 include ":versebook:include/versefunctions";
 
 var earth, fire, water, air, necro, poison, physical, freeaction, holy;
@@ -75,8 +76,8 @@ function CalculateImmunities(who)
 	holy := CInt(GetObjProperty(who, "HolyProtection"));
 
 	necro := CInt(GetObjProperty(who, "NecroProtection"));
-	physical := CInt(GetObjProperty(who, "PhysicalProtection"));
-	poison := CInt(GetObjProperty(who, "PermPoisonImmunity"));
+	physical := GetPhysicalProtection(who);	// 2026-10-25: includes Dragon Skin (ZH2.5 1.1.5 port)
+	poison := GetPoisonImmunityLevel(who);	// 2026-10-25: includes Sanctuary / Antidote (ZH2.5 1.1.5 port)
 	freeaction := CInt(GetObjProperty(who, "FreeAction"));
 
 	healing := CInt(GetObjProperty(who, "HealingIncrease"));

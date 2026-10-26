@@ -150,6 +150,7 @@ program track(who)
 	all_categories.append("Ratkin");
 	all_categories.append("Slime");
 	all_categories.append("Terathan");
+	all_categories.append("Townsfolk");	// 2026-10-25: town NPCs' own slayer type (ZH2.5 1.1.5 port)
 	all_categories.append("Troll");
 	all_categories.append("Undead");
 
@@ -356,6 +357,7 @@ function NormalizeTrackingType(value)
 		"ratkin":			return "Ratkin";
 		"slime":			return "Slime";
 		"terathan":			return "Terathan";
+		"townsfolk":		return "Townsfolk";	// 2026-10-25 (ZH2.5 1.1.5 port)
 		"troll":			return "Troll";
 		"undead":			return "Undead";
 		default:			return value;

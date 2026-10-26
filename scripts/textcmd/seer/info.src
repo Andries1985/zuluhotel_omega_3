@@ -25,6 +25,7 @@ include "include/classes";              // 2026-09-26: class name/level on the S
 include "include/res";                  // 2026-09-26: ResurrectMobile()
 include ":attributes:include/regen";    // 2026-09-26: regen-mod dictionary on the Status page
 include ":attributes:npcvitals";        // 2026-09-30: template HITS/MANA/STAM + overrides on the Status page
+include "include/spellprots";           // 2026-10-25: active Dragon Skin / Sanctuary / Antidote levels on the Status page
 
 const TEXTSTARTLOCY :=  70;
 
@@ -1424,6 +1425,17 @@ function PropNum( who , key )
 
 endfunction
 
+// 2026-10-25: " (spell n)" when a timed spell protection is active (spellprots.inc), else ""
+function InfoSpellProtSuffix( who , spellprop )
+
+	var level := GetSpellProtLevel( who , spellprop );
+	if( level )
+		return " (spell " + CStr( level ) + ")";
+	endif
+	return "";
+
+endfunction
+
 function NpcVitalCell( who , field )
 
 	var tmpl := GetNpcVitalTemplateValue( who , field );
@@ -1536,8 +1548,8 @@ function AddStatusPages( who )
 
 	AddStatusRow( "AR / AR mod" , CStr( who.ar ) + " / " + CStr( who.ar_mod ) );
 	AddStatusRow( "Fire Wat Air Ear" , CStr( PropNum( who , "FireProtection" ) ) + " / " + CStr( PropNum( who , "WaterProtection" ) ) + " / " + CStr( PropNum( who , "AirProtection" ) ) + " / " + CStr( PropNum( who , "EarthProtection" ) ) );
-	AddStatusRow( "Necro Holy Phys" , CStr( PropNum( who , "NecroProtection" ) ) + " / " + CStr( PropNum( who , "HolyProtection" ) ) + " / " + CStr( PropNum( who , "PhysicalProtection" ) ) );
-	AddStatusRow( "PermPois PermMag MR" , CStr( PropNum( who , "PermPoisonImmunity" ) ) + " / " + CStr( PropNum( who , "PermMagicImmunity" ) ) + " / " + CStr( PropNum( who , "Permmr" ) ) );
+	AddStatusRow( "Necro Holy Phys" , CStr( PropNum( who , "NecroProtection" ) ) + " / " + CStr( PropNum( who , "HolyProtection" ) ) + " / " + CStr( PropNum( who , "PhysicalProtection" ) ) + InfoSpellProtSuffix( who , SPELLPROT_DRAGONSKIN ) );	// 2026-10-25
+	AddStatusRow( "PermPois PermMag MR" , CStr( PropNum( who , "PermPoisonImmunity" ) ) + InfoSpellProtSuffix( who , SPELLPROT_POISON ) + " / " + CStr( PropNum( who , "PermMagicImmunity" ) ) + " / " + CStr( PropNum( who , "Permmr" ) ) );	// 2026-10-25
 	AddStatusRow( "FreeAct HealInc" , CStr( PropNum( who , "FreeAction" ) ) + " / " + CStr( PropNum( who , "HealingIncrease" ) ) );
 
 	if( who.npctemplate )

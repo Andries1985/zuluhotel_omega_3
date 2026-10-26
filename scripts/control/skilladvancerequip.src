@@ -431,10 +431,9 @@ function DoImmunity( who , item )
 		SetObjProperty(who, "NecroProtection", necro);
 	endif
 	
-	// Phys prot done as well for dragon skin.  will eventuall incorporate everything into a nice little function if these work
-	if (GetObjProperty(item, "PhysicalProtection") || GetObjProperty(who, "#DragonSkin") )
+	// 2026-10-25: Phys prot: highest equipped item. Dragon Skin no longer touches this cprop (spellprots.inc, ZH2.5 1.1.5 port)
+	if (GetObjProperty(item, "PhysicalProtection"))
 
-		var dskin := CInt(GetObjProperty(who, "#DragonSkin"));
 		var phys := 0;
 		var tphys := 0;
 		

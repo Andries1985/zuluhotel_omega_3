@@ -10,6 +10,7 @@ include "include/eventid";
 include "include/checkcity";
 include "include/attributes";
 include "include/difficulty";
+include "include/npcdifficulty";	// 2026-10-25: GetNpcDifficultyOverride -- .newmobedit's per-NPC provoke difficulty (ZH2.5 1.1.5 port)
 
 program bard_provoke( character )
 
@@ -50,6 +51,14 @@ program bard_provoke( character )
 
 	if( elem and !(elem.Privs == "invul") )
 		difficulty := Cint( elem.provoke );
+		// 2026-10-25: an instance "provoke" prop beats the template field; 0 = this one cannot be provoked (ZH2.5 1.1.5 port)
+		var custom := GetNpcDifficultyOverride( thetarg, "provoke" );
+		if( custom == 0 )
+			SendSysMessage( character, "You cannot provoke that!" );
+			return;
+		elseif( custom > 0 )
+			difficulty := custom;
+		endif
 		
 	elseif( !thetarg.npctemplate and !thetarg.cmdlevel )
 		difficulty := Cint( GetIntelligence(thetarg) );

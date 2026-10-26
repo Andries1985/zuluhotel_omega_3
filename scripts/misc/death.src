@@ -210,6 +210,14 @@ program npcdeath(corpse)
 	endif
 
 	if ( guardkill || summoned )
+		// 2026-10-25: a hired warrior the guards killed was destroyed here with its gear, which never
+		// reached corpsedecay's escrow; file it now (the given-up case is handled above) (ZH2.5 1.1.5 port)
+		if (GetObjProperty(corpse,"WarriorForHire") and npctemplate == "warriorforhire" and !GetObjProperty(corpse,"AbandonedByOwner"))
+			var killedowner := GetObjProperty(corpse,"master");
+			if (killedowner)
+				WFH_EscrowCorpseGear(corpse, killedowner);
+			endif
+		endif
 		zapstorageareas(corpse);
 		return DestroyItem(corpse);
 	endif
