@@ -1,0 +1,545 @@
+// Arcomage player vs player: the match controller. 2026-10-25: phase 2.
+// Started by the deck (deck.src): Start_Script( ":arcomage:pvpmatch", array{ challenger, challenged, ruleset, timed } ).
+// It owns the whole game and never blocks on a gump: each player (and watcher) has a pvpseat.src
+// that shows boards and sends clicks back as events. Every board carries a move number (seq); a
+// click from an older board is ignored and that seat is re-sent the current one.
+// Rules are solo's (arcocards.inc). A coin flip picks who goes first. Timed: 120 s per action,
+// then a random discard, 3 in a row forfeit, stay within 8 tiles of your spot. Untimed: any step
+// off your spot forfeits. Logging out, dying or resigning loses. No wagers or records yet.
+use uo;
+use os;
+use util;
+
+include ":arcomage:arcopvp";
+
+program ArcomagePvpMatch( params )
+
+	var players := array{ params[1], params[2] };
+	var rules := ArcoGetRuleSet( CInt( params[3] ) );
+	var timed := CInt( params[4] );
+	if( !players[1] || !players[2] )
+		return 0;
+	elseif( !rules )
+		Print( "[Arcomage] PvP: bad rule set " + CStr( params[3] ) + ": " + rules.errortext );
+		return 0;
+	endif
+
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": " + players[1].name + " challenges " + players[2].name + ", rule set "
+		+ CStr( rules.id ) + " (" + rules.npcname + "), timed=" + CStr( timed ) );
+	if( ArcoIsPlaying( players[1] ) || ArcoIsPlaying( players[2] ) )
+		ArcoPvpDebug( "match " + CStr( GetPid() ) + ": refused, one of them is already in a game" );
+		SendSysMessage( players[1], "One of you is already playing a game of Arcomage.", 3, 38 );
+		return 0;
+	endif
+	foreach player in players
+		SetObjProperty( player, ARCO_MATCH_PROP, GetPid() );
+	endforeach
+
+	var seats := array{ 0, 0 };
+	seats[2] := Start_Script( ":arcomage:pvpseat", array{ players[2], GetPid(), 2 } );
+	if( !seats[2] )
+		Print( "[Arcomage] PvP: could not start a seat: " + seats[2].errortext );
+		ArcoPvpCleanup( players );
+		return 0;
+	endif
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": seat 2 (" + players[2].name + ") is pid " + CStr( seats[2].pid ) );
+	if( !ArcoPvpInvite( players, seats, rules, timed ) )
+		seats[2].SendEvent( struct{ "type" := "quit" } );
+		ArcoPvpCleanup( players );
+		return 0;
+	endif
+
+	seats[1] := Start_Script( ":arcomage:pvpseat", array{ players[1], GetPid(), 1 } );
+	if( !seats[1] )
+		seats[2].SendEvent( struct{ "type" := "quit" } );
+		ArcoPvpCleanup( players );
+		return 0;
+	endif
+	foreach player in players
+		SetObjProperty( player, ARCO_PVP_PROP, GetPid() );
+	endforeach
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": accepted; seat 1 (" + players[1].name + ") is pid " + CStr( seats[1].pid ) );
+
+	var watchers := array;
+	var outcome := ArcoPvpRunGame( players, seats, rules, timed, watchers );
+	ArcoPvpCleanup( players );
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": over - winner seat " + CStr( outcome.winner ) + " - " + outcome.reason );
+	ArcoPvpSendResults( outcome, players, seats, watchers );
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": results sent, controller exits" );
+	return 1;
+
+endprogram
+
+// Clears the "in a game" properties, but only ones that still point at this controller.
+function ArcoPvpCleanup( players )
+
+	foreach player in players
+		if( CInt( GetObjProperty( player, ARCO_MATCH_PROP ) ) == GetPid() )
+			EraseObjProperty( player, ARCO_MATCH_PROP );
+		endif
+		if( CInt( GetObjProperty( player, ARCO_PVP_PROP ) ) == GetPid() )
+			EraseObjProperty( player, ARCO_PVP_PROP );
+		endif
+	endforeach
+
+endfunction
+
+// Sends the invitation through the challenged player's seat and waits up to 60 seconds.
+function ArcoPvpInvite( players, seats, rules, timed )
+
+	var a := players[1];
+	var b := players[2];
+	SendSysMessage( a, "You challenge " + b.name + " to Arcomage. Waiting for an answer...", 3, 68 );
+	seats[2].SendEvent( struct{ "type" := "invite", "challenger" := a.name, "rules" := rules, "timed" := timed } );
+
+	var expires := ReadGameClock() + ARCO_PVP_INVITE_SECONDS;
+	var ev;
+	while( ReadGameClock() < expires )
+		ev := wait_for_event( 1 );
+		if( ev )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": invite got event " + CStr( ev.type ) );
+			if( ev.type == "invite_reply" )
+				ArcoPvpDebug( "match " + CStr( GetPid() ) + ": " + b.name + " answered accept=" + CStr( ev.accept ) );
+				if( ev.accept )
+					return 1;
+				endif
+				SendSysMessage( a, b.name + " declines your challenge.", 3, 38 );
+				return 0;
+			endif
+		endif
+		if( !a || !b )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": invite off, a player logged out" );
+			if( a )
+				SendSysMessage( a, "Your challenge is off: " + b.name + " is gone.", 3, 38 );
+			endif
+			return 0;
+		elseif( a.realm != b.realm || Distance( a, b ) > ARCO_PVP_RANGE )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": invite off, players too far apart" );
+			SendSysMessage( a, "Your challenge is off: you are too far apart.", 3, 38 );
+			SendSysMessage( b, "The challenge is off: you are too far apart.", 3, 38 );
+			CloseGump( b, seats[2].pid, 0 );
+			return 0;
+		endif
+	endwhile
+
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": invite expired after " + CStr( ARCO_PVP_INVITE_SECONDS ) + " s" );
+	CloseGump( b, seats[2].pid, 0 );
+	SendSysMessage( a, b.name + " didn't answer your challenge.", 3, 38 );
+	SendSysMessage( b, "The challenge from " + a.name + " has expired.", 3, 38 );
+	return 0;
+
+endfunction
+
+function ArcoPvpSpot( who )
+
+	return struct{ "x" := who.x, "y" := who.y, "realm" := who.realm };
+
+endfunction
+
+// "" while the player may play on, else why they forfeit.
+function ArcoPvpAbsence( who, name, spot, timed )
+
+	if( !who )
+		return name + " logged out.";
+	elseif( who.dead )
+		return name + " died.";
+	elseif( who.realm != spot.realm )
+		return name + " left the table.";
+	elseif( timed )
+		if( CoordinateDistance( who.x, who.y, spot.x, spot.y ) > ARCO_PVP_RANGE )
+			return name + " walked away from the table.";
+		endif
+	elseif( who.x != spot.x || who.y != spot.y )
+		return name + " moved from their spot.";
+	endif
+	return "";
+
+endfunction
+
+function ArcoPvpDrawFor( byref st, seat )
+
+	var sides := st.sides;
+	var side := sides[seat];
+	ArcoDrawInto( side );
+	sides[seat] := side;
+	st.sides := sides;
+
+endfunction
+
+// Passes the turn: production for the new player, a win check, then their draw.
+function ArcoPvpStartTurn( byref st )
+
+	st.active := 3 - st.active;
+	st.discard_mode := 0;
+	var sides := st.sides;
+	var side := sides[st.active];
+	ArcoProduce( side );
+	sides[st.active] := side;
+	st.sides := sides;
+	if( ArcoCheckVictory( sides[1], sides[2], st.rules ) )
+		return "over";
+	endif
+	ArcoPvpDrawFor( st, st.active );
+	return "next";
+
+endfunction
+
+// The active player's click. Returns "invalid", "again" (same player acts again), "next" or "over".
+function ArcoPvpAct( byref st, btn )
+
+	var seat := st.active;
+	var sides := st.sides;
+	var me := sides[seat];
+	var foe := sides[3 - seat];
+	var me_name := st.names[seat];
+	var foe_name := st.names[3 - seat];
+	var hand := me["hand"];
+	var result := "next";
+	var slot, card, me_before, foe_before;
+
+	if( btn > ARCO_BTN_DISCARD && btn <= ARCO_BTN_DISCARD + hand.size() )
+		slot := btn - ARCO_BTN_DISCARD;
+		card := ArcoGetCard( hand[slot] );
+		if( card.undiscardable )
+			return "invalid";
+		endif
+		ArcoRemoveFromHand( me, slot );
+		ArcoPvpLog( st, me_name + " discarded " + card.name + ": " + card.text );
+		if( st.discard_mode )
+			st.discard_mode := 0;
+			ArcoDrawInto( me );
+			result := "again";
+		endif
+	elseif( btn > ARCO_BTN_PLAY && btn <= ARCO_BTN_PLAY + hand.size() )
+		if( st.discard_mode )
+			return "invalid";
+		endif
+		slot := btn - ARCO_BTN_PLAY;
+		card := ArcoGetCard( hand[slot] );
+		if( !ArcoCanAfford( me, card ) )
+			return "invalid";
+		endif
+		ArcoRemoveFromHand( me, slot );
+		me_before := ArcoCopyStats( me );
+		foe_before := ArcoCopyStats( foe );
+		ArcoPlayCard( me, foe, card );
+		ArcoPvpLog( st, me_name + " played " + card.name + ": "
+			+ ArcoEffectText( card, me_name + "'s", foe_name + "'s", me_before, me, foe_before, foe ) );
+		if( card.drawdiscard )
+			ArcoDrawInto( me );
+			st.discard_mode := 1;
+			result := "again";
+		elseif( card.playagain )
+			ArcoDrawInto( me );
+			result := "again";
+		endif
+	else
+		return "invalid";
+	endif
+
+	sides[seat] := me;
+	sides[3 - seat] := foe;
+	st.sides := sides;
+	if( ArcoCheckVictory( sides[1], sides[2], st.rules ) )
+		return "over";
+	endif
+	return result;
+
+endfunction
+
+// Timed mode, out of time: a random discardable card goes. Returns "forfeit", "again" or "next".
+function ArcoPvpTimeout( byref st, byref timeouts )
+
+	var seat := st.active;
+	timeouts[seat] := timeouts[seat] + 1;
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": seat " + CStr( seat ) + " timed out (" + CStr( timeouts[seat] ) + " in a row)" );
+	if( timeouts[seat] >= ARCO_PVP_MAX_TIMEOUTS )
+		return "forfeit";
+	endif
+
+	var sides := st.sides;
+	var me := sides[seat];
+	var hand := me["hand"];
+	var slots := array;
+	var i, held;
+	for( i := 1; i <= hand.size(); i := i + 1 )
+		held := ArcoGetCard( hand[i] );
+		if( !held.undiscardable )
+			slots.append( i );
+		endif
+	endfor
+	if( !slots.size() )
+		return "forfeit";
+	endif
+	var slot := slots[RandomInt( slots.size() ) + 1];
+	var card := ArcoGetCard( hand[slot] );
+	ArcoRemoveFromHand( me, slot );
+	ArcoPvpLog( st, st.names[seat] + " ran out of time and discarded " + card.name + "." );
+	var result := "next";
+	if( st.discard_mode )
+		st.discard_mode := 0;
+		ArcoDrawInto( me );
+		result := "again";
+	endif
+	sides[seat] := me;
+	st.sides := sides;
+	return result;
+
+endfunction
+
+function ArcoPvpSendTo( st, who, proc )
+
+	if( !proc )
+		return 0;
+	endif
+	proc.SendEvent( st );
+	if( who )
+		CloseGump( who, proc.pid, 0 );
+	endif
+	return 1;
+
+endfunction
+
+// A new move: bump the move number, restart the clock, and refresh every board.
+function ArcoPvpBroadcast( byref st, players, seats, watchers )
+
+	st.seq := st.seq + 1;
+	if( st.timed )
+		st.deadline := ReadGameClock() + ARCO_PVP_TURN_SECONDS;
+	endif
+	var sides := st.sides;
+	var mode_note := "";
+	if( st.discard_mode )
+		mode_note := " (must discard)";
+	endif
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": board seq " + CStr( st.seq ) + " - " + st.names[st.active] + " to act" + mode_note
+		+ ", to 2 players + " + CStr( watchers.size() ) + " watchers" );
+	ArcoPvpDebug( "    " + st.names[1] + ": " + ArcoSideSummary( sides[1] ) );
+	ArcoPvpDebug( "    " + st.names[2] + ": " + ArcoSideSummary( sides[2] ) );
+	var i;
+	for( i := 1; i <= 2; i := i + 1 )
+		ArcoPvpSendTo( st, players[i], seats[i] );
+	endfor
+	foreach watcher in watchers
+		ArcoPvpSendTo( st, watcher.who, watcher.proc );
+	endforeach
+
+endfunction
+
+function ArcoPvpNearGame( who, players )
+
+	foreach player in players
+		if( player )
+			if( player.realm == who.realm )
+				if( Distance( player, who ) <= ARCO_PVP_WATCH_RANGE )
+					return 1;
+				endif
+			endif
+		endif
+	endforeach
+	return 0;
+
+endfunction
+
+function ArcoPvpAddWatcher( byref watchers, who, players, st )
+
+	if( !who )
+		return 0;
+	endif
+	foreach player in players
+		if( player.serial == who.serial )
+			SendSysMessage( who, "You are playing in that game.", 3, 38 );
+			return 0;
+		endif
+	endforeach
+	foreach watcher in watchers
+		if( watcher.who.serial == who.serial )
+			SendSysMessage( who, "You are already watching that game.", 3, 38 );
+			return 0;
+		endif
+	endforeach
+	if( watchers.size() >= ARCO_PVP_MAX_WATCHERS )
+		SendSysMessage( who, "That game already has " + CStr( ARCO_PVP_MAX_WATCHERS ) + " watchers.", 3, 38 );
+		return 0;
+	elseif( !ArcoPvpNearGame( who, players ) )
+		SendSysMessage( who, "Get closer to the table to watch.", 3, 38 );
+		return 0;
+	endif
+
+	var proc := Start_Script( ":arcomage:pvpseat", array{ who, GetPid(), 0 } );
+	if( !proc )
+		return 0;
+	endif
+	watchers.append( struct{ "who" := who, "proc" := proc } );
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": watcher " + who.name + " added, seat pid " + CStr( proc.pid ) );
+	SendSysMessage( who, "You watch " + st.names[1] + " and " + st.names[2] + " play. Close the board to stop.", 3, 68 );
+	ArcoPvpSendTo( st, who, proc );
+	return 1;
+
+endfunction
+
+// Drops watchers who left (pid given) or wandered off / logged out (pid 0).
+function ArcoPvpCheckWatchers( byref watchers, players, gone_pid := 0 )
+
+	var i;
+	for( i := watchers.size(); i >= 1; i := i - 1 )
+		var watcher := watchers[i];
+		if( watcher.proc.pid == gone_pid )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": watcher seat " + CStr( gone_pid ) + " closed the board" );
+			watchers.erase( i );
+		elseif( !watcher.who )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": watcher seat " + CStr( watcher.proc.pid ) + " logged out" );
+			watcher.proc.SendEvent( struct{ "type" := "quit" } );
+			watchers.erase( i );
+		elseif( !ArcoPvpNearGame( watcher.who, players ) )
+			ArcoPvpDebug( "match " + CStr( GetPid() ) + ": watcher " + watcher.who.name + " wandered off" );
+			watcher.proc.SendEvent( struct{ "type" := "quit" } );
+			CloseGump( watcher.who, watcher.proc.pid, 0 );
+			SendSysMessage( watcher.who, "You are too far away to keep watching.", 3, 38 );
+			watchers.erase( i );
+		endif
+	endfor
+
+endfunction
+
+// Runs the game. Returns struct{ winner (1, 2, or 0 for a draw), reason }.
+function ArcoPvpRunGame( players, seats, rules, timed, byref watchers )
+
+	var names := array{ players[1].name, players[2].name };
+	var sides := array{ ArcoNewSide( rules ), ArcoNewSide( rules ) };
+	var i, s;
+	for( s := 1; s <= 2; s := s + 1 )
+		var side := sides[s];
+		for( i := 1; i <= rules.handsize; i := i + 1 )
+			ArcoDrawInto( side );
+		endfor
+		sides[s] := side;
+	endfor
+
+	var st := struct{ "type" := "board", "seq" := 0, "rules" := rules, "names" := names, "sides" := sides,
+		"log" := array, "active" := RandomInt( 2 ) + 1, "discard_mode" := 0, "timed" := timed, "deadline" := 0 };
+	var spots := array{ ArcoPvpSpot( players[1] ), ArcoPvpSpot( players[2] ) };
+	var timeouts := array{ 0, 0 };
+
+	ArcoPvpDebug( "match " + CStr( GetPid() ) + ": game starts; spots " + names[1] + " " + CStr( spots[1].x ) + "," + CStr( spots[1].y )
+		+ ", " + names[2] + " " + CStr( spots[2].x ) + "," + CStr( spots[2].y ) );
+	ArcoPvpLog( st, "The coin says " + names[st.active] + " goes first." );
+	ArcoPvpDrawFor( st, st.active );
+	ArcoPvpBroadcast( st, players, seats, watchers );
+
+	var ev, step, absence;
+	while( 1 )
+		step := "";
+		ev := wait_for_event( 1 );
+		if( ev )
+			case( ev.type )
+				"click":
+					if( ev.seat == st.active && ev.seq == st.seq )
+						step := ArcoPvpAct( st, ev.btn );
+						ArcoPvpDebug( "match " + CStr( GetPid() ) + ": click seat " + CStr( ev.seat ) + " seq " + CStr( ev.seq ) + " btn " + CStr( ev.btn ) + " -> " + step );
+						if( step == "invalid" )
+							ArcoPvpSendTo( st, players[ev.seat], seats[ev.seat] );
+							step := "";
+						else
+							timeouts[ev.seat] := 0;
+						endif
+					elseif( ev.seat == 1 || ev.seat == 2 )
+						ArcoPvpDebug( "match " + CStr( GetPid() ) + ": stale click seat " + CStr( ev.seat ) + " seq " + CStr( ev.seq )
+							+ " (current " + CStr( st.seq ) + ", active seat " + CStr( st.active ) + "), board re-sent" );
+						ArcoPvpSendTo( st, players[ev.seat], seats[ev.seat] );
+					endif
+				"resign":
+					ArcoPvpDebug( "match " + CStr( GetPid() ) + ": seat " + CStr( ev.seat ) + " resigned" );
+					return struct{ "winner" := 3 - ev.seat, "reason" := names[ev.seat] + " resigned." };
+				"watch":
+					ArcoPvpDebug( "match " + CStr( GetPid() ) + ": watch request from " + ev.who.name );
+					ArcoPvpAddWatcher( watchers, ev.who, players, st );
+				"leave":
+					ArcoPvpCheckWatchers( watchers, players, ev.pid );
+			endcase
+		endif
+
+		if( step == "" && timed && ReadGameClock() >= st.deadline )
+			step := ArcoPvpTimeout( st, timeouts );
+			if( step == "forfeit" )
+				return struct{ "winner" := 3 - st.active, "reason" := names[st.active] + " ran out of time " + CStr( ARCO_PVP_MAX_TIMEOUTS ) + " times." };
+			endif
+		endif
+
+		if( step == "next" )
+			step := ArcoPvpStartTurn( st );
+		endif
+		if( step == "over" )
+			return ArcoPvpOutcome( st );
+		elseif( step != "" )
+			sides := st.sides;
+			if( !ArcoHasLegalMove( sides[st.active], st.discard_mode ) )
+				return struct{ "winner" := 3 - st.active, "reason" := names[st.active] + " had no card to play or discard." };
+			endif
+			ArcoPvpBroadcast( st, players, seats, watchers );
+		endif
+
+		for( s := 1; s <= 2; s := s + 1 )
+			absence := ArcoPvpAbsence( players[s], names[s], spots[s], timed );
+			if( absence != "" )
+				ArcoPvpDebug( "match " + CStr( GetPid() ) + ": forfeit by seat " + CStr( s ) + " - " + absence );
+				return struct{ "winner" := 3 - s, "reason" := absence };
+			endif
+		endfor
+		ArcoPvpCheckWatchers( watchers, players );
+	endwhile
+
+endfunction
+
+function ArcoPvpOutcome( st )
+
+	var sides := st.sides;
+	var names := st.names;
+	case( ArcoCheckVictory( sides[1], sides[2], st.rules ) )
+		ARCO_RESULT_A:
+			return struct{ "winner" := 1, "reason" := ArcoWinReason( sides[1], sides[2], st.rules, names[1], "their" ) };
+		ARCO_RESULT_B:
+			return struct{ "winner" := 2, "reason" := ArcoWinReason( sides[2], sides[1], st.rules, names[2], "their" ) };
+	endcase
+	return struct{ "winner" := 0, "reason" := "Both reached a goal with the same card." };
+
+endfunction
+
+function ArcoPvpSendResults( outcome, players, seats, watchers )
+
+	var names := array{ players[1].name, players[2].name };
+	var s, headline;
+	for( s := 1; s <= 2; s := s + 1 )
+		if( outcome.winner == s )
+			headline := "You win!";
+		elseif( outcome.winner == 0 )
+			headline := "A draw.";
+		else
+			headline := "You lose.";
+		endif
+		ArcoPvpSendResult( players[s], seats[s], headline, outcome.reason );
+	endfor
+
+	if( outcome.winner )
+		headline := names[outcome.winner] + " wins!";
+	else
+		headline := "A draw.";
+	endif
+	foreach watcher in watchers
+		ArcoPvpSendResult( watcher.who, watcher.proc, headline, outcome.reason );
+	endforeach
+
+endfunction
+
+function ArcoPvpSendResult( who, proc, headline, reason )
+
+	if( !proc )
+		return 0;
+	endif
+	proc.SendEvent( struct{ "type" := "result", "headline" := headline, "reason" := reason } );
+	if( who )
+		CloseGump( who, proc.pid, 0 );
+	endif
+	return 1;
+
+endfunction

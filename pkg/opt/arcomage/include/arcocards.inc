@@ -82,6 +82,23 @@ endfunction
 // 2026-10-25: moved here from match.src so tablewatch.src shares the same test.
 const ARCO_TABLE_RANGE := 8;
 
+// 2026-10-25: moved here from match.src so PvP shares the "one game at a time" lock.
+// Holds the pid of the game script (solo match or PvP controller) the character is in.
+const ARCO_MATCH_PROP := "#ArcomageMatch";
+
+function ArcoIsPlaying( who )
+
+	var pid := CInt( GetObjProperty( who, ARCO_MATCH_PROP ) );
+	if( !pid || pid == GetPid() )
+		return 0;
+	endif
+	if( GetProcess( pid ) )
+		return 1;
+	endif
+	return 0;
+
+endfunction
+
 // The player is still logged in, alive, and within range of the NPC.
 function ArcoAtTable( who, npc_serial )
 
@@ -97,6 +114,73 @@ function ArcoAtTable( who, npc_serial )
 		return 0;
 	endif
 	return Distance( who, npc ) <= ARCO_TABLE_RANGE;
+
+endfunction
+
+// 2026-10-25: hand and log helpers moved here from match.src; the PvP controller uses them too.
+const ARCO_LOG_KEEP := 4;
+
+function ArcoLog( byref match, line )
+
+	ArcoDebug( "  " + line );	// 2026-10-25: every board message also goes to the console trace
+	var lines := match.log;
+	lines.append( line );
+	while( lines.size() > ARCO_LOG_KEEP )
+		lines.erase( 1 );
+	endwhile
+	match.log := lines;
+
+endfunction
+
+function ArcoDrawInto( byref side )
+
+	var hand := side["hand"];
+	hand.append( ArcoDrawCardId() );
+	side["hand"] := hand;
+
+endfunction
+
+function ArcoRemoveFromHand( byref side, slot )
+
+	var hand := side["hand"];
+	hand.erase( slot );
+	side["hand"] := hand;
+
+endfunction
+
+function ArcoHasLegalMove( side, discard_mode )
+
+	var hand := side["hand"];
+	foreach id in hand
+		var card := ArcoGetCard( id );
+		if( !discard_mode )
+			if( ArcoCanAfford( side, card ) )
+				return 1;
+			endif
+		endif
+		if( !card.undiscardable )
+			return 1;
+		endif
+	endforeach
+	return 0;
+
+endfunction
+
+// 2026-10-25: moved here from match.src; PvP results use it too.
+function ArcoWinReason( winner, loser, rules, label, possessive )
+
+	if( loser["tower"] <= 0 )
+		return label + " brought the enemy tower down.";
+	elseif( winner["tower"] >= rules.wintower )
+		return label + " raised " + possessive + " tower to " + CStr( winner["tower"] ) + ".";
+	endif
+	var resources := array{ "ore", "reagents", "recruits" };
+	foreach resource in resources
+		if( winner[resource] >= rules.winresource )
+			return label + " gathered " + CStr( winner[resource] ) + " " + Lower( ArcoResourceLabel( resource ) ) + ".";
+		endif
+	endforeach
+	return label + " won.";
 
 endfunction
 

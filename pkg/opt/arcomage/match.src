@@ -14,9 +14,7 @@ include ":arcomage:arcoai";
 include ":arcomage:arcorecords";
 include ":arcomage:arcogump";
 
-const ARCO_MATCH_PROP := "#ArcomageMatch";
 const ARCO_LAST_DIFF_PROP := "ArcomageLastDifficulty";
-const ARCO_LOG_KEEP := 4;
 const ARCO_AI_PAUSE_MS := 700;
 const ARCO_MAX_EMPTY_REPLIES := 3;
 
@@ -102,19 +100,6 @@ program ArcomageMatch( params )
 
 endprogram
 
-function ArcoIsPlaying( who )
-
-	var pid := CInt( GetObjProperty( who, ARCO_MATCH_PROP ) );
-	if( !pid || pid == GetPid() )
-		return 0;
-	endif
-	if( GetProcess( pid ) )
-		return 1;
-	endif
-	return 0;
-
-endfunction
-
 function ArcoStopWatcher( watcher )
 
 	if( watcher )
@@ -123,57 +108,19 @@ function ArcoStopWatcher( watcher )
 
 endfunction
 
-function ArcoLog( byref match, line )
-
-	ArcoDebug( "  " + line );	// 2026-10-25: every board message also goes to the console trace
-	var lines := match.log;
-	lines.append( line );
-	while( lines.size() > ARCO_LOG_KEEP )
-		lines.erase( 1 );
-	endwhile
-	match.log := lines;
-
-endfunction
-
-function ArcoDrawInto( byref side )
-
-	var hand := side["hand"];
-	hand.append( ArcoDrawCardId() );
-	side["hand"] := hand;
-
-endfunction
-
-function ArcoRemoveFromHand( byref side, slot )
-
-	var hand := side["hand"];
-	hand.erase( slot );
-	side["hand"] := hand;
-
-endfunction
-
-function ArcoHasLegalMove( side, discard_mode )
-
-	var hand := side["hand"];
-	foreach id in hand
-		var card := ArcoGetCard( id );
-		if( !discard_mode )
-			if( ArcoCanAfford( side, card ) )
-				return 1;
-			endif
-		endif
-		if( !card.undiscardable )
-			return 1;
-		endif
-	endforeach
-	return 0;
-
-endfunction
-
 // Returns struct{ result "win"/"loss"/"tie", reason } from the player's side.
 function ArcoRunGame( who, npc_serial, npc_name, rules, difficulty )
 
-	var match := struct{ "who_name" := who.name, "npc_name" := npc_name, "rules" := rules,
-		"difficulty" := difficulty, "log" := array, "discard_mode" := 0, "end_reason" := "" };
+	// 2026-10-25: the match doubles as the board's view (ArcoNewView, shared with PvP).
+	var match := ArcoNewView( rules, "Arcomage - " + npc_name + " - difficulty " + CStr( difficulty ), who.name, npc_name );
+	match.left_keep := "Your keep";
+	match.can_act := 1;
+	match.show_hand := 1;
+	match.resign := 1;
+	match.+who_name := who.name;
+	match.+npc_name := npc_name;
+	match.+difficulty := difficulty;
+	match.+end_reason := "";
 	var level := ArcoDifficultyToLevel( difficulty );
 
 	var p := ArcoNewSide( rules );
@@ -229,23 +176,6 @@ function ArcoGameOver( p, n, rules, npc_name )
 			return struct{ "result" := "loss", "reason" := ArcoWinReason( n, p, rules, npc_name, "their" ) };
 	endcase
 	return struct{ "result" := "tie", "reason" := "Both sides reached a goal with the same card." };
-
-endfunction
-
-function ArcoWinReason( winner, loser, rules, label, possessive )
-
-	if( loser["tower"] <= 0 )
-		return label + " brought the enemy tower down.";
-	elseif( winner["tower"] >= rules.wintower )
-		return label + " raised " + possessive + " tower to " + CStr( winner["tower"] ) + ".";
-	endif
-	var resources := array{ "ore", "reagents", "recruits" };
-	foreach resource in resources
-		if( winner[resource] >= rules.winresource )
-			return label + " gathered " + CStr( winner[resource] ) + " " + Lower( ArcoResourceLabel( resource ) ) + ".";
-		endif
-	endforeach
-	return label + " won.";
 
 endfunction
 

@@ -1,0 +1,127 @@
+// Arcomage PvP seat. 2026-10-25: phase 2. One per player (seat 1 or 2) and one per watcher
+// (seat 0), started by pvpmatch.src as Start_Script( ":arcomage:pvpseat", array{ who, controller_pid, seat } ).
+// A gump blocks the script that sends it, so every person gets their own seat: it shows what
+// the controller sends and reports clicks back as events. To refresh a board the controller sends
+// the new one, then closes this seat's open gump (CloseGump on this pid).
+//
+// Controller -> seat: "invite", "board" (the full state, with a move number "seq"), "result", "quit".
+// Seat -> controller: "invite_reply", "click" (with the board's seq, so a stale click is ignored),
+// "resign", "leave" (a watcher closed the board).
+// 2026-10-25: [Arcomage PvP] trace lines (ARCO_PVP_DEBUG) tagged "seat <n> <name> pid <pid>".
+use uo;
+use os;
+
+include ":arcomage:arcopvp";
+
+program ArcomagePvpSeat( params )
+
+	var who := params[1];
+	var controller_pid := params[2];
+	var seat := CInt( params[3] );
+	var tag := "seat " + CStr( seat ) + " " + who.name + " pid " + CStr( GetPid() ) + ": ";
+	ArcoPvpDebug( tag + "started for match " + CStr( controller_pid ) );
+
+	var last := 0;      // the last board, to show again if the gump closes without a new one
+	var pending := 0;   // an event already taken off the queue
+	var ev, controller, accept;
+	while( 1 )
+		ev := pending;
+		pending := 0;
+		if( !ev )
+			ev := wait_for_event( 5 );
+		endif
+		if( !who )
+			ArcoPvpDebug( tag + "player logged out, seat exits" );
+			return 0;
+		endif
+		controller := GetProcess( controller_pid );
+		if( !controller )
+			ArcoPvpDebug( tag + "controller gone, seat exits" );
+			return 0;
+		endif
+
+		if( !ev )
+			// Nothing new.
+		elseif( ev.type == "invite" )
+			ArcoPvpDebug( tag + "showing the invitation from " + ev.challenger );
+			accept := ArcoPvpInviteGump( who, ev.challenger, ev.rules, ev.timed );
+			ArcoPvpDebug( tag + "invitation answered accept=" + CStr( accept ) );
+			controller.SendEvent( struct{ "type" := "invite_reply", "seat" := seat, "accept" := accept } );
+		elseif( ev.type == "board" )
+			pending := ArcoSeatShowBoard( who, seat, controller, ev, last, tag );
+			if( pending == "leave" )
+				ArcoPvpDebug( tag + "watcher left, seat exits" );
+				return 0;
+			endif
+		elseif( ev.type == "result" )
+			ArcoPvpDebug( tag + "showing the result: " + ev.headline );
+			ArcoPvpResultGump( who, ev.headline, ev.reason );
+			ArcoPvpDebug( tag + "result closed, seat exits" );
+			return 1;
+		elseif( ev.type == "quit" )
+			ArcoPvpDebug( tag + "told to quit, seat exits" );
+			return 0;
+		else
+			ArcoPvpDebug( tag + "ignored event " + CStr( ev.type ) );
+		endif
+	endwhile
+
+endprogram
+
+// Shows the newest board and reports what was clicked. Returns the next event to handle (0 for
+// none), or "leave" when a watcher has closed the board.
+function ArcoSeatShowBoard( who, seat, controller, ev, byref last, tag )
+
+	// Two quick moves can queue two boards; show only the newest, and let a result or quit that
+	// is already waiting go first.
+	var newer := wait_for_event( 0 );
+	while( newer )
+		if( newer.type != "board" )
+			ArcoPvpDebug( tag + "board seq " + CStr( ev.seq ) + " dropped, " + CStr( newer.type ) + " is waiting" );
+			last := ev;
+			return newer;
+		endif
+		ArcoPvpDebug( tag + "board seq " + CStr( ev.seq ) + " skipped for newer seq " + CStr( newer.seq ) );
+		ev := newer;
+		newer := wait_for_event( 0 );
+	endwhile
+	last := ev;
+
+	ArcoPvpDebug( tag + "showing board seq " + CStr( ev.seq ) + ", active seat " + CStr( ev.active ) );
+	var data := GFSendGump( who, ArcoPvpBoardFor( ev, seat ) );
+	if( !who )
+		return 0;
+	endif
+	var btn := CInt( data[0] );
+	if( btn == ARCO_BTN_RESIGN && seat )
+		if( ArcoConfirmResign( who ) )
+			ArcoPvpDebug( tag + "resign confirmed" );
+			controller.SendEvent( struct{ "type" := "resign", "seat" := seat } );
+			return 0;
+		endif
+		ArcoPvpDebug( tag + "resign cancelled" );
+		// Cancelled: the newest board if one came meanwhile, else this one again.
+		newer := wait_for_event( 0 );
+		if( newer )
+			return newer;
+		endif
+		return last;
+	elseif( btn )
+		ArcoPvpDebug( tag + "click btn " + CStr( btn ) + " on seq " + CStr( ev.seq ) + " sent" );
+		controller.SendEvent( struct{ "type" := "click", "seat" := seat, "seq" := ev.seq, "btn" := btn } );
+		return 0;
+	endif
+
+	// Closed: by the controller (a new board is already queued) or, for a watcher, by hand.
+	newer := wait_for_event( 1 );
+	if( newer )
+		ArcoPvpDebug( tag + "board seq " + CStr( ev.seq ) + " closed for a new " + CStr( newer.type ) );
+		return newer;
+	elseif( !seat )
+		controller.SendEvent( struct{ "type" := "leave", "pid" := GetPid() } );
+		return "leave";
+	endif
+	ArcoPvpDebug( tag + "board seq " + CStr( ev.seq ) + " closed with nothing new, showing it again" );
+	return last;
+
+endfunction

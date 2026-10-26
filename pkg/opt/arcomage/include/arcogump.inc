@@ -236,12 +236,13 @@ function ArcoDrawSidePanel( byref gump, x, y, title, side )
 
 endfunction
 
-function ArcoDrawCard( byref gump, x, slot, card, can_play, can_discard )
+// affordable colours the name and cost; can_play / can_discard add the buttons.
+function ArcoDrawCard( byref gump, x, slot, card, affordable, can_play, can_discard )
 
 	var y := ARCO_CARD_Y;
 	GFResizePic( gump, x, y, 9350, ARCO_CARD_W, ARCO_CARD_H );
 
-	var color := ArcoResourceHtmlColor( card.resource, can_play );
+	var color := ArcoResourceHtmlColor( card.resource, affordable );
 	GFHTMLArea( gump, x + 4, y + 6, ARCO_CARD_W - 8, 36, "<CENTER><BASEFONT COLOR=" + color + "><B>" + card.name + "</B></BASEFONT></CENTER>" );
 	GFTilePic( gump, x + 30, y + 44, ArcoResourceIcon( card.resource ) );
 	GFHTMLArea( gump, x + 4, y + 92, ARCO_CARD_W - 8, 18, "<CENTER><BASEFONT COLOR=" + color + ">" + CStr( card.cost ) + " " + ArcoResourceLabel( card.resource ) + "</BASEFONT></CENTER>" );
@@ -258,35 +259,54 @@ function ArcoDrawCard( byref gump, x, slot, card, can_play, can_discard )
 
 endfunction
 
-// match: struct with npc_name, who_name, rules, difficulty, log (array of lines), discard_mode.
-// p is the player's side, n the NPC's.
-function ArcoBoardGump( match, p, n )
+// 2026-10-25: one board for solo, both PvP seats and watchers. view is a struct (ArcoNewView):
+//   title, rules, left_name, right_name, left_keep, right_keep (labels under the keeps),
+//   log (array of lines), discard_mode, can_act (cards get Play/Discard), show_hand,
+//   resign (Resign button), closable, status (a highlighted line, "" for none).
+// left is drawn as the viewer's own side; its hand is shown when show_hand is set.
+function ArcoNewView( rules, title, left_name, right_name )
 
-	var rules := match.rules;
+	return struct{ "title" := title, "rules" := rules, "left_name" := left_name, "right_name" := right_name,
+		"left_keep" := left_name, "right_keep" := right_name, "log" := array, "discard_mode" := 0,
+		"can_act" := 0, "show_hand" := 0, "resign" := 0, "closable" := 0, "status" := "" };
+
+endfunction
+
+function ArcoBoardGump( view, left, right )
+
+	var rules := view.rules;
 	var gump := GFCreateGump( 20, 20, ARCO_BOARD_W, ARCO_BOARD_H );
-	GFClosable( gump, 0 );
+	if( !view.closable )
+		GFClosable( gump, 0 );
+	endif
 	GFResizePic( gump, 0, 0, 9270, ARCO_BOARD_W, ARCO_BOARD_H );
 
-	GFTextMid( gump, 0, 14, ARCO_BOARD_W, ARCO_HUE_TITLE, "Arcomage - " + match.npc_name + " - difficulty " + CStr( match.difficulty ) );
+	GFTextMid( gump, 0, 14, ARCO_BOARD_W, ARCO_HUE_TITLE, view.title );
 	GFTextMid( gump, 0, 34, ARCO_BOARD_W, ARCO_HUE_DIM, "Goal: tower " + CStr( rules.wintower ) + ", or " + CStr( rules.winresource ) + " of any resource" );
-	GFAddButton( gump, ARCO_BOARD_W - 50, 14, 4017, 4019, GF_CLOSE_BTN, ARCO_BTN_RESIGN );
-	GFTextRight( gump, ARCO_BOARD_W - 56, 15, ARCO_HUE_DIM, "Resign" );
+	if( view.resign )
+		GFAddButton( gump, ARCO_BOARD_W - 50, 14, 4017, 4019, GF_CLOSE_BTN, ARCO_BTN_RESIGN );
+		GFTextRight( gump, ARCO_BOARD_W - 56, 15, ARCO_HUE_DIM, "Resign" );
+	endif
 
-	ArcoDrawSidePanel( gump, 15, ARCO_PANEL_Y, match.who_name, p );
-	ArcoDrawSidePanel( gump, ARCO_BOARD_W - 205, ARCO_PANEL_Y, match.npc_name, n );
+	ArcoDrawSidePanel( gump, 15, ARCO_PANEL_Y, view.left_name, left );
+	ArcoDrawSidePanel( gump, ARCO_BOARD_W - 205, ARCO_PANEL_Y, view.right_name, right );
 
-	// Keeps: player's tower and wall on the left, the NPC's on the right, as a share of the tower goal.
-	ArcoDrawBar( gump, 330, 50, p["tower"], rules.wintower, 9350 );
-	ArcoDrawBar( gump, 392, 20, p["wall"], rules.wintower, 9200 );
-	ArcoDrawBar( gump, 488, 20, n["wall"], rules.wintower, 9200 );
-	ArcoDrawBar( gump, 520, 50, n["tower"], rules.wintower, 9350 );
-	GFTextMid( gump, 310, ARCO_KEEP_NAME_Y, 120, ARCO_HUE_TEXT, "Your keep" );
-	GFTextMid( gump, 470, ARCO_KEEP_NAME_Y, 120, ARCO_HUE_TEXT, match.npc_name );
+	// Keeps: the left side's tower and wall, then the right side's, as a share of the tower goal.
+	ArcoDrawBar( gump, 330, 50, left["tower"], rules.wintower, 9350 );
+	ArcoDrawBar( gump, 392, 20, left["wall"], rules.wintower, 9200 );
+	ArcoDrawBar( gump, 488, 20, right["wall"], rules.wintower, 9200 );
+	ArcoDrawBar( gump, 520, 50, right["tower"], rules.wintower, 9350 );
+	GFTextMid( gump, 310, ARCO_KEEP_NAME_Y, 120, ARCO_HUE_TEXT, view.left_keep );
+	GFTextMid( gump, 470, ARCO_KEEP_NAME_Y, 120, ARCO_HUE_TEXT, view.right_keep );
 
-	// The last few things that happened, newest at the bottom.
-	var log_lines := match.log;
+	// The last few things that happened, newest at the bottom, then the highlighted line.
+	var prompt := view.status;
+	if( view.can_act && view.discard_mode )
+		prompt := "Choose a card to discard.";
+	endif
+	var log_lines := view.log;
 	var first := log_lines.size() - ARCO_LOG_LINES + 1;
-	if( match.discard_mode )
+	if( prompt != "" )
 		first := first + 1;
 	endif
 	if( first < 1 )
@@ -298,26 +318,32 @@ function ArcoBoardGump( match, p, n )
 		GFTextMid( gump, 0, line_y, ARCO_BOARD_W, ARCO_HUE_TEXT, log_lines[i] );
 		line_y := line_y + 14;
 	endfor
-	if( match.discard_mode )
-		GFTextMid( gump, 0, line_y, ARCO_BOARD_W, ARCO_HUE_TITLE, "Choose a card to discard." );
+	if( prompt != "" )
+		GFTextMid( gump, 0, line_y, ARCO_BOARD_W, ARCO_HUE_TITLE, prompt );
 	endif
 
-	var hand := p["hand"];
+	if( !view.show_hand )
+		return gump;
+	endif
+	var hand := left["hand"];
 	var count := hand.size();
 	var x := CInt( ( ARCO_BOARD_W - count * ( ARCO_CARD_W + ARCO_CARD_GAP ) + ARCO_CARD_GAP ) / 2 );
 	for( i := 1; i <= count; i := i + 1 )
 		var card := ArcoGetCard( hand[i] );
+		var affordable := ArcoCanAfford( left, card );
 		var can_play := 0;
-		if( !match.discard_mode )
-			if( ArcoCanAfford( p, card ) )
-				can_play := 1;
+		var can_discard := 0;
+		if( view.can_act )
+			if( !view.discard_mode )
+				if( affordable )
+					can_play := 1;
+				endif
+			endif
+			if( !card.undiscardable )
+				can_discard := 1;
 			endif
 		endif
-		var can_discard := 1;
-		if( card.undiscardable )
-			can_discard := 0;
-		endif
-		ArcoDrawCard( gump, x, i, card, can_play, can_discard );
+		ArcoDrawCard( gump, x, i, card, affordable, can_play, can_discard );
 		x := x + ARCO_CARD_W + ARCO_CARD_GAP;
 	endfor
 

@@ -8,7 +8,8 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 
 ## Scope Summary
 
-- Total files changed: 80 (23 added, 57 modified, 0 deleted, 0 renamed), counting themes 14-17 (2026-10-25).
+- Total files changed: 85 (28 added, 57 modified, 0 deleted, 0 renamed), counting themes 14-18 (2026-10-25).
+  - Theme 18 (Arcomage PvP, 2026-10-25, uncommitted at writing): 5 new files in `pkg/opt/arcomage/` (922 lines) and edits to `arcocards.inc` (+84, helpers moved out of `match.src`), `arcogump.inc` (+62 / -36), `match.src` (+10 / -80), `textcmd/player/arcomage.src` (+33 / -5) and `config/command_synopses.cfg` (+1 / -1).
   - 2026-10-25 update: the themes 1-13 working tree has since been committed as `9fbf224` ("Bug fixes for WFH, PH, Housing and other things"). Later commits: `ca3b0d3` "Fish Fix" (theme 16, 4 files, +128 / -37), `e26c8fa` "Bowcraft update" (theme 17, 1 file, +7 / -6) and `bef42e6` Arcomage (themes 14-15).
   - Theme 14 (Arcomage, 2026-10-25): 14 new files in `pkg/opt/arcomage/` (4,695 lines, 2,410 of them cfg data), plus `config/npcdesc.cfg` +996 (30 templates, 6 commented out), `pkg/packethooks/megacliloc/mobiledata.src` +14 and `config/command_synopses.cfg` +21 (three new commands).
   - Theme 15 (2026-10-25): `pkg/opt/warriorforhire/warrior.src` +2 / -2.
@@ -54,7 +55,7 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "working tree" and the theme(s) below.
 
 - M | config/cmds.cfg (working tree, theme 2)
-- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10, theme 14)
+- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10, themes 14 and 18)
 - M | config/npcdesc.cfg (2026-10-25, theme 14)
 - M | pkg/items/deed/commands/player/redeed.src (working tree, theme 9)
 - M | pkg/items/doors/config/itemdesc.cfg (commit `1571348`, theme 8)
@@ -77,15 +78,20 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - A | pkg/opt/arcomage/config/cards.cfg (2026-10-25, theme 14)
 - A | pkg/opt/arcomage/config/rulesets.cfg (2026-10-25, theme 14)
 - A | pkg/opt/arcomage/config/spawnpoints.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/deck.src (2026-10-25, theme 18)
 - A | pkg/opt/arcomage/include/arcoai.inc (2026-10-25, theme 14)
-- A | pkg/opt/arcomage/include/arcocards.inc (2026-10-25, theme 14)
-- A | pkg/opt/arcomage/include/arcogump.inc (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/include/arcocards.inc (2026-10-25, themes 14 and 18)
+- A | pkg/opt/arcomage/include/arcogump.inc (2026-10-25, themes 14 and 18)
+- A | pkg/opt/arcomage/include/arcopvp.inc (2026-10-25, theme 18)
 - A | pkg/opt/arcomage/include/arcorecords.inc (2026-10-25, theme 14)
-- A | pkg/opt/arcomage/match.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/itemdesc.cfg (2026-10-25, theme 18)
+- A | pkg/opt/arcomage/match.src (2026-10-25, themes 14 and 18)
 - A | pkg/opt/arcomage/pkg.cfg (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/pvpmatch.src (2026-10-25, theme 18)
+- A | pkg/opt/arcomage/pvpseat.src (2026-10-25, theme 18)
 - A | pkg/opt/arcomage/tablewatch.src (2026-10-25, theme 14)
 - A | pkg/opt/arcomage/textcmd/admin/arcomagenpcs.src (2026-10-25, theme 14)
-- A | pkg/opt/arcomage/textcmd/player/arcomage.src (2026-10-25, theme 14)
+- A | pkg/opt/arcomage/textcmd/player/arcomage.src (2026-10-25, themes 14 and 18)
 - A | pkg/opt/arcomage/textcmd/test/arcomagelineup.src (2026-10-25, theme 14)
 - M | pkg/opt/areas/callguards.src (working tree, theme 10)
 - M | pkg/opt/areas/EnterAreaDelay.src (working tree, theme 10)
@@ -401,10 +407,32 @@ Design picked over three rounds on a picker page (decisions recorded in the sess
 
 **Expected impact:** Elemental arrows and bolts can be crafted, from scratch or by improving a plain arrow or bolt, 40 skill points earlier.
 
+### 18. Arcomage, phase 2: player vs player (2026-10-25)
+
+**Files involved:** `pkg/opt/arcomage/itemdesc.cfg` (new), `pkg/opt/arcomage/deck.src` (new), `pkg/opt/arcomage/pvpmatch.src` (new), `pkg/opt/arcomage/pvpseat.src` (new), `pkg/opt/arcomage/include/arcopvp.inc` (new), `pkg/opt/arcomage/include/arcocards.inc`, `pkg/opt/arcomage/include/arcogump.inc`, `pkg/opt/arcomage/match.src`, `pkg/opt/arcomage/textcmd/player/arcomage.src`, `config/command_synopses.cfg`
+
+Design picked on the PvP plan page (db doc `plan/pvp`): deck item, vanity shop, rules limited to card players beaten, coin flip, Timed with auto-discard and 3-timeout forfeit, Untimed with any step forfeiting, immediate forfeit on disconnect, same-account games blocked, watchers now, no wagers (phase 2b) and no PvP records.
+
+**Notable functional changes:**
+- `itemdesc.cfg`: `Item 0x4000BF` Arcomage Deck (graphic 0x0FA2, playing cards), `Script deck`, `VanityCost 5`; the vanity shop lists it through its `:*:itemdesc` scan. objtypes.txt lists 0x4000BF-0x4001A9 as unused.
+- `deck.src`: the deck must be in the backpack (`ArcoInBackpack` walks `.container`). Rule sets offered are `ArcoBeatenRuleSets` (live rule sets with a win at any difficulty in the solo record). `ArcoChallengeProblem` refuses: no target, non-player, self, either dead, same account (`acct.name`), another realm or more than 3 tiles, either already in a game. Checked again after the setup gump, then starts `:arcomage:pvpmatch`.
+- `pvpmatch.src` (controller): sets `#ArcomageMatch` (and, once accepted, `#ArcomagePvp`) on both players to its pid and clears only those still pointing at it. Starts a `pvpseat.src` per player; the invitation goes through the challenged player's seat and expires after 60 s (`CloseGump` on the seat's pid), or earlier if either player logs out or they are more than 8 tiles apart. Never blocks on a gump: loops on `wait_for_event(1)`.
+- Turns use the solo rules (`ArcoProduce`, `ArcoPlayCard`, `ArcoCheckVictory`, `ArcoHasLegalMove`): coin flip with `RandomInt(2)`, no production on the first turn, production then a draw at each turn change, play-again and draw-discard handled as in solo. State is one struct (`type` "board", `seq`, `rules`, `names`, `sides`, `log`, `active`, `discard_mode`, `timed`, `deadline`) sent whole to every seat on each move. `ArcoPvpBroadcast` bumps `seq`, restarts the clock and, per seat, sends the event then `CloseGump(who, seat_pid, 0)`. A click is applied only when its seat is the active one and its `seq` is current; otherwise that seat is re-sent the current board.
+- Timed: 120 s per action (`deadline`). On expiry `ArcoPvpTimeout` discards a random discardable card (or forfeits when there is none) and counts it; the third consecutive timeout forfeits. A real action resets the count. Presence every second: `ArcoPvpAbsence` (logged out, dead, other realm; Timed more than 8 tiles from the starting spot, Untimed any change of x/y). No legal move loses, as in solo.
+- `pvpseat.src`: per-seat loop on events (`invite`, `board`, `result`, `quit`); replies `invite_reply`, `click` (with `seq`), `resign` (after `ArcoConfirmResign`), `leave`. Before showing a board it drains the queue and shows only the newest board, letting a queued result or quit go first. A board closed with no new event is shown again for a player; for a watcher it means "leave".
+- Watching: `.arcomage watch` targets a player whose `#ArcomagePvp` points to a live controller and sends it `watch`. The controller adds a seat 0 if there are fewer than 6 watchers, the watcher is not a player in it, and is within 12 tiles of a player; it drops watchers who log out, wander off or close the board. Watchers see both keeps and the log, not the hands.
+- `arcopvp.inc`: constants, `ArcoBeatenRuleSets`, `ArcoSameAccount`, `ArcoInBackpack`, the setup gump (rule set radios in two columns, Timed / Untimed), the invitation and result gumps, and `ArcoPvpBoardFor` (the seat's view of the state: own side left and hand for a player, seat 1 left and no hands for a watcher, "Your turn - N seconds left" / "Waiting for X...").
+- `arcogump.inc`: `ArcoBoardGump(view, left, right)` now takes a view struct (`ArcoNewView`: title, names, keep labels, log, `discard_mode`, `can_act`, `show_hand`, `resign`, `closable`, `status`); `ArcoDrawCard` takes `affordable` separately from the Play / Discard buttons, so the waiting player's cards keep their colours. The solo match fills the same view.
+- `arcocards.inc`: `ArcoIsPlaying` with `ARCO_MATCH_PROP`, `ArcoLog` with `ARCO_LOG_KEEP`, `ArcoDrawInto`, `ArcoRemoveFromHand`, `ArcoHasLegalMove` and `ArcoWinReason` moved here from `match.src`, unchanged, for the controller.
+- No gold, wagers or records change hands in PvP.
+
+**Expected impact:** Players can buy an Arcomage Deck (5 tokens), challenge another player nearby to a Timed or Untimed game under the rules of any card player they have beaten, and others can watch with `.arcomage watch`. Solo play is unchanged.
+
 ---
 
 ## Validation Notes
 
+- Theme 18 (2026-10-25): `git diff --numstat` and `wc -l`. Checked by reading and by repo-wide name, builtin-shadowing, reserved-word and module-lookup scans; not compiled or tested in game at writing.
 - Themes 16-17 (2026-10-25): read from `git show ca3b0d3` and `git show e26c8fa`, counts from `git show --numstat`; the 70 `StackLimit 1` lines counted from the diff. Written after the fact from the commits, not compiled or tested by the author.
 - Themes 14-15 (2026-10-25): `git status --porcelain -uall` and `git diff --numstat` for the modified files, `wc -l` for the 14 new files; compiled `.ecl`, `.lst`, `.dbg`, `.dep` files are ignored by `.gitignore`. The arcomage package compiled with 0 errors and 0 warnings on 2026-10-25 (`scripts\ecompile.exe -f -b -r pkg\opt\arcomage`), and `warrior.src` with 0 errors; later edits that day (log text, table watcher, titles, debug off, Lords commented out) were compiled and tested in game by the user except the last two, which were checked by reading. Tested in game: games at 30, 60 and 90 traced on the console, daily gold limit, dressing, titles and tooltips, `.arcomage`, and the walk-away forfeit. Not tested yet: `.arcomagenpcs` placement, which needs coordinates.
 - Diff range: `git log --format="%h %p %an %ad %s" db9607a..HEAD` (HEAD `e2b8bdb`), `git diff --numstat db9607a..HEAD` for the committed file, `git diff db9607a a4d9778` (empty) to confirm the PR #116 merge carries nothing, `git diff --numstat HEAD` and `wc -l` on the three untracked files for the working tree.

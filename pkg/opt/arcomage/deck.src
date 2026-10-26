@@ -1,0 +1,75 @@
+// Arcomage Deck (0x4000BF, vanity shop). 2026-10-25: phase 2. Use it, target another player
+// within 3 tiles, pick the rules (card players you have beaten) and Timed or Untimed, and the
+// challenge goes to :arcomage:pvpmatch. The deck is never used up.
+use uo;
+use os;
+
+include ":arcomage:arcopvp";
+
+program ArcomageDeck( who, deck )
+
+	if( !ArcoInBackpack( who, deck ) )
+		SendSysMessage( who, "The deck must be in your backpack to use it.", 3, 38 );
+		return 0;
+	elseif( ArcoIsPlaying( who ) )
+		SendSysMessage( who, "You are already playing a game of Arcomage.", 3, 38 );
+		return 0;
+	endif
+
+	var ids := ArcoBeatenRuleSets( who );
+	if( !ids.size() )
+		SendSysMessage( who, "Beat one of the Arcomage card players first; then you can play by their rules.", 3, 38 );
+		return 0;
+	endif
+
+	SendSysMessage( who, "Who do you want to challenge to Arcomage?" );
+	var opponent := Target( who );
+	var problem := ArcoChallengeProblem( who, opponent );
+	if( problem != "" )
+		SendSysMessage( who, problem, 3, 38 );
+		return 0;
+	endif
+
+	var choice := ArcoPvpSetupGump( who, opponent.name, ids );
+	if( !choice )
+		return 0;
+	endif
+	// Time has passed in the gump: check again.
+	problem := ArcoChallengeProblem( who, opponent );
+	if( problem != "" )
+		SendSysMessage( who, problem, 3, 38 );
+		return 0;
+	endif
+
+	Start_Script( ":arcomage:pvpmatch", array{ who, opponent, choice.ruleset, choice.timed } );
+	return 1;
+
+endprogram
+
+// "" if who may challenge opponent right now, else the reason not.
+function ArcoChallengeProblem( who, opponent )
+
+	if( !opponent )
+		return "Cancelled.";
+	elseif( !opponent.isa( POLCLASS_MOBILE ) )
+		return "You can only challenge another player.";
+	elseif( opponent.npctemplate )
+		return "You can only challenge another player.";
+	elseif( opponent.serial == who.serial )
+		return "You can't play against yourself.";
+	elseif( opponent.dead || who.dead )
+		return "Not while one of you is dead.";
+	elseif( ArcoSameAccount( who, opponent ) )
+		return "You can't play against a character on your own account.";
+	elseif( opponent.realm != who.realm )
+		return "Get closer to them first.";
+	elseif( Distance( who, opponent ) > ARCO_PVP_CHALLENGE_RANGE )
+		return "Get closer to them first.";
+	elseif( ArcoIsPlaying( opponent ) )
+		return opponent.name + " is already playing a game of Arcomage.";
+	elseif( ArcoIsPlaying( who ) )
+		return "You are already playing a game of Arcomage.";
+	endif
+	return "";
+
+endfunction

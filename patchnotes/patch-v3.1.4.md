@@ -156,11 +156,16 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - The board shows the last few moves, with exactly what each card did to each side.
 - Walking more than 8 tiles from the table, logging out or dying ends the game as a loss. You can also resign.
 - `.arcomage` shows your wins against every card player at every difficulty, and the shard's top 20.
+- Play against other players with an Arcomage Deck, 5 tokens in the vanity shop. Use it on a player within 3 tiles, choose whose rules to play by (any card player you have beaten), and choose Timed or Untimed. They get an invitation and have 60 seconds to accept. A coin flip decides who goes first.
+- Timed games give each move 120 seconds. Run out and a random card from your hand is thrown away; run out three times in a row and you lose. You can move around, but stay within 8 tiles of your spot.
+- Untimed games have no clock, but taking a single step from your spot loses the game.
+- In either mode, logging out, dying or resigning loses the game. You can't play against a character on your own account.
+- `.arcomage watch` lets you watch someone else's game: target one of the players while you are within 12 tiles. Up to 6 people can watch a game, and they see the board but not the players' hands.
 
 ### Player Impact
 
 - A new way to earn gold every day: up to 45,000 an account if you win at all five difficulties.
-- Records and the leaderboard are per character.
+- Records and the leaderboard are per character. Games against other players are just for fun: no gold and no records.
 
 ## Guards and Areas
 
@@ -213,7 +218,7 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - The vanity shop sells Transcription Scrolls that copy a runebook (5 tokens) or Runic Atlas (10 tokens) into an empty book of the same kind.
 - Fish steaks follow where the fish lives (shore 1, deep water 4, dungeon 6), with the Rare and Legendary bonus also when you carve as you fish; ordinary fish stack again and rare ones never do.
 - Fire Arrows, Ice Arrows and Thunder Bolts need 40 less Bowcraft (74, 79 and 84).
-- Arcomage: 24 card players in taverns, difficulty 30 to 150, daily gold for your first win at each difficulty, and `.arcomage` for your record and the leaderboard.
+- Arcomage: 24 card players in taverns, difficulty 30 to 150, daily gold for your first win at each difficulty, and `.arcomage` for your record and the leaderboard. Challenge other players with the Arcomage Deck (vanity shop), Timed or Untimed, and watch their games with `.arcomage watch`.
 - Guards record the right account; area checks are much cheaper for the server.
 - Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; `.arcomagenpcs` places and removes the card players; developers have `.classbonusinfo`.
 
