@@ -430,7 +430,7 @@ sign := sgn;
 	if(sign.IsCoOwnerOrOwner(who))
 		sign.RefreshHouse();
 	endif
-	if(who.serial == ownerserial)
+	if(sign.IsOwner(who)) // 2026-10-09: same account counts as the owner
 		SendSysMessageCL(who, 1043293, color := 66);
 	endif
 
@@ -489,7 +489,7 @@ sign := sgn;
 			15: SHDebug("Action open house management by " + who.name + " sign=" + sign.serial); OpenHouseManagementGump(sign, who);
 			16: SHDebug("Action change locks by " + who.name + " sign=" + sign.serial); ChangeLocks(sign, who);
 			20:
-				if((who.serial == ownerserial) || (who.cmdlevel > 2))
+				if(sign.IsOwner(who) || (who.cmdlevel > 2)) // 2026-10-09: same account counts
 					SHDebug("Action relinquish by " + who.name + " sign=" + sign.serial);
 					RelinquishHouse(sign, who);
 				endif
@@ -752,7 +752,7 @@ function ToggleCoOwnerStatus(sign, who)
 		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
 		return;
 	endif
-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
 		return;
 	endif
@@ -798,7 +798,7 @@ function ToggleHousePermission(sign, who, perm_key, label)
 		SendSysMessage(who, "That cannot be modified.", color := 33);
 		return;
 	endif
-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "Owner always has full permissions.", color := 33);
 		return;
 	endif
@@ -1088,8 +1088,8 @@ endfunction
 
 function RelinquishHouse(sign, who)
 	SHDebug("Relinquish requested by " + who.name + " sign=" + sign.serial);
-	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
-	if(who.serial != ownerserial && who.cmdlevel < 3)
+	// 2026-10-09: any character on the owner's account may relinquish.
+	if(!sign.IsOwner(who) && who.cmdlevel < 3)
 		SendSysMessage(who, "Only the owner can relinquish this house.", color := 33);
 		return 0;
 	endif
@@ -1358,6 +1358,11 @@ function AddFriend( sign, who )
 		SendSysMessageCL(who, 501372, color := 33); // This person cannot be a friend of the house.
 		return 0;
 	endif
+	// 2026-10-09: the owner and same-account characters are owners already.
+	if(sign.IsOwner(targetchr))
+		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
+		return 0;
+	endif
 	if(sign.IsACoOwner(targetchr))
 		if (!YesNo(who, targetchr.name + " is a co-owner. Are you sure?"))
 			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
@@ -1390,7 +1395,7 @@ function addenemy( sign, who )
 	elseif(targetchr == who)
 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
 		return 0;
-	elseif(targetchr.serial == GetObjProperty(sign, "ownerserial"))
+	elseif(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
 		return 0;
 	elseif(!targetchr.acct)
@@ -1444,6 +1449,9 @@ function addcoowner( sign, who )
 		return 0;
 	elseif(targetchr == who)
 		SendSysMessage(who, "You cannot be the owner and a co-owner of a house.", color := 33);
+		return 0;
+	elseif(sign.IsOwner(targetchr)) // 2026-10-09: same-account characters are owners already
+		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
 		return 0;
 	elseif(!targetchr.acct)
 		SendSysMessageCL(who, 501362, color := 33); // That can't be a co-owner of the house.

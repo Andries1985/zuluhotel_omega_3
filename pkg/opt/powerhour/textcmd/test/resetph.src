@@ -5,6 +5,7 @@ use os;
 use uo;
 
 include "include/client";
+include ":powerhour:include/powerhour"; // 2026-10-08: shared property names and PPH_ClearFlags
 
 program resetph( who )
 
@@ -22,25 +23,25 @@ program resetph( who )
 
     SetObjProperty(mobile, "usedpph", 0);
 
-    EraseObjProperty(mobile, "pph_use_time");
-    EraseObjProperty(mobile, "pph_use_weekday");
+    EraseObjProperty(mobile, PPH_PROP_USE_TIME);
+    EraseObjProperty(mobile, PPH_PROP_WEEKDAY);
 
-    EraseObjProperty(mobile, "#PPHH");
-    EraseObjProperty(mobile, "#PPHC");
-    EraseObjProperty(mobile, "#PPHS");
+    PPH_ClearFlags(mobile);
+    // 2026-10-08: the durable type too -- left behind, the next logon would try to resume a reset hour.
+    EraseObjProperty(mobile, PPH_PROP_ACTIVE);
 
     // activateph() (setph.src) is sleeping out the hour in its own script
     // instance and stores its PID here -- kill it directly instead of
     // waiting for it to wake up on its own.
-    var pph_pid := GetObjProperty(mobile, "#PPHPid");
+    var pph_pid := GetObjProperty(mobile, PPH_PROP_PID);
     if(pph_pid)
         var process := GetProcess(CInt(pph_pid));
         if(process)
             process.kill();
         endif
     endif
-    EraseObjProperty(mobile, "#PPHPid");
+    EraseObjProperty(mobile, PPH_PROP_PID);
 
-    EraseObjProperty(mobile, "#SettingPH");
+    EraseObjProperty(mobile, PPH_PROP_SETTING);
 
 endprogram

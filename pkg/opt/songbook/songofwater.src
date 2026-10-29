@@ -12,11 +12,13 @@ const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_ICE_STRIKE;
 const SPELL_EFFECT_ID		:= FX_SPELL_ICE_STRIKE;
 const SPELL_EFFECT_SPEED	:= SPEED_SPELL_ICE_STRIKE;
 const SPELL_EFFECT_LOOP		:= LOOP_SPELL_ICE_STRIKE;
-program cast_songofwater( player )
+program cast_songofwater( parms )
+	var npc_cast := IsNpcSong( parms );  // 2026-10-25: NPCs call a song with {"#MOB", caster, target} (ZH2.5 1.1.5 port)
+	var player := GetSongSinger( parms );  // 2026-10-25: the singer, player or NPC (ZH2.5 1.1.5 port)
 	SetObjProperty( player , "#Casting", 1 );
 	var singinghp := GetHp( player );
 	var circle := GetCircle( SPELLID_SONG_OF_WATER  );
-	var instrument := findinstrument( player );
+	var instrument := GetSongInstrument( player, npc_cast );  // 2026-10-25: NPCs need no instrument (ZH2.5 1.1.5 port)
 	var sfx_success;
 	var sfx_failure;
 	case( instrument.graphic )
@@ -59,7 +61,11 @@ program cast_songofwater( player )
 	var difficulty := (circle*10)+(Random(25)-(spec*8));
 	//PrintTextAbove(player,"Difficulty:"+difficulty);
 	PerformAction( player, 0X021 );
-	if (difficulty > peace or difficulty > mus or !spec)
+	// 2026-10-25: NPCs skip the instrument, class and skill checks; their level comes from Musicianship (ZH2.5 1.1.5 port)
+	if (npc_cast)
+		spec := GetNpcBardLevel( mus );
+	endif
+	if ((!npc_cast and (difficulty > peace or difficulty > mus)) or !spec)
 		PlaySoundEffect( player , sfx_failure );
 		EraseObjProperty( player , "#Casting" );
 		PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
@@ -67,9 +73,11 @@ program cast_songofwater( player )
 		if (ps < 0 )
 			ps := 0;
 		endif
-		SetStamina( player, ps );
+		if (!npc_cast)  // 2026-10-25: NPCs pay no stamina (ZH2.5 1.1.5 port)
+			SetStamina( player, ps );
+		endif
 		return;
-	elseif ((GetStamina( player ) -drain) <  0)
+	elseif (!npc_cast and (GetStamina( player ) - drain) < 0)  // 2026-10-25: NPCs have no stamina check (ZH2.5 1.1.5 port)
 		PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
 		PrintTextAbovePrivate( player, "Out of Stamina!",player );
 		PlaySoundEffect( player , sfx_failure );
@@ -78,9 +86,11 @@ program cast_songofwater( player )
 		if (ps < 0 )
 			ps := 0;
 		endif
-		SetStamina( player, ps );
+		if (!npc_cast)  // 2026-10-25: NPCs pay no stamina (ZH2.5 1.1.5 port)
+			SetStamina( player, ps );
+		endif
 		sleep(1);
-		if (GetHp( player ) < singinghp)
+		if (!npc_cast and GetHp( player ) < singinghp)  // 2026-10-25: NPCs can't be interrupted (ZH2.5 1.1.5 port)
 			PrintTextAbove(player,"*"+player.name+" plays a song poorly*");
 			PrintTextAbovePrivate( player, "You were interrupted!",player );
 			PlaySoundEffect( player , sfx_failure );

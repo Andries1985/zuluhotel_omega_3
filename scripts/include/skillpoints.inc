@@ -107,14 +107,12 @@ function AwardSkillPoints( who, skillid, points )
 		points := Cint( points * 1.5 );
 	endif	
 
-	//Powerplayer increased skill gain (classbonus)
-	if (GetObjProperty(who, CLASSEID_POWERPLAYER))
-	var level := GetClasseLevel(who);
-		case(level)
-			3: points := Cint( points * 1.1 );
-			4: points := Cint( points * 1.2 );
-			5: points := Cint( points * 1.3 );
-		endcase
+	// Powerplayer increased skill gain (classbonus). 2026-10-10: PowerplayerGainMultiplier()
+	// (x1.1 at level 2 up to x1.5 at level 6, ZH2.5 1.1.4's curve), keyed on the Powerplayer
+	// level itself; was x1.1 / 1.2 / 1.3 at levels 3-5 of GetClasseLevel().
+	var pplevel := CInt( GetObjProperty( who, CLASSEID_POWERPLAYER ) );
+	if( pplevel )
+		points := Cint( points * PowerplayerGainMultiplier( pplevel ) );
 	endif
 
 	// Set the skill points
@@ -125,7 +123,8 @@ endfunction
 // 2026-10-07: stat affinity now covers every class, not just Warrior and Crafter. This
 // maps the attribute id onto the stat key and defers to GetStatPointsMultiplier in
 // classes.inc, which already handled affinity (faster) and difficulty (slower) for all
-// three stats but had no caller. A character holding two classes uses the first match.
+// three stats but had no caller. A character holding two classes follows the higher-level
+// one (2026-10-08; it was the first match in list order).
 function ClassStatGainMultiplier( who, attributeid )
 
 	var stat;
@@ -145,6 +144,26 @@ function ClassStatGainMultiplier( who, attributeid )
 	endcase
 
 	return GetStatPointsMultiplier( who, stat );
+
+endfunction
+
+
+// 2026-10-08 (from ZH2.5 1.1.4): the class-scaled amount of a stat advance that already fired, never
+// below 1. Defensive only: the smallest advance in skillsdef.cfg is 2d2 and the lowest multiplier 0.4,
+// so Cint( roll * mult + 0.5 ) is already at least 1. It matters only if a 1dX advance is ever added.
+function ClassStatGainAmount( who, attributeid, amount )
+
+	var mult := ClassStatGainMultiplier( who, attributeid );
+	if( mult == 1.0 )
+		return amount;
+	endif
+
+	var scaled := Cint( CDbl( amount ) * mult + 0.5 );
+	if( scaled < 1 )
+		scaled := 1;
+	endif
+
+	return scaled;
 
 endfunction
 
@@ -198,7 +217,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_STRENGTH, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_STRENGTH ) + 0.5 ));
+			AwardRawAttributePoints(who, ATTRIBUTEID_STRENGTH, ClassStatGainAmount( who, ATTRIBUTEID_STRENGTH, RandomDiceRoll(adv[2]) ));
 		endif
 	endif
 	
@@ -207,7 +226,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_DEXTERITY ) + 0.5 ));
+			AwardRawAttributePoints(who, ATTRIBUTEID_DEXTERITY, ClassStatGainAmount( who, ATTRIBUTEID_DEXTERITY, RandomDiceRoll(adv[2]) ));
 		endif
 	endif
 	
@@ -216,7 +235,7 @@ function AwardPoints( who, skillid, skillpoints )
 	if( adv )
 		adv := SplitWords(adv);
 		if( RandomInt(1000) < Cdbl(adv[1])*10 )
-			AwardRawAttributePoints(who, ATTRIBUTEID_INTELLIGENCE, Cint( RandomDiceRoll(adv[2]) * ClassStatGainMultiplier( who, ATTRIBUTEID_INTELLIGENCE ) + 0.5 ));
+			AwardRawAttributePoints(who, ATTRIBUTEID_INTELLIGENCE, ClassStatGainAmount( who, ATTRIBUTEID_INTELLIGENCE, RandomDiceRoll(adv[2]) ));
 		endif
 	endif
 	

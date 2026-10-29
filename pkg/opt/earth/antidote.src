@@ -6,7 +6,7 @@ include "include/spelldata";
 include "include/dotempmods";
 include "include/client";
 include "include/attributes";
-include "include/spellgrants";
+// 2026-10-25: spellgrants.inc no longer used here; the spell keeps its own level in spellprots.inc (ZH2.5 1.1.5 port)
 
 const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_ANTIDOTE;
 const SPELL_EFFECT_ID		:= FX_SPELL_ANTIDOTE;
@@ -76,16 +76,20 @@ program cast_antidote( parms )
 	endif
 
 	EraseObjProperty( caster , "#Casting" );
-	var prevprot := GetObjProperty( caster , "PermPoisonImmunity" );
-	if( !prevprot )
-		var magery := GetEffectiveSkill( caster , SKILLID_MAGERY );
-		var duration := ModifyWithMagicEfficiency( caster , magery * 2 );
-		var power := ModifyWithMagicEfficiency( caster , magery / 25 );
-		if( duration and power )
-			SetObjProperty( caster, "PermPoisonImmunity" , power );
-			SetObjProperty( caster, "SpellPoisonImmunity" , 1 ); // 2026-09-22: marks the grant so login can take it back after a restart
-			Sleep( duration );
-			ReclaimSpellPoisonImmunity( caster ); // 2026-09-22: back to what worn items give (spellgrants.inc)
+
+	// 2026-10-25: the immunity goes to the target (it used to land on the caster). Level is the caster's class
+	// level (1-6), duration 2-10 minutes by that level; magery, magic efficiency and equipment no longer change
+	// either. Skip if gear or a stronger cast already gives as much; an equal one is refreshed (ZH2.5 1.1.5 port)
+	var power := SpellProtCasterLevel( GetClasseLevel( caster ) );
+	var duration := SpellProtDuration( power );
+	if( power >= GetPoisonImmunityLevel( cast_on ) )
+		SetSpellProt( cast_on , SPELLPROT_POISON , power );
+		BuffOn( cast_on , "poisonimmunity" , power , duration );
+		Detach();
+		Sleep( duration );
+		// Only end it if this cast still owns it (not dispelled by WipeMods, not replaced by a recast)
+		if( EndSpellProt( cast_on , SPELLPROT_POISON ) )
+			BuffOff( cast_on , "poisonimmunity" );
 		endif
 	endif
 		

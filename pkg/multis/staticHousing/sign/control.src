@@ -101,7 +101,7 @@ function handle_speech(sign, event)
 	// owneracct := GetObjProperty(sign, "owneraccount");
 	ownerser := GetObjProperty(sign, "ownerserial");
 	var sec;
-	if(who.serial == ownerser)	// Owner
+	if(sign.IsOwner(who))	// Owner (2026-10-09: same account counts)
 		sec := 3;
 	elseif(sign.IsACoOwner(who))	// Co-owner
 		sec := 2;
@@ -160,11 +160,17 @@ function remove(sign, event)
       var coown  := statuscheck(victim, 1);
 //      var multi  := who.multi;					// Probably a Bishop carry over from when this package was married to multi-houses.
 //	  multi := multi;
+      // 2026-10-09: owner (any character on its account) checked first; it used
+      // to fall into the eject branch when not on a list. (Speech command disabled.)
+      if(sign.IsOwner(victim))
+        SendSysMessage(who, "you cannot eject friends", 3, 40);
+        return;
+      endif
       if((coown == 0) && (friend == 0) && (victim != who) && (!victim.cmdlevel))
         MoveObjectToLocation(victim, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
         SendSysMessage(victim, "you have been ejected from the house");
         return;
-      elseif((friend == 1) || (coown == 1) || (victim.acctname == GetObjProperty(sign, "owneracct")))
+      elseif((friend == 1) || (coown == 1))
         SendSysMessage(who, "you cannot eject friends", 3, 40);
         return;
       elseif(victim == who)
@@ -454,7 +460,7 @@ function unsecure(sign, event)
 	endif
 	var canunsecure := 0;
 	// Determine if the unsecuring person has the proper secure level to unsecure the item.
-	if(who.serial == sign.GetOwnerSerial())	// Owner
+	if(sign.IsOwner(who))	// Owner (2026-10-09: same account counts)
 		seclevel := "O";
 	elseif(who.cmdlevel >= 3)				// Staff with "Testing" CProp can unsecure.
 		if(GetObjProperty(who, "Testing"))
@@ -532,7 +538,7 @@ function housebanning(sign, event)
 	elseif(victim == who)
 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
 		return 0;
-	elseif(victim.serial == GetObjProperty(sign, "ownerserial"))
+	elseif(sign.IsOwner(victim)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
 		return 0;
 	elseif(!victim.acct)

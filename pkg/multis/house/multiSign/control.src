@@ -124,11 +124,18 @@ function remove(house, sign, event)
 			var friend := sign.IsInHouseLists(idiot, 2);
 			var coown  := sign.IsInHouseLists(idiot, 1);
 			var staff  := who.cmdlevel;
+			// 2026-10-09: the owner (any character on its account) is never ejected;
+			// the owner test used to come after the eject branch. (Unreachable while
+			// the speech dispatcher above stays commented out.)
+			if (sign.IsOwner(idiot))
+					SendSysMessageCL(who, 501348, color := 33); // You cannot eject a friend of the house!
+					return;
+			endif
 			if ((coown == 0) && (friend == 0) && (idiot.serial != who.serial) && (staff < 2))
 					MoveObjectToLocation(idiot, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
 					SendSysMessageCL(idiot, 501341, color := 33); // You have been ejected from this house. If you persist in entering, you may be banned from the house.
 					return;
-			elseif((friend == 1) || (coown == 1) || (idiot.serial == GetObjProperty(sign,"ownerserial")))
+			elseif((friend == 1) || (coown == 1))
 					SendSysMessageCL(who, 501348, color := 33); // You cannot eject a friend of the house!
 					return;
 			elseif (idiot.serial == who.serial)
@@ -401,16 +408,17 @@ function housebanning(house, event, sign)
 		var coown  := sign.IsInHouseLists(idiot, 1);
 		var banned := sign.IsInHouseLists(idiot, 3);
 		var staff  := idiot.cmdlevel;
-		var act    := idiot.acctname;
-		var own    := GetObjProperty(sign, "ownerserial");
-		if((coown == 0) && (banned == 0) && (friend == 0) && ( act != own) && (idiot.serial != who.serial) && (staff < 2))
+		// 2026-10-09: was acctname compared against the owner SERIAL (never equal),
+		// so the owner was not protected. (Unreachable, see remove() above.)
+		var own    := sign.IsOwner(idiot);
+		if((coown == 0) && (banned == 0) && (friend == 0) && (!own) && (idiot.serial != who.serial) && (staff < 2))
 			SendSysMessageCL(idiot, 501340, color := 33); // You have been banned from this house.
 			MoveObjectToLocation(idiot, sign.x, sign.y, sign.z, sign.realm);
 			banlist.append(idiot.serial);
 			SetObjProperty(sign, "banlist", banlist);
 			SendSysMessage(event.source, idiot.name + " was banned from your house");
 			return;
-		elseif((friend == 1) || (coown == 1) || (act == own))
+		elseif((friend == 1) || (coown == 1) || own)
 			SendSysMessage(who,"you cannot ban friends");
 			return;
 		elseif(banned == 1)

@@ -16,7 +16,7 @@ program walk_on_bantile(who, tile)
 	if(!banlist)
 		return;
 	endif
-	if(who.serial in banlist)
+	if(sign.IsBanned(who))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
 		sign.BootBannedFromHouse(who);
 	endif
 endprogram

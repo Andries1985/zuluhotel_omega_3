@@ -8,7 +8,12 @@ include "include/bard";
 include "include/eventid";
 include "include/checkcity";
 
-program cast_songofbeckon( player )
+program cast_songofbeckon( parms )
+	// 2026-10-25: players only: NPCs can't cast Beckon (it is out of npccast.inc's GetSpellID), so refuse an NPC call (ZH2.5 1.1.5 port)
+	if (IsNpcSong( parms ))
+		return 0;
+	endif
+	var player := parms;
 	SetObjProperty( player , "#Casting" , 1 );
 	var singinghp := GetHp( player );
 	var thecritter;

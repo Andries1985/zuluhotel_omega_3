@@ -990,7 +990,8 @@ function AreaSpawnerSlayTypes()
 	return array{
 		"Slime", "Ratkin", "Plant", "Animal", "Beholder", "Orc", "Terathan",
 		"Ophidian", "Animated", "Gargoyle", "Troll", "Giantkin", "Elemental",
-		"Undead", "Daemon", "Dragonkin", "Human"
+		"Undead", "Daemon", "Dragonkin", "Human",
+		"Townsfolk"	// 2026-10-25: town NPC templates' Type since the ZH2.5 1.1.5 port (no slayer matches it)
 	};
 endfunction
 

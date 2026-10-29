@@ -12,8 +12,7 @@ program walk_on_bantile(who, tile)
 	if(!hsign)
 		return;
 	endif
-	var ownerser := hsign.GetOwnerSerial();
-	if(ownerser == who.serial)
+	if(hsign.IsOwner(who))	// 2026-10-09: same account counts as the owner
 		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
 //		SendSysMessage(who, "Your house is refreshed.", color := 66);
 	endif
@@ -22,7 +21,7 @@ program walk_on_bantile(who, tile)
 	if(!banlist)
 		return;
 	endif
-	if(who.serial in banlist)
+	if(hsign.IsBanned(who))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
 		hsign.BootBannedFromHouse(who);
 	endif
 endprogram

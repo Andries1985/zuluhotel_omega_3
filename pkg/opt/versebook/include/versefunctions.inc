@@ -6,6 +6,7 @@ include "include/attributes";
 include "include/areas";
 include "verseconstants";
 include "include/spelldata";
+include "include/spellprots";	// 2026-10-25: GetPhysicalProtection (ZH2.5 1.1.5 port)
 
 var cfgfile := ReadConfigFile(":versebook:verses");
 
@@ -634,7 +635,7 @@ function AdjustForPhysicalDamage(person, damage)
 		damage *= ClasseSmallBonusByLevel( IsMage(person) );
 	endif
 
-	var phys_prot := GetObjProperty(person, "PhysicalProtection");
+	var phys_prot := GetPhysicalProtection(person);	// 2026-10-25: higher of gear and Dragon Skin (ZH2.5 1.1.5 port)
 
 	if (phys_prot)
 		damage *= 1 - phys_prot * 0.05;

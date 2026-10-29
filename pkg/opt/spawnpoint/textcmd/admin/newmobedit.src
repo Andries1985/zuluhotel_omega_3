@@ -11,38 +11,77 @@ use os;
 use vitals;
 use attributes;
 use file;
+use cfgfile;
+use basic;	// 2026-10-25: SplitWords for the lootgroup export
 
 include "include/attributes";
 include ":attributes:npcvitals";	// SetNpcVitalOverride (2026-09-30)
 include "include/client";
 include ":mdgumps:gumps";
 include ":mdgumps:gumps_ex";
+include ":mdgumps:requestGump";	// 2026-10-25: RequestGump for the Custom HP button (ZH2.5 1.1.5 port)
+include ":attributes:regen";	// 2026-10-25: SetVitalRegenRateMod -- applies a regen edit at once, same call modsetup.inc makes at AI start
 include "include/spelldata";
+include "include/npcspellnames";	// 2026-10-25: GetNpcSpellNames() for the Spells checkbox gump (ZH2.5 1.1.5 port)
+include "include/npcdifficulty";	// 2026-10-25: GetSnoopDifficulty/GetStealDifficulty/GetNpcDifficultyOverride (ZH2.5 1.1.5 port)
 include "include/math";
 include ":admin:include/adminpanel";
 
 const TEXT_COLOR := 657;
+
+// 2026-10-25: NPC pages and staged edits (ZH2.5 1.1.5 port, adapted to ZH3.0 vitals)
+const BTN_CUSTOM_HITS := 500;
+const MAX_CUSTOM_HITS := 100000;
+const BTN_SPELLS := 501;
+const SPELLS_PER_COLUMN := 15;
+// Spell checkboxes are SPELL_CHK_BASE + the spell's index in the list
+const SPELL_CHK_BASE := 100;
+// Checkbox ids share the reply keys with the text entries, so a checkbox for stat N uses CHK_BASE+N
+const CHK_BASE := 1000;
+
+// AI scripts whose combat event reaches cast_offensive_spell() in npccast.inc; any other script ignores its spell list
+var CASTER_SCRIPTS := array{ "bardok", "chaosmultikillpcs", "chaosspellkillpcs", "critterhealer", "doppel",
+	"doppelganger", "dragonking", "formationkillpcs", "formationleader", "glutton", "goodcaster",
+	"newbiemultikillpcs", "rikktor", "soulwhisperer", "spellkillpcs", "spiderlord", "stormkillpcs",
+	"sum", "waterdragonking", "tamed", ":quests:ai/sutek" };
+
+// NPC-only stats (86 is the MoveSpeed word, 28-85 the skills):
+// 87 script, 88 lootgroup, 89 magic item level, 90 magic item chance, 91 worn items drop,
+// 92 pack items drop, 93 title prefix, 94 title suffix, 95 LesserBoss, 96 Boss, 97 SuperBoss,
+// 98 Champion, 99 tame difficulty, 100 snoop difficulty, 101 steal difficulty, 102 provoke difficulty,
+// 103 peace difficulty, 104 HP regen, 105 Mana regen, 106 Stamina regen (points per minute, text)
+var NPC_TEXT_FIELDS := array{ 86, 87, 88, 93, 94, 104, 105, 106 };
+var NPC_NUMBER_FIELDS := array{ 89, 90, 98, 99, 100, 101, 102, 103 };
+var NPC_CHECK_FIELDS := array{ 91, 92, 95, 96, 97 };
 
 var old_stats := array;
 var new_stats := array;
 var desc_list := array;
 var gump_ret;
 var is_npc := 0;
+// The Custom HP and Spells buttons only stage these; Apply writes them, Cancel drops them
+var hits_changed := 0;
+var hits_value := 0;		// staged max HP in points, 0 = back to the template
+var npc_spells := array;
+var orig_spells := array;
+var spells_changed := 0;
+var spells_to_template := 0;
 var earth, fire, water, air, necro, poison, physical, freeaction, holy := 0;
-var healing, magicefficiency, magicimmunity, magicreflection, tempmagicimmunity, tempmagicreflection, temppoisonimmunity := 0;
+var healing, magicimmunity, magicreflection := 0;
 
 program textcmd_mobedit(who)
 
 	desc_list[1] := "Name";
-	desc_list[2] := "Strength";
-	desc_list[3] := "Dexterity";
-	desc_list[4] := "Inteligence";
-	desc_list[5] := "HP";
-	desc_list[6] := "Stamina";
-	desc_list[7] := "Mana";
+	// 2026-10-25: the save-to-cfg button writes ZH3.0's npcdesc template field names (STR/HITS/...), no CustomHitsLevel (ZH2.5 1.1.5 port)
+	desc_list[2] := "STR";
+	desc_list[3] := "DEX";
+	desc_list[4] := "INT";
+	desc_list[5] := "HITS";
+	desc_list[6] := "STAM";
+	desc_list[7] := "MANA";
 	desc_list[8] := "RunSpeed";	// 2026-09-30: was labelled "MoveSpeed" but it always edited mobile.run_speed (the engine step pacing)
 	desc_list[86] := "MoveSpeed";	// 2026-09-30: the AI think-delay word (Fastest/Fast/Normal/Slow/Slowest); instance override of the template field
-	desc_list[9] := "Graphic";
+	desc_list[9] := "ObjType";
 	desc_list[10] := "Color";
 	desc_list[11] := "AR";
 	desc_list[12] := "EarthProtection";
@@ -55,12 +94,9 @@ program textcmd_mobedit(who)
 	desc_list[19] := "PermPoisonImmunity";
 	desc_list[20] := "FreeAction";
 	desc_list[21] := "HealingIncrease";
-	desc_list[22] := "magicefficiency";
+	// 2026-10-25: 22, 25, 26, 27 were ME, Absorbsion, Warding and Antidotes; removed, nothing reads those CProps (ZH2.5 1.1.5 port)
 	desc_list[23] := "PermMagicImmunity";
 	desc_list[24] := "Permmr";
-	desc_list[25] := "tempmagicimmunity";
-	desc_list[26] := "tempmagicreflection";
-	desc_list[27] := "temppoisonimmunity";
 	desc_list[28] := "alchemy";
 	desc_list[29] := "anatomy";
 	desc_list[30] := "animallore";
@@ -119,6 +155,22 @@ program textcmd_mobedit(who)
 	desc_list[83] := "mysticism";
 	desc_list[84] := "imbuing";
 	desc_list[85] := "throwing";
+	desc_list[87] := "Script";
+	desc_list[88] := "lootgroup";
+	desc_list[89] := "MagicItemLevel";
+	desc_list[90] := "MagicItemChance";
+	desc_list[95] := "LesserBoss";
+	desc_list[96] := "Boss";
+	desc_list[97] := "SuperBoss";
+	desc_list[98] := "Champion";
+	desc_list[99] := "tameskill";
+	desc_list[100] := "snoopme";
+	desc_list[101] := "stealme";
+	desc_list[102] := "provoke";
+	desc_list[103] := "peacemake";
+	desc_list[104] := "HITSREGEN";
+	desc_list[105] := "MANAREGEN";
+	desc_list[106] := "STAMREGEN";
 
 	var mobile := target(who);
 
@@ -129,6 +181,8 @@ program textcmd_mobedit(who)
 
 	if (mobile.isa(POLCLASS_NPC))
 		is_npc := 1;
+		npc_spells := GetNpcSpells(mobile);
+		orig_spells := npc_spells;
 	endif
 
 	//Calculate Stats
@@ -160,6 +214,9 @@ program textcmd_mobedit(who)
 		old_stats[j] := GetBaseSkill(mobile, i);
 		j +=1;
 	endfor
+	if (is_npc)
+		LoadNpcSettings(mobile);
+	endif
 	//Print($"Old Stats Array 1:" +old_stats);
 
 	new_stats := old_stats;
@@ -172,24 +229,41 @@ program textcmd_mobedit(who)
 		if( gump_ret[0] == 100 )
 			SendSysMessage(who, "Cancel button pressed", FONT_NORMAL, 43);
 			return 0;
+		elseif( !gump_ret[0] )
+			// 2026-10-25: a right-click close returns 0, which used to fall into the "Warrior level 0" branch below, stage all eight warrior skills at 0 and reopen up to 1000 times (ZH2.5 1.1.5 port)
+			SendSysMessage(who, "Canceled", FONT_NORMAL, 43);
+			return 0;
 		endif
 
-		new_stats[1] := GFExtractData(gump_ret, 1);
+		new_stats[1] := GetGumpText(gump_ret, 1);
 
 		for (i := 2; i <= 85; i := i+1)
 			new_stats[i] := Cint(GFExtractData(gump_ret, i));
 		endfor
+
 		if (is_npc)
-			new_stats[86] := CStr(GFExtractData(gump_ret, 86));	// MoveSpeed word, keep as text
+			foreach field in NPC_TEXT_FIELDS
+				new_stats[field] := GetGumpText(gump_ret, field);	// 2026-10-25: a blank entry yields "" (86 was CStr(error) when blank)
+			endforeach
+			foreach field in NPC_NUMBER_FIELDS
+				new_stats[field] := CInt(GFExtractData(gump_ret, field));
+			endforeach
+			foreach field in NPC_CHECK_FIELDS
+				new_stats[field] := 0;
+				if (gump_ret[CHK_BASE + field])
+					new_stats[field] := 1;
+				endif
+			endforeach
 		endif
 
-		if ( gump_ret[0] <= 7 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
+		if ( gump_ret[0] == BTN_CUSTOM_HITS )
+			SetCustomHitsLevel(who, mobile);
+		elseif ( gump_ret[0] == BTN_SPELLS )
+			EditNpcSpells(who, mobile);
+		elseif ( gump_ret[0] > 42 )
+			// not a level button
+		elseif ( gump_ret[0] <= 7 )
+			var skill_change := GetLevelSkill(gump_ret[0]);
 			new_stats[28+SKILLID_ANATOMY ] := skill_change;
 			new_stats[28+SKILLID_FENCING ] := skill_change;
 			new_stats[28+SKILLID_HEALING ] := skill_change;
@@ -199,12 +273,7 @@ program textcmd_mobedit(who)
 			new_stats[28+SKILLID_TACTICS ] := skill_change;
 			new_stats[28+SKILLID_WRESTLING ] := skill_change;
 		elseif ( gump_ret[0] <= 14 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
+			var skill_change := GetLevelSkill(gump_ret[0]);
 			new_stats[28+SKILLID_ANIMALLORE ] := skill_change;
 			new_stats[28+SKILLID_TAMING ] := skill_change;
 			new_stats[28+SKILLID_ARCHERY ] := skill_change;
@@ -215,12 +284,7 @@ program textcmd_mobedit(who)
 			new_stats[28+SKILLID_VETERINARY ] := skill_change;
 			new_stats[28+SKILLID_FORENSICS ] := skill_change;
 		elseif ( gump_ret[0] <= 21 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
+			var skill_change := GetLevelSkill(gump_ret[0]);
 			new_stats[28+SKILLID_ALCHEMY ] := skill_change;
 			new_stats[28+SKILLID_EVALINT ] := skill_change;
 			new_stats[28+SKILLID_INSCRIPTION ] := skill_change;
@@ -230,12 +294,7 @@ program textcmd_mobedit(who)
 			new_stats[28+SKILLID_MAGICRESISTANCE ] := skill_change;
 			new_stats[28+SKILLID_SPIRITSPEAK ] := skill_change;
 		elseif ( gump_ret[0] <= 28 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
+			var skill_change := GetLevelSkill(gump_ret[0]);
 			new_stats[28+SKILLID_HIDING ] := skill_change;
 			new_stats[28+SKILLID_LOCKPICKING ] := skill_change;
 			new_stats[28+SKILLID_POISONING ] := skill_change;
@@ -245,12 +304,7 @@ program textcmd_mobedit(who)
 			new_stats[28+SKILLID_THROWING ] := skill_change;
 			new_stats[28+SKILLID_TACTICS ] := skill_change;
 		elseif ( gump_ret[0] <= 35 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
+			var skill_change := GetLevelSkill(gump_ret[0]);
 			new_stats[28+SKILLID_ARMSLORE ] := skill_change;
 			new_stats[28+SKILLID_BLACKSMITHY ] := skill_change;
 			new_stats[28+SKILLID_BOWCRAFT ] := skill_change;
@@ -260,20 +314,16 @@ program textcmd_mobedit(who)
 			new_stats[28+SKILLID_TAILORING ] := skill_change;
 			new_stats[28+SKILLID_TINKERING ] := skill_change;
 		elseif ( gump_ret[0] <= 42 )
-			var multiplier := ((Cdbl(gump_ret[0])/7) - CInt(gump_ret[0]/7))*7;
-			multiplier := Trunc(multiplier, 1);
-			var skill_change := 0;
-			if (multiplier)
-				skill_change := 60+(15*multiplier);
-			endif
-			new_stats[28+SKILLID_ARMSLORE ] := skill_change;
-			new_stats[28+SKILLID_BLACKSMITHY ] := skill_change;
-			new_stats[28+SKILLID_BOWCRAFT ] := skill_change;
-			new_stats[28+SKILLID_CARPENTRY ] := skill_change;
-			new_stats[28+SKILLID_LUMBERJACKING ] := skill_change;
-			new_stats[28+SKILLID_MINING ] := skill_change;
-			new_stats[28+SKILLID_TAILORING ] := skill_change;
-			new_stats[28+SKILLID_TINKERING ] := skill_change;
+			// 2026-10-25: was a copy of the Crafter branch, so the Bard level buttons set crafter skills (ZH2.5 1.1.5 port)
+			var skill_change := GetLevelSkill(gump_ret[0]);
+			new_stats[28+SKILLID_BEGGING ] := skill_change;
+			new_stats[28+SKILLID_CARTOGRAPHY ] := skill_change;
+			new_stats[28+SKILLID_ENTICEMENT ] := skill_change;
+			new_stats[28+SKILLID_HERDING ] := skill_change;
+			new_stats[28+SKILLID_MUSICIANSHIP ] := skill_change;
+			new_stats[28+SKILLID_PEACEMAKING ] := skill_change;
+			new_stats[28+SKILLID_PROVOCATION ] := skill_change;
+			new_stats[28+SKILLID_TASTEID ] := skill_change;
 		endif
 	endwhile
 	if (gump_ret[0] == 100)//Exit
@@ -282,20 +332,47 @@ program textcmd_mobedit(who)
         SendSysMessage(who, "Saved mob info to cfg!", FONT_NORMAL, 43);
         var props := array;
         //Print($"props is currently 1: " +props);
-        for (i := 1; i <= 85; i := i + 1)
-            props.append(array { desc_list[i], old_stats[i] });
+        var last_prop := 85;
+        if (is_npc)
+            last_prop := 106;
+        endif
+        for (i := 1; i <= last_prop; i := i + 1)
+            // 2026-10-25: skip the removed/unnamed slots; the mob as it is now, never a staged edit (ZH2.5 1.1.5 port)
+            if (i == 88 && is_npc)
+                // 2026-10-25: one "lootgroup" line per group, as templates list them (the gump shows them joined with "/")
+                var lootgroupids := SplitWords(CStr(old_stats[88]), "/");
+                foreach lootgroupid in lootgroupids
+                    if (lootgroupid != "0")	// JoinLootGroups shows "0" for none
+                        props.append(array { "lootgroup", lootgroupid });
+                    endif
+                endforeach
+            elseif (desc_list[i])
+                props.append(array { desc_list[i], old_stats[i] });
+            endif
         endfor
+        if (is_npc)
+            // 2026-10-25: the template's repeated "spell" lines; HITS/MANA/STAM above carry the vitals, never CustomHitsLevel
+            foreach spellname in orig_spells
+                props.append(array { "spell", spellname });
+            endforeach
+        endif
         //Print($"props is currently 2: ");
         //foreach el in (props)
             //Print($"elem: {el[1]} -> {el[2]}");
         //endforeach
         AppendConfigFileElem( ":spawnpoint:newnpcs", "npctemplate", old_stats[1], props );
 	elseif (gump_ret[0] == 999)//Apply Button
-		if (old_stats == new_stats)
+		if (old_stats == new_stats && !hits_changed && !spells_changed)
 			SendSysMessage(who, "No change detected.");
 			return 0;
 		endif
-		if (old_stats[1] != new_stats[1])
+		// 2026-10-25: staged Custom HP and Spells go first, so an HP typed into the gump still lands on top of the new maximum (ZH2.5 1.1.5 port)
+		if (is_npc)
+			ApplyStagedNpcEdits(who, mobile);
+		endif
+		if (!new_stats[1])
+			SendSysMessage(who, "Name can't be blank, left as "+mobile.name+".");
+		elseif (old_stats[1] != new_stats[1])
 			RecordCharacterNameChange(mobile, new_stats[1], ADMINPANEL_INITIATOR_STAFF);
 			mobile.name := new_stats[1];
 			SendSysMessage(who, "Changing Name to: "+new_stats[1]);
@@ -360,7 +437,7 @@ program textcmd_mobedit(who)
 		endif
 		if (old_stats[10] != new_stats[10])
 			mobile.color := Cint(new_stats[10]);
-			SendSysMessage(who, "Changing Mobile Graphic to: "+mobile.color);
+			SendSysMessage(who, "Changing Mobile Color to: "+mobile.color);
 		endif
 		if (old_stats[11] != new_stats[11])
 			mobile.ar_mod := 0;
@@ -417,35 +494,16 @@ program textcmd_mobedit(who)
 			SetObjProperty(mobile, "HealingIncrease", Cint(new_stats[21]));
 			SendSysMessage(who, "Changing Healing Increase to: "+new_stats[21]);
 		endif
-		if (old_stats[22] != new_stats[22])
-			EraseObjProperty(mobile, "magicefficiency");
-			SetObjProperty(mobile, "magicefficiency", Cint(new_stats[22]));
-			SendSysMessage(who, "Changing Magic Efficiency to: "+new_stats[22]);
-		endif
+		// 2026-10-25: these two wrote "magicimmunity"/"magicreflection", but every reader and this tool's own load use PermMagicImmunity/Permmr, so the edit never showed or took effect; 22 and 25-27 removed, nothing read them (ZH2.5 1.1.5 port)
 		if (old_stats[23] != new_stats[23])
-			EraseObjProperty(mobile, "magicimmunity");
-			SetObjProperty(mobile, "magicimmunity", Cint(new_stats[23]));
+			EraseObjProperty(mobile, "PermMagicImmunity");
+			SetObjProperty(mobile, "PermMagicImmunity", Cint(new_stats[23]));
 			SendSysMessage(who, "Changing Blackrock to: "+new_stats[23]);
 		endif
 		if (old_stats[24] != new_stats[24])
-			EraseObjProperty(mobile, "magicreflection");
-			SetObjProperty(mobile, "magicreflection", Cint(new_stats[24]));
+			EraseObjProperty(mobile, "Permmr");
+			SetObjProperty(mobile, "Permmr", Cint(new_stats[24]));
 			SendSysMessage(who, "Changing Moonstone to: "+new_stats[24]);
-		endif
-		if (old_stats[25] != new_stats[25])
-			EraseObjProperty(mobile, "tempmagicimmunity");
-			SetObjProperty(mobile, "tempmagicimmunity", Cint(new_stats[25]));
-			SendSysMessage(who, "Changing Absorbsion to: "+new_stats[25]);
-		endif
-		if (old_stats[26] != new_stats[26])
-			EraseObjProperty(mobile, "tempmagicreflection");
-			SetObjProperty(mobile, "tempmagicreflection", Cint(new_stats[26]));
-			SendSysMessage(who, "Changing Warding to: "+new_stats[26]);
-		endif
-		if (old_stats[27] != new_stats[27])
-			EraseObjProperty(mobile, "temppoisonimmunity");
-			SetObjProperty(mobile, "temppoisonimmunity", Cint(new_stats[27]));
-			SendSysMessage(who, "Changing Anitdotes to: "+new_stats[27]);
 		endif
 
 		j := 28;
@@ -456,6 +514,10 @@ program textcmd_mobedit(who)
 			endif
 			j +=1;
 		endfor
+
+		if (is_npc)
+			ApplyNpcSettings(who, mobile);
+		endif
 	endif
 endprogram
 
@@ -465,15 +527,32 @@ function gump_mobedit(who)
 	
 	GFPage(mobedit, 0);
 	
-	GFResizePic(mobedit, 16, 19, 9300, 473, 381);	// 2026-09-30: +30px for the Move Speed row
+	var btn_y := 364;
+	if (is_npc)
+		// 2026-10-25: NPCs get two more rows (Custom HP, Spells) above the Cancel/Apply row (ZH2.5 1.1.5 port)
+		btn_y := 444;
+		GFResizePic(mobedit, 16, 19, 9300, 473, 461);	// background first, the buttons below sit on top of it
+		GFAddButton(mobedit, 30, 392, 4005, 4006, GF_CLOSE_BTN, BTN_CUSTOM_HITS);
+		if (hits_changed && hits_value)
+			GFTextLine(mobedit, 65, 394, TEXT_COLOR, "Custom HP: "+hits_value+" (set on Apply)");
+		elseif (hits_changed)
+			GFTextLine(mobedit, 65, 394, TEXT_COLOR, "Custom HP: template (set on Apply)");
+		else
+			GFTextLine(mobedit, 65, 394, TEXT_COLOR, "Custom HP: max "+old_stats[5]+" (edit)");
+		endif
+		GFAddButton(mobedit, 30, 416, 4005, 4006, GF_CLOSE_BTN, BTN_SPELLS);
+		GFTextLine(mobedit, 65, 418, TEXT_COLOR, "Spells: "+npc_spells.size()+" (edit)");
+	else
+		GFResizePic(mobedit, 16, 19, 9300, 473, 381);	// 2026-09-30: +30px for the Move Speed row
+	endif
 	GFTextLine(mobedit, 207, 25, TEXT_COLOR, "Edit Mobile");
 	GFResizePic(mobedit, 273, 62, 83, 199, 233);
 	//Cancel
-	GFAddButton(mobedit, 30, 364, 2121, 2120, GF_CLOSE_BTN, 100);
+	GFAddButton(mobedit, 30, btn_y, 2121, 2120, GF_CLOSE_BTN, 100);
 	//Apply
-	GFAddButton(mobedit, 100, 364, 2123, 2124, GF_CLOSE_BTN, 999);
+	GFAddButton(mobedit, 100, btn_y, 2123, 2124, GF_CLOSE_BTN, 999);
 	//Log to file
-	GFAddButton(mobedit, 170, 364, 5202, 5203, GF_CLOSE_BTN, 777);
+	GFAddButton(mobedit, 170, btn_y, 5202, 5203, GF_CLOSE_BTN, 777);
 
 	//PageButtons	
 	GFAddButton(mobedit, 255, 85, 216, 216, GF_PAGE_BTN, 1);
@@ -494,6 +573,15 @@ function gump_mobedit(who)
 	GFTextLine(mobedit, 205, 255, TEXT_COLOR, "Prots 2");
 	GFAddButton(mobedit, 255, 285, 216, 216, GF_PAGE_BTN, 9);
 	GFTextLine(mobedit, 212, 280, TEXT_COLOR, "Misc");
+	if (is_npc)
+		// 2026-10-25: NPC-only pages (ZH2.5 1.1.5 port)
+		GFAddButton(mobedit, 255, 310, 216, 216, GF_PAGE_BTN, 10);
+		GFTextLine(mobedit, 200, 305, TEXT_COLOR, "AI/Loot");
+		GFAddButton(mobedit, 255, 335, 216, 216, GF_PAGE_BTN, 11);
+		GFTextLine(mobedit, 212, 330, TEXT_COLOR, "Flags");
+		GFAddButton(mobedit, 255, 360, 216, 216, GF_PAGE_BTN, 12);
+		GFTextLine(mobedit, 209, 355, TEXT_COLOR, "Regen");
+	endif
 
 	GFTextLine(mobedit, 335, 290, TEXT_COLOR, "Set Lvl");
 
@@ -774,24 +862,17 @@ function gump_mobedit(who)
 	GFPage(mobedit, 8);
 
 	//Reading More Prot Levels
-	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Temporary Protections");
+	// 2026-10-25: ME, Absorbsion, Warding and Antidotes rows removed -- they were computed from equipment (or unread CProps), so editing them did nothing (ZH2.5 1.1.5 port)
+	GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Other Protections");
 	GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Free Action");
 	GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Healing");
-	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "ME");
-	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Blackrock");
-	GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Moonstone");
-	GFTextRight(mobedit, 402, 193, TEXT_COLOR, "Absorbsion");
-	GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Warding");
-	GFTextRight(mobedit, 402, 238, TEXT_COLOR, "Antidotes");
+	GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Blackrock");
+	GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Moonstone");
 
 	GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[20], 20);
 	GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[21], 21);
-	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[22], 22);
-	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[23], 23);
-	GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[24], 24);
-	GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[25], 25);
-	GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[26], 26);
-	GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[27], 27);
+	GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[23], 23);
+	GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[24], 24);
 
 	GFPage(mobedit, 9);
 
@@ -822,7 +903,97 @@ function gump_mobedit(who)
 	GFTextEntry(mobedit, 408, 256, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_MYSTICISM], 28+SKILLID_MYSTICISM);
 	GFTextEntry(mobedit, 408, 278, 59, 20, TEXT_COLOR, new_stats[28+SKILLID_IMBUING], 28+SKILLID_IMBUING);
 
+	if (is_npc)
+		GFPage(mobedit, 10);
+
+		// 2026-10-25: AI, titles and loot (ZH2.5 1.1.5 port)
+		GFTextRight(mobedit, 402, 46, TEXT_COLOR, "AI / Titles / Loot");
+		// The text rows get wider boxes, drawn over the page 0 number boxes
+		GFResizePic(mobedit, 330, 79, 9550, 127, 22);
+		GFResizePic(mobedit, 330, 101, 9550, 127, 22);
+		GFResizePic(mobedit, 330, 124, 9550, 127, 22);
+		GFTextLine(mobedit, 280, 80, TEXT_COLOR, "Script");
+		GFTextLine(mobedit, 280, 102, TEXT_COLOR, "Prefix");
+		GFTextLine(mobedit, 280, 125, TEXT_COLOR, "Suffix");
+		GFTextEntry(mobedit, 336, 80, 118, 20, TEXT_COLOR, new_stats[87], 87);
+		GFTextEntry(mobedit, 336, 102, 118, 20, TEXT_COLOR, new_stats[93], 93);
+		GFTextEntry(mobedit, 336, 125, 118, 20, TEXT_COLOR, new_stats[94], 94);
+
+		GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Lootgroup");
+		GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Magic Item Level");
+		GFTextRight(mobedit, 402, 192, TEXT_COLOR, "Magic Item Chance");
+		GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Worn Items Drop");
+		GFTextRight(mobedit, 402, 237, TEXT_COLOR, "Pack Items Drop");
+		GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[88], 88);
+		GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[89], 89);
+		GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[90], 90);
+		GFCheckBox(mobedit, 418, 216, 210, 211, new_stats[91], CHK_BASE + 91);
+		GFCheckBox(mobedit, 418, 238, 210, 211, new_stats[92], CHK_BASE + 92);
+
+		GFPage(mobedit, 11);
+
+		// Boss and skill flags
+		GFResizePic(mobedit, 399, 258, 9550, 57, 22);
+		GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Boss / Flags");
+		GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Lesser Boss");
+		GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Boss");
+		GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Super Boss");
+		GFTextRight(mobedit, 402, 147, TEXT_COLOR, "Champion (0-4)");
+		GFTextRight(mobedit, 402, 170, TEXT_COLOR, "Tame Diff (0 no)");
+		GFTextRight(mobedit, 402, 192, TEXT_COLOR, "Snoop Diff (0 no)");
+		GFTextRight(mobedit, 402, 215, TEXT_COLOR, "Steal Diff (0 no)");
+		GFTextRight(mobedit, 402, 237, TEXT_COLOR, "Provoke Diff (0 no)");
+		GFTextRight(mobedit, 402, 260, TEXT_COLOR, "Peace Diff (0 no)");
+		GFCheckBox(mobedit, 418, 80, 210, 211, new_stats[95], CHK_BASE + 95);
+		GFCheckBox(mobedit, 418, 102, 210, 211, new_stats[96], CHK_BASE + 96);
+		GFCheckBox(mobedit, 418, 125, 210, 211, new_stats[97], CHK_BASE + 97);
+		GFTextEntry(mobedit, 408, 147, 59, 20, TEXT_COLOR, new_stats[98], 98);
+		GFTextEntry(mobedit, 408, 170, 59, 20, TEXT_COLOR, new_stats[99], 99);
+		GFTextEntry(mobedit, 408, 192, 59, 20, TEXT_COLOR, new_stats[100], 100);
+		GFTextEntry(mobedit, 408, 215, 59, 20, TEXT_COLOR, new_stats[101], 101);
+		GFTextEntry(mobedit, 408, 237, 59, 20, TEXT_COLOR, new_stats[102], 102);
+		GFTextEntry(mobedit, 408, 260, 59, 20, TEXT_COLOR, new_stats[103], 103);
+
+		GFPage(mobedit, 12);
+
+		// 2026-10-25: per-instance regen, points per minute (the HITSREGEN/MANAREGEN/STAMREGEN slot of npcvitals.inc); blank = back to the template
+		GFTextRight(mobedit, 402, 46, TEXT_COLOR, "Regen (points per minute)");
+		GFTextRight(mobedit, 402, 80, TEXT_COLOR, "Hit Points");
+		GFTextRight(mobedit, 402, 102, TEXT_COLOR, "Mana");
+		GFTextRight(mobedit, 402, 125, TEXT_COLOR, "Stamina");
+		GFTextEntry(mobedit, 408, 80, 59, 20, TEXT_COLOR, new_stats[104], 104);
+		GFTextEntry(mobedit, 408, 102, 59, 20, TEXT_COLOR, new_stats[105], 105);
+		GFTextEntry(mobedit, 408, 125, 59, 20, TEXT_COLOR, new_stats[106], 106);
+		GFTextLine(mobedit, 280, 160, TEXT_COLOR, "Blank = template value");
+		GFTextLine(mobedit, 280, 180, TEXT_COLOR, "Engine default is 12");
+	endif
+
 	return GFSendGump(who, mobedit);
+
+endfunction
+
+// 2026-10-25: GFExtractData errors on a blank text entry (the reply is only "<id>: "), so treat that as "" (ZH2.5 1.1.5 port)
+function GetGumpText(reply, id)
+
+	var text := GFExtractData(reply, id);
+	if (text == error)
+		return "";
+	endif
+
+	return text;
+
+endfunction
+
+// Level buttons come in rows of 7: 1-6 give 75/90/105/120/135/150, the 7th clears to 0
+// 2026-10-25: integer modulo; the old (d/7 - int(d/7))*7 float trick could land a hair under the step and give 148.5 (ZH2.5 1.1.5 port)
+function GetLevelSkill(button)
+
+	var level := CInt(button) % 7;
+	if (!level)
+		return 0;
+	endif
+
+	return 60 + (15 * level);
 
 endfunction
 
@@ -871,19 +1042,9 @@ function CalculateProtections(who)
 	freeaction := CInt(GetObjProperty(who, "FreeAction"));
 
 	healing := CInt(GetObjProperty(who, "HealingIncrease"));
-	magicefficiency := GetMagicEfficiencyPenalty( who );
-
-	if (magicefficiency < 0)
-		magicefficiency := abs(magicefficiency);
-	else
-		magicefficiency := magicefficiency - (magicefficiency*2);
-	endif
 
 	magicimmunity := CInt(GetObjProperty(who, "PermMagicImmunity"));
 	magicreflection := CInt(GetObjProperty(who, "Permmr"));
-	tempmagicimmunity := GetImmunityCharges(who);
-	tempmagicreflection := GetReflectionCharges(who);
-	temppoisonimmunity := GetPoisonCharges(who);
 
 	old_stats[12] := earth;
 	old_stats[13] := fire;
@@ -895,52 +1056,591 @@ function CalculateProtections(who)
 	old_stats[19] := poison;
 	old_stats[20] := freeaction;
 	old_stats[21] := healing;
-	old_stats[22] := magicefficiency;
+	old_stats[22] := 0;	// 2026-10-25: unused, was ME (ZH2.5 1.1.5 port)
 	old_stats[23] := magicimmunity;
 	old_stats[24] := magicreflection;
-	old_stats[25] := tempmagicimmunity;
-	old_stats[26] := tempmagicreflection;
-	old_stats[27] := temppoisonimmunity;
+	old_stats[25] := 0;	// unused, was Absorbsion
+	old_stats[26] := 0;	// unused, was Warding
+	old_stats[27] := 0;	// unused, was Antidotes
 endfunction
 
-function GetImmunityCharges(who)
+///////////////////////////////////////////////////////////////////////////////////////
+// 2026-10-25: NPC pages, staged edits, tame/snoop/steal/provoke/peace, regen
+// (ZH2.5 1.1.5 port, adapted to ZH3.0 template fields and npcvitals.inc)
+///////////////////////////////////////////////////////////////////////////////////////
 
-var charges := 0;
+// Asks for a new max HP and stages it; ApplyStagedNpcEdits writes it when Apply is pressed
+function SetCustomHitsLevel(who, mobile)
 
-foreach thing in ListEquippedItems( who )
-	if( GetObjProperty( thing, "MagicImmunity" ) )
-		charges := charges + Cint( GetObjProperty( thing, "MagicImmunity" ) );
+	var template_hits := GetNpcVitalTemplateValue(mobile, "HITS");
+	if (!template_hits)
+		template_hits := "none";
 	endif
-endforeach
-	
-return charges;
+
+	var entered := RequestGump(who, "Enter the new maximum HP (1 - "+MAX_CUSTOM_HITS+")", "0 puts the npc back on its template HITS ("+template_hits+").", old_stats[5], CANCEL_BTN_ON);
+	if (TypeOf(entered) != "String")
+		SendSysMessage(who, "Custom HP unchanged.", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	var level := CInt(entered);
+	if ((!level && entered != "0") || level < 0 || level > MAX_CUSTOM_HITS)
+		SendSysMessage(who, "Enter a number from 0 to "+MAX_CUSTOM_HITS+".", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	hits_value := level;
+	hits_changed := 1;
+	if (level)
+		SendSysMessage(who, "Max HP "+level+" is set when you press Apply.");
+	else
+		SendSysMessage(who, "Max HP goes back to the template when you press Apply.");
+	endif
+
+	return 1;
 
 endfunction
 
-function GetReflectionCharges(who)
+// Writes what the Custom HP and Spells buttons staged
+function ApplyStagedNpcEdits(who, mobile)
 
-var charges := 0;
-
-foreach thing in ListEquippedItems( who )
-	if( GetObjProperty( thing, "SpellReflect" ) )
-		charges := charges + Cint( GetObjProperty( thing, "SpellReflect" ) );
+	if (hits_changed)
+		// SetNpcVitalOverride / ClearNpcVitalOverride both RecalcVitals, so the vitalInit.src max hook runs on the new entry
+		if (hits_value)
+			SetNpcVitalOverride(mobile, "HITS", hits_value);
+			SendSysMessage(who, "Changing max HP to: "+hits_value);
+		else
+			ClearNpcVitalOverride(mobile, "HITS");
+			SendSysMessage(who, "Max HP is back on the template value.");
+		endif
+		SetHP(mobile, GetMaxHP(mobile));
 	endif
-endforeach
-	
-return charges;
+
+	if (spells_changed)
+		// Matching the template keeps it on the template (and any doubled-up spells it lists)
+		if (spells_to_template)
+			EraseObjProperty(mobile, "CustomSpells");
+			SendSysMessage(who, "Spells set to the template's "+npc_spells.size()+".");
+		else
+			SetObjProperty(mobile, "CustomSpells", npc_spells);
+			SendSysMessage(who, "Spells saved: "+npc_spells.size()+".");
+		endif
+	endif
 
 endfunction
 
-function GetPoisonCharges(who)
+// Reads the AI / Loot, Flags and Regen page values off the npc (instance props first, then its npcdesc template)
+function LoadNpcSettings(mobile)
 
-var charges := 0;
+	var elem := FindConfigElem(ReadConfigFile("::npcdesc"), mobile.npctemplate);
 
-foreach thing in ListEquippedItems( who )
-	if( GetObjProperty( thing, "PoisonImmunity" ) )
-		charges := charges + Cint( GetObjProperty( thing, "PoisonImmunity" ) );
+	old_stats[87] := mobile.script;
+
+	// CustomLoot is { MagicItemChance, MagicItemLevel, lootgroup }, same as the customnpc spawnpoint gump
+	var cloot := GetObjProperty(mobile, "CustomLoot");
+	if (cloot)
+		old_stats[88] := CStr(CInt(cloot[3]));
+		old_stats[89] := CInt(cloot[2]);
+		old_stats[90] := CInt(cloot[1]);
+	else
+		old_stats[88] := JoinLootGroups(GetConfigStringArray(elem, "lootgroup"));
+		old_stats[89] := CInt(GetConfigInt(elem, "MagicItemLevel"));
+		old_stats[90] := CInt(GetConfigInt(elem, "MagicItemChance"));
 	endif
-endforeach
-	
-return charges;
+
+	old_stats[91] := ItemsDrop(GetWornItems(mobile));
+	old_stats[92] := ItemsDrop(GetPackItems(mobile));
+	old_stats[93] := CStr(mobile.title_prefix);
+	old_stats[94] := CStr(mobile.title_suffix);
+	old_stats[95] := HasFlag(mobile, "LesserBoss");
+	old_stats[96] := HasFlag(mobile, "Boss");
+	old_stats[97] := HasFlag(mobile, "SuperBoss");
+	old_stats[98] := CInt(GetObjProperty(mobile, "Champion"));
+	old_stats[99] := GetTameDifficulty(mobile, elem);
+	old_stats[100] := GetSnoopDifficulty(mobile);
+	old_stats[101] := GetStealDifficulty(mobile);
+	old_stats[102] := GetShownBardDifficulty(mobile, elem, "provoke");
+	old_stats[103] := GetShownBardDifficulty(mobile, elem, "peacemake");
+	old_stats[104] := RegenText(mobile, "HITSREGEN");
+	old_stats[105] := RegenText(mobile, "MANAREGEN");
+	old_stats[106] := RegenText(mobile, "STAMREGEN");
+
+endfunction
+
+function ApplyNpcSettings(who, mobile)
+
+	var refresh := 0;
+
+	if (old_stats[87] != new_stats[87])
+		if (!new_stats[87])
+			SendSysMessage(who, "Script can't be blank, left as "+mobile.script+".");
+		else
+			mobile.script := new_stats[87];
+			RestartScript(mobile);
+			SendSysMessage(who, "Changing Script to: "+mobile.script);
+		endif
+	endif
+
+	if (old_stats[88] != new_stats[88] || old_stats[89] != new_stats[89] || old_stats[90] != new_stats[90])
+		// Same rule as the customnpc spawnpoint gump: loot is admin+ only
+		if (who.cmdlevel > 3)
+			var lootgroup := CInt(new_stats[88]);
+			SetObjProperty(mobile, "CustomLoot", array{ CInt(new_stats[90]), CInt(new_stats[89]), lootgroup });
+			SendSysMessage(who, "Changing Loot to: Lootgroup "+lootgroup+", Magic Item Level "+new_stats[89]+", Magic Item Chance "+new_stats[90]);
+			if (CStr(lootgroup) != new_stats[88])
+				SendSysMessage(who, "Custom loot only holds one lootgroup, kept "+lootgroup+".", FONT_NORMAL, 43);
+			endif
+		else
+			SendSysMessage(who, "Loot unchanged, need admin+ rights for that.", FONT_NORMAL, 43);
+		endif
+	endif
+
+	if (old_stats[91] != new_stats[91])
+		SetItemsNoLoot(GetWornItems(mobile), !new_stats[91]);
+		SendSysMessage(who, "Worn items drop on death: "+YesNoText(new_stats[91]));
+	endif
+	if (old_stats[92] != new_stats[92])
+		SetItemsNoLoot(GetPackItems(mobile), !new_stats[92]);
+		SendSysMessage(who, "Backpack items drop on death: "+YesNoText(new_stats[92]));
+	endif
+
+	if (old_stats[93] != new_stats[93])
+		mobile.title_prefix := new_stats[93];
+		SendSysMessage(who, "Changing Title Prefix to: "+new_stats[93]);
+	endif
+	if (old_stats[94] != new_stats[94])
+		mobile.title_suffix := new_stats[94];
+		SendSysMessage(who, "Changing Title Suffix to: "+new_stats[94]);
+	endif
+
+	if (old_stats[95] != new_stats[95])
+		SetFlag(mobile, "LesserBoss", new_stats[95]);
+		SendSysMessage(who, "Lesser Boss: "+YesNoText(new_stats[95]));
+		refresh := 1;
+	endif
+	if (old_stats[96] != new_stats[96])
+		SetFlag(mobile, "Boss", new_stats[96]);
+		SendSysMessage(who, "Boss: "+YesNoText(new_stats[96]));
+		refresh := 1;
+	endif
+	if (old_stats[97] != new_stats[97])
+		SetFlag(mobile, "SuperBoss", new_stats[97]);
+		SendSysMessage(who, "Super Boss: "+YesNoText(new_stats[97]));
+		refresh := 1;
+	endif
+	if (old_stats[98] != new_stats[98])
+		SetNumberProp(mobile, "Champion", new_stats[98]);
+		SendSysMessage(who, "Changing Champion to: "+CInt(GetObjProperty(mobile, "Champion")));
+	endif
+
+	if (old_stats[99] != new_stats[99])
+		if (new_stats[99] > 0)
+			EraseObjProperty(mobile, "notame");
+			EraseObjProperty(mobile, "untamable");
+			SetObjProperty(mobile, "tamableAt", CInt(new_stats[99]));
+			SendSysMessage(who, "Changing Tame Difficulty to: "+new_stats[99]);
+			if (GetObjProperty(mobile, "SuperBoss"))
+				SendSysMessage(who, "Super Bosses can never be tamed.", FONT_NORMAL, 43);
+			endif
+		else
+			EraseObjProperty(mobile, "tamableAt");
+			// untamable, not notame: taming checks both, but Spell Bind, Control Undead,
+			// Beastal Bond and herding only check untamable (same prop .untamable sets)
+			SetObjProperty(mobile, "untamable", 1);
+			SendSysMessage(who, "Npc can no longer be tamed or controlled.");
+		endif
+	endif
+
+	// snoopme / stealme are kept even at 0: GetNpcDifficultyField (include/npcdifficulty) reads a 0 instance value as "cannot"
+	if (old_stats[100] != new_stats[100])
+		SetObjProperty(mobile, "snoopme", MaxZero(new_stats[100]));
+		SendSysMessage(who, "Changing Snoop Difficulty to: "+MaxZero(new_stats[100]));
+	endif
+	if (old_stats[101] != new_stats[101])
+		SetObjProperty(mobile, "stealme", MaxZero(new_stats[101]));
+		SendSysMessage(who, "Changing Steal Difficulty to: "+MaxZero(new_stats[101]));
+	endif
+
+	// provoke / peacemake: instance props beat the template fields in provocation.src / peacemaking.src, 0 = immune
+	if (old_stats[102] != new_stats[102])
+		SetObjProperty(mobile, "provoke", MaxZero(new_stats[102]));
+		if (MaxZero(new_stats[102]))
+			SendSysMessage(who, "Changing Provoke Difficulty to: "+MaxZero(new_stats[102]));
+		else
+			SendSysMessage(who, "Npc can no longer be provoked.");
+		endif
+	endif
+	if (old_stats[103] != new_stats[103])
+		SetObjProperty(mobile, "peacemake", MaxZero(new_stats[103]));
+		if (MaxZero(new_stats[103]))
+			SendSysMessage(who, "Changing Peacemaking Difficulty to: "+MaxZero(new_stats[103]));
+		else
+			SendSysMessage(who, "Npc can no longer be peaced.");
+		endif
+	endif
+
+	if (old_stats[104] != new_stats[104])
+		ApplyRegenEdit(who, mobile, "HITSREGEN", VITALID_LIFE, new_stats[104], "HP");
+	endif
+	if (old_stats[105] != new_stats[105])
+		ApplyRegenEdit(who, mobile, "MANAREGEN", VITALID_MANA, new_stats[105], "Mana");
+	endif
+	if (old_stats[106] != new_stats[106])
+		ApplyRegenEdit(who, mobile, "STAMREGEN", VITALID_STAMINA, new_stats[106], "Stamina");
+	endif
+
+	// Boss name colours come from the name colour hook; a forced move resends the mobile to nearby clients
+	if (refresh)
+		MoveObjectToLocation(mobile, mobile.x, mobile.y, mobile.z, mobile.realm, MOVEOBJECT_FORCELOCATION);
+	endif
+
+endfunction
+
+function MaxZero(value)
+
+	value := CInt(value);
+	if (value < 0)
+		return 0;
+	endif
+
+	return value;
+
+endfunction
+
+// Regen in points per minute as the npc has it now: instance entry, else the template field, else the engine default
+function RegenText(mobile, field)
+
+	var setting := GetNpcVitalSetting(mobile, field);	// hundredths per minute, -1 = no field
+	if (setting < 0)
+		setting := CORE_SETTINGS_DEFAULT_REGEN_RATE;
+	endif
+
+	if (setting % 100)
+		return CStr(CDbl(setting) / 100);
+	endif
+
+	return CStr(setting / 100);
+
+endfunction
+
+// Stores the typed rate in the npc's HITSREGEN/MANAREGEN/STAMREGEN slot (blank = back to the template), then applies it
+// at once the way modsetup.inc does at AI start, so the edit works without restarting the AI.
+function ApplyRegenEdit(who, mobile, field, vitalid, text, label)
+
+	if (!text)
+		ClearNpcVitalOverride(mobile, field);
+		SendSysMessage(who, label+" regen is back on the template value.");
+	else
+		var points := CDbl(text);
+		if (points < 0 || (points == 0 && text[1, 1] != "0"))
+			SendSysMessage(who, label+" regen must be a number of points per minute (0 or more) -- not changed.", FONT_NORMAL, 43);
+			return 0;
+		endif
+		SetNpcVitalOverride(mobile, field, points);
+		SendSysMessage(who, "Changing "+label+" regen to: "+points+" per minute");
+	endif
+
+	var setting := GetNpcVitalSetting(mobile, field);
+	if (setting >= 0)
+		SetVitalRegenRateMod(mobile, vitalid, "template", setting - CORE_SETTINGS_DEFAULT_REGEN_RATE);
+	else
+		ClearVitalRegenRateMod(mobile, vitalid, "template");
+	endif
+
+	return 1;
+
+endfunction
+
+function JoinLootGroups(groups)
+
+	if (!groups.size())
+		return "0";
+	endif
+
+	var text := "";
+	foreach group in groups
+		if (text)
+			text := text+"/";
+		endif
+		text := text+group;
+	endforeach
+
+	return text;
+
+endfunction
+
+// Hair, beard and the mount piece are equipped too but aren't loot
+function GetWornItems(mobile)
+
+	var skip_layers := array{ LAYER_HAIR, LAYER_BEARD, LAYER_MOUNT, LAYER_PACK };
+	var items := array;
+	var worn := ListEquippedItems(mobile);
+	foreach item in worn
+		if (!(item.layer in skip_layers))
+			items.append(item);
+		endif
+	endforeach
+
+	return items;
+
+endfunction
+
+function GetPackItems(mobile)
+
+	if (!mobile.backpack)
+		return array;
+	endif
+
+	return EnumerateItemsInContainer(mobile.backpack);
+
+endfunction
+
+// 1 unless every item is flagged noloot (death.src destroys those instead of leaving them on the corpse)
+function ItemsDrop(items)
+
+	foreach item in items
+		if (!GetObjProperty(item, "noloot"))
+			return 1;
+		endif
+	endforeach
+
+	if (items.size())
+		return 0;
+	endif
+
+	return 1;
+
+endfunction
+
+function SetItemsNoLoot(items, noloot)
+
+	foreach item in items
+		if (noloot)
+			SetObjProperty(item, "noloot", 1);
+		else
+			EraseObjProperty(item, "noloot");
+		endif
+	endforeach
+
+endfunction
+
+function HasFlag(mobile, prop)
+
+	if (GetObjProperty(mobile, prop))
+		return 1;
+	endif
+
+	return 0;
+
+endfunction
+
+function SetFlag(mobile, prop, on)
+
+	if (on)
+		SetObjProperty(mobile, prop, 1);
+	else
+		EraseObjProperty(mobile, prop);
+	endif
+
+endfunction
+
+// 0 or less erases the prop
+function SetNumberProp(mobile, prop, value)
+
+	value := CInt(value);
+	if (value > 0)
+		SetObjProperty(mobile, prop, value);
+	else
+		EraseObjProperty(mobile, prop);
+	endif
+
+endfunction
+
+// Mirrors pkg/std/taming/taming.src: notame/untamable block it, tamableAt overrides the template tameskill
+function GetTameDifficulty(mobile, elem)
+
+	if (GetObjProperty(mobile, "notame") || GetObjProperty(mobile, "untamable"))
+		return 0;
+	endif
+
+	var difficulty := CInt(GetObjProperty(mobile, "tamableAt"));
+	if (!difficulty)
+		difficulty := CInt(GetConfigInt(elem, "tameskill"));
+	endif
+
+	return difficulty;
+
+endfunction
+
+// Mirrors provocation.src / peacemaking.src: an instance prop beats the template, 0 means never;
+// otherwise invul templates can't be provoked/peaced and a missing template value defaults to 100, capped at 150
+function GetShownBardDifficulty(mobile, elem, field)
+
+	var custom := GetNpcDifficultyOverride(mobile, field);
+	if (custom >= 0)
+		return custom;
+	endif
+
+	if (!elem || elem.Privs == "invul")
+		return 0;
+	endif
+
+	var difficulty := CInt(GetConfigInt(elem, field));
+	if (!difficulty)
+		difficulty := 100;
+	elseif (difficulty > 150)
+		difficulty := 150;
+	endif
+
+	return difficulty;
+
+endfunction
+
+function GetTemplateSpells(mobile)
+
+	var elem := FindConfigElem(ReadConfigFile("::npcdesc"), mobile.npctemplate);
+	if (!elem)
+		return array;
+	endif
+
+	return GetConfigStringArray(elem, "spell");
+
+endfunction
+
+// A CustomSpells CProp (even an empty one) replaces the template's spell lines, see cast_offensive_spell() in npccast.inc
+function GetNpcSpells(mobile)
+
+	var custom := GetObjProperty(mobile, "CustomSpells");
+	if (custom != error)
+		return custom;
+	endif
+
+	return GetTemplateSpells(mobile);
+
+endfunction
+
+// Every spell npccast.inc can cast, plus whatever this npc already has, alphabetical
+function GetAllMobSpells()
+
+	var found := dictionary;
+	var known := GetNpcSpellNames();
+	foreach spell in known
+		found[spell] := 1;
+	endforeach
+
+	foreach spell in npc_spells
+		found[spell] := 1;
+	endforeach
+
+	return found.keys();
+
+endfunction
+
+// Compares as sets: a template that lists a spell twice (to cast it more often) still matches
+function SameSpells(list_a, list_b)
+
+	foreach spell in list_a
+		if (!(spell in list_b))
+			return 0;
+		endif
+	endforeach
+	foreach spell in list_b
+		if (!(spell in list_a))
+			return 0;
+		endif
+	endforeach
+
+	return 1;
+
+endfunction
+
+// Checkbox list of every mob spell; Save stages the choice for Apply
+function EditNpcSpells(who, mobile)
+
+	var all_spells := GetAllMobSpells();
+	var per_page := SPELLS_PER_COLUMN * 3;
+	var pages := CInt((all_spells.size() + per_page - 1) / per_page);
+	if (pages < 1)
+		pages := 1;
+	endif
+
+	var gump := GFCreateGump();
+	GFPage(gump, 0);
+	GFResizePic(gump, 16, 19, 9300, 500, 470);
+	GFTextLine(gump, 40, 30, TEXT_COLOR, "Spells for "+mobile.name+" - tick the ones it should cast");
+	if (!(mobile.script in CASTER_SCRIPTS))
+		GFTextLine(gump, 40, 50, 33, "AI script '"+mobile.script+"' doesn't cast spells, use spellkillpcs");
+	endif
+
+	//Cancel
+	GFAddButton(gump, 30, 430, 2121, 2120, GF_CLOSE_BTN, 2);
+	//Save
+	GFAddButton(gump, 100, 430, 2123, 2124, GF_CLOSE_BTN, 1);
+	//Back to the template's own spells
+	GFAddButton(gump, 170, 432, 4005, 4006, GF_CLOSE_BTN, 3);
+	GFTextLine(gump, 205, 433, TEXT_COLOR, "Template");
+
+	var page := 1;
+	var i;
+	GFPage(gump, page);
+	GFTextLine(gump, 330, 433, TEXT_COLOR, "Page 1 of "+pages);
+	for (i := 1; i <= all_spells.size(); i := i + 1)
+		var slot := (i - 1) % per_page;
+		if (i > 1 && slot == 0)
+			GFAddButton(gump, 470, 430, 4005, 4006, GF_PAGE_BTN, page + 1);
+			page := page + 1;
+			GFPage(gump, page);
+			GFAddButton(gump, 435, 430, 4014, 4015, GF_PAGE_BTN, page - 1);
+			GFTextLine(gump, 330, 433, TEXT_COLOR, "Page "+page+" of "+pages);
+		endif
+
+		var x := 40 + (CInt(slot / SPELLS_PER_COLUMN) * 155);
+		var y := 75 + ((slot % SPELLS_PER_COLUMN) * 23);
+		var checked := 0;
+		if (all_spells[i] in npc_spells)
+			checked := 1;
+		endif
+		GFCheckBox(gump, x, y, 210, 211, checked, SPELL_CHK_BASE + i);
+		GFTextLine(gump, x + 25, y, TEXT_COLOR, all_spells[i]);
+	endfor
+
+	var result := GFSendGump(who, gump);
+
+	var chosen := array;
+	if (result[0] == 1)
+		for (i := 1; i <= all_spells.size(); i := i + 1)
+			if (result[SPELL_CHK_BASE + i])
+				chosen.append(all_spells[i]);
+			endif
+		endfor
+	elseif (result[0] == 3)
+		chosen := GetTemplateSpells(mobile);
+	else
+		SendSysMessage(who, "Spells unchanged.", FONT_NORMAL, 43);
+		return 0;
+	endif
+
+	// Staged like the other fields; ApplyStagedNpcEdits writes it when Apply is pressed
+	var template_spells := GetTemplateSpells(mobile);
+	spells_to_template := SameSpells(chosen, template_spells);
+	if (spells_to_template)
+		npc_spells := template_spells;
+	else
+		npc_spells := chosen;
+	endif
+	spells_changed := 1;
+	SendSysMessage(who, npc_spells.size()+" spell(s) are set when you press Apply.");
+
+	return 1;
+
+endfunction
+
+function YesNoText(value)
+
+	if (value)
+		return "yes";
+	endif
+
+	return "no";
 
 endfunction

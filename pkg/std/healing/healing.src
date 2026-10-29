@@ -74,7 +74,8 @@ program use_bandages( character , bandages )
 	var withheal := { "Giantkin"	,
 			    "Orc"	,
 			    "Troll"	,
-			    "Human"	};
+			    "Human"	,
+			    "Townsfolk"	};	// 2026-10-25: town NPCs moved off Human, keep bandaging them with Healing (ZH2.5 1.1.5 port)
 
 	var withvet := { "Animal"	,
 			   "Dragonkin"	,

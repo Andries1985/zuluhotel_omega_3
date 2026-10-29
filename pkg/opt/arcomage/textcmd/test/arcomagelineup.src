@@ -1,0 +1,91 @@
+// Synopsis: Spawn every Arcomage NPC in a row from your spot to check them (.arcomagelineup [south] | clear)
+// 2026-10-23: test tool. Creates arcomageNN directly (no spawnpoints), one tile apart,
+// running east from you (or south with "south"). "clear" removes every NPC it made; they
+// get guardkill first, so death.src destroys the corpses.
+// 2026-10-25: spawns one per live rule set in :arcomage:rulesets (24 while the Lords are commented out).
+use uo;
+use os;
+use basic;
+use cfgfile;
+
+const ARCO_LINEUP_GPROP := "ArcomageLineup";
+
+program textcmd_arcomagelineup( who, text )
+
+	var args := SplitWords( Lower( text ) );
+	if( args[1] == "clear" )
+		ArcoLineupClear( who );
+		return 1;
+	endif
+
+	var step_x := 2;
+	var step_y := 0;
+	if( args[1] == "south" )
+		step_x := 0;
+		step_y := 2;
+	endif
+
+	var made := GetGlobalProperty( ARCO_LINEUP_GPROP );
+	if( !made )
+		made := array;
+	endif
+
+	var ids := GetConfigIntKeys( ReadConfigFile( ":arcomage:rulesets" ) );
+	ids.sort();
+	var failed := array;
+	var slot := 0;
+	foreach n in ids
+		var template := "arcomage";
+		if( n < 10 )
+			template := template + "0";
+		endif
+		template := template + CStr( n );
+
+		var x := who.x + step_x * slot;
+		var y := who.y + step_y * slot;
+		slot := slot + 1;
+		var z := who.z;
+		var ground := GetStandingHeight( x, y, who.z, who.realm );
+		if( ground )
+			z := ground.z;
+		endif
+
+		var npc := CreateNpcFromTemplate( template, x, y, z, 0, who.realm );
+		if( !npc )
+			failed.append( template + " (" + npc.errortext + ")" );
+			continue;
+		endif
+		SetObjProperty( npc, "ArcomageLineup", 1 );
+		made.append( npc.serial );
+	endforeach
+
+	SetGlobalProperty( ARCO_LINEUP_GPROP, made );
+	SendSysMessage( who, "Arcomage lineup: spawned " + CStr( ids.size() - failed.size() ) + " NPCs. Use '.arcomagelineup clear' to remove them.", 3, 68 );
+	foreach entry in failed
+		SendSysMessage( who, "Failed: " + entry, 3, 38 );
+	endforeach
+
+endprogram
+
+function ArcoLineupClear( who )
+
+	var made := GetGlobalProperty( ARCO_LINEUP_GPROP );
+	if( !made )
+		made := array;
+	endif
+	var removed := 0;
+	foreach serial in made
+		var npc := SystemFindObjectBySerial( serial );
+		if( npc )
+			if( GetObjProperty( npc, "ArcomageLineup" ) )
+				RevokePrivilege( npc, "invul" );
+				SetObjProperty( npc, "guardkill", 1 );
+				npc.kill();
+				removed := removed + 1;
+			endif
+		endif
+	endforeach
+	EraseGlobalProperty( ARCO_LINEUP_GPROP );
+	SendSysMessage( who, "Arcomage lineup: removed " + CStr( removed ) + " NPCs.", 3, 68 );
+
+endfunction

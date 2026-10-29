@@ -42,12 +42,47 @@ program textcmd_setwfhdamage(who)
 		return;
 	endif
 
-	SetGlobalProperty("WFHDamageToNPCs", CDbl(GFExtractData(data, e1)));
-	SetGlobalProperty("WFHDamageFromNPCs", CDbl(GFExtractData(data, e2)));
-	SetGlobalProperty("WFHDamageToBosses", CDbl(GFExtractData(data, e3)));
-	SetGlobalProperty("WFHDamageFromBosses", CDbl(GFExtractData(data, e4)));
+	// 2026-10-10 (from ZH2.5 1.1.4): every field must be a number from 0.1 to 10, or nothing is
+	// saved. CDbl() of "abc" or "1,5" stored 0.0, and a negative made warriors heal bosses.
+	var texts  := { GFExtractData(data, e1), GFExtractData(data, e2), GFExtractData(data, e3), GFExtractData(data, e4) };
+	var values := { CDbl(texts[1]), CDbl(texts[2]), CDbl(texts[3]), CDbl(texts[4]) };
+	var i;
+	for( i := 1; i <= 4; i := i + 1 )
+		if( !IsMultiplierText(texts[i]) or values[i] < 0.1 or values[i] > 10.0 )
+			SendSysMessage(who, "Multipliers must be numbers from 0.1 to 10 (got \"" + texts[i] + "\"). Nothing changed.");
+			return 0;
+		endif
+	endfor
+
+	SetGlobalProperty("WFHDamageToNPCs", values[1]);
+	SetGlobalProperty("WFHDamageFromNPCs", values[2]);
+	SetGlobalProperty("WFHDamageToBosses", values[3]);
+	SetGlobalProperty("WFHDamageFromBosses", values[4]);
 
 	SendSysMessage(who, "Warrior for Hire damage multipliers updated.");
 	LogCommand(who, GetProcess(GetPid()).name, "Set WFH damage multipliers");
 
 endprogram
+
+// 2026-10-10: "1", "0.5", " 2.25 " -> 1; "", "1,5", "-1", "abc" -> 0
+function IsMultiplierText( text )
+
+	var words := SplitWords(CStr(text));
+	if( words.size() != 1 )
+		return 0;
+	endif
+	text := words[1];
+
+	var dots := 0;
+	var i;
+	for( i := 1; i <= Len(text); i := i + 1 )
+		var c := text[i];
+		if( c == "." )
+			dots := dots + 1;
+		elseif( c < "0" or c > "9" )
+			return 0;
+		endif
+	endfor
+	return (dots <= 1 and Len(text) > dots);
+
+endfunction

@@ -14,7 +14,7 @@ program houseTeleporter(mobile, htele)
 		return;
 	endif
 	// Need to account for banned list in destination teleporter's location!
-	if(mobile.serial in GetObjProperty(othersign, "banlist"))
+	if(othersign.IsBanned(mobile))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
 		SendSysMessage(mobile, "You were banned from entering the other house", color := 33);
 		SendSysMessage(mobile, "where the teleporter destination is located.", color := 33);
 		return 0;
@@ -83,7 +83,9 @@ function AccessCheck(who, sign, teleporter)
 		friendinfo :={};
 	endif
 	AccessLevel := GetObjProperty(teleporter, "AccessLevel");
-	if((GetObjProperty( sign, "ownerserial" ) == who.serial) || (GetObjProperty( sign, "owneraccount" ) == who.acctname))
+	// 2026-10-09: was ownerserial or "owneraccount" (an old prop nothing sets);
+	// IsOwner covers every character on the owner's account.
+	if(sign.IsOwner(who))
 		return 1;
 	elseif((who.serial in coownerinfo) && AccessLevel == "C")
 		return 1;

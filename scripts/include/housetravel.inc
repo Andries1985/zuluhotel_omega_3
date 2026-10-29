@@ -53,6 +53,27 @@ function FindHouseAtSpot( x, y, z, realm, scan_signs := 1 )
 		return standing_multi;
 	endif
 
+	// 2026-10-10 (from ZH2.5 1.1.4): ListMultisInBox on this one tile misses a courtyard tile, so
+	// first scan a house-sized box and test each house's footprint rectangle (core .footprint).
+	// Same filter as below: only houses that step 1 cannot answer for.
+	var around := ListMultisInBox( x - HOUSETRAVEL_SIGN_RANGE, y - HOUSETRAVEL_SIGN_RANGE, -128, x + HOUSETRAVEL_SIGN_RANGE, y + HOUSETRAVEL_SIGN_RANGE, 127, realm );
+	foreach near_house in around
+		if( near_house.isa( POLCLASS_HOUSE ) )
+			var fp := near_house.footprint;
+			if( fp )
+				if( x >= fp.xmin && x <= fp.xmax && y >= fp.ymin && y <= fp.ymax )
+					var near_sign := GetHouseSignFromObject( near_house );
+					if( !near_sign )
+						return near_house;
+					endif
+					if( !GetObjProperty( near_sign, "footage" ) )
+						return near_house;
+					endif
+				endif
+			endif
+		endif
+	endforeach
+
 	var on_tile := ListMultisInBox( x, y, -128, x, y, 127, realm );
 	foreach piece_owner in on_tile
 		if( piece_owner.isa( POLCLASS_HOUSE ) )

@@ -12,7 +12,7 @@ include "include/time";
 
 program Logon(who)
 
-if (!who.cmdlevel)
+if (!who.cmdlevel || !who.acctname) // 2026-10-25: skip anything without an account (ZH2.5 1.1.5 port)
 	return 0;
 endif
 

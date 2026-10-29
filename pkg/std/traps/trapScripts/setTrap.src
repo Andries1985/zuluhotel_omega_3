@@ -4,6 +4,7 @@ use os;
 include "include/client";
 include "include/attributes";
 include ":traps:traps";
+include ":house:utility";	// 2026-10-19: GetHouseSignFromObject
 
 program ApplyTrap(who, trap)
 
@@ -86,6 +87,15 @@ function CanSetTrapHere(who, trap_cont)
 	endif
 	if(GetObjProperty(house, "ownerserial") == who.serial)
 		return 1;
+	endif
+	// 2026-10-09: the owner (any character on its account), co-owners and friends
+	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
+	// 2026-10-19: GetHouseSignFromObject also finds signs linked only by houseserial.
+	var hsign := GetHouseSignFromObject(house);
+	if(hsign)
+		if(hsign.IsAffiliated(who))
+			return 1;
+		endif
 	endif
 
 	var i;

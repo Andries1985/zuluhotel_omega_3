@@ -9,6 +9,7 @@ include "include/bard";
 include "include/eventid";
 include "include/classes";
 include "include/attributes";
+include "include/npcdifficulty";	// 2026-10-25: GetNpcDifficultyOverride -- .newmobedit's per-NPC peace difficulty (ZH2.5 1.1.5 port)
 
 program bard_peacemake( character )
 
@@ -34,6 +35,13 @@ program bard_peacemake( character )
 				difficulty := GetIntelligence(mobile);
 			elseif( elem and !(elem.Privs == "invul") )
 				difficulty := Cint( elem.peacemake );	// 2026-09-30: own template field (seeded from provoke in the npcdesc reformat)
+				// 2026-10-25: an instance "peacemake" prop beats the template field; 0 = this one is skipped (ZH2.5 1.1.5 port)
+				var custom := GetNpcDifficultyOverride( mobile, "peacemake" );
+				if( custom == 0 )
+					continue;
+				elseif( custom > 0 )
+					difficulty := custom;
+				endif
 			else
 				continue;
 			endif
@@ -95,8 +103,9 @@ program bard_peacemake( character )
 				points := 0;
 			endif
 		
-			if( CheckSkill( character, SKILLID_PEACEMAKING, difficulty, points ) )
-				if( CheckSkill( character, SKILLID_MUSICIANSHIP, difficulty, Cint(points / 3) ) )
+			// 2026-10-25: roll against this NPC's own difficulty; it used the last scanned NPC's for everyone
+			if( CheckSkill( character, SKILLID_PEACEMAKING, the_diff, points ) )
+				if( CheckSkill( character, SKILLID_MUSICIANSHIP, the_diff, Cint(points / 3) ) )
 					succeeded := succeeded + 1;
 					SendEvent( mobile, ev );
 					PrintTextAbove( mobile, mobile.name + " is dazzled by the beautiful music!" );

@@ -1,6 +1,7 @@
 use uo;
 
 include "include/client";
+include "include/buffs";	// 2026-10-25: BuffOn / BuffOff (ZH2.5 1.1.5 port)
 include "include/spelldata";
 
 program use_darkcloak(who, cloak)
@@ -24,6 +25,7 @@ program use_darkcloak(who, cloak)
 			PlaySoundEffect(mobile, SFX_SPELL_NIGHT_SIGHT);
         		PlayObjectCenteredEffect(mobile, FX_BLESS_EFFECT, 10,10);
 	        	mobile.setlightlevel(30, 60);
+	        	BuffOff( mobile , "nightsight" );	// 2026-10-25: blinded, any night sight is overridden (ZH2.5 1.1.5 port)
 		endif
 	endforeach
 

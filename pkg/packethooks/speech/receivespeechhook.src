@@ -48,6 +48,11 @@ endfunction
 
 function logspeech(who, speech)
 
+// 2026-10-25: NPCs have no account; CStr() of that error named a datafile the world save can't write (ZH2.5 1.1.5 port)
+if (!who.acctname)
+	return;
+endif
+
 var timeanddate := SplitWords(NowString());
 var date := timeanddate[1];
 var time := timeanddate[2];

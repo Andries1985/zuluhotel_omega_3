@@ -154,6 +154,7 @@ program processtempmods( parms )
 	if( !current )
 		who.SetPoisoned();
 		IncRevision(who);
+		BuffOn( who , "poison" , newPsnDmg , duration );	// 2026-10-25: poison icon on a fresh poisoning (ZH2.5 1.1.5 port)
 		if( msg )
 			PrintTextAbovePrivate( who , msg , who );
 		endif	

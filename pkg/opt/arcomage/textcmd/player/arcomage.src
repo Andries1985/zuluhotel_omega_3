@@ -1,0 +1,40 @@
+// Synopsis: Your Arcomage record and the leaderboard; ".arcomage watch" to watch a player-vs-player game
+// 2026-10-23: new package. 2026-10-25: "watch" added (phase 2).
+use uo;
+use os;
+use basic;
+
+include ":arcomage:arcopvp";
+
+program textcmd_arcomage( who, text )
+
+	if( Lower( text ) == "watch" )
+		ArcoRequestWatch( who );
+	else
+		ArcoStatsGump( who );
+	endif
+
+endprogram
+
+// Target a player in a PvP game; their controller adds you as a watcher if there is room.
+function ArcoRequestWatch( who )
+
+	SendSysMessage( who, "Whose game of Arcomage do you want to watch?" );
+	var targetted := Target( who );
+	if( !targetted )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+	var pid := CInt( GetObjProperty( targetted, ARCO_PVP_PROP ) );
+	var controller := 0;
+	if( pid )
+		controller := GetProcess( pid );
+	endif
+	if( !controller )
+		SendSysMessage( who, "They aren't playing Arcomage against another player.", 3, 38 );
+		return 0;
+	endif
+	controller.SendEvent( struct{ "type" := "watch", "who" := who } );
+	return 1;
+
+endfunction

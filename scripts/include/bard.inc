@@ -67,7 +67,55 @@ function can_sing( me, circle)
 
 endfunction
 
+// 2026-10-25: song scripts get the singer from a songbook, or {"#MOB", caster, target} when an NPC casts (npccast.inc) (ZH2.5 1.1.5 port)
+function IsNpcSong(parms)
+	if (parms[1] == "#MOB")
+		return 1;
+	endif
+	return 0;
+endfunction
+
+function GetSongSinger(parms)
+	if (parms[1] == "#MOB")
+		return parms[2];
+	endif
+	return parms;
+endfunction
+
+// 2026-10-25: NPCs sing without carrying an instrument; a harp only picks the sounds (ZH2.5 1.1.5 port)
+function GetSongInstrument(singer, npc_cast)
+	var instrument := 0;
+	// An NPC may have no backpack, and findinstrument() would run enumerate on an error
+	if (!npc_cast || singer.backpack)
+		instrument := findinstrument(singer);
+	endif
+	if (!instrument && npc_cast)
+		instrument := struct;
+		instrument.+graphic := UOBJ_HARP;
+	endif
+	return instrument;
+endfunction
+
+// 2026-10-25: an NPC's bard level from its Musicianship, on the class level scale in classes.inc
+// (AVERAGE_SKILL 75 = level 1, +AVERAGE_LEVEL_MOD 15 per level): 90 = 2, 105 = 3, 120 = 4, 135 = 5, 150 = 6.
+// Literals on purpose: classes.inc is a heavy include and not every bard.inc user has it. (ZH2.5 1.1.5 port)
+function GetNpcBardLevel(musicianship)
+	if (musicianship < 75)
+		return 0;
+	endif
+	var level := 1 + CInt((musicianship - 75) / 15);
+	if (level > 6)
+		level := 6;
+	endif
+	return level;
+endfunction
+
 function ValidSongBoost(player, cast_near)
+	// 2026-10-25: every song runs SmartBoost() first, which already narrowed an NPC singer's list to its own side
+	// (NpcSmartBoost in spelldata.inc), so there is nothing left to check here (ZH2.5 1.1.5 port)
+	if (player.isa(POLCLASS_NPC))
+		return 1;
+	endif
 	// 2026-09-22: a character with no party gets an error value for .party and two
 	// error values compare equal, so two party-less strangers counted as a party:
 	// a solo bard boosted (and Life Balance drained) everyone in sight.

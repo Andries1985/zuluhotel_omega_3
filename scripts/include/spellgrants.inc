@@ -14,6 +14,9 @@
 // SpellPoisonImmunity = 1). These two functions take the grant back; the
 // spells call them on their normal end and scripts/misc/logon.src calls
 // them at every login, so nothing survives a restart.
+// 2026-10-25: Sanctuary, Antidote and Dragon Skin no longer write these markers (scripts/include/spellprots.inc, ZH2.5
+// 1.1.5 port). Kept for one release so a player saved with an old marker gets cleaned up at login; this file, the
+// include and the two calls in scripts/misc/logon.src can be removed after the next release.
 use uo;
 
 function ReclaimDragonSkinGrant( person )

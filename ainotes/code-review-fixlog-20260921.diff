@@ -13644,3 +13644,1089 @@ index 0000000..e961713
 +	return 1;
 +
 +endfunction
+
+# ===== Section 19 (2026-10-09): same-account characters are house owners. Diff against HEAD e2b8bdb. =====
+diff --git a/pkg/items/deed/commands/player/redeed.src b/pkg/items/deed/commands/player/redeed.src
+index 98cd0a0..052dcf8 100644
+--- a/pkg/items/deed/commands/player/redeed.src
++++ b/pkg/items/deed/commands/player/redeed.src
+@@ -34,14 +34,13 @@ program textcmd_redeed( mobile )
+ 	// in a pack. Staff (cmdlevel 3+) are exempt.
+ 	var is_staff := ( mobile.cmdlevel >= 3 );
+ 	var house := FindHouseAtSpot( mobile.x, mobile.y, mobile.z, mobile.realm );
+-	var oserial := CInt( GetObjProperty( house, "ownerserial" ));
+ 
+ 	if( !is_staff )
+ 		if( !house )
+ 			SendSysMessage( mobile, "You must be in a house!" );
+ 			return 0;
+ 		endif
+-		if( mobile.serial != oserial )
++		if( !IsHouseOwnerCharacter( mobile, house ))	// 2026-10-09: same account counts as the owner
+ 			SendSysMessage( mobile, "You cannot redeed anything in this house!" );
+ 			return 0;
+ 		endif
+diff --git a/pkg/items/houseExtras/hteleporter/teleporterFunctions.src b/pkg/items/houseExtras/hteleporter/teleporterFunctions.src
+index bca046d..8f95c84 100644
+--- a/pkg/items/houseExtras/hteleporter/teleporterFunctions.src
++++ b/pkg/items/houseExtras/hteleporter/teleporterFunctions.src
+@@ -15,7 +15,7 @@ var settings := HE_GetSettingsCfgElem("settings");
+ program teleporter_use(who, teleporter)
+ 
+ 	sign := FindHouseForLocation(who.x, who.y, who.z, who.realm);
+-	if(who.serial != CInt(GetObjProperty(sign, "ownerserial")))
++	if(!sign || !sign.IsOwner(who)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "Only the house owner can access teleporter functions.", color := 33);
+ 		return 0;
+ 	endif
+diff --git a/pkg/items/houseExtras/hteleporter/walkOn.src b/pkg/items/houseExtras/hteleporter/walkOn.src
+index ac218a2..c2c1e1f 100644
+--- a/pkg/items/houseExtras/hteleporter/walkOn.src
++++ b/pkg/items/houseExtras/hteleporter/walkOn.src
+@@ -14,7 +14,7 @@ program houseTeleporter(mobile, htele)
+ 		return;
+ 	endif
+ 	// Need to account for banned list in destination teleporter's location!
+-	if(mobile.serial in GetObjProperty(othersign, "banlist"))
++	if(othersign.IsBanned(mobile))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
+ 		SendSysMessage(mobile, "You were banned from entering the other house", color := 33);
+ 		SendSysMessage(mobile, "where the teleporter destination is located.", color := 33);
+ 		return 0;
+@@ -83,7 +83,9 @@ function AccessCheck(who, sign, teleporter)
+ 		friendinfo :={};
+ 	endif
+ 	AccessLevel := GetObjProperty(teleporter, "AccessLevel");
+-	if((GetObjProperty( sign, "ownerserial" ) == who.serial) || (GetObjProperty( sign, "owneraccount" ) == who.acctname))
++	// 2026-10-09: was ownerserial or "owneraccount" (an old prop nothing sets);
++	// IsOwner covers every character on the owner's account.
++	if(sign.IsOwner(who))
+ 		return 1;
+ 	elseif((who.serial in coownerinfo) && AccessLevel == "C")
+ 		return 1;
+diff --git a/pkg/multis/customhousing/sign.src b/pkg/multis/customhousing/sign.src
+index 4b0dd0b..f083a55 100644
+--- a/pkg/multis/customhousing/sign.src
++++ b/pkg/multis/customhousing/sign.src
+@@ -933,8 +933,9 @@ function AddFriend (hsign, who)
+ 		return;
+ 	endif
+ 	// 2026-09-22: checked BEFORE adding (it used to add, then say "Canceled").
+-	if (targetchr.acctname == GetObjProperty (hsign, "owneracct"))
+-		SendSysMessage (who, "Canceled.", color := 33);
++	// 2026-10-09: same-account characters are owners now (IsOwner), so say so.
++	if (hsign.IsOwner (targetchr))
++		SendSysMessage (who, "That character shares the owner's account and already has full owner rights.", color := 33);
+ 		return;
+ 	endif
+ 	var result := hsign.AddFriend (targetchr);
+@@ -965,7 +966,7 @@ function AddBan (hsign, who)
+ 		SendSysMessage (who, "This person is already banned!", color := 42);
+ 		return;
+ 	endif
+-	if (targetchr.serial == GetObjProperty (hsign, "ownerserial"))
++	if (hsign.IsOwner (targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage (who, "You cannot ban the house owner!", color := 33);
+ 		return;
+ 	endif
+diff --git a/pkg/multis/house/include/utility.inc b/pkg/multis/house/include/utility.inc
+index 9bae7b5..18cf6d5 100644
+--- a/pkg/multis/house/include/utility.inc
++++ b/pkg/multis/house/include/utility.inc
+@@ -46,6 +46,22 @@ function GetHouseSignFromObject(byref house_or_sign)
+ 	return 0;
+ endfunction
+ 
++// 2026-10-09: owner test for a house multi or its sign, through the sign's
++// IsOwner method (any character on the owner's account counts).
++function IsHouseOwnerCharacter(who, house_or_sign)
++	var sign := GetHouseSignFromObject(house_or_sign);
++	if(sign)
++		if(sign.IsOwner(who))
++			return 1;
++		endif
++		return 0;
++	endif
++	if(house_or_sign && (CInt(GetObjProperty(house_or_sign, "ownerserial")) == who.serial))
++		return 1;
++	endif
++	return 0;
++endfunction
++
+ //-------------------------------------------------- New Housing Functions ----------------------------------------------------------------\\
+ 
+ function GetCurrentHouseAtMobile(who)
+diff --git a/pkg/multis/house/multiSign/control.src b/pkg/multis/house/multiSign/control.src
+index bb1120f..f9b812a 100644
+--- a/pkg/multis/house/multiSign/control.src
++++ b/pkg/multis/house/multiSign/control.src
+@@ -124,11 +124,18 @@ function remove(house, sign, event)
+ 			var friend := sign.IsInHouseLists(idiot, 2);
+ 			var coown  := sign.IsInHouseLists(idiot, 1);
+ 			var staff  := who.cmdlevel;
++			// 2026-10-09: the owner (any character on its account) is never ejected;
++			// the owner test used to come after the eject branch. (Unreachable while
++			// the speech dispatcher above stays commented out.)
++			if (sign.IsOwner(idiot))
++					SendSysMessageCL(who, 501348, color := 33); // You cannot eject a friend of the house!
++					return;
++			endif
+ 			if ((coown == 0) && (friend == 0) && (idiot.serial != who.serial) && (staff < 2))
+ 					MoveObjectToLocation(idiot, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
+ 					SendSysMessageCL(idiot, 501341, color := 33); // You have been ejected from this house. If you persist in entering, you may be banned from the house.
+ 					return;
+-			elseif((friend == 1) || (coown == 1) || (idiot.serial == GetObjProperty(sign,"ownerserial")))
++			elseif((friend == 1) || (coown == 1))
+ 					SendSysMessageCL(who, 501348, color := 33); // You cannot eject a friend of the house!
+ 					return;
+ 			elseif (idiot.serial == who.serial)
+@@ -401,16 +408,17 @@ function housebanning(house, event, sign)
+ 		var coown  := sign.IsInHouseLists(idiot, 1);
+ 		var banned := sign.IsInHouseLists(idiot, 3);
+ 		var staff  := idiot.cmdlevel;
+-		var act    := idiot.acctname;
+-		var own    := GetObjProperty(sign, "ownerserial");
+-		if((coown == 0) && (banned == 0) && (friend == 0) && ( act != own) && (idiot.serial != who.serial) && (staff < 2))
++		// 2026-10-09: was acctname compared against the owner SERIAL (never equal),
++		// so the owner was not protected. (Unreachable, see remove() above.)
++		var own    := sign.IsOwner(idiot);
++		if((coown == 0) && (banned == 0) && (friend == 0) && (!own) && (idiot.serial != who.serial) && (staff < 2))
+ 			SendSysMessageCL(idiot, 501340, color := 33); // You have been banned from this house.
+ 			MoveObjectToLocation(idiot, sign.x, sign.y, sign.z, sign.realm);
+ 			banlist.append(idiot.serial);
+ 			SetObjProperty(sign, "banlist", banlist);
+ 			SendSysMessage(event.source, idiot.name + " was banned from your house");
+ 			return;
+-		elseif((friend == 1) || (coown == 1) || (act == own))
++		elseif((friend == 1) || (coown == 1) || own)
+ 			SendSysMessage(who,"you cannot ban friends");
+ 			return;
+ 		elseif(banned == 1)
+diff --git a/pkg/multis/house/multiSign/method.src b/pkg/multis/house/multiSign/method.src
+index f7442f7..fa85340 100644
+--- a/pkg/multis/house/multiSign/method.src
++++ b/pkg/multis/house/multiSign/method.src
+@@ -485,13 +485,10 @@ endfunction
+ //
+ ///////////////////////////////////////////////////////////
+ exported function IsCoOwnerOrOwner(sign, byref mobile)
+-	if (mobile.serial in GetObjProperty(sign,"coowners") || mobile.serial == GetObjProperty(sign, "ownerserial"))
++	// 2026-10-09: owner test goes through IsOwner (same account counts).
++	if (mobile.serial in GetObjProperty(sign,"coowners") || IsOwner(sign, mobile))
+ 		return 1;
+ 	endif
+-
+-	// if (mobile.acctname == (GetObjProperty(sign, "owneracct") ) )
+-		// return 1;
+-	// endif
+ 	return 0;
+ endfunction
+ 
+@@ -576,12 +573,32 @@ endfunction
+ // Returns: integer:: 1 if the mobile is the owner or
+ // 0 if not.
+ //
++// 2026-10-09: any character on the owner's account counts as the owner
++// (your rule: same account = full owner rights everywhere). Falls back to
++// the legacy custom-house "account" prop until that sign is migrated.
++//
+ ///////////////////////////////////////////////////////////
+ exported function IsOwner( sign, byref mobile )
+ 
+ 	If(mobile.serial == CInt( GetObjProperty( sign, "ownerserial" )))
+ 		return 1;
+ 	endif
++	return IsOwnerAccount( sign, mobile );
++endfunction
++
++// 2026-10-09: account half of IsOwner. Both sides are truth-checked first --
++// two unset values compare equal (an NPC has no acctname).
++exported function IsOwnerAccount( sign, byref mobile )
++	var acct := GetObjProperty( sign, "owneracct" );
++	if( !acct )
++		acct := GetObjProperty( sign, "account" );
++	endif
++	if( !acct || !mobile.acctname )
++		return 0;
++	endif
++	if( Lower( CStr( acct ) ) == Lower( mobile.acctname ) )
++		return 1;
++	endif
+ 	return 0;
+ endfunction
+ 
+@@ -981,6 +998,11 @@ endfunction
+ ///////////////////////////////////////////////////////////
+ exported function IsBanned(sign, byref mobile)
+ 
++	// 2026-10-09: the owner (any character on the owner's account) is never
++	// banned, even if that character was put on the list before this rule.
++	if(IsOwner(sign, mobile))
++		return 0;
++	endif
+ 	var nfo := GetObjProperty(sign, "banlist");
+ 
+   if(mobile.serial in nfo)
+diff --git a/pkg/multis/house/multiSign/use.src b/pkg/multis/house/multiSign/use.src
+index aa1557a..dd63e80 100644
+--- a/pkg/multis/house/multiSign/use.src
++++ b/pkg/multis/house/multiSign/use.src
+@@ -438,8 +438,9 @@ function AddFriend(hsign, who)
+   endif
+   // 2026-09-22: checked BEFORE adding -- it used to run after hsign.AddFriend,
+   // so the owner's own account was added and then told "Cancelled".
+-  if(targetchr.acctname == GetObjProperty(hsign, "owneracct"))
+-    SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
++  // 2026-10-09: same-account characters are owners now (IsOwner), so say so.
++  if(hsign.IsOwner(targetchr))
++    SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
+ 	return;
+   endif
+   var result := hsign.AddFriend(targetchr);
+@@ -532,7 +533,7 @@ function AddBan(hsign, who)
+ 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
++	if(hsign.IsOwner(targetchr)) // 2026-10-09: was the owner serial only; same account counts
+ 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+ 		return;
+ 	endif
+@@ -635,6 +636,12 @@ function AddCoowner(hsign, who)
+ 		SendSysMessageCL(who,501362, color := 33); // That can't be a co-owner of the house.
+ 		return;
+ 	endif
++	// 2026-10-09: checked BEFORE adding (it used to add the owner, then say
++	// "Cancelled"); same-account characters are already owners.
++	if(hsign.IsOwner(targetchr))
++		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
++		return;
++	endif
+ 	var result := hsign.AddCoOwner(targetchr);
+ 	if(!result)
+ 		SendSysMessageCL(who, 501369, color := 33); // This person is already on your co-owner list!
+@@ -643,10 +650,6 @@ function AddCoowner(hsign, who)
+ 		SendSysMessageCL(who, 501368, color := 33); // Your co-owner list is full!
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
+-		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+-		return;
+-	endif
+ 	SendSysMessage(who, targetchr.name + " is now a co-owner of your house", color := 66);
+ 	SendSysMessageCL(targetchr, 501343, color := 66); // You have been made a co-owner of this house.
+ endfunction
+@@ -1734,7 +1737,7 @@ function ToggleCoOwnerStatus(sign, who)
+ 		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
+ 		return;
+ 	endif
+@@ -1779,7 +1782,7 @@ function ToggleHousePermission(sign, who, perm_key, label)
+ 		SendSysMessage(who, "That cannot be modified.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "Owner always has full permissions.", color := 33);
+ 		return;
+ 	endif
+diff --git a/pkg/multis/house/walkOn.src b/pkg/multis/house/walkOn.src
+index 64f4ceb..123f462 100644
+--- a/pkg/multis/house/walkOn.src
++++ b/pkg/multis/house/walkOn.src
+@@ -12,8 +12,7 @@ program walk_on_bantile(who, tile)
+ 	if(!hsign)
+ 		return;
+ 	endif
+-	var ownerser := hsign.GetOwnerSerial();
+-	if(ownerser == who.serial)
++	if(hsign.IsOwner(who))	// 2026-10-09: same account counts as the owner
+ 		SetObjProperty(hsign,"decay", (ReadGameClock() + get_abandon_time()));
+ //		SendSysMessage(who, "Your house is refreshed.", color := 66);
+ 	endif
+@@ -22,7 +21,7 @@ program walk_on_bantile(who, tile)
+ 	if(!banlist)
+ 		return;
+ 	endif
+-	if(who.serial in banlist)
++	if(hsign.IsBanned(who))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
+ 		hsign.BootBannedFromHouse(who);
+ 	endif
+ endprogram
+diff --git a/pkg/multis/staticHousing/bantile/walkOn.src b/pkg/multis/staticHousing/bantile/walkOn.src
+index a83ce68..c116681 100644
+--- a/pkg/multis/staticHousing/bantile/walkOn.src
++++ b/pkg/multis/staticHousing/bantile/walkOn.src
+@@ -16,7 +16,7 @@ program walk_on_bantile(who, tile)
+ 	if(!banlist)
+ 		return;
+ 	endif
+-	if(who.serial in banlist)
++	if(sign.IsBanned(who))	// 2026-10-09: was the raw list; IsBanned never bans the owner's account
+ 		sign.BootBannedFromHouse(who);
+ 	endif
+ endprogram
+diff --git a/pkg/multis/staticHousing/sign/control.src b/pkg/multis/staticHousing/sign/control.src
+index bfd2267..c66f443 100644
+--- a/pkg/multis/staticHousing/sign/control.src
++++ b/pkg/multis/staticHousing/sign/control.src
+@@ -101,7 +101,7 @@ function handle_speech(sign, event)
+ 	// owneracct := GetObjProperty(sign, "owneraccount");
+ 	ownerser := GetObjProperty(sign, "ownerserial");
+ 	var sec;
+-	if(who.serial == ownerser)	// Owner
++	if(sign.IsOwner(who))	// Owner (2026-10-09: same account counts)
+ 		sec := 3;
+ 	elseif(sign.IsACoOwner(who))	// Co-owner
+ 		sec := 2;
+@@ -160,11 +160,17 @@ function remove(sign, event)
+       var coown  := statuscheck(victim, 1);
+ //      var multi  := who.multi;					// Probably a Bishop carry over from when this package was married to multi-houses.
+ //	  multi := multi;
++      // 2026-10-09: owner (any character on its account) checked first; it used
++      // to fall into the eject branch when not on a list. (Speech command disabled.)
++      if(sign.IsOwner(victim))
++        SendSysMessage(who, "you cannot eject friends", 3, 40);
++        return;
++      endif
+       if((coown == 0) && (friend == 0) && (victim != who) && (!victim.cmdlevel))
+         MoveObjectToLocation(victim, sign.x, sign.y, sign.z, sign.realm, MOVEOBJECT_FORCELOCATION);
+         SendSysMessage(victim, "you have been ejected from the house");
+         return;
+-      elseif((friend == 1) || (coown == 1) || (victim.acctname == GetObjProperty(sign, "owneracct")))
++      elseif((friend == 1) || (coown == 1))
+         SendSysMessage(who, "you cannot eject friends", 3, 40);
+         return;
+       elseif(victim == who)
+@@ -454,7 +460,7 @@ function unsecure(sign, event)
+ 	endif
+ 	var canunsecure := 0;
+ 	// Determine if the unsecuring person has the proper secure level to unsecure the item.
+-	if(who.serial == sign.GetOwnerSerial())	// Owner
++	if(sign.IsOwner(who))	// Owner (2026-10-09: same account counts)
+ 		seclevel := "O";
+ 	elseif(who.cmdlevel >= 3)				// Staff with "Testing" CProp can unsecure.
+ 		if(GetObjProperty(who, "Testing"))
+@@ -532,7 +538,7 @@ function housebanning(sign, event)
+ 	elseif(victim == who)
+ 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+ 		return 0;
+-	elseif(victim.serial == GetObjProperty(sign, "ownerserial"))
++	elseif(sign.IsOwner(victim)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+ 		return 0;
+ 	elseif(!victim.acct)
+diff --git a/pkg/multis/staticHousing/sign/use.src b/pkg/multis/staticHousing/sign/use.src
+index af60a8b..503ea3a 100644
+--- a/pkg/multis/staticHousing/sign/use.src
++++ b/pkg/multis/staticHousing/sign/use.src
+@@ -430,7 +430,7 @@ sign := sgn;
+ 	if(sign.IsCoOwnerOrOwner(who))
+ 		sign.RefreshHouse();
+ 	endif
+-	if(who.serial == ownerserial)
++	if(sign.IsOwner(who)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessageCL(who, 1043293, color := 66);
+ 	endif
+ 
+@@ -489,7 +489,7 @@ sign := sgn;
+ 			15: SHDebug("Action open house management by " + who.name + " sign=" + sign.serial); OpenHouseManagementGump(sign, who);
+ 			16: SHDebug("Action change locks by " + who.name + " sign=" + sign.serial); ChangeLocks(sign, who);
+ 			20:
+-				if((who.serial == ownerserial) || (who.cmdlevel > 2))
++				if(sign.IsOwner(who) || (who.cmdlevel > 2)) // 2026-10-09: same account counts
+ 					SHDebug("Action relinquish by " + who.name + " sign=" + sign.serial);
+ 					RelinquishHouse(sign, who);
+ 				endif
+@@ -752,7 +752,7 @@ function ToggleCoOwnerStatus(sign, who)
+ 		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
+ 		return;
+ 	endif
+@@ -798,7 +798,7 @@ function ToggleHousePermission(sign, who, perm_key, label)
+ 		SendSysMessage(who, "That cannot be modified.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "Owner always has full permissions.", color := 33);
+ 		return;
+ 	endif
+@@ -1088,8 +1088,8 @@ endfunction
+ 
+ function RelinquishHouse(sign, who)
+ 	SHDebug("Relinquish requested by " + who.name + " sign=" + sign.serial);
+-	var ownerserial := CInt(GetObjProperty(sign, "ownerserial"));
+-	if(who.serial != ownerserial && who.cmdlevel < 3)
++	// 2026-10-09: any character on the owner's account may relinquish.
++	if(!sign.IsOwner(who) && who.cmdlevel < 3)
+ 		SendSysMessage(who, "Only the owner can relinquish this house.", color := 33);
+ 		return 0;
+ 	endif
+@@ -1358,6 +1358,11 @@ function AddFriend( sign, who )
+ 		SendSysMessageCL(who, 501372, color := 33); // This person cannot be a friend of the house.
+ 		return 0;
+ 	endif
++	// 2026-10-09: the owner and same-account characters are owners already.
++	if(sign.IsOwner(targetchr))
++		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
++		return 0;
++	endif
+ 	if(sign.IsACoOwner(targetchr))
+ 		if (!YesNo(who, targetchr.name + " is a co-owner. Are you sure?"))
+ 			SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+@@ -1390,7 +1395,7 @@ function addenemy( sign, who )
+ 	elseif(targetchr == who)
+ 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+ 		return 0;
+-	elseif(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	elseif(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+ 		return 0;
+ 	elseif(!targetchr.acct)
+@@ -1445,6 +1450,9 @@ function addcoowner( sign, who )
+ 	elseif(targetchr == who)
+ 		SendSysMessage(who, "You cannot be the owner and a co-owner of a house.", color := 33);
+ 		return 0;
++	elseif(sign.IsOwner(targetchr)) // 2026-10-09: same-account characters are owners already
++		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
++		return 0;
+ 	elseif(!targetchr.acct)
+ 		SendSysMessageCL(who, 501362, color := 33); // That can't be a co-owner of the house.
+ 		return 0;
+diff --git a/pkg/std/spells/magictrap.src b/pkg/std/spells/magictrap.src
+index 8fea5ab..a2e7f5a 100644
+--- a/pkg/std/spells/magictrap.src
++++ b/pkg/std/spells/magictrap.src
+@@ -70,7 +70,21 @@ program cast_strength( parms, spell_id )
+ 		endif
+ 	endif
+ 
+-	if( cast_on.multi and GetObjProperty( cast_on.multi , "ownerserial" ) != caster.serial )
++	// 2026-10-09: any character on the owner's account counts (sign IsOwner).
++	var is_owner := 0;
++	if( cast_on.multi )
++		if( GetObjProperty( cast_on.multi , "ownerserial" ) == caster.serial )
++			is_owner := 1;
++		else
++			var hsign := SystemFindObjectBySerial( CInt( GetObjProperty( cast_on.multi , "signserial" )));
++			if( hsign )
++				if( hsign.IsOwner( caster ))
++					is_owner := 1;
++				endif
++			endif
++		endif
++	endif
++	if( cast_on.multi and !is_owner )
+ 		var co_owners := {};
+ 		var friends := {};
+ 		var i;
+diff --git a/pkg/std/traps/trapScripts/setTrap.src b/pkg/std/traps/trapScripts/setTrap.src
+index b5a9397..972036e 100644
+--- a/pkg/std/traps/trapScripts/setTrap.src
++++ b/pkg/std/traps/trapScripts/setTrap.src
+@@ -87,6 +87,13 @@ function CanSetTrapHere(who, trap_cont)
+ 	if(GetObjProperty(house, "ownerserial") == who.serial)
+ 		return 1;
+ 	endif
++	// 2026-10-09: any character on the owner's account counts (sign IsOwner).
++	var hsign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
++	if(hsign)
++		if(hsign.IsOwner(who))
++			return 1;
++		endif
++	endif
+ 
+ 	var i;
+ 	for(i := 1; i <= 5; i := i + 1)
+
+# ===== Section 19.6 (2026-10-09): transfer at the cap, traps for sign-list co-owners/friends. Diff against HEAD e2b8bdb; for use.src, setTrap.src and magictrap.src this supersedes the section-19 block. =====
+diff --git a/pkg/multis/customhousing/include/house.inc b/pkg/multis/customhousing/include/house.inc
+index 0b4299f..85b6005 100644
+--- a/pkg/multis/customhousing/include/house.inc
++++ b/pkg/multis/customhousing/include/house.inc
+@@ -667,7 +667,8 @@ function ChangeOwner (who, sign)
+ 		return;
+ 	endif
+ 
+-	if ((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap (newowner.acctname))
++	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
++	if ((newowner.cmdlevel == 0) and !sign.IsOwner (newowner) and !IsAccountUnderHouseCap (newowner.acctname))
+ 		SendSysMessage (who, "That person already owns the maximum number of houses allowed on their account!");
+ 		return;
+ 	endif
+diff --git a/pkg/multis/house/multiDeed/changeOwner.src b/pkg/multis/house/multiDeed/changeOwner.src
+index b8b5a06..8eb308c 100644
+--- a/pkg/multis/house/multiDeed/changeOwner.src
++++ b/pkg/multis/house/multiDeed/changeOwner.src
+@@ -13,13 +13,14 @@ program change_owner(who, deed)
+ 		SendSysMessageCL(who, 1042010, color := 33); // You must have the object in your backpack to use it.
+ 		return 0;
+ 	endif
+-	if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
++	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
++	var sign := SystemFindObjectBySerial(GetObjProperty(deed, "signserial"));
++	if((who.cmdlevel == 0) and !sign.IsOwner(who) and !IsAccountUnderHouseCap(who.acctname))
+ 		SendSysMessageCL(who, 1042010, {}, 3, 33); // You cannot use that.
+ 		SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", color := 33);
+ 		return 0;
+ 	endif
+-	// Begin sign CProps
+-	var sign := SystemFindObjectBySerial(GetObjProperty(deed, "signserial"));
++	// Begin sign CProps (sign resolved above, before the cap check)
+ 	var old_owner_serial := GetObjProperty(sign, "ownerserial");
+ 	var old_owner := SystemFindObjectBySerial(old_owner_serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+ 	SetObjProperty(sign, "lastownername", old_owner.name);
+diff --git a/pkg/multis/house/multiSign/use.src b/pkg/multis/house/multiSign/use.src
+index aa1557a..8d0e39c 100644
+--- a/pkg/multis/house/multiSign/use.src
++++ b/pkg/multis/house/multiSign/use.src
+@@ -438,8 +438,9 @@ function AddFriend(hsign, who)
+   endif
+   // 2026-09-22: checked BEFORE adding -- it used to run after hsign.AddFriend,
+   // so the owner's own account was added and then told "Cancelled".
+-  if(targetchr.acctname == GetObjProperty(hsign, "owneracct"))
+-    SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
++  // 2026-10-09: same-account characters are owners now (IsOwner), so say so.
++  if(hsign.IsOwner(targetchr))
++    SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
+ 	return;
+   endif
+   var result := hsign.AddFriend(targetchr);
+@@ -532,7 +533,7 @@ function AddBan(hsign, who)
+ 		SendSysMessageCL(who, 1115838, color := 33); // You cannot ban yourself!
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
++	if(hsign.IsOwner(targetchr)) // 2026-10-09: was the owner serial only; same account counts
+ 		SendSysMessage(who, "You cannot ban the house owner.", color := 33);
+ 		return;
+ 	endif
+@@ -635,6 +636,12 @@ function AddCoowner(hsign, who)
+ 		SendSysMessageCL(who,501362, color := 33); // That can't be a co-owner of the house.
+ 		return;
+ 	endif
++	// 2026-10-09: checked BEFORE adding (it used to add the owner, then say
++	// "Cancelled"); same-account characters are already owners.
++	if(hsign.IsOwner(targetchr))
++		SendSysMessage(who, "That character shares the owner's account and already has full owner rights.", color := 33);
++		return;
++	endif
+ 	var result := hsign.AddCoOwner(targetchr);
+ 	if(!result)
+ 		SendSysMessageCL(who, 501369, color := 33); // This person is already on your co-owner list!
+@@ -643,10 +650,6 @@ function AddCoowner(hsign, who)
+ 		SendSysMessageCL(who, 501368, color := 33); // Your co-owner list is full!
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(hsign,"ownerserial"))
+-		SendSysMessageCL(who, 1042023, color := 33); // Cancelled.
+-		return;
+-	endif
+ 	SendSysMessage(who, targetchr.name + " is now a co-owner of your house", color := 66);
+ 	SendSysMessageCL(targetchr, 501343, color := 66); // You have been made a co-owner of this house.
+ endfunction
+@@ -715,7 +718,8 @@ function ChangeHouseOwner(oldowner, newowner, sign, bank_region)
+ 	endif
+ 	if(oldownerserial == newowner.serial)
+ 		return 0;
+-	elseif((newowner.cmdlevel == 0) and !IsAccountUnderHouseCap(newowner.acctname))
++	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
++	elseif((newowner.cmdlevel == 0) and !sign.IsOwner(newowner) and !IsAccountUnderHouseCap(newowner.acctname))
+ 		SendSysMessage(newowner, "You already own the maximum number of houses allowed on this account.", color := 33);
+ 		return 0;
+ 	else
+@@ -1734,7 +1738,7 @@ function ToggleCoOwnerStatus(sign, who)
+ 		SendSysMessage(who, "That cannot be added to house lists.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "You cannot modify the house owner.", color := 33);
+ 		return;
+ 	endif
+@@ -1779,7 +1783,7 @@ function ToggleHousePermission(sign, who, perm_key, label)
+ 		SendSysMessage(who, "That cannot be modified.", color := 33);
+ 		return;
+ 	endif
+-	if(targetchr.serial == GetObjProperty(sign, "ownerserial"))
++	if(sign.IsOwner(targetchr)) // 2026-10-09: same account counts as the owner
+ 		SendSysMessage(who, "Owner always has full permissions.", color := 33);
+ 		return;
+ 	endif
+diff --git a/pkg/multis/staticHousing/transferdeed/staticTransferDeed.src b/pkg/multis/staticHousing/transferdeed/staticTransferDeed.src
+index d1058dd..fc0c8ba 100644
+--- a/pkg/multis/staticHousing/transferdeed/staticTransferDeed.src
++++ b/pkg/multis/staticHousing/transferdeed/staticTransferDeed.src
+@@ -57,7 +57,8 @@ program ChangeHouseOwner(who, deed)
+ 		SendSysMessage( who, "The deed points to an invalid sign!", color := 33 );
+ 		return;
+ 	endif
+-	if((who.cmdlevel == 0) and !IsAccountUnderHouseCap(who.acctname))
++	// 2026-10-09: the cap is skipped when the house already belongs to this account (a transfer to an alt leaves the count unchanged).
++	if((who.cmdlevel == 0) and !sign.IsOwner(who) and !IsAccountUnderHouseCap(who.acctname))
+ 		SendSysMessage(who, "You already own the maximum number of houses allowed on this account.", color := 33);
+ 		return;
+ 	endif
+diff --git a/pkg/std/spells/magictrap.src b/pkg/std/spells/magictrap.src
+index 8fea5ab..03a0a5a 100644
+--- a/pkg/std/spells/magictrap.src
++++ b/pkg/std/spells/magictrap.src
+@@ -70,7 +70,22 @@ program cast_strength( parms, spell_id )
+ 		endif
+ 	endif
+ 
+-	if( cast_on.multi and GetObjProperty( cast_on.multi , "ownerserial" ) != caster.serial )
++	// 2026-10-09: the owner (any character on its account), co-owners and friends
++	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
++	var is_allowed := 0;
++	if( cast_on.multi )
++		if( GetObjProperty( cast_on.multi , "ownerserial" ) == caster.serial )
++			is_allowed := 1;
++		else
++			var hsign := SystemFindObjectBySerial( CInt( GetObjProperty( cast_on.multi , "signserial" )));
++			if( hsign )
++				if( hsign.IsAffiliated( caster ))
++					is_allowed := 1;
++				endif
++			endif
++		endif
++	endif
++	if( cast_on.multi and !is_allowed )
+ 		var co_owners := {};
+ 		var friends := {};
+ 		var i;
+diff --git a/pkg/std/traps/trapScripts/setTrap.src b/pkg/std/traps/trapScripts/setTrap.src
+index b5a9397..bd3c1f6 100644
+--- a/pkg/std/traps/trapScripts/setTrap.src
++++ b/pkg/std/traps/trapScripts/setTrap.src
+@@ -87,6 +87,14 @@ function CanSetTrapHere(who, trap_cont)
+ 	if(GetObjProperty(house, "ownerserial") == who.serial)
+ 		return 1;
+ 	endif
++	// 2026-10-09: the owner (any character on its account), co-owners and friends
++	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
++	var hsign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
++	if(hsign)
++		if(hsign.IsAffiliated(who))
++			return 1;
++		endif
++	endif
+ 
+ 	var i;
+ 	for(i := 1; i <= 5; i := i + 1)
+
+# ===== Section 20 (2026-10-19): /code-review of the Patch-3.1.4 work, 10 findings. Diff of this round only (pre-edit snapshot -> working tree), NOT against HEAD: the files carry other uncommitted 3.1.4 work. =====
+diff --git a/pkg/opt/powerhour/include/powerhour.inc b/pkg/opt/powerhour/include/powerhour.inc
+--- a/pkg/opt/powerhour/include/powerhour.inc
++++ b/pkg/opt/powerhour/include/powerhour.inc
+@@ -406,33 +406,28 @@
+ 
+ // The weekly lock lifts on the first Sunday 00:00 GMT after the last use, or a full
+ // week after it if it was used on a Sunday. .setph and .ph both use this one copy (2026-10-08).
+-function PPH_IsEligible(who, time_now)
++// 2026-10-19: one reset time for the rule and the countdown. The old rule mixed a weekday test
++// with a 7-day test, so a week later, on the use weekday, the lock came back until the use hour
++// while .ph said "less than a minute". The weekday is now taken from the use time itself.
++function PPH_ResetTime(who)
+ 	var use_time := PPH_UseTime(who);
+ 	if(!use_time)
+-		return 1;
++		return 0;
++	endif
++	var use_weekday := PH_WeekdayOf(use_time);
++	if(use_weekday == 0)
++		return use_time + PH_WEEK + 1;
+ 	endif
+-	time_now := CInt(time_now);
+-	var weekday_now := PH_WeekdayOf(time_now);
+-	var use_weekday := PPH_UseWeekday(who);
+-	return ((weekday_now < use_weekday) || (time_now > use_time + PH_WEEK));
++	return (CInt(use_time / PH_DAY) + (7 - use_weekday)) * PH_DAY;
++endfunction
++
++function PPH_IsEligible(who, time_now)
++	return (CInt(time_now) >= PPH_ResetTime(who));
+ endfunction
+ 
+ // Seconds until PPH_IsEligible() becomes true (0 if it already is).
+ function PPH_SecondsUntilEligible(who, time_now)
+-	time_now := CInt(time_now);
+-	if(PPH_IsEligible(who, time_now))
+-		return 0;
+-	endif
+-	var use_time    := PPH_UseTime(who);
+-	var use_weekday := PPH_UseWeekday(who);
+-	var reset_time;
+-	if(use_weekday == 0)
+-		// Used on a Sunday: "weekday_now < 0" can never be true, so only the full week applies.
+-		reset_time := use_time + PH_WEEK + 1;
+-	else
+-		reset_time := (CInt(use_time / PH_DAY) + (7 - use_weekday)) * PH_DAY;
+-	endif
+-	var left := reset_time - time_now;
++	var left := PPH_ResetTime(who) - CInt(time_now);
+ 	if(left < 0)
+ 		left := 0;
+ 	endif
+diff --git a/pkg/opt/warriorforhire/include/wfhcommon.inc b/pkg/opt/warriorforhire/include/wfhcommon.inc
+--- a/pkg/opt/warriorforhire/include/wfhcommon.inc
++++ b/pkg/opt/warriorforhire/include/wfhcommon.inc
+@@ -5,8 +5,11 @@
+ // same life. The eleventh death is final.
+ const WFH_MAX_DEATHS := 10;
+ 
++// 2026-10-19: moved here from warrior.src (where ZH2.5 keeps it too) so .maxwfh shares it.
++const WFH_SKILL_CAP_TENTHS := 1300; // 130.0 displayed -- hard ceiling regardless of the master's own skill
++
+ // 2026-10-10: Anatomy, Parry, Healing, Tactics, Archery, Swordsmanship, Macefighting, Fencing,
+-// Wrestling, Throwing. Same list as TRACKED_SKILLS in warrior.src; textcmd .maxwfh reads it here.
++// Wrestling, Throwing. warrior.src (TRACKED_SKILLS) and textcmd .maxwfh both read it here.
+ function WfhTrackedSkills()
+ 
+ 	return {1, 5, 17, 27, 31, 40, 41, 42, 43, 57};
+@@ -14,7 +17,8 @@
+ endfunction
+ 
+ // 2026-10-10: one point of each stat per death so far (the old "- (resnum-1)+1" gained a point on the
+-// first revival), floored at 10, the lowest stat .maxwfh accepts. Heart and priest revivals both use it.
++// first revival), floored at 10, the lowest stat .maxwfh accepts. Heart and priest revivals both use it
++// (the priest's memory revival since 2026-10-19, your pick; it used to restore full stats).
+ function WfhStatAfterLoss(stat, resnum)
+ 
+ 	var result := CInt(stat) - CInt(resnum);
+@@ -27,21 +31,22 @@
+ 
+ // 2026-10-10: a heart revives only the death the owner's WFHBackup was written for. death.src stamps
+ // both with the corpse serial (WFHDeathId) and either revival erases the backup, so a heart held
+-// back from an earlier death cannot be used later to roll the death count back. Hearts written
+-// before the stamp existed carry none and are honoured only while no stamped backup has replaced them.
++// back from an earlier death cannot be used later to roll the death count back.
++// 2026-10-19 (your pick): hearts written before the stamp existed are refused outright. They used to
++// pass whenever the owner had no backup, which every revival now erases, so one kept in a chest was
++// a free extra life.
+ function IsCurrentWfhHeart(heart, owner)
+ 
+-	var heartid := GetObjProperty(heart, "WFHDeathId");
+-	var backupid := 0;
+-	var backup := GetObjProperty(owner, "WFHBackup");
+-	if (backup)
+-		backupid := backup["WFHDeathId"];
++	var heartid := CInt(GetObjProperty(heart, "WFHDeathId"));
++	if (!heartid)
++		return 0;
+ 	endif
+ 
+-	if (!heartid and !backupid)
+-		return 1;
++	var backup := GetObjProperty(owner, "WFHBackup");
++	if (!backup)
++		return 0;
+ 	endif
+-	return (heartid and heartid == backupid);
++	return (heartid == CInt(backup["WFHDeathId"]));
+ 
+ endfunction
+ 
+diff --git a/scripts/ai/highpriest.src b/scripts/ai/highpriest.src
+--- a/scripts/ai/highpriest.src
++++ b/scripts/ai/highpriest.src
+@@ -278,9 +278,11 @@
+ 								SetObjProperty(newwfh, "master", player.serial);
+ 								sleep(2);
+ 								SetObjProperty(newwfh, "master", player.serial);
+-								SetBaseStrength(newwfh, Cint(wfhbackup["Str"]));
+-								SetBaseIntelligence(newwfh, Cint(wfhbackup["Int"]));
+-								SetBaseDexterity(newwfh, Cint(wfhbackup["Dex"]));
++								// 2026-10-19 (your pick): the same stat loss as a heart revival; was full stats.
++								var wfhresnum := Cint(wfhbackup["resnum"]);
++								SetBaseStrength(newwfh, WfhStatAfterLoss(wfhbackup["Str"], wfhresnum));
++								SetBaseIntelligence(newwfh, WfhStatAfterLoss(wfhbackup["Int"], wfhresnum));
++								SetBaseDexterity(newwfh, WfhStatAfterLoss(wfhbackup["Dex"], wfhresnum));
+ 								SetWfhVitalCeilingsAndFill(newwfh);	// vitals = Str/Int/Dex (2026-10-10), then topped up
+ 								newwfh.name := wfhbackup["Name"];
+ 								var wfhsex := Cint(wfhbackup["Sex"]);
+@@ -411,7 +413,12 @@
+ 					var hhme := GetObjProperty(heart,"master");
+ 					// 2026-10-10: refusals used to `return;` here, which ended the whole priest AI (the heart was also lost);
+ 					// now one if/elseif/else, and the heart goes back to the giver.
+-					if (hme and (hhme != hme))
++					if (CInt(hhme) != event.source.serial)
++						// 2026-10-19 (your pick): only the warrior's own master may bring a heart; one
++						// handed in by anyone else is destroyed (it used to be judged against the giver).
++						DestroyItem(heart);
++						Say("This heart is bound to another soul. It crumbles to dust.");
++					elseif (hme and (hhme != hme))
+ 						SendSysMessage(event.source,"You already have a henchman");
+ 						MoveItemToContainer(heart, event.source.backpack);
+ 					elseif (resnum > WFH_MAX_DEATHS or !IsCurrentWfhHeart(heart, event.source))
+diff --git a/pkg/opt/warriorforhire/textcmd/test/maxwfh.src b/pkg/opt/warriorforhire/textcmd/test/maxwfh.src
+--- a/pkg/opt/warriorforhire/textcmd/test/maxwfh.src
++++ b/pkg/opt/warriorforhire/textcmd/test/maxwfh.src
+@@ -9,9 +9,8 @@
+ include ":warriorforhire:include/wfhcommon";
+ include ":warriorforhire:include/wfhvitals";
+ 
+-// 2026-10-10: ported from ZH2.5 Patch 1.1.4. 1300 tenths = 130.0, the same hard ceiling a warrior's
+-// own skill growth stops at (WFH_SKILL_CAP_TENTHS in warrior.src, below the shard's 150 skill cap).
+-const MAXWFH_SKILL_TENTHS := 1300;
++// 2026-10-10: ported from ZH2.5 Patch 1.1.4. Skills go to WFH_SKILL_CAP_TENTHS (wfhcommon.inc since
++// 2026-10-19, was a local 1300 copy), the ceiling a warrior's own skill growth stops at.
+ const MAXWFH_STAT_MIN := 10;
+ const MAXWFH_STAT_MAX := 300;
+ 
+@@ -51,7 +50,7 @@
+ 
+ 	var skillids := WfhTrackedSkills();
+ 	foreach skillid in skillids
+-		SetBaseSkillBaseValue(targetted, skillid, MAXWFH_SKILL_TENTHS);
++		SetBaseSkillBaseValue(targetted, skillid, WFH_SKILL_CAP_TENTHS);
+ 	endforeach
+ 
+ 	var basestr := GetStrength(targetted) - GetStrengthMod(targetted);
+diff --git a/pkg/opt/warriorforhire/warrior.src b/pkg/opt/warriorforhire/warrior.src
+--- a/pkg/opt/warriorforhire/warrior.src
++++ b/pkg/opt/warriorforhire/warrior.src
+@@ -48,8 +48,14 @@
+ var lastmodwipe := ReadGameClock();
+ var wasownerOnline := 0;
+ 
+-var TRACKED_SKILLS := {1,5,17,27,31,40,41,42,43,57};
+-const WFH_SKILL_CAP_TENTHS := 1300; //130.0 displayed -- hard ceiling regardless of the master's own skill
++// 2026-10-19: the list and WFH_SKILL_CAP_TENTHS now come from include/wfhcommon (were local copies).
++var TRACKED_SKILLS := WfhTrackedSkills();
++
++// 2026-10-19: per-script caches for the fight loop. Weapon objtype -> ammo objtype (0 = not a
++// bow), and heal potion objtype -> Strength, built from :alchemy:itemdesc on the first drink.
++var gWeaponAmmoTypes := dictionary;
++var gHealPotionPowers := dictionary;
++var gHealPotionsLoaded := 0;
+ 
+ program Warrior()
+ 
+@@ -209,14 +215,7 @@
+ 		return 0;
+ 	endif
+ 
+-	var elem := FindConfigElem(ReadConfigFile(":*:itemdesc"), weapon.objtype);
+-	if (!elem)
+-		return 0;
+-	endif
+-	if (!GetConfigInt(elem, "Projectile"))
+-		return 0;
+-	endif
+-	var ammotype := GetConfigInt(elem, "ProjectileType");
++	var ammotype := WeaponAmmoType(weapon.objtype);	// 2026-10-19: cached per objtype
+ 	if (!ammotype or ammotype == 1)
+ 		return 0;
+ 	endif
+@@ -1178,7 +1177,7 @@
+ 	endforeach
+ 
+ 	var resnum := Cint(GetObjProperty(me,"resnum"));
+-	var deathsleft := 10 - resnum;
++	var deathsleft := WFH_MAX_DEATHS - resnum;	// 2026-10-19: was a literal 10
+ 	if (deathsleft < 0) deathsleft := 0; endif
+ 
+ 	var ysize := 380 + (len(equipped)*22);
+@@ -1230,7 +1229,7 @@
+ 	endforeach
+ 
+ 	y := y + 10;
+-	GFTextLine(gump, 20, y, 0, "Deaths survived: "+resnum+" / 10 (" +deathsleft+ " remaining)");
++	GFTextLine(gump, 20, y, 0, "Deaths survived: "+resnum+" / "+WFH_MAX_DEATHS+" (" +deathsleft+ " remaining)");
+ 
+ 	GFAddButton(gump, 190, ysize-35, 2128, 2129, 1, 0);
+ 
+@@ -1535,16 +1534,55 @@
+ // 0 unless the item is a heal potion, i.e. an :alchemy:itemdesc entry drunk by yellowpotion (Light Heal,
+ // Heal, Greater Heal and their true-mage levels). Otherwise its power, as drinkpotion.inc's
+ // GetPotionStrength works it out: itemdesc Strength + ByTrueMage.
++// 2026-10-19: reads a table built once per script instead of one cfg lookup per pack item.
+ function HealPotionPower(potion)
+ 
+-	var elem := FindConfigElem(ReadConfigFile(":alchemy:itemdesc"), potion.objtype);
+-	if (!elem)
+-		return 0;
++	if (!gHealPotionsLoaded)
++		LoadHealPotionPowers();
+ 	endif
+-	if (lower(GetConfigString(elem, "Script")) != "yellowpotion")
++	if (!gHealPotionPowers.exists(potion.objtype))
+ 		return 0;
+ 	endif
+-	return GetConfigInt(elem, "Strength") + CInt(GetObjProperty(potion, "ByTrueMage"));
++	return gHealPotionPowers[potion.objtype] + CInt(GetObjProperty(potion, "ByTrueMage"));
++
++endfunction
++
++function LoadHealPotionPowers()
++
++	gHealPotionsLoaded := 1;
++	var cfg := ReadConfigFile(":alchemy:itemdesc");
++	if (!cfg)
++		return;
++	endif
++	var keys := GetConfigIntKeys(cfg);
++	foreach key in keys
++		var elem := FindConfigElem(cfg, key);
++		if (elem)
++			if (lower(GetConfigString(elem, "Script")) == "yellowpotion")
++				gHealPotionPowers[key] := GetConfigInt(elem, "Strength");
++			endif
++		endif
++	endforeach
++
++endfunction
++
++// 2026-10-19: a weapon's ammo objtype from its itemdesc (0 when it fires nothing), looked up once
++// per weapon objtype; HasBow used to read the merged :*:itemdesc on every fight-loop call.
++function WeaponAmmoType(objtype)
++
++	if (gWeaponAmmoTypes.exists(objtype))
++		return gWeaponAmmoTypes[objtype];
++	endif
++
++	var ammotype := 0;
++	var elem := FindConfigElem(ReadConfigFile(":*:itemdesc"), objtype);
++	if (elem)
++		if (GetConfigInt(elem, "Projectile"))
++			ammotype := CInt(GetConfigInt(elem, "ProjectileType"));
++		endif
++	endif
++	gWeaponAmmoTypes[objtype] := ammotype;
++	return ammotype;
+ 
+ endfunction
+ 
+diff --git a/pkg/systems/combat/include/hitscriptinc.inc b/pkg/systems/combat/include/hitscriptinc.inc
+--- a/pkg/systems/combat/include/hitscriptinc.inc
++++ b/pkg/systems/combat/include/hitscriptinc.inc
+@@ -722,8 +722,19 @@
+ // and its own master (both ways since 2026-10-10), and applies the admin-tunable NPC/Boss knobs otherwise.
+ function WFHModifyDamage(attacker, defender, rawdamage)
+ 
++	// 2026-10-19: each master read once and compared only when set; an absent CProp and an
++	// errored serial compared equal (gotcha #20), halving hits on masterless warriors.
++	var attacker_master := 0;
+ 	if (attacker.npctemplate == "warriorforhire")
+-		if (GetObjProperty(attacker,"master") == defender.serial)
++		attacker_master := CInt(GetObjProperty(attacker,"master"));
++	endif
++	var defender_master := 0;
++	if (defender.npctemplate == "warriorforhire")
++		defender_master := CInt(GetObjProperty(defender,"master"));
++	endif
++
++	if (attacker.npctemplate == "warriorforhire")
++		if (attacker_master and attacker_master == defender.serial)
+ 			rawdamage := CInt(rawdamage / 2);
+ 		elseif (defender.isa(POLCLASS_NPC))
+ 			if (GetObjProperty(defender,"Boss") or GetObjProperty(defender,"SuperBoss"))
+@@ -732,7 +743,7 @@
+ 				rawdamage := CInt(rawdamage * WFHDamageMultiplier("WFHDamageToNPCs"));
+ 			endif
+ 		endif
+-	elseif (defender.npctemplate == "warriorforhire" and GetObjProperty(defender,"master") == attacker.serial)
++	elseif (defender_master and defender_master == attacker.serial)
+ 		// 2026-10-10 (from ZH2.5 1.1.4, your pick): the master's hits on their own warrior are halved
+ 		// too, so sparring is even both ways.
+ 		rawdamage := CInt(rawdamage / 2);
+diff --git a/pkg/opt/ArtifactSystem/eonprism.src b/pkg/opt/ArtifactSystem/eonprism.src
+--- a/pkg/opt/ArtifactSystem/eonprism.src
++++ b/pkg/opt/ArtifactSystem/eonprism.src
+@@ -6,6 +6,7 @@
+ use os;
+ 
+ include "include/client";
++include "include/itemutil";
+ include ":powerhour:include/powerhour";
+ 
+ const EONPRISM_FONT_COLOR := 43;
+@@ -16,6 +17,13 @@
+ 		return 0;
+ 	endif
+ 
++	// 2026-10-19: anyone in reach could use a prism lying on the floor or in an open chest.
++	if(!IsOnPlayer(character.backpack, prism))
++		SendSysMessage(character, "The Eon-Prism must be in your backpack to use it.", FONT_NORMAL, EONPRISM_FONT_COLOR);
++		ReleaseItem(prism);
++		return 0;
++	endif
++
+ 	if(PPH_ActiveType(character))
+ 		SendSysMessage(character, "You cannot use the Eon-Prism while a personal powerhour is already active.", FONT_NORMAL, EONPRISM_FONT_COLOR);
+ 		ReleaseItem(prism);
+diff --git a/pkg/std/spells/magictrap.src b/pkg/std/spells/magictrap.src
+--- a/pkg/std/spells/magictrap.src
++++ b/pkg/std/spells/magictrap.src
+@@ -8,6 +8,7 @@
+ include "include/classes";
+ include "include/client";
+ include "include/random";
++include ":house:utility";	// 2026-10-19: GetHouseSignFromObject
+ 
+ program cast_strength( parms, spell_id )
+ 
+@@ -72,12 +73,15 @@
+ 
+ 	// 2026-10-09: the owner (any character on its account), co-owners and friends
+ 	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
++	// 2026-10-19: the sign comes from GetHouseSignFromObject, which also finds signs
++	// linked only by houseserial (it used to read the multi's signserial alone).
+ 	var is_allowed := 0;
+ 	if( cast_on.multi )
+ 		if( GetObjProperty( cast_on.multi , "ownerserial" ) == caster.serial )
+ 			is_allowed := 1;
+ 		else
+-			var hsign := SystemFindObjectBySerial( CInt( GetObjProperty( cast_on.multi , "signserial" )));
++			var trap_house := cast_on.multi;
++			var hsign := GetHouseSignFromObject( trap_house );
+ 			if( hsign )
+ 				if( hsign.IsAffiliated( caster ))
+ 					is_allowed := 1;
+diff --git a/pkg/std/traps/trapScripts/setTrap.src b/pkg/std/traps/trapScripts/setTrap.src
+--- a/pkg/std/traps/trapScripts/setTrap.src
++++ b/pkg/std/traps/trapScripts/setTrap.src
+@@ -4,6 +4,7 @@
+ include "include/client";
+ include "include/attributes";
+ include ":traps:traps";
++include ":house:utility";	// 2026-10-19: GetHouseSignFromObject
+ 
+ program ApplyTrap(who, trap)
+ 
+@@ -89,7 +90,8 @@
+ 	endif
+ 	// 2026-10-09: the owner (any character on its account), co-owners and friends
+ 	// on the sign lists may trap (sign IsAffiliated); the legacy props below stay.
+-	var hsign := SystemFindObjectBySerial(CInt(GetObjProperty(house, "signserial")));
++	// 2026-10-19: GetHouseSignFromObject also finds signs linked only by houseserial.
++	var hsign := GetHouseSignFromObject(house);
+ 	if(hsign)
+ 		if(hsign.IsAffiliated(who))
+ 			return 1;
+diff --git a/pkg/opt/areas/include/areapolicy.inc b/pkg/opt/areas/include/areapolicy.inc
+--- a/pkg/opt/areas/include/areapolicy.inc
++++ b/pkg/opt/areas/include/areapolicy.inc
+@@ -170,7 +170,12 @@
+ 	endif
+ 
+ 	UnloadDataFile(GetRealmPolicyDescriptor(realm));
+-	RefreshRealmPolicyCache(realm); // 2026-09-23
++	// 2026-09-23; 2026-10-19: only when something was written or pruned, or the cache was never
++	// built. A no-edit save used to bump the version and make every script reload its mask copy.
++	var cache_missing := (Lower(TypeOf(GetGlobalProperty(AREA_POLICY_CACHE_PREFIX+realm))) != "dictionary");
++	if (changed_count > 0 || prune_result > 0 || cache_missing)
++		RefreshRealmPolicyCache(realm);
++	endif
+ 	return LoadRealmPolicies(realm);
+ endfunction
+ 

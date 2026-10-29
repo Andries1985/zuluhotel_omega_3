@@ -5,7 +5,7 @@ use os;
 include "include/spelldata";
 include "include/dotempmods";
 include "include/client";
-include "include/spellgrants";
+// 2026-10-25: spellgrants.inc no longer used here; the spell keeps its own level in spellprots.inc (ZH2.5 1.1.5 port)
 
 const SPELL_EFFECT_TYPE_MOVING 	:= MOVING_SPELL_SANCTUARY;
 const SPELL_EFFECT_ID		:= FX_SPELL_SANCTUARY;
@@ -54,26 +54,23 @@ program cast_antidote( parms )
 	endif
 
 	EraseObjProperty( caster , "#Casting" );
-	var prevprot := GetObjProperty( caster , "PermPoisonImmunity" );
-	if( !prevprot )
-		var magery := GetAttribute( caster , ATTRIBUTEID_MAGERY );
-		var duration := ModifyWithMagicEfficiency( caster , magery * 2 );
-		var power := 0;
-		if (GetObjProperty(caster, "IsMage"))
-			power := GetObjProperty(caster, "IsMage");
-		elseif (GetObjProperty(caster, "IsPaladin"))
-			power := GetObjProperty(caster, "IsPaladin");
-		endif
-		if (!power)
-			power := 0;	
-		endif;
-		power := power + 1;
-		if( duration and power )
-			SetObjProperty( caster, "PermPoisonImmunity" , power );
-			SetObjProperty( caster, "SpellPoisonImmunity" , 1 ); // 2026-09-22: marks the grant so login can take it back after a restart
-			SendSysmessage( caster , "You are now protected from poisonous effects." );	
-			Sleep( duration );
-			ReclaimSpellPoisonImmunity( caster ); // 2026-09-22: back to what worn items give (spellgrants.inc)
+
+	// 2026-10-25: immunity level is the caster's class level (1-6), duration 2-10 minutes by that level; magery,
+	// magic efficiency and equipment no longer change either. The level lives in #SpellPoisonImmunity beside
+	// the permanent PermPoisonImmunity instead of overwriting it (spellprots.inc, ZH2.5 1.1.5 port)
+	var power := SpellProtCasterLevel( GetClasseLevel( caster ) );
+	var duration := SpellProtDuration( power );
+
+	// Skip if gear or a stronger cast already gives as much; an equal one is refreshed
+	if( power >= GetPoisonImmunityLevel( caster ) )
+		SetSpellProt( caster , SPELLPROT_POISON , power );
+		BuffOn( caster , "poisonimmunity" , power , duration );
+		SendSysmessage( caster , "You are now protected from poisonous effects." );
+		Detach();
+		Sleep( duration );
+		// Only end it if this cast still owns it (not dispelled by WipeMods, not replaced by a recast)
+		if( EndSpellProt( caster , SPELLPROT_POISON ) )
+			BuffOff( caster , "poisonimmunity" );
 		endif
 	endif
 endprogram

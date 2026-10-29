@@ -2,6 +2,7 @@ use uo;
 
 include "include/spelldata";
 include "include/client";
+include "include/buffs";	// 2026-10-25: BuffOn / BuffOff (ZH2.5 1.1.5 port)
 
 program cast_owlsight( parms )
 
@@ -55,6 +56,7 @@ program cast_owlsight( parms )
 		endif
 			
 		cast_near.setlightlevel( 0 , duration );
+		BuffOn( cast_near , "nightsight" , 0 , duration );	// 2026-10-25: buff bar icon (ZH2.5 1.1.5 port)
 		PlayObjectCenteredEffect( cast_near, FX_SPELL_OWL_SIGHT , SPEED_SPELL_OWL_SIGHT , LOOP_SPELL_OWL_SIGHT );
 		
 	endforeach

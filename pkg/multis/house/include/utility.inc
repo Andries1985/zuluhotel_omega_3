@@ -46,6 +46,22 @@ function GetHouseSignFromObject(byref house_or_sign)
 	return 0;
 endfunction
 
+// 2026-10-09: owner test for a house multi or its sign, through the sign's
+// IsOwner method (any character on the owner's account counts).
+function IsHouseOwnerCharacter(who, house_or_sign)
+	var sign := GetHouseSignFromObject(house_or_sign);
+	if(sign)
+		if(sign.IsOwner(who))
+			return 1;
+		endif
+		return 0;
+	endif
+	if(house_or_sign && (CInt(GetObjProperty(house_or_sign, "ownerserial")) == who.serial))
+		return 1;
+	endif
+	return 0;
+endfunction
+
 //-------------------------------------------------- New Housing Functions ----------------------------------------------------------------\\
 
 function GetCurrentHouseAtMobile(who)

@@ -15,7 +15,7 @@ var settings := HE_GetSettingsCfgElem("settings");
 program teleporter_use(who, teleporter)
 
 	sign := FindHouseForLocation(who.x, who.y, who.z, who.realm);
-	if(who.serial != CInt(GetObjProperty(sign, "ownerserial")))
+	if(!sign || !sign.IsOwner(who)) // 2026-10-09: same account counts as the owner
 		SendSysMessage(who, "Only the house owner can access teleporter functions.", color := 33);
 		return 0;
 	endif

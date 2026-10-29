@@ -1,0 +1,201 @@
+/////////////////////////////////////////////////////////////////////////////
+//	Runebook / Runic Atlas Transcription Scrolls (2026-10-19)
+//
+//	Single-use vanity items. Copies the rune list ("RuneDefs") of one book
+//	into an empty book of the same kind the player already owns:
+//	  0x4000BD Runebook Transcription Scroll   -- runebook -> runebook
+//	  0x4000BE Runic Atlas Transcription Scroll -- atlas    -> atlas
+//	Nothing else is copied (charges, name, colour, default location, maker).
+//
+//	Both books are reserved the moment they are targeted. An open runebook or
+//	atlas gump already holds that reservation (runebook.src / runicatlas.src),
+//	so a book in use cannot be picked, and a reserved book cannot be picked
+//	up, opened or have runes dropped into it until the copy is done.
+/////////////////////////////////////////////////////////////////////////////
+
+use uo;
+use os;
+
+include "include/objtype";
+
+const UOBJ_RUNEBOOK_COPY_SCROLL	:= 0x4000BD;
+const UOBJ_ATLAS_COPY_SCROLL	:= 0x4000BE;
+
+program runebookcopy( who, scroll )
+
+	if( !ReserveItem( scroll ) )
+		return 0;
+	endif
+
+	if( !IsInBackpackOf( who, scroll ) )
+		SendSysMessage( who, "The scroll must be in your backpack to use it." );
+		return 0;
+	endif
+
+	var kind_name;
+	if( scroll.objtype == UOBJ_RUNEBOOK_COPY_SCROLL )
+		kind_name := "runebook";
+	elseif( scroll.objtype == UOBJ_ATLAS_COPY_SCROLL )
+		kind_name := "Runic Atlas";
+	else
+		return 0;
+	endif
+
+	SendSysMessage( who, "Select the " + kind_name + " to copy from." );
+	var source := Target( who, TGTOPT_NOCHECK_LOS );
+	if( !source )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	if( !IsMatchingBook( scroll, source ) )
+		SendSysMessage( who, "This scroll can only copy a " + kind_name + "." );
+		return 0;
+	endif
+
+	if( !IsInBackpackOf( who, source ) )
+		SendSysMessage( who, "The book to copy from must be in your backpack." );
+		return 0;
+	endif
+
+	if( !ReserveItem( source ) )
+		SendSysMessage( who, "That " + kind_name + " is in use. Close it and try again." );
+		return 0;
+	endif
+
+	if( GetRuneCount( source ) < 1 )
+		SendSysMessage( who, "That " + kind_name + " has no runes to copy." );
+		return 0;
+	endif
+
+	SendSysMessage( who, "Select the empty " + kind_name + " to copy into." );
+	var dest := Target( who, TGTOPT_NOCHECK_LOS );
+	if( !dest )
+		SendSysMessage( who, "Cancelled." );
+		return 0;
+	endif
+
+	if( dest.serial == source.serial )
+		SendSysMessage( who, "You cannot copy a book into itself." );
+		return 0;
+	endif
+
+	if( !IsMatchingBook( scroll, dest ) )
+		SendSysMessage( who, "This scroll can only copy into a " + kind_name + "." );
+		return 0;
+	endif
+
+	if( !IsInBackpackOf( who, dest ) )
+		SendSysMessage( who, "The book to copy into must be in your backpack." );
+		return 0;
+	endif
+
+	if( !ReserveItem( dest ) )
+		SendSysMessage( who, "That " + kind_name + " is in use. Close it and try again." );
+		return 0;
+	endif
+
+	if( GetRuneCount( dest ) > 0 )
+		SendSysMessage( who, "The book to copy into must be empty." );
+		return 0;
+	endif
+
+	set_critical(1);
+
+	// Re-check everything after the two targets; the reservations stop other
+	// scripts and pick-ups, but the bags holding the books can still move.
+	if( !IsInBackpackOf( who, scroll ) or !IsInBackpackOf( who, source ) or !IsInBackpackOf( who, dest ) )
+		set_critical(0);
+		SendSysMessage( who, "The scroll and both books must stay in your backpack." );
+		return 0;
+	endif
+
+	var runes_def := GetObjProperty( source, "RuneDefs" );
+	if( !runes_def or runes_def.size() < 1 )
+		set_critical(0);
+		SendSysMessage( who, "That " + kind_name + " has no runes to copy." );
+		return 0;
+	endif
+
+	if( GetRuneCount( dest ) > 0 )
+		set_critical(0);
+		SendSysMessage( who, "The book to copy into must be empty." );
+		return 0;
+	endif
+
+	// The default location is a separate book prop that is not copied, so a
+	// copied default marker would point at nothing.
+	var i;
+	for( i := 1; i <= runes_def.size(); i := i + 1 )
+		if( runes_def[i].defloc )
+			runes_def[i].defloc := 0;
+		endif
+	endfor
+
+	if( !SetObjProperty( dest, "RuneDefs", runes_def ) )
+		set_critical(0);
+		SendSysMessage( who, "The transcription failed." );
+		return 0;
+	endif
+
+	DestroyItem( scroll );
+
+	set_critical(0);
+
+	PlaySoundEffect( who, 0x50 );	// inscription sound
+	SendSysMessage( who, "You transcribe " + runes_def.size() + " rune" + ( runes_def.size() == 1 ? "" : "s" ) + " into the " + kind_name + ". The scroll crumbles to dust." );
+
+	ReleaseItem( source );
+	ReleaseItem( dest );
+
+endprogram
+
+
+// Runebook scroll takes runebooks only; atlas scroll takes either atlas facing.
+function IsMatchingBook( scroll, book )
+
+	if( scroll.objtype == UOBJ_RUNEBOOK_COPY_SCROLL )
+		return ( book.objtype == UOBJ_RUNEBOOK );
+	elseif( scroll.objtype == UOBJ_ATLAS_COPY_SCROLL )
+		return ( book.objtype == UOBJ_RUNIC_ATLAS_EW or book.objtype == UOBJ_RUNIC_ATLAS_NS );
+	endif
+
+	return 0;
+
+endfunction
+
+
+function GetRuneCount( book )
+
+	var runes_def := GetObjProperty( book, "RuneDefs" );
+	if( !runes_def )
+		return 0;
+	endif
+
+	return runes_def.size();
+
+endfunction
+
+
+// Anywhere inside who's backpack, sub-bags included. A worn backpack's
+// .container is the mobile, whose .container is an error, which ends the walk.
+function IsInBackpackOf( who, item )
+
+	var pack_serial := who.backpack.serial;
+	if( !pack_serial )
+		return 0;
+	endif
+
+	var cont := item.container;
+	var depth := 0;
+	while( cont and depth < 20 )
+		if( cont.serial == pack_serial )
+			return 1;
+		endif
+		cont := cont.container;
+		depth := depth + 1;
+	endwhile
+
+	return 0;
+
+endfunction

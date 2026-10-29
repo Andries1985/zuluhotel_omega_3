@@ -485,13 +485,10 @@ endfunction
 //
 ///////////////////////////////////////////////////////////
 exported function IsCoOwnerOrOwner(sign, byref mobile)
-	if (mobile.serial in GetObjProperty(sign,"coowners") || mobile.serial == GetObjProperty(sign, "ownerserial"))
+	// 2026-10-09: owner test goes through IsOwner (same account counts).
+	if (mobile.serial in GetObjProperty(sign,"coowners") || IsOwner(sign, mobile))
 		return 1;
 	endif
-
-	// if (mobile.acctname == (GetObjProperty(sign, "owneracct") ) )
-		// return 1;
-	// endif
 	return 0;
 endfunction
 
@@ -576,10 +573,30 @@ endfunction
 // Returns: integer:: 1 if the mobile is the owner or
 // 0 if not.
 //
+// 2026-10-09: any character on the owner's account counts as the owner
+// (your rule: same account = full owner rights everywhere). Falls back to
+// the legacy custom-house "account" prop until that sign is migrated.
+//
 ///////////////////////////////////////////////////////////
 exported function IsOwner( sign, byref mobile )
 
 	If(mobile.serial == CInt( GetObjProperty( sign, "ownerserial" )))
+		return 1;
+	endif
+	return IsOwnerAccount( sign, mobile );
+endfunction
+
+// 2026-10-09: account half of IsOwner. Both sides are truth-checked first --
+// two unset values compare equal (an NPC has no acctname).
+exported function IsOwnerAccount( sign, byref mobile )
+	var acct := GetObjProperty( sign, "owneracct" );
+	if( !acct )
+		acct := GetObjProperty( sign, "account" );
+	endif
+	if( !acct || !mobile.acctname )
+		return 0;
+	endif
+	if( Lower( CStr( acct ) ) == Lower( mobile.acctname ) )
 		return 1;
 	endif
 	return 0;
@@ -981,6 +998,11 @@ endfunction
 ///////////////////////////////////////////////////////////
 exported function IsBanned(sign, byref mobile)
 
+	// 2026-10-09: the owner (any character on the owner's account) is never
+	// banned, even if that character was put on the list before this rule.
+	if(IsOwner(sign, mobile))
+		return 0;
+	endif
 	var nfo := GetObjProperty(sign, "banlist");
 
   if(mobile.serial in nfo)

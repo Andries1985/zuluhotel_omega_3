@@ -1080,6 +1080,115 @@ Picks from the "Area 6 Fix Plan, Part 4" page (db doc `plan/picks_area6_part4`):
 - 20 old-map commands: .home, .setupchristmas, .setupsanta and .removechristmas stay (your answer in chat); .makemoongates deleted (18.20).
 - 21 the seven unreferenced util includes stay (your answer in chat: rewrite .restartall only, see 18.19).
 
+## 19. Correction to 9.12: same-account characters are house owners, 2026-10-09
+
+Reported in game: a character on the owner's account could not be added to the house friend list. Cause: my 9.12 fix. The original `AddFriend` added the target and only then compared `acctname` with `owneracct`, so the alt WAS added (with a wrong "Cancelled."); I read that as "check runs too late" and moved it before the add, which made it a real refusal. Meanwhile the owner tests the permission system uses (`IsOwner`, `IsCoOwnerOrOwner`, `HasHousePermission`) matched the owner SERIAL only, so an alt had the sign menu (acctname checks in the sign scripts) but no lockdown/secure/teleporter/house_manager rights and could not be friended to get them. Your rule: same account = full owner rights everywhere. Branch `Patch-3.1.4`. Not compiled, not tested in game by me.
+
+The diff for this section is APPENDED to `code-review-fixlog-20260921.diff` (the review rounds above were committed since, so a fresh `git diff` would no longer contain them and would pick up unrelated 3.1.4 work).
+
+### 19.1 Core: `IsOwner` matches the owner's account
+- File: `pkg/multis/house/multiSign/method.src:576-603` (shared MethodScript of multi, static and custom house signs)
+- Was: `IsOwner` = `mobile.serial == ownerserial`. `IsCoOwnerOrOwner` had its own serial test with the acctname line commented out.
+- Now: `IsOwner` falls through to a new exported `IsOwnerAccount(sign, mobile)`: `owneracct` (or the legacy custom-house `account` prop before migration) compared case-insensitively with `mobile.acctname`, both truth-checked first (gotcha 20; NPCs have no acctname). `IsCoOwnerOrOwner` (:488) calls `IsOwner`.
+- Why: every caller of `IsOwner` / `IsCoOwnerOrOwner` / `IsFullHouseManager` / `IsAffiliated` / `HasHousePermission`, and utility.inc `IsCowner` / housecheck.inc `Housecheck`, now treats the alt as the owner: lockdown, secure, teleporter, eject, ban, house_manager, friend-permission gump, deeds, interior decorator, carpets, Omega Cache, backpack secure level, decay refresh, house teleporter kit.
+- **Players:** any character on the owner's account has full owner rights in that house.
+
+### 19.2 The owner's account is never banned
+- `method.src:1001` `IsBanned` returns 0 for `IsOwner`, so an alt put on a ban list before this rule is not booted or refused.
+- Raw ban-list reads switched to `IsBanned`: `pkg/multis/house/walkOn.src:24`, `pkg/multis/staticHousing/bantile/walkOn.src:19`, `pkg/items/houseExtras/hteleporter/walkOn.src:17` (destination house).
+- `pkg/multis/house/walkOn.src:15`: ban-tile decay refresh uses `IsOwner` (was `GetOwnerSerial()`).
+
+### 19.3 Friend / co-owner adds refuse the owner's account with a real message
+- `pkg/multis/house/multiSign/use.src:441` (AddFriend), `:639` (AddCoowner, also moved BEFORE the add: it used to add the owner as co-owner and then say "Cancelled."), `pkg/multis/customhousing/sign.src:936` (AddFriend), `pkg/multis/staticHousing/sign/use.src:1361` (AddFriend, had no owner guard at all), `:1453` (addcoowner).
+- Message: "That character shares the owner's account and already has full owner rights."
+
+### 19.4 Owner guards repointed from the serial to `IsOwner`
+- Multi: `use.src:536` can't ban owner, `:1740` can't modify owner, `:1785` owner has full permissions.
+- Static: `sign/use.src:433` owner greeting, `:492` + `:1091` Relinquish, `:755`, `:801`, `:1398` ban guard; `sign/control.src:104` speech security level, `:541` ban guard, `:463` unsecure level.
+- Custom: `sign.src:969` ban guard.
+- House teleporter: `teleporterFunctions.src:18` owner-only functions; `walkOn.src:86` access (was `ownerserial` OR `"owneraccount"`, an old prop name nothing sets, so the account half was dead).
+- `pkg/items/deed/commands/player/redeed.src:43`: owner test via new `IsHouseOwnerCharacter(who, house_or_sign)` in `pkg/multis/house/include/utility.inc:49` (FindHouseAtSpot can return a sign or a multi); unused `oserial` removed.
+- `pkg/std/traps/trapScripts/setTrap.src:90`, `pkg/std/spells/magictrap.src:73`: after the multi `ownerserial` test, the house's sign (`signserial`) `IsOwner` is asked. Inlined, not the utility.inc helper, because magictrap's include tree is deep and I did not want new globals in it.
+
+### 19.5 Dead speech commands corrected while there
+- `pkg/multis/house/multiSign/control.src:127` remove(): the owner test came after the eject branch, so an owner not on any list was ejected; now first. `:411` housebanning(): compared `acctname` with the owner SERIAL (never equal), so the owner was not protected; now `IsOwner`. Both unreachable: their dispatcher (:99, :102) is commented out.
+- `pkg/multis/staticHousing/sign/control.src:163` remove(): same owner-first fix. Unreachable: speech commands disabled 2026-08-10.
+
+### 19.6 Follow-up picks (same day)
+- Transfer at the cap: a transfer to a character on the account that already owns the house skips `IsAccountUnderHouseCap` (the count does not change). `pkg/multis/house/multiSign/use.src:721` ChangeHouseOwner, `pkg/multis/customhousing/include/house.inc:670` ChangeOwner, `pkg/multis/house/multiDeed/changeOwner.src:16` (sign now resolved before the cap check), `pkg/multis/staticHousing/transferdeed/staticTransferDeed.src:60`. Test: `!sign.IsOwner(newowner)` added to the cap condition.
+- Traps: `setTrap.src:90` and `magictrap.src:73` ask the sign `IsAffiliated` (owner account, co-owner, friend) instead of only `IsOwner`, so sign-list co-owners and friends can trap. The legacy `Co-owner1..5` / `friend1..20` multi-prop checks stay after it. magictrap flag renamed `is_owner` -> `is_allowed`.
+- Boats: stay as they are (your pick).
+- The diff for 19.6 is appended to the .diff after the section-19 block; for `use.src`, `setTrap.src` and `magictrap.src` that later block is the full current diff and supersedes the earlier one.
+
+### Not changed
+- Ownership transfer to your own alt is still allowed (only the same character is refused).
+- The sign still names the owner CHARACTER.
+
+## 20. /code-review of the Patch-3.1.4 work, 2026-10-19
+
+Ten findings from a `/code-review` of the uncommitted 3.1.4 work (mostly the ZH2.5 1.1.4 port of 2026-10-08/10). All ten were checked against the code before fixing; picks made on the "Patch 3.1.4 Review Fixes" page. Branch `Patch-3.1.4`. Not compiled, not tested in game by me.
+
+The diff for this section is APPENDED to `code-review-fixlog-20260921.diff` under a `Section 20` marker. It is this round only (pre-edit snapshot to working tree), not against HEAD, because the same files carry other uncommitted 3.1.4 work.
+
+ZH2.5 has the same code for 20.1, 20.2, 20.3, 20.5, 20.6 and 20.7 (checked on its Patch-1.1.5 branch); not touched there.
+
+### 20.1 Personal powerhour lock came back on the use weekday a week later
+- File: `pkg/opt/powerhour/include/powerhour.inc:409`
+- Was: `PPH_IsEligible` = `weekday_now < use_weekday` OR `now > use_time + week`; `PPH_SecondsUntilEligible` computed the next Sunday separately. Used Wednesday 10:00: eligible Sunday to Tuesday, then locked again next Wednesday 00:00-09:59 while `.ph` said "less than a minute".
+- Now: new `PPH_ResetTime(who)` = the Sunday 00:00 GMT after the use (use + 7 days + 1 s when used on a Sunday, as before), weekday taken from the use time itself. `PPH_IsEligible` = `now >= reset`; `PPH_SecondsUntilEligible` = reset - now. `PPH_UseWeekday` is no longer read (kept).
+- **Players:** the weekly lock lifts at Sunday 00:00 GMT and stays lifted; `.ph` and `.setph` agree.
+
+### 20.2 Pre-stamp WFH hearts refused outright (your pick: the stricter option)
+- File: `pkg/opt/warriorforhire/include/wfhcommon.inc:35` `IsCurrentWfhHeart`
+- Was: a heart with no `WFHDeathId` passed whenever the owner had no `WFHBackup`. Every revival and "give up warrior" erases the backup, and the stale-heart sweep checks only backpack and bank, so an old heart kept in a chest was a free extra life.
+- Now: the heart must carry a `WFHDeathId` and it must equal the owner's backup's. No stamp, or no backup: refused (the priest destroys it as "a life already spent").
+- **Players:** a heart from before Patch 3.1.4 no longer revives anything; the priest's memory revival is the way back for those warriors.
+
+### 20.3 Priest destroys a heart handed in by anyone but its master (your pick: destroy)
+- File: `scripts/ai/highpriest.src:417`
+- Was: no owner check; the heart was judged against the giver's own backup, so a friend carrying your heart had it destroyed, or (legacy heart) got your warrior.
+- Now: first test in the heart branch: `CInt(heart master) != giver serial` -> destroyed, "This heart is bound to another soul. It crumbles to dust." Runs before the "already have a henchman" test.
+- **Players:** only the warrior's own master can bring its heart to the priest; anyone else loses it.
+
+### 20.4 Trap permission uses the shared sign lookup
+- Files: `pkg/std/spells/magictrap.src:11, 76`, `pkg/std/traps/trapScripts/setTrap.src:7, 93`
+- Was: the house sign came from the multi's `signserial` only; a house linked only by the sign's `houseserial` had no sign, so its co-owners, friends and the owner's alts were refused.
+- Now: both include `:house:utility` and call `GetHouseSignFromObject(house)` (signserial, then a nearby sign whose houseserial matches). Transitive include name-clash check came back clean for both scripts.
+- Correction to 19.4: I had inlined the lookup to keep utility.inc out of magictrap's include tree; the clash check shows it is safe.
+- **Players:** co-owners and friends can trap in houses whose multi lacks signserial.
+
+### 20.5 Eon-Prism must be in the user's backpack
+- File: `pkg/opt/ArtifactSystem/eonprism.src:20`
+- Was: no location check; anyone in reach could use a prism on the floor or in an open chest, clearing their own lock and sending the owner's prism back to the artifact box.
+- Now: `IsOnPlayer(character.backpack, prism)` (new `include "include/itemutil"`), else "The Eon-Prism must be in your backpack to use it."
+- **Players:** the prism works only from your own backpack.
+
+### 20.6 WFH damage halving: unset master no longer matches
+- File: `pkg/systems/combat/include/hitscriptinc.inc:725` `WFHModifyDamage`
+- Was: `GetObjProperty(x,"master") == other.serial` on both branches; an absent CProp and an errored serial compare equal (gotcha 20), so a masterless warrior hit through a 0/destroyed attacker ref took half damage.
+- Now: each warrior's master read once as `CInt`, compared only when non-zero.
+
+### 20.7 Priest's memory revival loses stats like a heart revival (your pick: B)
+- Files: `scripts/ai/highpriest.src:281`, comment `pkg/opt/warriorforhire/include/wfhcommon.inc:21`
+- Was: the 10,000-gold memory revival restored the backup's Str/Int/Dex unchanged; the wfhcommon comment claimed both revivals used `WfhStatAfterLoss`.
+- Now: memory revival sets each stat to `WfhStatAfterLoss(backup stat, backup resnum)`; comment updated.
+- **Players:** a warrior brought back from the priest's memory loses one point of each stat per death so far (floor 10), same as by heart.
+
+### 20.8 WFH skill list, skill cap and death limit in one place
+- Files: `pkg/opt/warriorforhire/include/wfhcommon.inc:8`, `warrior.src:51, 1180`, `textcmd/test/maxwfh.src:13`
+- Was: warrior.src kept its own `TRACKED_SKILLS` list and `WFH_SKILL_CAP_TENTHS`, the status gump hard-coded `10`; `.maxwfh` declared `MAXWFH_SKILL_TENTHS := 1300`.
+- Now: `WFH_SKILL_CAP_TENTHS` lives in wfhcommon.inc; warrior.src `TRACKED_SKILLS := WfhTrackedSkills()`; the gump uses `WFH_MAX_DEATHS` for the remaining count and the "/ N" text; `.maxwfh` uses `WFH_SKILL_CAP_TENTHS` (local constant removed). No behaviour change. Synopsis line untouched, no command_synopses regen needed.
+
+### 20.9 `.areas` save with no edits no longer invalidates every script's cache
+- File: `pkg/opt/areas/include/areapolicy.inc:173` `SaveRealmPolicies`
+- Was: `RefreshRealmPolicyCache` always ran, bumping `AreaPolicyCacheVer_<realm>` so every NPC AI / area script reloaded the whole mask dictionary.
+- Now: refresh only when a mask was written, an entry pruned, or the cache dictionary does not exist yet.
+
+### 20.10 Warrior AI config lookups cached
+- File: `pkg/opt/warriorforhire/warrior.src:54, 218, 1537, 1569`
+- Was: `FindHealPotion` did a `:alchemy:itemdesc` lookup for every pack item (nested bags included) per heal attempt; `HasBow` looked the weapon up in the merged `:*:itemdesc` per fight-loop call.
+- Now: `HealPotionPower` reads a table (objtype -> Strength, `Script yellowpotion` only) that `LoadHealPotionPowers` builds once per warrior script from `GetConfigIntKeys(:alchemy:itemdesc)`; `HasBow` calls new `WeaponAmmoType(objtype)`, cached per weapon objtype. Ammo-in-pack check stays live. Behaviour unchanged.
+
 ## Docs and conventions changed
 
 - `.claude/skills/escript-gotchas/SKILL.md`: #5a no short-circuit evaluation, #16 consume first then create, #17 `SaveOnExit 0` for temporary items; trigger line updated.
@@ -1354,3 +1463,40 @@ Line numbers of the dated `2026-09-21` / `2026-09-22` comments, as of the end of
 | scripts/textcmd/seer/npclist.src | 41, 55 |
 | scripts/textcmd/seer/thawme.src | 6, 7 |
 | scripts/textcmd/test/restartall.src | 10 |
+
+### 2026-10-09 edit sites (section 19)
+
+| File | Lines |
+|---|---|
+| pkg/items/deed/commands/player/redeed.src | 43 |
+| pkg/items/houseExtras/hteleporter/teleporterFunctions.src | 18 |
+| pkg/items/houseExtras/hteleporter/walkOn.src | 17, 86 |
+| pkg/multis/customhousing/include/house.inc | 670 |
+| pkg/multis/customhousing/sign.src | 936, 969 |
+| pkg/multis/house/include/utility.inc | 49 |
+| pkg/multis/house/multiDeed/changeOwner.src | 16 |
+| pkg/multis/house/multiSign/control.src | 127, 411 |
+| pkg/multis/house/multiSign/method.src | 488, 576, 589, 1001 |
+| pkg/multis/house/multiSign/use.src | 441, 536, 639, 721, 1741, 1786 |
+| pkg/multis/house/walkOn.src | 15, 24 |
+| pkg/multis/staticHousing/bantile/walkOn.src | 19 |
+| pkg/multis/staticHousing/sign/control.src | 104, 163, 463, 541 |
+| pkg/multis/staticHousing/sign/use.src | 433, 492, 755, 801, 1091, 1361, 1398, 1453 |
+| pkg/multis/staticHousing/transferdeed/staticTransferDeed.src | 60 |
+| pkg/std/spells/magictrap.src | 73 |
+| pkg/std/traps/trapScripts/setTrap.src | 90 |
+
+### 2026-10-19 edit sites (section 20)
+
+| File | Lines |
+|---|---|
+| pkg/opt/ArtifactSystem/eonprism.src | 20 |
+| pkg/opt/areas/include/areapolicy.inc | 173 |
+| pkg/opt/powerhour/include/powerhour.inc | 409 |
+| pkg/opt/warriorforhire/include/wfhcommon.inc | 8, 21, 35 |
+| pkg/opt/warriorforhire/textcmd/test/maxwfh.src | 13 |
+| pkg/opt/warriorforhire/warrior.src | 51, 54, 218, 1180, 1537, 1569 |
+| pkg/std/spells/magictrap.src | 11, 76 |
+| pkg/std/traps/trapScripts/setTrap.src | 7, 93 |
+| pkg/systems/combat/include/hitscriptinc.inc | 725 |
+| scripts/ai/highpriest.src | 281, 417 |

@@ -1,0 +1,110 @@
+// Arcomage card player AI. 2026-10-23: new package. Stationary, speech-only (like the quest
+// givers): saying "arcomage", "game" or "cards" near one starts :arcomage:match for that
+// player, so the NPC itself never blocks on a gump and can host several players at once.
+// The rule set comes from the template's ArcomageRuleSet CProp.
+use npc;
+use os;
+use uo;
+use basic;
+use basicio;
+use cfgfile;
+
+include "include/eventid";
+include "ai/setup/modsetup";
+
+const ARCO_NPC_HEAR_RANGE := 4;
+const ARCO_NPC_IDLE_SECONDS := 180;
+
+var me := Self();
+
+ArcoNpcDressOnce();
+ArcoNpcApplyTitle();
+EnableEvents( SYSEVENT_SPEECH, ARCO_NPC_HEAR_RANGE );
+
+while( 1 )
+	var event := os::wait_for_event( ARCO_NPC_IDLE_SECONDS );
+	if( event )
+		if( event.type == SYSEVENT_SPEECH )
+			ArcoNpcHeard( event );
+		endif
+	else
+		ArcoNpcIdle();
+	endif
+endwhile
+
+function ArcoNpcHeard( event )
+
+	var who := event.source;
+	if( !who || who.npctemplate || who.dead )
+		return 0;
+	endif
+
+	var text := Lower( event.text );
+	if( text["arcomage"] || text["game"] || text["cards"] )
+		TurnToward( who );
+		Say( "A game of Arcomage? Sit down, " + who.name + "." );
+		Start_Script( ":arcomage:match", array{ who, me } );
+	endif
+	return 1;
+
+endfunction
+
+// modsetup only handles Equip; the template's "dress" outfit is applied here, once per NPC,
+// the same way scripts/ai/setup/setup.inc does it for the main AIs.
+function ArcoNpcDressOnce()
+
+	if( GetObjProperty( me, "ArcomageDressed" ) )
+		return 0;
+	endif
+	// 2026-10-25: "::npcdesc", not "npcdesc" -- from a package script the bare name looks for
+	// pkg/opt/arcomage/config/npcdesc.cfg, which doesn't exist, so nobody got dressed.
+	var template_cfg := ReadConfigFile( "::npcdesc" );
+	var dress := template_cfg[me.npctemplate].dress;
+	if( !dress )
+		return 0;
+	endif
+	if( !me.backpack )
+		var new_pack := CreateItemAtLocation( me.x, me.y, me.z, 0x0E75, 1, me.realm );
+		if( new_pack )
+			EquipItem( me, new_pack );
+		endif
+	endif
+	if( !Start_Script( "::/misc/dressme", array{ me, dress } ) )
+		Print( "[Arcomage] Could not start dressme for " + me.name );
+		return 0;
+	endif
+	SetObjProperty( me, "ArcomageDressed", 1 );
+	return 1;
+
+endfunction
+
+// 2026-10-25: the rule set's Title goes after the name (", Arcomage Expert") and into the
+// ArcomageTitle CProp, which the tooltip hook (:megacliloc:mobiledata) shows in gold.
+// Re-read on every AI start so a rulesets.cfg edit shows after a restart.
+function ArcoNpcApplyTitle()
+
+	var title := "";
+	var rules_cfg := ReadConfigFile( ":arcomage:rulesets" );
+	var title_elem := FindConfigElem( rules_cfg, CInt( GetObjProperty( me, "ArcomageRuleSet" ) ) );
+	if( title_elem )
+		title := GetConfigString( title_elem, "Title" );
+	endif
+	if( !title )
+		title := "Arcomage Player";
+	endif
+	me.title_suffix := ", " + title;
+	SetObjProperty( me, "ArcomageTitle", title );
+
+endfunction
+
+function ArcoNpcIdle()
+
+	foreach mobile in ListMobilesNearLocation( me.x, me.y, me.z, 6, me.realm )
+		if( !mobile.npctemplate && !mobile.dead )
+			Say( "Fancy a game of Arcomage? Just say the word." );
+			return 1;
+		endif
+	endforeach
+	return 0;
+
+endfunction

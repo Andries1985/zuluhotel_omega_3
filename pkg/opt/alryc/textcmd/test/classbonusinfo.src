@@ -1,0 +1,72 @@
+// Synopsis: Show a targeted character's class levels, primary class, per-skill class bonus and stat gain multipliers
+use uo;
+use os;
+
+include "include/classes";
+include "include/attributes";
+include "include/client";
+
+// 2026-10-08: ported from ZH2.5 Patch 1.1.4, adapted to ZH3.0's rules (Powerplayer: no per-skill
+// bonus; since 2026-10-10 the x1.1-1.5 curve of PowerplayerGainMultiplier() on every skill). Read-only check of the class
+// lookup, the primary-class rule and stat affinity on a live character.
+program textcmd_classbonusinfo( who )
+
+	SendSysMessage( who, "Target a character.", FONT_NORMAL, 53 );
+	var targetted := Target( who );
+	if( !targetted or !targetted.isa( POLCLASS_MOBILE ) or targetted.isa( POLCLASS_NPC ) )
+		SendSysMessage( who, "Canceled.", FONT_NORMAL, 33 );
+		return 0;
+	endif
+
+	var primary := GetPrimaryClasseId( targetted );
+	var held := "";
+	foreach id in GetClasseIds()
+		var level := CInt( GetObjProperty( targetted, id ) );
+		if( level )
+			if( held )
+				held := held + ", ";
+			endif
+			held := held + GetClasseName( id ) + " " + level;
+		endif
+	endforeach
+	if( !held )
+		held := "none";
+	endif
+
+	SendSysMessage( who, "== " + targetted.name + " ==", FONT_NORMAL, 53 );
+	SendSysMessage( who, "Classes held: " + held, FONT_NORMAL, 53 );
+	if( primary )
+		SendSysMessage( who, "Primary class: " + GetClasseName( primary ) + " level " + CInt( GetObjProperty( targetted, primary ) ), FONT_NORMAL, 53 );
+	else
+		SendSysMessage( who, "Primary class: none", FONT_NORMAL, 53 );
+	endif
+
+	// Mirrors the Powerplayer block in AwardSkillPoints (skillpoints.inc).
+	var pplevel := CInt( GetObjProperty( targetted, CLASSEID_POWERPLAYER ) );
+	if( pplevel )
+		var ppmult := PowerplayerGainMultiplier( pplevel );	// 2026-10-10: the shared curve
+		SendSysMessage( who, "Powerplayer level " + pplevel + ": skill-wide gain x" + ppmult + " (no per-skill bonus, no second roll)", FONT_NORMAL, 53 );
+	endif
+
+	SendSysMessage( who, "Stat gain multipliers: Str x" + GetStatPointsMultiplier( targetted, "str" ) + "  Dex x" + GetStatPointsMultiplier( targetted, "dex" ) + "  Int x" + GetStatPointsMultiplier( targetted, "int" ), FONT_NORMAL, 53 );
+
+	var listed := 0;
+	var i;
+	for( i := 0; i <= SKILLID__HIGHEST; i := i + 1 )
+		var classeid := GetClasseIdForSkill( targetted, i ); // looked up once (IsSpecialisedIn would repeat it)
+		var level := 0;
+		if( classeid )
+			level := CInt( GetObjProperty( targetted, classeid ) );
+		endif
+		if( level )
+			SendSysMessage( who, GetAttributeIdBySkillId( i ) + ": " + GetClasseName( classeid ) + " level " + level + ", gain x" + ClasseBonusByLevel( level ) + ", second roll", FONT_NORMAL, 67 );
+			listed := listed + 1;
+		endif
+	endfor
+	if( !listed )
+		SendSysMessage( who, "No skill carries a per-skill class bonus for this character.", FONT_NORMAL, 53 );
+	endif
+
+	return 1;
+
+endprogram

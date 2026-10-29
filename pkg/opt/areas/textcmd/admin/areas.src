@@ -409,6 +409,8 @@ function LoadPolicyArrays(realm, areas)
 	arrays.+nopk := {};
 	arrays.+rparea := {};
 
+	var policy_entries := GetPolicyEntriesDictionary(policies); // 2026-10-10: plain local for the Exists() test below
+
 	foreach area in areas
 		var area_key := BuildAreaKey(area);
 		if (area_key == error)
@@ -416,8 +418,8 @@ function LoadPolicyArrays(realm, areas)
 		endif
 
 		var mask := 0;
-		if (area_key in policies.entries.Keys())
-			mask := CInt(policies.entries[area_key]);
+		if (policy_entries.Exists(area_key)) // 2026-10-10: was "in policies.entries.Keys()", a linear scan per area
+			mask := CInt(policy_entries[area_key]);
 		endif
 
 		arrays.guarded.append(HasPolicy(mask, AREA_POLICY_GUARDED));

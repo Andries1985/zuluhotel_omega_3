@@ -4,6 +4,7 @@ use os;
 include "include/spelldata";
 include "include/client";
 include "include/attributes";
+include "include/buffs";	// 2026-10-25: BuffOn / BuffOff for the reactive armor icon (ZH2.5 1.1.5 port)
 
 program reactivearmor( caster, spell_id )
 
@@ -53,12 +54,14 @@ program reactivearmor( caster, spell_id )
 	// had its NEW armor removed early by the OLD cast's timer.
 	var my_pid := GetPid();
 	SetObjProperty( cast_on , "#ReactiveArmorPid" , my_pid );
+	BuffOn( cast_on , "reactivearmor" , power , duration );	// 2026-10-25: buff bar icon (ZH2.5 1.1.5 port)
 	SendBoostMessage( caster, cast_on, "reactive armor", power, duration, 0 );
 	Detach();
 	Sleep( duration );
 	if( CInt( GetObjProperty( cast_on , "#ReactiveArmorPid" ) ) == my_pid )
 		EraseObjProperty( cast_on , "ReactiveArmor" );
 		EraseObjProperty( cast_on , "#ReactiveArmorPid" );
+		BuffOff( cast_on , "reactivearmor" );	// 2026-10-25: icon off (ZH2.5 1.1.5 port)
 	endif
 
 endprogram

@@ -24,6 +24,12 @@ Also: `foreach x in someArray` auto-provides `_x_iter` (1-based index) with no d
 **2. Never name a function or local var the same as a `.em` builtin (case-insensitive).**
 Classic repeat offender: `var target := Target(character);` collides with `uo.em`'s `Target()` and fails to compile. Use `targetted` instead, every time, on the first pass — don't write `target` and plan to fix it later. For other builtins, pick a specific name rather than a generic verb.
 
+**2a. Reserved words can't be variable OR struct-member names.** The compiler rejects them with "Did not expect reserved word 'x' in this context" and then cascades into dozens of bogus endif/endfor errors. Hit 2026-10-25 in pkg/opt/arcomage: `var out := ""` and a struct member `choice.use` (`"use" := 1` in the literal is fine, the `.use` read is not). Never name anything: `out`, `use`, `in`, `include`, `program`, `function`, `var`, `const`, `case`, `default`, `error`, `struct`, `array`, `dictionary`, `uninit`, `true`, `false`, `class`, `enum`, `byref`, `unused`, `exit`, `goto`, `repeat`, `until`, `do`, `to`, `and`, `or`, `not`, `this`, `super`, `new`. Pick a specific word instead (`joined`, `play`).
+
+**2b. Every builtin needs the `use` line of the module that declares it, and the module is often not the obvious one.** "Unknown identifier 'X'" = missing `use`. Grep `scripts/modules/*.em` for `^X(` before writing the call. Ones that have bitten: `GetItemDescriptor` is polsys.em (not uo/os); `POLCore()` is uo.em; `StrFormatTime`, `RandomInt`, `RandomFloat` are util.em; `Max`/`Min` are math.em; `Print` is basicio.em; `SplitWords`/`Lower` are basic.em.
+
+**2c. Before handing back a new or edited script, compile it** when the user has asked for compile-checking: from the repo root, `scripts\ecompile.exe -b -r <dir>` (add `-f` to force files the compiler thinks are up to date). Fix until 0 errors, 0 warnings.
+
 **3. `include` resolution:**
 - `include "name";` — next to the calling `.src`.
 - `include "include/name";` — under `scripts/include`.

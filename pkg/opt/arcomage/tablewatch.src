@@ -1,0 +1,26 @@
+// Arcomage table watcher. 2026-10-25: started by match.src for each game. A gump waits until the
+// player clicks, so walking away used to leave it open. Once a second this checks the player is
+// still at the table (logged in, alive, within ARCO_TABLE_RANGE of the NPC); if not, it closes
+// the match's open gump with a 0 reply, which match.src treats as leaving: the game is forfeit.
+// Same idea as :loot:lootgumpdistance. match.src kills this before showing the result gump.
+use uo;
+use os;
+
+include ":arcomage:arcocards";
+
+program ArcomageTableWatch( params )
+
+	var who := params[1];
+	var npc_serial := params[2];
+	var match_pid := params[3];
+
+	while( GetProcess( match_pid ) )
+		Sleep( 1 );
+		if( !ArcoAtTable( who, npc_serial ) )
+			if( who )
+				CloseGump( who, match_pid, 0 );
+			endif
+		endif
+	endwhile
+
+endprogram
