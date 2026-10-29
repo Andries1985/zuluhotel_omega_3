@@ -1,15 +1,16 @@
 # Developer Changelog - v3.1.4
 
-Range: Patch-3.1.3..Patch-3.1.4 (commit `db9607a`..`e2b8bdb`) plus the uncommitted working tree
+Range: Patch-3.1.3..Patch-3.1.4 (commit `db9607a`..`02d9df5`)
 Branch: Patch-3.1.4
-Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
+Date: 2026-10-19, updated 2026-10-25 (themes 14-18) and 2026-10-26 (themes 19-20)
 
 ---
 
 ## Scope Summary
 
-- Total files changed: 85 (28 added, 57 modified, 0 deleted, 0 renamed), counting themes 14-18 (2026-10-25).
-  - Theme 18 (Arcomage PvP, 2026-10-25, uncommitted at writing): 5 new files in `pkg/opt/arcomage/` (922 lines) and edits to `arcocards.inc` (+84, helpers moved out of `match.src`), `arcogump.inc` (+62 / -36), `match.src` (+10 / -80), `textcmd/player/arcomage.src` (+33 / -5) and `config/command_synopses.cfg` (+1 / -1).
+- Total files changed: 146 (32 added, 114 modified, 0 deleted, 0 renamed), counting themes 19-20 (2026-10-26).
+  - Themes 19-20 (ZH2.5 Patch 1.1.5 port and its follow-ups, commit `02d9df5`, 2026-10-26): 69 files (4 added, 65 modified), +2,483 / -967. 61 are new to this inventory; the other 8 (`command_synopses.cfg`, `npcdesc.cfg`, `warrior.src`, `mobiledata.src`, `hitscriptinc.inc`, `classes.inc`, `death.src`, `logon.src`) were already listed. Largest: `newmobedit.src` +843 / -143, `buffs.inc` +238 (moved out of `dotempmods.inc`, -219 there), `npclist.src` +204 / -184, `spelldata.inc` +165, `spellprots.inc` +135 (new), `Dragon_Skin.src` +46 / -106, the 16 songbook songs about +17 / -7 each.
+  - Theme 18 (Arcomage PvP, 2026-10-25, committed as `7543ac0`): 5 new files in `pkg/opt/arcomage/` (922 lines) and edits to `arcocards.inc` (+84, helpers moved out of `match.src`), `arcogump.inc` (+62 / -36), `match.src` (+10 / -80), `textcmd/player/arcomage.src` (+33 / -5) and `config/command_synopses.cfg` (+1 / -1).
   - 2026-10-25 update: the themes 1-13 working tree has since been committed as `9fbf224` ("Bug fixes for WFH, PH, Housing and other things"). Later commits: `ca3b0d3` "Fish Fix" (theme 16, 4 files, +128 / -37), `e26c8fa` "Bowcraft update" (theme 17, 1 file, +7 / -6) and `bef42e6` Arcomage (themes 14-15).
   - Theme 14 (Arcomage, 2026-10-25): 14 new files in `pkg/opt/arcomage/` (4,695 lines, 2,410 of them cfg data), plus `config/npcdesc.cfg` +996 (30 templates, 6 commented out), `pkg/packethooks/megacliloc/mobiledata.src` +14 and `config/command_synopses.cfg` +21 (three new commands).
   - Theme 15 (2026-10-25): `pkg/opt/warriorforhire/warrior.src` +2 / -2.
@@ -35,6 +36,10 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
   - `pkg/multis/house/multiSign/method.src` (+27 / -5) - `IsOwner` matches the owner's account (theme 9); shared by all three house sign types
 - Non-merge commits in range (oldest to newest):
   - `1571348` duplicate door fixes (Sylvash, 2026-10-07) - two elven door names made unique (theme 8)
+  - `9fbf224` Bug fixes for WFH, PH, Housing and other things - themes 1-13
+  - `ca3b0d3` Fish Fix (theme 16), `e26c8fa` Bowcraft update (theme 17), `bef42e6` Arcomage phase 1 (themes 14-15), `eb3227a` notes
+  - `7543ac0` Arcomage PVP (theme 18)
+  - `02d9df5` npc aoe fixes npc bard code implemented fix for antidote/sanc/dragon skin Npcs logged as staff fix (themes 19-20)
 - Merge commits: `a4d9778` (PR #116) merges `Patch-3.1.3`; its tree is identical to `db9607a`. `e2b8bdb` (PR #117) carries only `1571348`.
 
 **Before this build goes live:**
@@ -46,6 +51,9 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 - **`death.src` now includes `:warriorforhire:include/wfhcommon` and `wfhescrow`** (theme 10), which pull in `:playervendor:include/escrow`, `include/objtype` and `include/random`. No name clash was found, but it is the NPC death script: check it compiles.
 - **Warrior hearts from before this build stop working** (theme 13). `IsCurrentWfhHeart` refuses any heart without a `WFHDeathId`; owners of those warriors need the priest's memory revival.
 - **Area policy version marker** (theme 10). `AreaPolicyCacheVer_<realm>` is new; a world saved before this build has none and reads 0 until the new `pkg/opt/areas/start.src` rebuilds every realm at boot.
+- **Town NPCs are `Type sTownsfolk` now** (theme 19). The CProp is written at spawn, so live townsfolk, guards and Warriors for Hire stay `sHuman` until they respawn. Respawn town NPCs after the deploy if Tracking and the slayer change should apply at once.
+- **Login resets players' `PermPoisonImmunity` / `PhysicalProtection` to their gear** (theme 19). Clears leaked Dragon Skin stacks; also resets any value staff hand-set on a non-staff player.
+- **`spelldata.inc`, `npccast.inc`, `dotempmods.inc` and `bard.inc` changed** (theme 19) and are included very widely: a whole-tree `ecompile -A -w` is owed.
 - None of this was compiled or run by the author. `ecompile` on the whole tree and an in-game pass over the "Expected impact" lines are owed.
 
 ---
@@ -55,8 +63,8 @@ Date: 2026-10-19, updated 2026-10-25 (themes 14-15)
 Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "working tree" and the theme(s) below.
 
 - M | config/cmds.cfg (working tree, theme 2)
-- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10, themes 14 and 18)
-- M | config/npcdesc.cfg (2026-10-25, theme 14)
+- M | config/command_synopses.cfg (working tree, themes 2 and 7, theme 10, themes 14 and 18; commit `02d9df5`, theme 19)
+- M | config/npcdesc.cfg (2026-10-25, theme 14; commit `02d9df5`, theme 19)
 - M | pkg/items/deed/commands/player/redeed.src (working tree, theme 9)
 - M | pkg/items/doors/config/itemdesc.cfg (commit `1571348`, theme 8)
 - M | pkg/items/houseExtras/hteleporter/teleporterFunctions.src (working tree, theme 9)
@@ -98,8 +106,14 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - M | pkg/opt/areas/include/areapolicy.inc (working tree, themes 10 and 13)
 - A | pkg/opt/areas/start.src (working tree, theme 10)
 - M | pkg/opt/areas/textcmd/admin/areas.src (working tree, theme 10)
+- M | pkg/opt/areaspawner/include/areaspawner.inc (commit `02d9df5`, theme 19)
 - A | pkg/opt/ArtifactSystem/eonprism.src (working tree, themes 10 and 13)
 - M | pkg/opt/ArtifactSystem/itemdesc.cfg (working tree, theme 10)
+- M | pkg/opt/earth/antidote.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/earth/owlsight.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/holybook/lightofday.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/holybook/sanctuary.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/necro/darkcloak.src (commit `02d9df5`, theme 19)
 - A | pkg/opt/powerhour/include/powerhour.inc (working tree, themes 1-4 and 13)
 - M | pkg/opt/powerhour/powerhour.src (working tree, theme 1)
 - M | pkg/opt/powerhour/resumeph.src (working tree, theme 4)
@@ -107,37 +121,92 @@ Legend: `Status | File` (A=added, M=modified). The bracket gives the commit or "
 - M | pkg/opt/powerhour/textcmd/player/ph.src (working tree, theme 3)
 - M | pkg/opt/powerhour/textcmd/player/setph.src (working tree, theme 4, theme 10)
 - M | pkg/opt/powerhour/textcmd/test/resetph.src (working tree, theme 4)
+- M | pkg/opt/songbook/songofair.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofbeckon.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofcloaking.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofdefense.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofdismissal.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofearth.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songoffire.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songoffright.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofglory.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofhaste.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songoflife.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songoflight.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofremedy.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofsalvation.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofsirens.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/songbook/songofwater.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/spawnpoint/textcmd/admin/newmobedit.src (commit `02d9df5`, themes 19 and 20)
+- M | pkg/opt/Staff/include/staff.inc (commit `02d9df5`, themes 19 and 20)
+- M | pkg/opt/Staff/logoff.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/Staff/logon.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/summoning/processpoisonmod.src (commit `02d9df5`, theme 19)
 - M | pkg/opt/townstones/tstone.src (working tree, theme 11)
 - M | pkg/opt/vanityshop/itemdesc.cfg (working tree, theme 12)
 - A | pkg/opt/vanityshop/runebookcopy.src (working tree, theme 12)
+- M | pkg/opt/versebook/Beastal_Bond.src (commit `02d9df5`, theme 19)
+- M | pkg/opt/versebook/Dragon_Skin.src (commit `02d9df5`, theme 19)
+- A | pkg/opt/versebook/include/beastalbond.inc (commit `02d9df5`, theme 19)
+- M | pkg/opt/versebook/include/versefunctions.inc (commit `02d9df5`, theme 19)
 - M | pkg/opt/warriorforhire/include/wfhcommon.inc (working tree, themes 10 and 13)
 - M | pkg/opt/warriorforhire/include/wfhescrow.inc (working tree, theme 10)
+- M | pkg/opt/warriorforhire/include/wfhvitals.inc (working tree, theme 10)
 - A | pkg/opt/warriorforhire/showstatus.src (working tree, theme 10)
 - A | pkg/opt/warriorforhire/textcmd/test/maxwfh.src (working tree, themes 10 and 13)
-- M | pkg/opt/warriorforhire/include/wfhvitals.inc (working tree, theme 10)
 - M | pkg/opt/warriorforhire/textcmd/test/setwfhdamage.src (working tree, theme 10)
-- M | pkg/opt/warriorforhire/warrior.src (working tree, themes 10 and 13; theme 15)
+- M | pkg/opt/warriorforhire/warrior.src (working tree, themes 10 and 13; theme 15; commit `02d9df5`, themes 19 and 20)
 - M | pkg/packethooks/megacliloc/itemdata.src (working tree, theme 5)
-- M | pkg/packethooks/megacliloc/mobiledata.src (2026-10-25, theme 14)
+- M | pkg/packethooks/megacliloc/mobiledata.src (2026-10-25, theme 14; commit `02d9df5`, theme 19)
+- M | pkg/packethooks/speech/receivespeechhook.src (commit `02d9df5`, theme 19)
+- M | pkg/std/alchemy/blackpotion.src (commit `02d9df5`, theme 19)
 - M | pkg/std/bowcraft/bowcraft.cfg (commit `e26c8fa`, theme 17)
 - M | pkg/std/fishing/fishing.inc (commit `ca3b0d3`, theme 16)
 - A | pkg/std/fishing/fishsteaks.inc (commit `ca3b0d3`, theme 16)
 - M | pkg/std/fishing/itemdesc.cfg (commit `ca3b0d3`, theme 16)
+- M | pkg/std/healing/healing.src (commit `02d9df5`, theme 19)
 - M | pkg/std/healing/npchealing.src (working tree, theme 10)
+- M | pkg/std/peacemaking/peacemaking.src (commit `02d9df5`, themes 19 and 20)
+- M | pkg/std/provocation/provocation.src (commit `02d9df5`, theme 19)
 - M | pkg/std/spells/magictrap.src (working tree, themes 9 and 13)
+- M | pkg/std/spells/nightsight.src (commit `02d9df5`, theme 19)
+- M | pkg/std/spells/reactivearmor.src (commit `02d9df5`, theme 19)
+- M | pkg/std/spells/reflect.src (commit `02d9df5`, theme 19)
+- M | pkg/std/tracking/tracking.src (commit `02d9df5`, theme 19)
 - M | pkg/std/traps/trapScripts/setTrap.src (working tree, themes 9 and 13)
 - M | pkg/systems/attributes/hooks/vitalInit.src (working tree, theme 10)
-- M | pkg/systems/combat/include/hitscriptinc.inc (working tree, themes 10 and 13)
+- M | pkg/systems/combat/blindingonhit.src (commit `02d9df5`, theme 19)
+- M | pkg/systems/combat/blindingscript.src (commit `02d9df5`, theme 19)
+- M | pkg/systems/combat/include/hitscriptinc.inc (working tree, themes 10 and 13; commit `02d9df5`, theme 19)
 - M | pkg/systems/playervendor/commands/player/escrow.src (working tree, theme 10)
 - M | pkg/systems/playervendor/include/escrow.inc (working tree, theme 10)
 - M | scripts/ai/highpriest.src (working tree, themes 10 and 13)
+- M | scripts/ai/tamed.src (commit `02d9df5`, theme 19)
 - M | scripts/control/corpsedecay.src (working tree, theme 10)
-- M | scripts/include/classes.inc (working tree, themes 5 and 6, theme 10)
+- M | scripts/control/skilladvancerequip.src (commit `02d9df5`, theme 19)
+- M | scripts/include/bard.inc (commit `02d9df5`, theme 19)
+- A | scripts/include/buffs.inc (commit `02d9df5`, theme 19)
+- M | scripts/include/classes.inc (working tree, themes 5 and 6, theme 10; commit `02d9df5`, theme 19)
+- M | scripts/include/dotempmods.inc (commit `02d9df5`, theme 19)
 - M | scripts/include/housetravel.inc (working tree, theme 10)
+- M | scripts/include/npccast.inc (commit `02d9df5`, theme 19)
+- M | scripts/include/npcdifficulty.inc (commit `02d9df5`, theme 19)
+- A | scripts/include/npcspellnames.inc (commit `02d9df5`, theme 19)
 - M | scripts/include/skillpoints.inc (working tree, theme 6, theme 10)
+- M | scripts/include/spelldata.inc (commit `02d9df5`, themes 19 and 20)
+- M | scripts/include/spellgrants.inc (commit `02d9df5`, theme 19)
+- A | scripts/include/spellprots.inc (commit `02d9df5`, theme 19)
 - M | scripts/items/bladed.src (commit `ca3b0d3`, theme 16)
-- M | scripts/misc/death.src (working tree, theme 10)
-- M | scripts/misc/logon.src (working tree, theme 4)
+- M | scripts/misc/death.src (working tree, theme 10; commit `02d9df5`, theme 19)
+- M | scripts/misc/logoff.src (commit `02d9df5`, theme 19)
+- M | scripts/misc/logon.src (working tree, theme 4; commit `02d9df5`, theme 19)
+- M | scripts/misc/reconnect.src (commit `02d9df5`, theme 19)
+- M | scripts/playermanager.src (commit `02d9df5`, theme 19)
+- M | scripts/textcmd/admin/setclass.src (commit `02d9df5`, theme 19)
+- M | scripts/textcmd/gm/iteminfo.src (commit `02d9df5`, themes 19 and 20)
+- M | scripts/textcmd/player/prots.src (commit `02d9df5`, theme 19)
+- M | scripts/textcmd/seer/info.src (commit `02d9df5`, theme 20)
+- M | scripts/textcmd/seer/npclist.src (commit `02d9df5`, theme 19)
 - M | scripts/textcmd/seer/speedwalk.src (working tree, theme 10)
 
 ---
@@ -428,10 +497,58 @@ Design picked on the PvP plan page (db doc `plan/pvp`): deck item, vanity shop, 
 
 **Expected impact:** Players can buy an Arcomage Deck (5 tokens), challenge another player nearby to a Timed or Untimed game under the rules of any card player they have beaten, and others can watch with `.arcomage watch`. Solo play is unchanged.
 
+### 19. ZH2.5 Patch 1.1.5 port: NPC saves, NPC casting, spell protections, buff icons, Beastal Bond, Warrior for Hire, Townsfolk, staff tools (commit `02d9df5`, 2026-10-26)
+
+Source: ZH2.5 branch `Patch-1.1.5` (`4abd02c..a5c79d1`) and the late 1.1.4 commit `4c72f5c`, compared against ZH3.0 on 2026-10-25. Picks were made on the artifact "ZH2.5 1.1.5 Fix Picks" (db doc `plan/picks_zh25_115`). Left out by pick: `.newmobedit` to GM (T2), the Safe Recall use-script entry (T5), sellable keyrings (O1). Not needed here (already in ZH3.0 or not applicable): the mayor resignation (theme 11), 2.5's powerhour lock / heart / priest / damage-compare / AI-cache / Eon-Prism fixes (they came from theme 13), champion gold rain (fixed 2026-09-23), the Song of Sirens fall-through and the restart side of Dragon Skin (fixed 2026-09-22), the area test tools (absent here), the Life Stream recipe (engraving is off by choice).
+
+**Files involved:**
+- NPC world saves: `scripts/include/classes.inc`, `scripts/textcmd/admin/setclass.src`, `pkg/opt/Staff/include/staff.inc`, `pkg/opt/Staff/logon.src`, `pkg/opt/Staff/logoff.src`, `pkg/packethooks/speech/receivespeechhook.src`
+- NPC casting: `scripts/include/npccast.inc`, `scripts/include/spelldata.inc`, `scripts/include/bard.inc`, `scripts/include/npcspellnames.inc` (new), `scripts/ai/tamed.src`, the 16 `pkg/opt/songbook/songof*.src`
+- Spell protections and buffs: `scripts/include/spellprots.inc` (new), `scripts/include/buffs.inc` (new), `scripts/include/dotempmods.inc`, `scripts/include/spellgrants.inc`, `pkg/opt/holybook/sanctuary.src`, `pkg/opt/earth/antidote.src`, `pkg/opt/versebook/Dragon_Skin.src`, `pkg/opt/versebook/include/versefunctions.inc`, `scripts/control/skilladvancerequip.src`, `scripts/textcmd/player/prots.src`, `pkg/packethooks/megacliloc/mobiledata.src`, `pkg/systems/combat/include/hitscriptinc.inc`, `pkg/std/spells/reactivearmor.src`, `pkg/std/spells/nightsight.src`, `pkg/opt/holybook/lightofday.src`, `pkg/opt/earth/owlsight.src`, `pkg/std/alchemy/blackpotion.src`, `pkg/opt/necro/darkcloak.src`, `pkg/systems/combat/blindingonhit.src`, `pkg/systems/combat/blindingscript.src`, `pkg/opt/summoning/processpoisonmod.src`, `pkg/std/spells/reflect.src`, `scripts/playermanager.src`, `scripts/misc/logon.src`
+- Beastal Bond: `pkg/opt/versebook/Beastal_Bond.src`, `pkg/opt/versebook/include/beastalbond.inc` (new), `scripts/misc/logoff.src`, `scripts/misc/reconnect.src`, `scripts/playermanager.src`
+- Warrior for Hire: `scripts/misc/death.src`, `pkg/opt/warriorforhire/warrior.src`
+- Townsfolk: `config/npcdesc.cfg`, `pkg/std/tracking/tracking.src`, `pkg/std/healing/healing.src`, `pkg/opt/areaspawner/include/areaspawner.inc`
+- Staff tools: `pkg/opt/spawnpoint/textcmd/admin/newmobedit.src`, `pkg/std/provocation/provocation.src`, `pkg/std/peacemaking/peacemaking.src`, `scripts/include/npcdifficulty.inc`, `scripts/textcmd/gm/iteminfo.src`, `scripts/textcmd/seer/npclist.src`, `config/command_synopses.cfg`
+
+**Notable functional changes:**
+- **NPCs broke world saves (N1).** `.setclass` on an NPC ran `AssignClasse` -> `unequipRestrictedItems`, whose `LogCommand(npc, ...)` named a `:staff:` datafile after `CStr(who.acctname)`, the error text; the save could not write it until a restart. `unequipRestrictedItems` returns at once for NPCs; `.setclass` refuses a target without `acctname`; `LogCommand`, `LogAction`, the Staff logon/logoff scripts and `logspeech` return when `!who.acctname`.
+- **NPC spell index (C1).** `cast_offensive_spell` picked `spells[Random(len + 1)]` (0..n; index 0 is an error, so 1 in n+1 casts did nothing). Now `spell_list[Random(len(spell_list)) + 1]`.
+- **Per-NPC spell lists and self-casts (C3).** `cast_offensive_spell` reads the `CustomSpells` CProp (array of names) first and falls back to the template's `spell` lines when it is absent (`== error`); an empty list casts nothing. `tamed.src` reads it too. New `IsNpcSelfSpell()`: heal, gheal, cure, archcure, agility, cunning, strength, bless, protection, archprot, nightsight, reflect, invisibility, owlsight, earthblessing, naturestouch and antidote go on the caster (before, only gheal). New `npcspellnames.inc` `GetNpcSpellNames()`: 128 names `castspell()` accepts with a working `"#MOB"` path (left out: `reactivearmor`, `earthportal`, `shapeshift`, `songofbeckon`).
+- **NPC area targeting (C2).** `SmartAoE()` / `SmartBoost()` hand any NPC caster to new `NpcSmartAoE()` / `NpcSmartBoost()` (helpers `IsBystanderNpc`, `IsMonsterSide`, `NpcPetCanHitPlayer`). Bystanders: masterless NPCs with the `invul` privilege or template `alignment good` (townsfolk, guards, vendors, healers, and good creatures such as pixies, wisps, unicorns, the Forest Lord, the Arcomage NPCs); never hit by an NPC area spell. A wild caster hits players and pets and boosts monsters; a tamed caster hits monsters and other players' pets, spares its master, the master's party and their pets, and hits players only where its master could (party, no-PK, faction, clan-war colour). The player-caster branches are unchanged, including the 2026-09-22 caster skip. The boss mass specials in `npccast.inc` keep their own inline filter. The field control scripts call `SmartAoE(creator, ...)`, so NPC-made fields follow the NPC rules too.
+- **NPC bard songs (C4).** `bard.inc`: `IsNpcSong`, `GetSongSinger`, `GetSongInstrument` (a harp stand-in for sounds; no `findinstrument` on an NPC without a pack), `GetNpcBardLevel` (Musicianship 75 = 1, +1 per 15, max 6); `ValidSongBoost` returns 1 for an NPC singer. 15 songs take `parms` and skip the roll, stamina and interrupt check for an NPC; Fright runs an NPC singer's targets through `NpcSmartAoE`; Beckon returns at once on `"#MOB"` and is commented out of `GetSpellID()`. `songofearth.src` read `player.hp` (always an error on a mobile), so its interrupt check never fired; it now uses `GetHp()`. No template lists a song yet.
+- **Spell protections (SP, SB).** `spellprots.inc`: `#SpellPoisonImmunity` (Sanctuary, Antidote) and `#DragonSkin` hold `{ level, pid }`; `SetSpellProt` / `EndSpellProt` (ends only the owning pid's cast); `GetPoisonImmunityLevel` / `GetPhysicalProtection` = the higher of the permanent CProp and the spell level, a negative (cursed) permanent value always wins; `SpellProtCasterLevel` (clamp 1-6, 0 -> 1) and `SpellProtDuration` (120 + 480 x (level - 1) / 5 s). Readers switched: `PoisonProtected`, `ModByProt`, `AdjustForPhysicalDamage`, `.prots`, both protection blocks of the mobile tooltip. Sanctuary and Antidote: power `SpellProtCasterLevel(GetClasseLevel(caster))`, applied when `>=` the current level, buff icon, `Detach`, sleep, end own cast; Antidote's immunity now goes to `cast_on` (it went to the caster). Dragon Skin: rewritten as one play, level `SpellProtCasterLevel(IsBard(who))` = protection, 20 stamina per target via `ConsumeBardStamina`, skip a target with a stronger skin, `EndVerse` at once, `Detach`, sleep, end own skins. `skilladvancerequip.src` drops its `#DragonSkin` special case. No spell writes `PermPoisonImmunity`, `PhysicalProtection`, `DragonSkinGrant` or `SpellPoisonImmunity` any more; `spellgrants.inc` and its two `logon.src` calls stay one release for old markers.
+- **Dispel (SD).** `WipeMods()` also erases `#SpellPoisonImmunity`, `#DragonSkin`, `ReactiveArmor` + `#ReactiveArmorPid` (icons off) and restores the name from `realname`. Callers: login, Dispel, Mass Dispel, Song of Dismissal, Blackrock, `newpotions.src`, `help.src`, the Warrior for Hire AI.
+- **Login resync (SL).** `scripts/playermanager.src`, after `WipeMods`/`CurePoison`, cmdlevel 0 only: `ResyncEquippedProt` for `PermPoisonImmunity` and `PhysicalProtection` (best equipped value, or erased).
+- **Buff icons (SR, SI).** `BuffOn` / `SendBuffPacket` / `BuffOff` moved unchanged to `buffs.inc` (included by `dotempmods.inc` and `spelldata.inc`), plus `poisonimmunity` (icon 1020) and `dragonskin` (icon 1021); the `poison` entry's text cliloc 0x1069B1 (two placeholders, one value sent) became the blank 1062495. Night sight icon after `setlightlevel` in Night Sight, Light of Day, Owl Sight, Song of Light and the night sight potion; Dark Cloak and both blinding on-hit scripts turn it off. Poison icon on a fresh poisoning (`processpoisonmod.src`), off in `CurePoison()`. Magic Reflection icon in `reflect.src`, off in `Reflected()`, re-sent at login when `mr` is set. Reactive Armor icon on cast, off when it triggers (`hitscriptinc.inc`, which also erases `#ReactiveArmorPid`) or ends.
+- **Beastal Bond (B1).** A fumble did `EndVerse; return 0` and skipped `BringBackToPosition`, leaving the bard frozen and concealed at the creature; it now breaks the loop. The loop stops when `!who.connected`. `beastalbond.inc`: `SaveBeastalBondOrigin` (durable `BeastalBondOrigin { x, y, z, realm }`), `ReturnToBeastalBondOrigin`, `EndBeastalBond` (acts only when bond state exists) used by logoff, reconnect and login.
+- **Warrior for Hire (W1, W2).** `death.src`: a hired warrior with `guardkill` and no `AbandonedByOwner` has its gear filed through `WFH_EscrowCorpseGear` before the corpse is destroyed. `warrior.src`: `StopGuarding()` sets `passive`, clears `guarding` and `following`; the out-of-fight "stop" now calls it too (user's rule: "stop" stands still; only a follow command makes it follow; guard/kill end passive).
+- **Townsfolk (O2).** The 63 `CProp Type sHuman` templates under the Townsfolk header became `sTownsfolk`, and `decorator` (no Type) got one; header slayer-type list updated. `tracking.src` gains the Townsfolk category, `healing.src` the `withheal` entry, `AreaSpawnerSlayTypes()` the type.
+- **`.newmobedit` (T1, T3; stays Admin).** Right-click close (button 0) cancelled nothing and fell into the warrior-level preset with multiplier 0; now cancels. Dead fields 22, 25-27 removed (slots kept at 0). Also fixed: the Bard level buttons set crafter skills; presets use integer `GetLevelSkill()` (148.5 -> 150); Blackrock / Moonstone edits wrote unread `magicimmunity` / `magicreflection`, now `PermMagicImmunity` / `Permmr`. New NPC pages (slots 87-106): AI / Loot (script restarts the AI, prefix / suffix, lootgroup, magic item level / chance as `CustomLoot { chance, level, lootgroup }`, admin+; item drop via `noloot`), Flags (LesserBoss / Boss / SuperBoss with resend, Champion, tame: >0 writes `tamableAt` and erases `notame`/`untamable`, 0 writes `untamable`; snoop, steal, provoke, peace), Regen (HITSREGEN / MANAREGEN / STAMREGEN per-instance override through `npcvitals.inc`, applied at once with `SetVitalRegenRateMod(..., "template", ...)`). Staged Custom HP (button 500: `SetNpcVitalOverride(..., "HITS", n)`, 0 = `ClearNpcVitalOverride`) and Spells (button 501: checkbox gump of `GetNpcSpellNames()`, erases `CustomSpells` when it matches the template, warns for non-caster AIs) apply only on Apply. Text fields through `GetGumpText()`. Save-to-cfg writes template field names, never `CustomHitsLevel`. User's note on this pick: make regen work with ZH3.0's vitals, done through the `npcvitals.inc` overrides.
+- **Per-NPC bard difficulty.** `npcdifficulty.inc`: new `GetNpcDifficultyOverride(mob, field)` (-1 = unset); `GetNpcDifficultyField` honours a stored 0. `provocation.src` / `peacemaking.src` read instance `provoke` / `peacemake` before the template: 0 refuses (or skips the NPC), >0 replaces it. Taunt, Song of Fright and the Grark Shepherd still read the template.
+- **`.iteminfo` (T4).** `SetSpellFromList(who)` is a pure picker; new `SetSpellHitscriptProps()` writes `HitWithSpell` and the matching `HitscriptNumber` / `OnHitscriptNumber` row so the item gets its name (Set Spell Hitscript and Change Casted Spell). Use-script picker: `buttonret` increments, `item.usescript := usecfg[script].Script`, a spell use script gets only `SpellId`. Display and `GetMiscPropForUseScript` read `:shilitems:usescriptdesc` (was `:magic:` / `:usescripts:`, neither exists). Special hitscript: says none are defined (`NbSpecial` is in neither cfg). Armor rows without a CProp lose their edit button.
+- **`.npclist` (T6).** Rewritten: templates grouped by `Type` (missing last), type menu, per type script / lootgroup / magic item chance / level, 20 rows a page, Back. Synopsis regenerated. Still Seer.
+
+**Expected impact:** Staff commands on NPCs no longer stop the world from saving. Spellcasting monsters lose no casts, buff themselves, spare each other and town NPCs, and no longer buff players. Sanctuary, Antidote and Dragon Skin last 2 to 10 minutes by class level, protect the right person, never stack with or damage gear values, and can be dispelled; several buffs now show icons. A Beastal Bond fumble or logoff returns the bard home. Guard-killed warriors keep their gear in escrow and "stop" makes a warrior stand still. Town NPCs track as Townsfolk and no longer count as Human for slayers. Staff get a fuller `.newmobedit`, a working `.iteminfo` and a new `.npclist`.
+
+### 20. Follow-ups and a `/code-review` round over theme 19 (commit `02d9df5`, 2026-10-26)
+
+**Files involved:** `pkg/opt/Staff/include/staff.inc`, `pkg/std/peacemaking/peacemaking.src`, `scripts/textcmd/gm/iteminfo.src`, `pkg/opt/warriorforhire/warrior.src`, `scripts/textcmd/seer/info.src`, `scripts/include/spelldata.inc`, `pkg/opt/spawnpoint/textcmd/admin/newmobedit.src`
+
+**Notable functional changes:**
+- `LogCommand` / `LogAction` re-open the datafile after `CreateDataFile` and return if it is still missing; a new staff account's first line went through the failed handle and was lost (the speech logger got the same fix on 2026-09-22).
+- Peacemaking rolled every NPC's `CheckSkill` against `difficulty`, the last scanned NPC's value; now each uses its own `the_diff`.
+- `.iteminfo`: `DBG_ON` set to 0 (user's request).
+- Warrior `ShowStatus` reads `GetPhysicalProtection(me)` / `GetPoisonImmunityLevel(me)`; `.info` includes `spellprots.inc` and appends " (spell n)" to Phys and PermPois through new `InfoSpellProtSuffix()`.
+- Review findings fixed: `.info` had a `//` comment inside the PermPois/PermMag/MR expression, which commented out the rest of the line (a compile error); `IsBystanderNpc` read `mobile.invul`, not a mobile member in this engine (now `mobile.enabled("invul")`); `IsMonsterSide` now counts an NPC whose master is an NPC (animate dead, NPC summons) as monster side, and new `NpcCasterPlayerMaster()` makes such a minion cast and boost like a monster, so a monster's area spells no longer hit its own minions and players' pets no longer boost them; `NpcSmartAoE` looks the bystander flag up once per victim (`IsMonsterSide(mobile, is_bystander)`); `.newmobedit` save-to-cfg wrote several lootgroups as one `lootgroup 5/6` line and now writes one line per group (`use basic` added for `SplitWords`).
+- Review findings left: the login resync also resets a staff hand-set value on a player (accepted with the SL pick); a provoke / peace override shown by `.newmobedit` on an invul NPC does nothing (invul NPCs stay immune); the NPC-singer code repeated in 15 songs and the lootgroup joiner in both `.newmobedit` and `.npclist` (tidy-ups).
+
+**Expected impact:** New staff members' first logged command is kept; peacemaking judges each creature by its own difficulty; `.info` and the warrior status window show active spell protection; monsters stop hurting their own summoned and animated minions.
+
 ---
 
 ## Validation Notes
 
+- Themes 19-20 (2026-10-26): `git show --numstat 02d9df5` and `git show --name-status 02d9df5` (compiled `.ecl/.lst/.dbg/.dep` excluded); inventory merged by script against the existing list. ZH2.5 read with `git fetch --depth 200 origin Patch-1.1.5` in the `pol25` clone (`a5c79d1`) and its `developer-changelog-v1.1.5.md`. Theme 19 was written by three Sonnet subagents (spell protections + Beastal Bond, NPC casting, staff tools) plus the author, and read over by the author; repo-wide checks for function-name collisions on every new function. Engine facts checked: `BObjectImp::OperSubscript` returns a copy for a non-array (so `parms[1]` on a songbook's mobile argument is the mobile), `MTH_ENABLED` is a character method (no `.invul` member), `ConsumeBardStamina`'s third argument is a custom amount when not 0/1. A `/code-review` ran over the result; its accepted findings are theme 20. Not compiled or tested in game by the author.
 - Theme 18 (2026-10-25): `git diff --numstat` and `wc -l`. Checked by reading and by repo-wide name, builtin-shadowing, reserved-word and module-lookup scans; not compiled or tested in game at writing.
 - Themes 16-17 (2026-10-25): read from `git show ca3b0d3` and `git show e26c8fa`, counts from `git show --numstat`; the 70 `StackLimit 1` lines counted from the diff. Written after the fact from the commits, not compiled or tested by the author.
 - Themes 14-15 (2026-10-25): `git status --porcelain -uall` and `git diff --numstat` for the modified files, `wc -l` for the 14 new files; compiled `.ecl`, `.lst`, `.dbg`, `.dep` files are ignored by `.gitignore`. The arcomage package compiled with 0 errors and 0 warnings on 2026-10-25 (`scripts\ecompile.exe -f -b -r pkg\opt\arcomage`), and `warrior.src` with 0 errors; later edits that day (log text, table watcher, titles, debug off, Lords commented out) were compiled and tested in game by the user except the last two, which were checked by reading. Tested in game: games at 30, 60 and 90 traced on the console, daily gold limit, dressing, titles and tooltips, `.arcomage`, and the walk-away forfeit. Not tested yet: `.arcomagenpcs` placement, which needs coordinates.

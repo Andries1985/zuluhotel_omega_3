@@ -5,7 +5,7 @@ Always check Discord announcements for all the patch notes.
 
 ## What Changed
 
-Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, the vanity shop sells scrolls that copy a runebook or Runic Atlas, fish steaks and fish stacks are sorted out, and elemental arrows come earlier for bowyers. And Arcomage, the tower-building card game, opens in taverns across Britannia.
+Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no longer get stuck on after a restart, its bonus-hour odds finally follow the rule they were meant to, a weekly powerhour that gets crowded out is no longer lost, and staff can now run and adjust powerhours in game. Personal powerhours end when they should, even after you relog, and survive a restart. On the class side, Powerplayers lose the last of their per-skill bonuses, characters with two classes are judged by their stronger one, and combat, spells and item tooltips stop recounting your skills and re-checking your gear every time they look at your class. In houses, every character on the owner's account is now treated as the owner. Warriors for Hire get a long list of fixes, from the High Priest to potions, and area checks get much cheaper for the server. Mayors can now step down, the vanity shop sells scrolls that copy a runebook or Runic Atlas, fish steaks and fish stacks are sorted out, and elemental arrows come earlier for bowyers. And Arcomage, the tower-building card game, opens in taverns across Britannia. Late in the patch, Sanctuary, Antidote and Dragon Skin were reworked into proper timed buffs with icons, spellcasting monsters got smarter about who they hit, and town folk became their own creature type.
 
 ---
 
@@ -78,7 +78,9 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - The High Priest no longer stops working when he refuses a heart (for example because you already have a henchman); he hands the heart back. His questions now close after 30 seconds, so one unanswered window no longer freezes him for everyone.
 - When you release a warrior or give it up at the High Priest, its gear now goes to your escrow, where the High Priest returns it for 20,000 gold, as after any other death. It used to vanish.
 - If your dead warrior's gear cannot be filed into escrow, it now goes to your bank box instead of being destroyed.
-- Saying "stop" during a fight now really stops your warrior guarding you, so it no longer jumps back in. "Stop" outside a fight works as before.
+- Saying "stop" now makes your warrior stand still and stop guarding, in a fight or out of one, so it no longer jumps back in. It stays put until you tell it to follow ("follow me"), and it guards you again once you say "guard" or give it something to kill.
+- If the guards kill your warrior, its gear now goes to your escrow like after any other death. It used to vanish with the body.
+- Your warrior's status window now counts Dragon Skin and Sanctuary or Antidote in its protection and poison immunity.
 - Warriors now recognise every bow and crossbow, not just about 20 of them, and use them as ranged weapons.
 - Warriors drink one heal potion at a time. They used to use up the whole stack for one drink. They now use Light Heal, Heal, Greater Heal, the true-mage potions and Tamla, weakest first.
 - Warriors no longer try to bandage a dead master, and no longer start a new self-heal every second while one is already running.
@@ -90,7 +92,8 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 ### Player Impact
 
 - Keep your warrior's newest heart, and bring it to the High Priest yourself; old hearts are worthless now.
-- Releasing a warrior no longer costs you its gear.
+- Releasing a warrior, or losing it to the guards, no longer costs you its gear.
+- "Stop" means stand still now; say "follow me" when you want it back at your side.
 - Warriors with bows and potions are much better at staying alive.
 - Warriors have about half the hits they used to; Bless them to raise it.
 
@@ -165,6 +168,66 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - A new way to earn gold every day: up to 45,000 an account if you win at all five difficulties.
 - Records and the leaderboard are per character. Games against other players are just for fun: no gold and no records.
 
+## Sanctuary, Antidote and Dragon Skin
+
+- All three now last from 2 minutes at class level 1 up to 10 minutes at level 6 (2:00, 3:36, 5:12, 6:48, 8:24, 10:00), and give a level equal to your class level, from 1 to 6. Characters without a class count as level 1. Magery, armor and Intelligence gear no longer change the length or the level. Before, a Mage could get about 16 minutes while a Paladin in plate got about 3, Sanctuary gave Powerplayers level 1, and Antidote could show levels far above 6 that did nothing extra.
+- Antidote's poison immunity now goes to the person you cast it on. It used to go to you, the caster, whoever you cured.
+- The spells no longer add to your gear or overwrite it: you get whichever is higher, your gear's level or the spell's. Putting on or taking off poison immunity jewelry during Sanctuary no longer switches the immunity off, and equipping anything during Dragon Skin no longer drops the skin or lowers your gear's protection afterwards.
+- If your gear or a stronger cast already gives you as much, the spell adds nothing. Casting the same level again refreshes it.
+- Dragon Skin is now one play instead of a song you keep playing. It protects you and your party, guild and pets in range, costs 20 stamina per person, and lasts its full time even if they walk away. Its protection is your bard level, and it no longer stacks on top of protection gear: a level 6 bard in level 6 gear gets 6, not 12.
+- Dispel, Mass Dispel and Song of Dismissal now remove Sanctuary, Antidote, Dragon Skin and Reactive Armor. Logging out also ends them.
+- At your first login after this patch, your physical protection and poison immunity are reset to what your gear gives. This clears leftover Dragon Skin bonuses that never wore off.
+
+### Player Impact
+
+- Mages lose their extra-long Sanctuary and Antidote; every class now gets the same time for its level.
+- Cast Antidote on a friend and the friend is protected, not you.
+- Dragon Skin is weaker for bards in heavy protection gear, but it no longer needs you to keep playing.
+
+## Buff Icons
+
+- New buff icons, with a countdown where the effect has one: poison immunity from Sanctuary and Antidote, Dragon Skin, Reactive Armor, night sight (the spell, Owl Sight, Light of Day, Song of Light and the night sight potion), being poisoned, and Magic Reflection.
+- Being blinded removes the night sight icon. Magic Reflection's icon stays until the reflection is used up and comes back when you log in.
+
+### Player Impact
+
+- You can see at a glance what is protecting you and when it runs out.
+
+## Monsters and Spellcasting
+
+- Spellcasting monsters no longer waste casts. Until now about one cast in every few did nothing, and half of them for monsters that know only one spell. Expect casters to cast more often.
+- Monsters that know healing or other helpful spells now cast them on themselves, not on you.
+- A monster's area spells no longer hurt other monsters, its own summoned or animated creatures, town folk, guards, vendors or good creatures such as pixies, wisps and unicorns. Its area buffs now only help other monsters; they used to reach the players around it. The same goes for fire and other fields a monster creates.
+- A pet's area spells now spare you, your party and your other pets, and only hit players you could hit yourself.
+
+### Player Impact
+
+- Boss and champion fights with spellcasters will feel harder: monsters stop softening each other up for you.
+- Area spells cast near town are safer for the townsfolk.
+
+## Bard Songs and Verses
+
+- Fumbling Beastal Bond no longer leaves you frozen and invisible at the creature until you log out. Ending the bond any way, including logging out or a server restart, now puts you back where you started.
+- Song of Earth can now be interrupted by taking damage, like the other songs. Its check never worked before.
+- Peacemaking now judges each creature by its own difficulty. Before, every creature in range used the difficulty of whichever one was checked last.
+
+### Player Impact
+
+- Beastal Bond is safe to use again.
+- Peacemaking a mixed group is fairer: easy creatures calm down easily even next to a hard one.
+
+## Townsfolk and Tracking
+
+- Town folk, guards, merchants, healers, nobles, player vendors and Warriors for Hire are now their own creature type, Townsfolk, instead of Human. Tracking lists them under a new Townsfolk heading.
+- Human slayer weapons and Human protection no longer count against them. They still work against human monsters and players.
+- Bandages still use Healing on them.
+- Town NPCs already in the world change over when they next respawn.
+
+### Player Impact
+
+- Tracking for humans now finds the human monsters, not every shopkeeper in town.
+- A Human slayer won't help you against a guard or a Warrior for Hire.
+
 ## Guards and Areas
 
 - Guards called on a criminal now record the right player's account. They looked it up by character name, so two characters with the same name could get the wrong account blamed.
@@ -195,9 +258,16 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - Developers have `.classbonusinfo`. It targets a character and lists their classes, primary class, stat multipliers and every skill that carries a class bonus.
 - Administrators have `.arcomagenpcs`. It places, lists, removes or respawns all the Arcomage card players at once, touching no other spawns, and `.arcomagenpcs here <n>` prints a ready-made spawn entry for where you stand. Testers have `.arcomagelineup`, which spawns every card player in a row to look them over.
 
+- Using `.setclass` on an NPC could stop the world from saving until the next restart. It now only accepts players, and no staff log is ever written for an NPC. A new staff member's first logged command is no longer lost.
+- `.newmobedit` (Administrator) gained pages for NPCs: AI and loot (script, title, lootgroup, magic item level and chance, whether worn or backpack items drop), flags (boss tiers, champion, tame, snoop, steal, provoke and peace difficulty, where 0 means it can't be done), a custom HP ceiling, HP, mana and stamina regeneration, and a spell list picker. Closing it with a right-click now cancels; it used to set eight warrior skills to 0. The Bard level buttons set bard skills (they set crafter skills), level presets reach 150 exactly, and magic immunity and reflection edits now take effect.
+- `.iteminfo` (Game Master): setting a spell hitscript now works and names the item; the use-script picker uses the entry you click and shows its description; special hitscripts say there are none; the console is quiet again.
+- `.npclist` (Seer) now groups every NPC template by creature type, with its script, lootgroup and magic item chance and level, 20 to a page.
+- `.info` (Seer) shows an active Dragon Skin, Sanctuary or Antidote next to physical protection and poison immunity.
+
 ### Player Impact
 
 - Powerhours can now be run, re-timed and rescheduled without a server restart.
+- No more lost world saves from a staff command on an NPC.
 
 ## Summary
 
@@ -210,14 +280,19 @@ Patch 3.1.4 is about powerhours and classes. The server-wide powerhour can no lo
 - Class effects use your last class check, refreshed at login, on `.showclasse` and every 10 minutes; combat, spells and tooltips no longer re-check your gear each time.
 - Every character on a house owner's account has full owner rights in that house and cannot be banned or ejected from it; houses can move between your own characters at the house limit; co-owners and friends can set traps.
 - Two elven doors got names of their own.
-- Warriors for Hire: ten revivals in all, only the newest heart works and only from its master's hand, pre-patch hearts are void, the same stat loss by heart or by memory, no permanent blessings, a High Priest that keeps working, gear kept on release, every bow, one potion at a time, half damage both ways when sparring, and hits, mana and stamina that follow their stats like a player's.
+- Warriors for Hire: ten revivals in all, only the newest heart works and only from its master's hand, pre-patch hearts are void, the same stat loss by heart or by memory, no permanent blessings, a High Priest that keeps working, gear kept on release or a guard kill, "stop" that means stand still, every bow, one potion at a time, half damage both ways when sparring, and hits, mana and stamina that follow their stats like a player's.
 - The Eon-Prism lets you start another personal powerhour this week, used from your backpack.
 - Mayors can resign and leave their town from the townstone.
 - The vanity shop sells Transcription Scrolls that copy a runebook (5 tokens) or Runic Atlas (10 tokens) into an empty book of the same kind.
 - Fish steaks follow where the fish lives (shore 1, deep water 4, dungeon 6), with the Rare and Legendary bonus also when you carve as you fish; ordinary fish stack again and rare ones never do.
 - Fire Arrows, Ice Arrows and Thunder Bolts need 40 less Bowcraft (74, 79 and 84).
 - Arcomage: 24 card players in taverns, difficulty 30 to 150, daily gold for your first win at each difficulty, and `.arcomage` for your record and the leaderboard. Challenge other players with the Arcomage Deck (vanity shop), Timed or Untimed, and watch their games with `.arcomage watch`.
+- Sanctuary, Antidote and Dragon Skin: level and 2 to 10 minutes by class level, Antidote protects its target, the higher of gear and spell counts, Dragon Skin is one play, and Dispel removes them; leftover bonuses are cleared at login.
+- New buff icons for poison immunity, Dragon Skin, Reactive Armor, night sight, poison and Magic Reflection.
+- Spellcasting monsters lose no casts, buff themselves, and their area spells spare other monsters, their minions and town folk; their area buffs no longer reach players.
+- Beastal Bond fumbles and logouts return you to your spot; Song of Earth can be interrupted; peacemaking judges each creature on its own.
+- Town NPCs are Townsfolk: their own Tracking heading, and Human slayers no longer count against them.
 - Guards record the right account; area checks are much cheaper for the server.
-- Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; `.arcomagenpcs` places and removes the card players; developers have `.classbonusinfo`.
+- Staff: `.phadmin` runs and reschedules server-wide powerhours; `.resetph` clears saved resume state; `.arcomagenpcs` places and removes the card players; developers have `.classbonusinfo`; `.setclass` on an NPC no longer breaks world saves; `.newmobedit` has NPC pages, `.iteminfo` is fixed, `.npclist` is rebuilt and `.info` shows spell protection.
 
 Thanks for playing Zuluhotel Omega 3.
