@@ -15,7 +15,7 @@ function drop_anchor(me)
 
         // assumes that var me = npc::self
 
-        var cfg := readconfigfile("npcdesc");
+        var cfg := readconfigfile("::npcdesc"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 
         var dstart := cfg[me.npctemplate].dstart;
 

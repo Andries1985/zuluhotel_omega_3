@@ -3,6 +3,7 @@ use os;
 use vitals;
 
 include "include/attributes";
+include "include/damages";	// 2026-10-29: ApplyTheDamage for kill credit + PvP cut (ZH2.5 1.1.5 port)
 
 const DELAY_BETWEEN_USE	:= 20;
 
@@ -37,7 +38,9 @@ program item_vengeance( who , item )
 	endif
 		
 	var dmg := Cint(GetMaxHP(who) - GetHp(who));
-	ApplyRawDamage( victim , dmg );
+	// 2026-10-29: through ApplyTheDamage so a Vengeance kill credits the user and gets the PvP cut; no resist, as the raw
+	// damage it replaces had none. Hitting the user is self-damage, which ApplyTheDamage leaves uncut (ZH2.5 1.1.5 port)
+	ApplyTheDamage( victim , who , dmg , DMGID_MAGIC + DMGID_NO_RESIST );
 	
 	Detach();
 	Sleep( DELAY_BETWEEN_USE );

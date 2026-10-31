@@ -40,6 +40,12 @@ function CheckIfCanUseBandage( character )
 var healcd := Cint(GetObjProperty(character , "#magicfish"));
 var bandcd := Cint(GetObjProperty(character , "#usebandage"));
 
+	// 2026-10-31: a ranger can bandage right after a magic fish. Their bandages go to vet.src, which refuses
+	// a self-target, so this never stacks two self-heals; everyone else still waits (ZH2.5 1.1.5 port)
+	if( GetObjProperty(character, CLASSEID_RANGER) )
+		healcd := 0;
+	endif
+
 	if( healcd && healcd > ReadGameClock())
 		if( bandcd &&  bandcd > ReadGameClock())
         	SendSysmessage(character , "You must wait until you can use a bandage!");

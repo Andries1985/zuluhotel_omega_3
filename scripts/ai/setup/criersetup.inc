@@ -2,7 +2,7 @@ include ":spawnpoint:customnpc";
 
 set_critical(0);
 var me := self();
-var npccfg := readconfigfile("npcdesc");
+var npccfg := readconfigfile("::npcdesc"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 var speechelem := npccfg[me.npctemplate];
 var speech := getconfigstring(speechelem, "speech") ;
 var saywords := speechelem.saywords;

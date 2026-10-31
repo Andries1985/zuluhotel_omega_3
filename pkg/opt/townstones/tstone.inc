@@ -3,6 +3,8 @@ use uo;
 
 include "include/math";
 include "include/client";
+// 2026-10-31: per-character citizen entries (ZH2.5 1.1.5 port)
+include ":townstone:citizens";
 
 const CITIZEN_ELECTION_COOLDOWN := (60*24*3600); // 2 months in seconds
 const ELECTION_DURATION := (7*24*3600); // 1 week in seconds
@@ -209,7 +211,8 @@ function voteto(who, item, choose)
 	//verifica se fulando jah votou
 	foreach runa in EnumerateItemsInContainer( item )
 		if (runa.objtype == 0xa321)
-			if (GetObjProperty(runa, "serial") == who.acctname)
+			// 2026-10-31: one vote per character; old rune holds the account name (ZH2.5 1.1.5 port)
+			if (IsVoteRuneOf(runa, who))
 				SendSysMessage(who, "You have already voted.");
 				return 0;
 			endif
@@ -219,7 +222,9 @@ function voteto(who, item, choose)
 	//Cria 1 runa do voto.
 
 	var voto := CreateItemInContainer( item, 0xa321, 1);
-	SetObjProperty(voto, "serial", who.acctname);
+	// 2026-10-31: rune stores the character serial; account kept for staff (ZH2.5 1.1.5 port)
+	SetObjProperty(voto, "serial", who.serial);
+	SetObjProperty(voto, "account", who.acctname);
 	SetObjProperty(voto, "opcao", choose);
 	votos := votos+1;
 	SetObjProperty(item, "votos",  votos);

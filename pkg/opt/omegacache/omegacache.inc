@@ -539,13 +539,20 @@ endfunction
 // Query the stored quantity for a specific key (lease-aware).
 // Pass exclude_lease_key to exclude a specific lease from the calculation
 // (e.g., the caller's own lease, so they can consume their reserved portion).
-function GetStoredAmount(df, key, exclude_lease_key := 0)
+// 2026-10-29: a caller checking many keys passes lease_totals from GetLeaseTotals() (built with the same
+// exclude_lease_key), so the DataFile is scanned once instead of once per key (ZH2.5 1.1.5 port)
+function GetStoredAmount(df, key, exclude_lease_key := 0, lease_totals := 0)
 	var elem := df.FindElement(key);
 	if(!elem)
 		return 0;
 	endif
 	var qty := CInt(elem.GetProp("qty"));
-	var leased := GetLeasedAmount(df, key, exclude_lease_key);
+	var leased;
+	if(TypeOf(lease_totals) == "Dictionary")
+		leased := CInt(lease_totals[key]);
+	else
+		leased := GetLeasedAmount(df, key, exclude_lease_key);
+	endif
 	var available := qty - leased;
 	if(available < 0)
 		available := 0;
@@ -559,6 +566,9 @@ function GetStoredAmountByObjtype(df, objtype, exclude_lease_key := 0)
 	var prefix := Hex(objtype) + "|";
 	var prefix_len := len(prefix);
 	var total := 0;
+	// 2026-10-29: one scan for every key (ZH2.5 1.1.5 port). 2026-10-31: built on the first matching key, so an
+	// objtype with no stock (most of what the crafting menus ask about) costs one pass, not two
+	var lease_totals := 0;
 	foreach key in (df.Keys())
 		// Skip lease keys
 		if(key[1, 3] == "RL#")
@@ -567,8 +577,11 @@ function GetStoredAmountByObjtype(df, objtype, exclude_lease_key := 0)
 		if(key[1, prefix_len] == prefix)
 			var elem := df.FindElement(key);
 			if(elem)
+				if(!lease_totals)
+					lease_totals := GetLeaseTotals(df, exclude_lease_key);
+				endif
 				var qty := CInt(elem.GetProp("qty"));
-				var leased := GetLeasedAmount(df, key, exclude_lease_key);
+				var leased := CInt(lease_totals[key]);
 				var available := qty - leased;
 				if(available > 0)
 					total := total + available;
@@ -714,6 +727,50 @@ function GetLeasedAmount(df, item_key, exclude_lease_key := 0)
 	endforeach
 
 	return total;
+endfunction
+
+// 2026-10-29: every live lease summed per item key, in one pass over the DataFile. GetLeasedAmount scans the
+// whole file for a single key, so a caller checking many keys (the item list, crafting) scanned it once per
+// key; a large cache made the item list a runaway script. Expired leases are cleaned up the same way
+// (ZH2.5 1.1.5 port)
+function GetLeaseTotals(df, exclude_lease_key := 0)
+	var totals := dictionary;
+	var now := ReadGameClock();
+
+	foreach key in (df.Keys())
+		if(key[1, 3] != LEASE_PREFIX)
+			continue;
+		endif
+		if(exclude_lease_key and key == exclude_lease_key)
+			continue;
+		endif
+		var elem := df.FindElement(key);
+		if(!elem)
+			continue;
+		endif
+		if(CInt(elem.GetProp("expiry")) < now)
+			df.DeleteElement(key);
+			OmegaCacheDebug("GetLeaseTotals: cleaned expired lease " + key);
+			continue;
+		endif
+		var item_key := LeaseItemKey(key);
+		totals[item_key] := CInt(totals[item_key]) + CInt(elem.GetProp("quantity"));
+	endforeach
+
+	return totals;
+endfunction
+
+// RL#<item_key>|<lease_id>: the item key holds a | of its own, so it ends at the last one.
+function LeaseItemKey(lease_key)
+	var after_prefix := lease_key[4, len(lease_key)];
+	var i := len(after_prefix);
+	while(i > 0)
+		if(after_prefix[i] == "|")
+			return after_prefix[1, i - 1];
+		endif
+		i := i - 1;
+	endwhile
+	return after_prefix;
 endfunction
 
 // IsStoreEmpty — use IsOmegaCacheEmpty(house_serial) from omegacache_utils.inc
@@ -1850,13 +1907,14 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys, objt
 	GFAddButton(gump, 485, 480, 4017, 4019, GF_CLOSE_BTN, BTN_WITHDRAW);
 	GFTextLine(gump, 520, 480, TEXT_HUE_WITHDRAW, "Withdraw");
 
+	var lease_totals := GetLeaseTotals(df);	// 2026-10-29: computed once for the filter and the rows (ZH2.5 1.1.5 port)
 	// Filter to only keys with available qty > 0 (lease-aware)
 	var display_keys := array{};
 	foreach key in keys
 		if(key[1, 3] == "RL#")
 			continue;
 		endif
-		var available := GetStoredAmount(df, key);
+		var available := GetStoredAmount(df, key, 0, lease_totals);
 		if(available > 0)
 			display_keys.append(key);
 		endif
@@ -1964,7 +2022,7 @@ function ShowItemList(who, df, category_name, category_map, byref out_keys, objt
 		GFResizePic(gump, 18, row_y - 2, 9350, 565, 32);
 
 		var elem := df.FindElement(key);
-		var qty := GetStoredAmount(df, key);
+		var qty := GetStoredAmount(df, key, 0, lease_totals);
 		var objtype := CInt(elem.GetProp("objtype"));
 		var desc_info := GetItemDescriptor(objtype);
 

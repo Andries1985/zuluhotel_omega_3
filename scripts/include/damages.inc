@@ -35,7 +35,9 @@ include "include/astralfights";
 
 const MAX_SERIAL_IN_HITLIST := 5;
 
-function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
+// 2026-10-29: pvp_cut 0 skips the global PvP slowdown below; used by poison ticks (processpoisonmod's
+// PoisonTick(), which pre-applies its own PvP factor) (ZH2.5 1.1.5 port)
+function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL, pvp_cut := 1 )
 
 	//Print("In ApplyTheDamage with damage: " + dmg);
 	var olddmg := 0;
@@ -63,7 +65,19 @@ function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 	// spelldata.inc's ApplyElementalDamage/ApplyPlanarDamage in this same
 	// patch. Without this, a player's tamed/summoned pet attacking another
 	// player bypassed the PvP damage nerf entirely.
-	if( (!by_who.isA(POLCLASS_NPC) || (by_who.master && !by_who.master.isA(POLCLASS_NPC))) && !who.isA(POLCLASS_NPC))
+	// 2026-10-31: the master CProp counts as well as .master, as in CalcPhysicalDamage (a summon with only the CProp
+	// skipped this cut); self-damage (traps, fields with no caster, a reflected Mind Blast) is not PvP
+	var pvp_by := by_who;
+	if( by_who.IsA(POLCLASS_NPC) )
+		var pvp_master := by_who.master;
+		if( !pvp_master )
+			pvp_master := FindMaster(by_who);
+		endif
+		if( pvp_master )
+			pvp_by := pvp_master;
+		endif
+	endif
+	if( pvp_cut && !pvp_by.isA(POLCLASS_NPC) && !who.isA(POLCLASS_NPC) && (by_who.serial != who.serial) )
 		//if( !defender.isA(POLCLASS_NPC))
 		//Print("Applying Overall PvP reduction. Damage is: " + dmg);
 		olddmg := CInt(dmg);
@@ -87,14 +101,13 @@ function ApplyTheDamage( who, by_who, dmg, attack_type := DMGID_PHYSICAL )
 	else
 		if( GetObjProperty(who,PROPID_MOBILE_RISE) )
 			if( TryToInflictFinalDeath( who, attack_type ) )
-				SetObjProperty( who, PROPID_MOBILE_KILLED_BY, by_who.name );
-				SetObjProperty( who, "KilledBySerial", by_who.serial );
+				// 2026-10-29: RecordKiller only records a mobile attacker (was Uninit serial for none) (ZH2.5 1.1.5 port)
+				RecordKiller( who, by_who );
 			else
 				factor := factor * VALUE_MULTIPLIER_FOR_ALLIES;
 			endif
 		else
-			SetObjProperty( who, PROPID_MOBILE_KILLED_BY, by_who.name );
-			SetObjProperty( who, "KilledBySerial", by_who.serial );
+			RecordKiller( who, by_who );
 		endif
 	endif
 	
@@ -245,6 +258,23 @@ function ApplyTheAstralDamage( who, by_who, dmg, attack_type := DMGID_ASTRAL )
 
 		return 1;
 	endif
+
+endfunction
+
+// 2026-10-29: the corpse copies these props when the mobile dies (death.src, loot, champion altar).
+// Only a mobile is recorded, since by_who.serial of a missing attacker would be saved as Uninit; a blow
+// with no attacker clears any earlier killer so this death isn't credited to the last one (ZH2.5 1.1.5 port)
+function RecordKiller( who, by_who )
+
+	if( !by_who.IsA(POLCLASS_MOBILE) )
+		EraseObjProperty( who, PROPID_MOBILE_KILLED_BY );
+		EraseObjProperty( who, "KilledBySerial" );
+		return 0;
+	endif
+
+	SetObjProperty( who, PROPID_MOBILE_KILLED_BY, by_who.name );
+	SetObjProperty( who, "KilledBySerial", by_who.serial );
+	return 1;
 
 endfunction
 

@@ -129,7 +129,13 @@ program dig_treasure( character )
 	var chance := CInt(Random(100));
 	//Print( "Bard level: " + bard_level + ", Chance: " + chance + ", Level: " + lvl );
 
-	if( lvl == 6 and bard_level > 0 and chance <= bard_level )
+	// 2026-10-29: 1% per bard level for levels 1-5, 8% at level 6; "<" fixes the extra 1% "<=" gave (ZH2.5 1.1.5 port)
+	var lvl7_chance := bard_level;
+	if( bard_level == 6 )
+		lvl7_chance := 8;
+	endif
+
+	if( lvl == 6 and bard_level > 0 and chance < lvl7_chance )
 		//Print( "I am a bard" );
 		lvl := 7;
 		bard_lvl7_roll := 1;

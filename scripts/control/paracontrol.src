@@ -11,32 +11,49 @@ const DELAY_BETWEEN_CHECKS_MS	:= 1000;
 
 program para_control( item )
 
-	var diff     := 50;
-	var points   := 25;
-	var duration := 10;
-	var creator := 0;
-	var serial  := Cint( GetObjProperty( item , "Creator" ) );
-	
-	if( GetObjProperty( item , "ByTrueMage" ) )
-		diff := Cint( diff * CLASSE_BONUS );
-		points := Cint( points / CLASSE_BONUS );
-		duration := Cint( duration * CLASSE_BONUS );
-	endif
-	
-	if( serial )
-		creator := SystemFindObjectBySerial( serial );
-		if( !creator ) 
-			creator := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
-		endif
-	
-		if(creator)
-			SetScriptController(creator);
-		endif
-	endif
+	// 2026-10-31: ByTrueMage and Creator are not read once at startup, as in poisoncontrol: the caster sets them after
+	// CreateItemAtLocation has already started this script; SetScriptController once
+	var controller := 0;
+	// 2026-10-31: the props are read every tick until Creator has been seen on two ticks, then kept: the caster
+	// writes Creator first and the rest straight after, and ticks are seconds apart. The caster itself is still
+	// looked up every tick, so a field notices when a monster caster has died
+	var reads_with_creator := 0;
+	var diff, points, duration, serial;
 	
 	while( item )
+		// 2026-10-29: read the location once per tick: the field can be destroyed mid-tick, which gave an uninit realm (ZH2.5 1.1.5 port)
+		var realm := item.realm;
+		var fx := CInt(item.x), fy := CInt(item.y), fz := CInt(item.z);
+		if( !realm )
+			break;
+		endif
+
+		if( reads_with_creator < 2 )
+			diff     := 50;
+			points   := 25;
+			duration := 10;
+			if( GetObjProperty( item , "ByTrueMage" ) )
+				diff := Cint( diff * CLASSE_BONUS );
+				points := Cint( points / CLASSE_BONUS );
+				duration := Cint( duration * CLASSE_BONUS );
+			endif
+			serial := Cint( GetObjProperty( item , "Creator" ) );
+			if( serial )
+				reads_with_creator := reads_with_creator + 1;
+			endif
+		endif
+
+		var creator := 0;
+		if( serial )
+			creator := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+			if( creator and !controller )
+				SetScriptController(creator);
+				controller := creator;
+			endif
+		endif
+
 		PlaySoundEffect( item , SFX_SPELL_PARALYZE_FIELD );
-		var victims := ListMobilesNearLocation( cint(item.x) , cint(item.y) , cint(item.z) , 0, item.realm );
+		var victims := ListMobilesNearLocation( fx , fy , fz , 0, realm );
 		victims := SmartAoE(creator, victims);
 		foreach mobile in victims
 			if( CanMod( mobile , "p" ) )

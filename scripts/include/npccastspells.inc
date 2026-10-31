@@ -337,27 +337,35 @@ function SpecialShiftingEarth(caster, cast_on)
         DoTempMod( cast_on , "dex" , 0 - mod_amount , duration );
 endfunction
 
+// 2026-10-29: Champfire hits for fixed dice, whatever the caster's skills or the target's resist and class:
+// only the elemental protection of the rolled element reduces it (ApplyElementalDamageNoResist: no Magic
+// Resistance, class or Eval Int adjustment and no Mage protection pierce; 2026-10-31).
+// About 170 for the bolt and 42 a field tick before protection (ZH2.5 1.1.5 port)
+const CHAMPFIRE_BOLT_DICE  := "10d10+115";
+const CHAMPFIRE_FIELD_DICE := "8d8+6";
+
 function SpecialChampFire(caster, cast_on, element)
 
 	var circle := 8;
+	// 2026-10-29: case labels are the element constants (ChampFire() passes them now, not strings) (ZH2.5 d5d232a port)
 	var elecolor;
 	case(element)
-		"EARTH": elecolor := 1134;
-		"WATER": elecolor := 1167;
-		"FIRE": elecolor := 2750;
-		"AIR": elecolor := 2736;
-		"NECRO": elecolor := 2732;
-		"HOLY": elecolor := 1153;
+		EARTH: elecolor := 1134;
+		WATER: elecolor := 1167;
+		FIRE: elecolor := 2750;
+		AIR: elecolor := 2736;
+		NECRO: elecolor := 2732;
+		HOLY: elecolor := 1153;
 	endcase
 
 	var eleName;
 	case(element)
-		"EARTH": eleName := "Earth";
-		"WATER": eleName := "Water";
-		"FIRE": eleName := "Fire";
-		"AIR": eleName := "Air";
-		"NECRO": eleName := "Necro";
-		"HOLY": eleName := "Holy";
+		EARTH: eleName := "Earth";
+		WATER: eleName := "Water";
+		FIRE: eleName := "Fire";
+		AIR: eleName := "Air";
+		NECRO: eleName := "Necro";
+		HOLY: eleName := "Holy";
 	endcase
 
 	PlayMovingEffectEx(caster, cast_on, FX_SPELL_FIREBALL, SPEED_SPELL_FIREBALL, LOOP_SPELL_FIREBALL, elecolor);
@@ -369,16 +377,20 @@ function SpecialChampFire(caster, cast_on, element)
 		return;
 	endif
 
+	// 2026-10-29: fixed dice instead of CalcSpellDamage, unresistable; cursed equipment doubles the roll (it used to double the circle) (ZH2.5 1.1.5 port)
+	var dmg := RandomDiceStr( CHAMPFIRE_BOLT_DICE );
 	if( immunity == CURSED )
-		circle := circle * 2;
+		dmg := dmg * 2;
 	endif
-	
-	var dmg := CalcSpellDamage( caster ,cast_on , circle );
-	ApplyElementalDamage( caster , cast_on , circle , dmg , element );
-	
+
+	ApplyElementalDamageNoResist( cast_on , caster , dmg , element );	// 2026-10-31: protection only
+
 	var fields := {};
 	var counter := 0;
 	var duration := 60;
+	// 2026-10-31: no field script may tick before every field has its props: each CreateItemAtLocation starts
+	// firecontrol, which hits before its first sleep. Only item creation and CProps inside, so it is short
+	set_critical(1);
 	counter := counter  + 1;
 	fields[counter] := CreateItemAtLocation( cast_on.x , cast_on.y , cast_on.z , 0x398c , 1, cast_on.realm );
 	fields[counter].color := elecolor;
@@ -510,6 +522,17 @@ function SpecialChampFire(caster, cast_on, element)
 	fields[counter].name := "Field of "+eleName;
 	SetObjProperty(fields[counter], "specialELE", element);
 	SetObjProperty( fields[counter] , "ByTrueMage" , 1 );
+
+	// 2026-10-29: every field gets the caster as Creator, its dice and Unresistable; firecontrol reads them each tick.
+	// Without a Creator firecontrol made the victim the caster (victim's own skills + PvP cut) (ZH2.5 1.1.5 port)
+	foreach fld in fields
+		if( fld )
+			SetObjProperty( fld , "Creator" , caster.serial );
+			SetObjProperty( fld , "FieldDice" , CHAMPFIRE_FIELD_DICE );
+			SetObjProperty( fld , "Unresistable" , 1 );
+		endif
+	endforeach
+	set_critical(0);
 
 	MoveObjectToLocation( cast_on, cast_on.x, cast_on.y, cast_on.z, cast_on.realm, MOVEOBJECT_FORCELOCATION);
 	var buffParms := {fields, duration};

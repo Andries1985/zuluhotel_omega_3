@@ -14,40 +14,59 @@ program poison_control( item )
 
 	var diff    := 40;
 	var points  := 25;
-	var power   := 2;
-	var creator := 0;
-	var serial  := Cint( GetObjProperty( item , "Creator" ) );
-	
-	if( GetObjProperty( item , "ByTrueMage" ) )
-		power := Cint( power * CLASSE_BONUS );
-	endif
-	
-	if( serial )
-		creator := SystemFindObjectBySerial( serial );
-		if( !creator ) 
-			creator := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
-		endif
-	
-		if(creator)
-			SetScriptController(creator);
-		endif
-	endif
-	
+	// 2026-10-29: power and creator are not read once at startup, as in firecontrol: the caster can set them after
+	// CreateItemAtLocation has already started this script, which lost the kill credit
+	var controller := 0;
+	// 2026-10-31: the props are read every tick until Creator has been seen on two ticks, then kept: the caster
+	// writes Creator first and the rest straight after, and ticks are seconds apart. The caster itself is still
+	// looked up every tick, so a field notices when a monster caster has died
+	var reads_with_creator := 0;
+	var power, serial;
+
 	while( item )
+		// 2026-10-29: read the location once per tick: the field can be destroyed mid-tick, which gave an uninit realm (ZH2.5 1.1.5 port)
+		var realm := item.realm;
+		var fx := CInt(item.x), fy := CInt(item.y), fz := CInt(item.z);
+		if( !realm )
+			break;
+		endif
+
+		if( reads_with_creator < 2 )
+			power := 2;
+			if( GetObjProperty( item , "ByTrueMage" ) )
+				power := Cint( power * CLASSE_BONUS );
+			endif
+			serial := Cint( GetObjProperty( item , "Creator" ) );
+			if( serial )
+				reads_with_creator := reads_with_creator + 1;
+			endif
+		endif
+
+		var creator := 0;
+		if( serial )
+			creator := SystemFindObjectBySerial( serial , SYSFIND_SEARCH_OFFLINE_MOBILES );
+			if( creator and !controller )
+				SetScriptController(creator);
+				controller := creator;
+			endif
+		endif
+
 		var plvl := RandomDiceStr( "1d" + power );
 		PlaySoundEffect( item , SFX_SPELL_POISON_FIELD );
-		var victims := ListMobilesNearLocation( cint(item.x) , cint(item.y) , cint(item.z) , 0, item.realm );
+		var victims := ListMobilesNearLocation( fx , fy , fz , 0, realm );
 		victims := SmartAoE(creator, victims);
 		foreach mobile in victims
-			if( !creator )
-				creator := mobile;
+			// 2026-10-31: with no caster each victim rolls against itself, not against the first victim (credit is creator)
+			var attacker := creator;
+			if( !attacker )
+				attacker := mobile;
 			endif
-			
-			var indiv_plvl := Cint(ResistedDefinedSkillGain( creator , mobile , plvl , diff , points ));
+
+			var indiv_plvl := Cint(ResistedDefinedSkillGain( attacker , mobile , plvl , diff , points ));
 			if( indiv_plvl )
 				if(!mobile.multi)
 					PlayObjectCenteredEffectEx( mobile, 0x33F6, 0 , 10, 63, 5);
-					SetPoison( mobile , indiv_plvl , "You've been poisoned!" );
+					SetPoison( mobile , indiv_plvl , "You've been poisoned!", 0, 0, creator );	// 2026-10-29: credit the caster, nobody when there is none (ZH2.5 1.1.5 port)
 				endif
 			endif
 		endforeach

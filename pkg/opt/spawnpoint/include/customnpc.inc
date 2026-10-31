@@ -159,9 +159,37 @@ CustomNPCGump(who, point, o, vits, cprops, npc);
 
 endfunction
 
-function DressNPCCustom(me)
+// 2026-10-29: the point can be passed in: CreateCustomNPC wipes the critter's CProps before dressing it and
+// its SpawnPoint prop is only set after it is placed, so it can't be looked up from the critter there.
+// Callers that pass only the critter still find it through the SpawnPoint CProp (ZH2.5 1.1.5 port)
+// 2026-10-31: equips the backpack a custom NPC's pack items go into. Called before DressNPCCustom
+// by both CreateCustomNPC copies (checkpoint.src, Use_Shrink.src); an NPC with a backpack skips the
+// AI setup's strip-and-redress branch, so it is dressed once.
+function GiveCustomNpcBackpack(me)
 
-var point := SystemFindObjectBySerial(GetObjProperty(me, "SpawnPoint"));
+if (me.backpack)
+	return me.backpack;
+endif
+var pack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
+if (!pack)
+	return 0;
+endif
+if (!EquipItem(me, pack))
+	DestroyItem(pack);
+	return 0;
+endif
+return pack;
+
+endfunction
+
+function DressNPCCustom(me, point := 0)
+
+if (!point)
+	point := SystemFindObjectBySerial(GetObjProperty(me, "SpawnPoint"));
+endif
+if (!point)
+	return;
+endif
 
 foreach item in EnumerateItemsInContainer(point)
 	var copy := CreateItemCopyAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, item, DEFAULT_LOCATION_ITEM_CREATION_R);

@@ -23,7 +23,7 @@ function CanStack_GetIgnoreList()
 		return CanStack_ignore_list;
 	endif
 
-	var stacking_cfg := ReadConfigFile("stacking");
+	var stacking_cfg := ReadConfigFile("::stacking"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 	if(stacking_cfg)
 		var stacking_elem := FindConfigElem(stacking_cfg, "Stacking");
 		if(stacking_elem)
