@@ -170,15 +170,15 @@ function GiveCustomNpcBackpack(me)
 if (me.backpack)
 	return me.backpack;
 endif
-var pack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
-if (!pack)
+var newpack := CreateItemAtLocation(DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R);
+if (!newpack)
 	return 0;
 endif
-if (!EquipItem(me, pack))
-	DestroyItem(pack);
+if (!EquipItem(me, newpack))
+	DestroyItem(newpack);
 	return 0;
 endif
-return pack;
+return newpack;
 
 endfunction
 
