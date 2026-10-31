@@ -1,9 +1,13 @@
-// Synopsis: Kill every NPC (normal, hidden or concealed) within a tile range; players and staff are never touched, player vendors are force-closed
+// Synopsis: Kill every NPC (normal, hidden or concealed) within a tile range; add "credit" to count champion minions as your kills
 //Edited August 25, 2024
 // 2026-09-26: NPC-only. One NPC_ONLY list pass instead of three, and anything that is not a killable NPC is skipped instead of aborting the whole command.
+// 2026-10-31: .akill <range> [credit]. Players and staff are never touched, player vendors are force-closed. With "credit"
+// every champion minion killed counts as the caller's kill on its altar's tally, for testing altars; death.inc accepts a
+// staff killer only when the corpse carries a matching StaffChampCredit (ZH2.5 1.1.5 port)
 
 use os;
 use uo;
+use basic;
 
 include "include/attributes";
 include ":staff:include/staff";
@@ -35,11 +39,18 @@ function TryForceClosePlayerVendor(byref who, byref mob)
 	return sent;
 endfunction
 
-program akill( who, dist )
+program akill( who, text )
 
-	dist := CInt(dist);
-	SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles." );
+	var args := SplitWords(text);
+	var dist := CInt(args[1]);
+	var credit := (Lower(CStr(args[2])) == "credit");
+	if( credit )
+		SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles. Champion minions count as your kills." );
+	else
+		SendSysMessage( who, "Killing all npcs in range of "+dist+" tiles." );
+	endif
 
+	var credited := 0;
 	var killed := 0;
 	var closed := 0;
 	var mobs := ListMobilesNearLocationEx( who.x, who.y, LIST_IGNORE_Z, dist, LISTEX_FLAG_NORMAL + LISTEX_FLAG_HIDDEN + LISTEX_FLAG_CONCEALED + LISTEX_FLAG_NPC_ONLY, who.realm );
@@ -56,11 +67,21 @@ program akill( who, dist )
 			continue;
 		endif
 		WarnManagerofNPCDeath(mob);
+		if( credit )
+			if( GetObjProperty(mob, "iChampSpawn") )
+				SetObjProperty(mob, "KilledBySerial", who.serial);
+				SetObjProperty(mob, "StaffChampCredit", who.serial);
+				credited := credited + 1;
+			endif
+		endif
 		mob.kill();
 		killed := killed + 1;
 	endforeach
 
 	SendSysMessage( who, "Killed "+killed+" NPC(s), closed "+closed+" player vendor(s)." );
-	LogCommand(who, GetProcess(GetPid()).name, "Radius "+dist+": killed "+killed+", closed "+closed+" player vendor(s)");
+	if( credit )
+		SendSysMessage( who, credited+" champion minion(s) credited to you." );
+	endif
+	LogCommand(who, GetProcess(GetPid()).name, "Radius "+dist+": killed "+killed+", closed "+closed+" player vendor(s), credited "+credited+" champion minion(s)");
 
 endprogram

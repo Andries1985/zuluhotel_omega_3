@@ -82,9 +82,12 @@ function Massvatten(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Fluctus Perturbo Magus Navitas");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialSorcerersBane(me, mobile);
@@ -98,9 +101,12 @@ function Massgust(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Gust Do Ar");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialGustOfAir(me, mobile);
@@ -114,9 +120,12 @@ function Masswyvern(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Umbrae Tenebrae Venarent");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialWyvernStrike(me, mobile);
@@ -130,9 +139,12 @@ function Masskill(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Ulties Manum Necarent");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialKill(me, mobile);
@@ -146,9 +158,12 @@ function Masscalllightning(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Batida Do Deus");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialCallLightning(me, mobile);
@@ -162,9 +177,12 @@ function Massicestrike(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Geada Com Inverno");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialIcestrike(me, mobile);
@@ -178,9 +196,12 @@ function Massshiftingearth(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Esmagamento Con Pedra");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialShiftingEarth(me, mobile);
@@ -194,9 +215,12 @@ function MassHolyBolt(me)
 	var players := ListMobilesNearLocation( me.x , me.y , me.z , 20 , me.realm );
 	say("Vas Sanctus Utor Telum");
 	sleep(2);
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialHolyBolt(me, mobile);
@@ -258,9 +282,12 @@ function ChampFire(me)
 		6: element := HOLY;
 	endcase
 
+	// 2026-10-31: the NPC area rules (NpcSmartAoE): a tamed caster spares its master, his party and their pets,
+	// and nobody hits bystanders or safe areas; the inline test below took every player and pet (ZH2.5 a57f8bf / 1.1.5 port)
+	players := NpcSmartAoE( me, players );
 	foreach mobile in players
 		if (mobile.cmdlevel < 1)
-			if(!mobile.isa(POLCLASS_NPC) ||  mobile.master)
+			if( mobile.serial != me.serial )
 				var los := CheckLineOfSight( me, mobile );
 				if(los)
 					SpecialChampFire(me, mobile, element);

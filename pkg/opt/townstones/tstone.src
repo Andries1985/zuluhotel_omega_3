@@ -910,7 +910,9 @@ votos := cint(GetObjProperty(item, "votos"));
 timer := cint(GetObjProperty(item, "timer"));
 Pleibicito_Result := GetObjProperty(item, "Pleibicito_Result");
 nextcitizenelection := cint(GetObjProperty(item, "nextcitizenelection"));
-citizen := GetObjProperty(item, "citizen");
+// 2026-10-31: one entry per character; converts an old per-account list and recounts the population (ZH2.5 1.1.5 port)
+citizen := LoadCitizenList(item);
+populacao := cint(GetObjProperty(item, "populacao"));
 
 if (!citizen)
 	citizen := { };
@@ -1079,8 +1081,6 @@ if(!IsTownCitizen(who))
 	return;
 endif
 
-var i;
-
 if(eleicoes or pleibicito)			
 	
 	var newlist := {};
@@ -1098,7 +1098,8 @@ if(eleicoes or pleibicito)
 
 	foreach runa in EnumerateItemsInContainer( item )
 		if (runa.objtype == 0xa321)
-			if (GetObjProperty(runa, "serial") == who.acctname)
+			// 2026-10-31: match the character (or the account for a pre-deploy rune) (ZH2.5 1.1.5 port)
+			if (IsVoteRuneOf(runa, who))
 				destroyitem(runa);
 				votos := votos -1;
 				SetObjProperty(item, "votos", votos);
@@ -1116,14 +1117,12 @@ who.name := StripTownSuffix(who.name, city);
 
 set_critical(1);
 
-for(i:=1; i<=citizen.size(); i:=i+1)
-	if(citizen[i] == who.acctname)
-		citizen.erase(i);
-		break;
-	endif
-endfor
-		
-populacao := populacao -1;
+// 2026-10-31: only this character leaves; the account's other characters stay citizens (ZH2.5 1.1.5 port)
+var removed_from_citizen := RemoveCitizenChar(citizen, who.serial);
+
+if(removed_from_citizen and populacao > 0)
+	populacao := populacao -1;
+endif
 if(populacao < 0)
 	populacao := 0;
 endif
@@ -1148,15 +1147,14 @@ endif
 
 set_critical(1);
 
-foreach dude in citizen
-	if (dude == who.acctname)
-		SendSysMessage(who, "You can't join more than once");
-		set_critical(0);
-		return;
-	endif
-endforeach
+// 2026-10-31: one entry per character, so every character on an account can join (ZH2.5 1.1.5 port)
+if (IsCitizenChar(citizen, who.serial))
+	SendSysMessage(who, "You can't join more than once");
+	set_critical(0);
+	return;
+endif
 
-citizen.append(who.acctname);
+citizen.append(NewCitizenEntry(who));
 SetObjProperty(item, "citizen", citizen);
 SetObjProperty(who, "town", cint(stone));
 populacao := populacao +1;

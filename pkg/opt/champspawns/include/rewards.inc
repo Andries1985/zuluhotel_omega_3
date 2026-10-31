@@ -61,14 +61,7 @@ function GiveRewardsToPlayers(altar)
 
 	// Entries are {kills, systime of the last kill}; one from before this port has no time and
 	// can't show a recent kill.
-	var newest := 0;
-	foreach entry in players
-		if(TypeOf(entry) == "Array")
-			if(CInt(entry[2]) > newest)
-				newest := CInt(entry[2]);
-			endif
-		endif
-	endforeach
+	var newest := ChampionTallyNewest(players);	// 2026-10-31: shared with .champkills
 
 	var serials := players.keys();
 	foreach serial in serials
@@ -181,6 +174,27 @@ function GiveChampionBag(who, kills)
 		SendSysMessage(who, "You slew " + kills + " of the champion's minions.", FONT_NORMAL, CHAMP_REWARD_COLOR);
 	endif
 	return bag;
+
+endfunction
+
+// 2026-10-31: the kill counts at which the bag grows (GiveChampionBag), for the milestone messages
+// (death.inc) and .champkills (ZH2.5 1.1.5 port)
+function ChampionBagTiers()
+	return array{CHAMP_BAG_MIN_KILLS, 300, 500, 750, 1000};
+endfunction
+
+// 2026-10-31: the systime of the newest kill on an altar's tally, the reference for CHAMP_CREDIT_WINDOW (ZH2.5 1.1.5 port)
+function ChampionTallyNewest(players)
+
+	var newest := 0;
+	foreach entry in players
+		if(TypeOf(entry) == "Array")
+			if(CInt(entry[2]) > newest)
+				newest := CInt(entry[2]);
+			endif
+		endif
+	endforeach
+	return newest;
 
 endfunction
 

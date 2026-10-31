@@ -30,10 +30,8 @@ program textcmd_cleartownmembers(who)
 		town_name := "Unknown Town";
 	endif
 
-	var citizens := GetObjProperty(stone, "citizen");
-	if(!citizens)
-		citizens := {};
-	endif
+	// 2026-10-31: one entry per character (citizens.inc); an old per-account list is converted first (ZH2.5 1.1.5 port)
+	var citizens := LoadCitizenList(stone);
 
 	var scanned_characters := 0;
 	var cleared_members := 0;
@@ -52,7 +50,7 @@ program textcmd_cleartownmembers(who)
 				scanned_characters := scanned_characters + 1;
 
 				var char_town := CInt(GetObjProperty(character, "town"));
-				if((char_town == town_id) or IsCitizenAccount(citizens, character.acctname))
+				if((char_town == town_id) or IsCitizenChar(citizens, character.serial))
 					EraseObjProperty(character, "town");
 					cleared_members := cleared_members + 1;
 
@@ -90,22 +88,6 @@ endprogram
 
 
 // OpenTownstoneDataFile / SyncTownstoneState moved to tstone.inc (2026-09-01)
-
-
-function IsCitizenAccount(citizen_list, account_name)
-	if(!citizen_list or !account_name)
-		return 0;
-	endif
-
-	var i;
-	for(i := 1; i <= citizen_list.size(); i := i + 1)
-		if(Lower(CStr(citizen_list[i])) == Lower(CStr(account_name)))
-			return 1;
-		endif
-	endfor
-
-	return 0;
-endfunction
 
 
 // StripTownSuffix / StripExactSuffix moved to tstone.inc (2026-09-01)

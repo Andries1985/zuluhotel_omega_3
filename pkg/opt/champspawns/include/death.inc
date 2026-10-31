@@ -72,6 +72,18 @@ function RegisterChampionSpawnKill(corpse)
 
   SetObjProperty(altar, "players", players);
   set_critical(0);
+
+  // 2026-10-31: tell the player when the bag grows; .champkills shows the count at any time (ZH2.5 1.1.5 port)
+  kills := kills + 1;
+  if(killer.connected and kills in ChampionBagTiers())
+    var msg := " kills at this altar: your Champion Reward Bag grows.";
+    if(kills == CHAMP_BAG_MIN_KILLS)
+      msg := " kills at this altar: you have earned a Champion Reward Bag.";
+    elseif(kills == ChampionBagTiers()[ChampionBagTiers().size()])
+      msg := " kills at this altar: your Champion Reward Bag is as full as it gets.";
+    endif
+    SendSysMessage(killer, kills + msg, FONT_NORMAL, CHAMP_REWARD_COLOR);
+  endif
 endfunction
 
 // 2026-10-29: the player who killed a spawn creature: KilledBySerial, or failing that the player who
@@ -82,6 +94,12 @@ function FindChampionSpawnKiller(corpse)
     var killer := SystemFindObjectBySerial(serial, SYSFIND_SEARCH_OFFLINE_MOBILES);
     if(IsChampionCreditable(killer))
       return killer;
+    endif
+    // 2026-10-31: ".akill <range> credit" (testing altars): the staff member who ran it gets the kill (ZH2.5 1.1.5 port)
+    if(killer)
+      if(killer.cmdlevel and CInt(GetObjProperty(corpse, "StaffChampCredit")) == serial)
+        return killer;
+      endif
     endif
   endif
 

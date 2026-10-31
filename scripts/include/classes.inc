@@ -27,6 +27,8 @@ const BONUS_PER_LEVEL     := 0.25;
 const SMALL_BONUS_PER_LEVEL := 0.15;
 
 const RANGER_LEVEL_ARCHERY_RANGE_BONUS := 1; 		//1 range per level further range before 1/4 base damage done
+const RANGER_LEVEL_TAME_BONUS := 2;		// 2026-10-31: tame and pet resurrection difficulty lower by this per level (ZH2.5 1.1.5 port)
+const RANGER_LEVEL_FULL_HEAL_CHANCE := 3;	// 2026-10-31: % chance per level that a bandage fully heals a pet (ZH2.5 1.1.5 port)
 
 const CRAFTER_REPAIR_DIFF_BONUS := 2.5; // used in util/repair.inc
 

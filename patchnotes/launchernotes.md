@@ -5,7 +5,7 @@ Always check Discord announcements for all the patch notes.
 
 ## What Changed
 
-Patch 3.1.5 is about getting credit for your kills and getting paid for champion spawns. Poison, poison fields, Vengeance and your pets now credit you for the kill. Champion spawns hand out Champion Reward Bags again to everyone who fought hard enough, the last wave can no longer end early, and champfire now hits everyone the same, with only elemental protection to stop it. Warriors for Hire fight the right enemy, monsters stop chasing ghosts, and a handful of smaller fixes and changes round it out.
+Patch 3.1.5 is about getting credit for your kills and getting paid for champion spawns. Poison, poison fields, Vengeance and your pets now credit you for the kill. Champion spawns hand out Champion Reward Bags again to everyone who fought hard enough, the last wave can no longer end early, and champfire now hits everyone the same, with only elemental protection to stop it. Rangers tame, resurrect and heal their pets more reliably, every character can join a town and vote, Warriors for Hire fight the right enemy, monsters stop chasing ghosts, and a handful of smaller fixes and changes round it out.
 
 ---
 
@@ -31,6 +31,7 @@ Patch 3.1.5 is about getting credit for your kills and getting paid for champion
   - 750 kills: +1 Power Tome
   - 1000 kills: +1 Power Tome, +1 stat potion, +2 vanity tokens, +1 present
 - If you are offline or your backpack is full, the bag goes to your bank box. If it fits in neither, you're told to page staff. Below 150 kills you're told how many you had.
+- New command `.champkills` shows your kills at the altar you're fighting at, how many more you need for the next bigger bag, and warns you if your last kill is falling outside the 2-hour window. You're also told when you earn the bag and each time it grows.
 - Your kill count now uses the killing blow, or failing that your last hit, so kills by poison, spells and pets count.
 - The champion's corpse drops fewer Power Tomes, Transcend Scrolls and stat potions, and no vanity tokens or presents (those are in the bags now). Barracoon and Erebus drop magic items 85% of the time, Rikktor and Nyx 95%.
 - When a wave stalls, the altar no longer adds a red skull and takes it away again. On the last wave that used to end the spawn early and summon the champion.
@@ -67,14 +68,36 @@ Patch 3.1.5 is about getting credit for your kills and getting paid for champion
 - **Sparring stays on you.** When you spar with your own warrior, it now keeps fighting you until you say "stop", even if something else attacks it. Anything that hurts your idle warrior and counts as yours, including your area spells, fields and your pet's poison, still starts a spar.
 - Your pets, summons and Warriors for Hire take the same melee damage cut against players that you do. Their melee on other players does half of what it did. Their poison is unchanged.
 - Some summoned creatures skipped the PvP damage cut on their spells entirely. They now take it like other pets.
+- A tamed pet's mass attacks (such as a water dragon's) no longer hit you, your party or your party's pets.
 
 ### Player Impact
 
 - Warrior-versus-warrior fights stay between the warriors.
 
+## Rangers
+
+- Taming and resurrecting pets get easier with every ranger level: 2 points off the difficulty per level. A level 6 ranger at 150 skill tames a 150 creature about 55% of the time (80% with the ranger's second try), where a classless tamer gets 25%. Calming a dragon can finally succeed.
+- A ranger's bandage on a pet now fully heals it 3% of the time per level (18% at level 6). It used to be about 8% at every level, so level 1-2 rangers get it a little less often.
+- Rangers can bandage pets and other players right after eating a magic fish.
+- Each kind of magic fish has its own cooldown for rangers, so you can eat a heal, a cure and an invisibility fish back to back. The same kind still has to wait.
+
+### Player Impact
+
+- Rangers spend less time re-taming and resurrecting big pets, and fish no longer get in the way of bandages.
+
+## Towns
+
+- Every character can now be a citizen of a town, even when another character on the same account already is. Each citizen counts toward the town's population and each one votes.
+- Leaving a town only removes the character who left.
+
+### Player Impact
+
+- Bring all your characters into your town. Votes cast before the patch still count once per account until that vote ends.
+
 ## Monsters
 
 - Monsters no longer get stuck chasing a ghost or someone hidden until they break. They drop out of combat instead.
+- Boss mass attacks no longer hit town NPCs, friendly creatures or anyone standing in a safe area.
 - Custom monsters from spawnpoints come with their gear and their backpack items again.
 
 ### Player Impact
@@ -98,7 +121,9 @@ Patch 3.1.5 is about getting credit for your kills and getting paid for champion
 ## Summary
 
 - Poison, poison fields, Vengeance and pets credit you for the kill; poisoning an innocent flags you; an old killer is no longer remembered.
-- Champion Reward Bags are back from 150 kills, with tiers up to 1000; corpses drop less, and the last wave can't end early.
+- Champion Reward Bags are back from 150 kills, with tiers up to 1000; `.champkills` shows your count; corpses drop less, and the last wave can't end early.
+- Rangers tame and resurrect more easily with level, fully heal pets more often at high level, and fish don't block their bandages.
+- Every character can be a town citizen and vote.
 - Champfire does the same damage to everyone, and only elemental protection reduces it.
 - Warriors for Hire fight the right warrior; pets and hirelings take your PvP melee cut.
 - Traps and other damage you do to yourself now hit for full damage.

@@ -121,7 +121,9 @@ function LoadTownstoneState(item)
 	timer := CInt(GetObjProperty(item, "timer"));
 	Pleibicito_Result := GetObjProperty(item, "Pleibicito_Result");
 	nextcitizenelection := CInt(GetObjProperty(item, "nextcitizenelection"));
-	citizen := GetObjProperty(item, "citizen");
+	// 2026-10-31: converts an old per-account list and recounts the population (ZH2.5 1.1.5 port)
+	citizen := LoadCitizenList(item);
+	populacao := CInt(GetObjProperty(item, "populacao"));
 
 	if(!citizen)
 		citizen := {};
