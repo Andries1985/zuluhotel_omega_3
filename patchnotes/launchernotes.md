@@ -63,7 +63,8 @@ Patch 3.1.5 is about getting credit for your kills and getting paid for champion
 
 ## Warriors for Hire and Pets
 
-- A Warrior for Hire sent against another player's warrior now fights that warrior, not its owner. It also never turns on its own master.
+- A Warrior for Hire sent against another player's warrior now fights that warrior, not its owner. It also never turns on its own master in the middle of a fight.
+- **Sparring stays on you.** When you spar with your own warrior, it now keeps fighting you until you say "stop", even if something else attacks it. Anything that hurts your idle warrior and counts as yours, including your area spells, fields and your pet's poison, still starts a spar.
 - Your pets, summons and Warriors for Hire take the same melee damage cut against players that you do. Their melee on other players does half of what it did. Their poison is unchanged.
 - Some summoned creatures skipped the PvP damage cut on their spells entirely. They now take it like other pets.
 

@@ -492,7 +492,8 @@ function fight(opponent)
 				AddToHitList(ev);
 				// 2026-10-29: answer the owner's NPC hitting us, never retarget onto our own master (ZH2.5 1.1.5 port)
 				var attacker := ResolveAttacker(ev.source);
-				if ( (attacker != opponent) and (attacker.serial != masterserial) )
+				// 2026-10-31: a spar with the master stays on the master until "stop"; other attackers don't pull it away
+				if ( (attacker != opponent) and (attacker.serial != masterserial) and (opponent.serial != masterserial) )
 					if ( (Random(6)==1) or
 					     (distance(attacker,me) < distance(me, opponent)) )
 						opponent := attacker;
