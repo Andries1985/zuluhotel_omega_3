@@ -845,7 +845,10 @@ function CreateCustomNPC(point, template)
 	SetStamina(critter, vits.STAM);
 	SetObjProperty(critter, "customnpc", 1);
 
-	DressNPCCustom(critter);
+	// 2026-10-31: backpack first, so the pack items have somewhere to go and the AI setup's
+	// "no backpack" branch (which strips and redresses a custom NPC) is skipped
+	GiveCustomNpcBackpack(critter);
+	DressNPCCustom(critter, point);	// 2026-10-29: pass the point, the critter has no SpawnPoint CProp yet (ZH2.5 1.1.5 port)
 	return critter;
 
 endfunction

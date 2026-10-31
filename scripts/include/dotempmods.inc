@@ -429,15 +429,22 @@ function RandomHairColor()
 endfunction
 
 
-function SetPoison( who , plvl , msg := 0, caster := 0, shuriken := 0)
+// 2026-10-29: new credit param (ZH2.5 1.1.5 port). caster picks the damage table, duration and protection
+// rules in processpoisonmod; credit is only who gets the kill (pass it alone when the poisoner must not
+// change the damage, e.g. a dropped poison weapon). Defaults to the caster.
+function SetPoison( who , plvl , msg := 0, caster := 0, shuriken := 0, credit := 0)
 	
 	if( plvl < 1 ) 
 		plvl := 1;
 	endif
 
 	if(caster)
-		SetObjProperty(who, "PoisonedBy", caster.name);
+		// 2026-10-29: PoisonedBy is now written by processpoisonmod's SetPoisonCredit, only when the poisoning lands (ZH2.5 1.1.5 port)
 		RecordCharacterPoisoning(who, CStr(caster.name), plvl);
+	endif
+
+	if( !credit )
+		credit := caster;
 	endif
 
 	var parms := {};
@@ -446,6 +453,7 @@ function SetPoison( who , plvl , msg := 0, caster := 0, shuriken := 0)
 	parms[3] := Cstr( msg );
 	parms[4] := caster;
 	parms[5] := shuriken;
+	parms[6] := credit;
 	
 	Start_script( ":summoning:processpoisonmod" , parms );
 	Sleepms(250);

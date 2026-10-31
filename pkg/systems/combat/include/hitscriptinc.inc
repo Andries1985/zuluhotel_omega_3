@@ -568,10 +568,22 @@ function CalcPhysicalDamage( attacker, defender, weapon, basedamage )
 	// 		basedamage *= GetGlobalProperty("ReducePhysical");
 	// 	endif
 	// else
-		if( !attacker.isA(POLCLASS_NPC) && !defender.isA(POLCLASS_NPC))
+		// 2026-10-29: a pet, summon or Warrior for Hire hitting a player counts as its master, as in ApplyTheDamage():
+		// a player's pet takes the same PvP melee cut as the player. .master member first, FindMaster CProp as fallback (ZH2.5 1.1.5 port)
+		var pvp_attacker := attacker;
+		if( attacker.isA(POLCLASS_NPC) )
+			var pvp_master := attacker.master;
+			if( !pvp_master )
+				pvp_master := FindMaster(attacker);
+			endif
+			if( pvp_master )
+				pvp_attacker := pvp_master;
+			endif
+		endif
+		if( !pvp_attacker.isA(POLCLASS_NPC) && !defender.isA(POLCLASS_NPC))
 			//if( !defender.isA(POLCLASS_NPC))
 				//Print("Applying PvP Physical reduction. Basedamage is: " + basedamage);
-				basedamage := CInt( basedamage * 0.5 );
+				basedamage := CInt( basedamage * 0.5 );	// 2026-10-31: kept at 0.5 by the owner's call (ZH2.5 uses 0.4 for all PvP melee)
 				//Print("Basedamage after PvP Physical reduction is: " + basedamage);
 			//endif
 		endif

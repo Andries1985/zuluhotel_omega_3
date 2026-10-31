@@ -55,6 +55,28 @@ program textcmd_setPH(who)
 			playerchoice := 300;
 		endif
 
+		// 2026-10-29: the same type running server-wide already gives everything a personal one would, so the
+		// week's powerhour would be wasted; a different type still adds something (ZH2.5 1.1.5 port)
+		var choice_type := PH_TYPE_NONE;
+		if(playerchoice == 100)
+			choice_type := PH_TYPE_HUNT;
+		elseif(playerchoice == 200)
+			choice_type := PH_TYPE_RES;
+		elseif(playerchoice == 300)
+			choice_type := PH_TYPE_SKILL;
+		endif
+		if(choice_type != PH_TYPE_NONE)
+			if(PH_ActiveType() == choice_type)
+				SendSysMessage( who, "A server-wide " + PH_TypeName(choice_type) + " Powerhour is already running. Save your personal powerhour for later, or pick another type.", FONT_NORMAL, PH_MSG_COLOR_BAD );
+				EraseObjProperty(who, "#SettingPH");
+				return;
+			elseif(PH_PendingType() == choice_type)
+				SendSysMessage( who, "A server-wide " + PH_TypeName(choice_type) + " Powerhour is about to start. Save your personal powerhour for later, or pick another type.", FONT_NORMAL, PH_MSG_COLOR_BAD );
+				EraseObjProperty(who, "#SettingPH");
+				return;
+			endif
+		endif
+
 		case(playerchoice)
 			100:	activateph(who, "#PPHH");
 			200:	activateph(who, "#PPHC");

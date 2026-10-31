@@ -249,12 +249,13 @@ function ChampFire(me)
 	var ele := Random(6)+1;
 	var element;
 	case(ele)
-		1: element := "EARTH";
-		2: element := "WATER";
-		3: element := "FIRE";
-		4: element := "AIR";
-		5: element := "NECRO";
-		6: element := "HOLY";
+		// 2026-10-29: element constants instead of strings, so GetResultingElementalProt/specialELE work (ZH2.5 d5d232a port)
+		1: element := EARTH;
+		2: element := WATER;
+		3: element := FIRE;
+		4: element := AIR;
+		5: element := NECRO;
+		6: element := HOLY;
 	endcase
 
 	foreach mobile in players
@@ -454,6 +455,7 @@ Function GetSpellID(spellname)
 	"manavamp"	: spellid := 53;
 	"massdispel"	: spellid := 54;
 	"meteor_swarm"	: spellid := 55;
+	"meteorswarm"	: spellid := 55;	// 2026-10-29: alias for the spelling some templates use (ZH2.5 d5d232a port)
 	"polymorph"	: spellid := 56;
 	"earthquake"	: spellid := 57;
 	"vortex"	: spellid := 58;
@@ -488,6 +490,7 @@ Function GetSpellID(spellname)
 	"earthportal"	: spellid := 87;
 	"naturestouch"	: spellid := 88;
 	"gustofair"	: spellid := 89;
+	"gustoair"	: spellid := 89;	// 2026-10-29: alias for the spelling some templates use (ZH2.5 d5d232a port)
 	"risingfire"	: spellid := 90;
 	"shapeshift"	: spellid := 91;
 	"icestrike"	: spellid := 92;
@@ -570,7 +573,8 @@ function cast_offensive_spell(caster, cast_on)
 	// 2026-10-25: a per-NPC list (CustomSpells, set with .newmobedit) replaces the template's spell lines; an empty one means no spells (ZH2.5 1.1.5 port)
 	var spell_list := GetObjProperty( caster, "CustomSpells" );
 	if( spell_list == error )
-		var npccfg := readconfigfile("npcdesc");
+		// 2026-10-29: "::npcdesc" so a package AI reads the root config/npcdesc.cfg, not one inside its package (ZH2.5 1.1.5 port)
+		var npccfg := readconfigfile("::npcdesc");
 		spell_list := GetConfigStringArray( npccfg[caster.npctemplate], "spell" );
 	endif
 

@@ -17,11 +17,7 @@ function createNextWhiteSkull(altar)
   wskulls := GetObjProperty(altar, "wskulls");
   
   if(white_skull_level == 4)
-    WipeItemsArray(wskulls);
-    wskulls:= {};
-    SetObjProperty(altar, "wskulls", wskulls);
-    EraseObjProperty(altar, "white_skull_level");
-    CreateNextRedSkull(altar);
+    CreateNextRedSkull(altar);	// 2026-10-31: it wipes the white skulls itself (clearWhiteSkulls)
     return;
   endif
 
@@ -50,12 +46,7 @@ function createNextRedSkull(altar)
   var skulls := array;
   skulls := GetObjProperty(altar, "rskulls");
 
-  var wskulls := array;
-  wskulls := GetObjProperty(altar, "wskulls");
-  WipeItemsArray(wskulls);
-  wskulls:= {};
-  SetObjProperty(altar, "wskulls", wskulls);
-  EraseObjProperty(altar, "white_skull_level");
+  clearWhiteSkulls(altar);	// 2026-10-29: one copy of the white-skull wipe
 
   if(lskull==16)
     WipeItemsArray(skulls);
@@ -85,6 +76,13 @@ function createNextRedSkull(altar)
   SetObjProperty(altar, "rskulls", skulls);
 
   return;
+endfunction
+
+// 2026-10-29: restart the wave without touching the red skulls (ZH2.5 1.1.5 port)
+function clearWhiteSkulls(altar)
+  wipeItemsArray(GetObjProperty(altar, "wskulls"));
+  SetObjProperty(altar, "wskulls", {});
+  EraseObjProperty(altar, "white_skull_level");
 endfunction
 
 function destroyLastRedSkull(altar)

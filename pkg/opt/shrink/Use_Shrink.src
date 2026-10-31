@@ -70,7 +70,8 @@ function CreateCustomNPC(point, template)
 
 	SetObjProperty(critter, "SpawnPoint", point.serial);
 
-	DressNPCCustom(critter);
+	GiveCustomNpcBackpack(critter);	// 2026-10-31: backpack first, as in checkpoint.src
+	DressNPCCustom(critter, point);
 	return critter;
 
 endfunction

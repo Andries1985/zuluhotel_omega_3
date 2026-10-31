@@ -4,7 +4,7 @@ include "ai/setup/modsetup";
 set_critical(0);
 var me := self();
 
-var npccfg := readconfigfile("npcdesc");
+var npccfg := readconfigfile("::npcdesc"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 var speechelem := npccfg[me.npctemplate];
 var flee_point := speechelem.flee_point;
 if (!flee_point)

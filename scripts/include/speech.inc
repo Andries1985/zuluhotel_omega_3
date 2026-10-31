@@ -5,7 +5,7 @@ use cfgfile;
 include "include/random";
 
 
-var speech_cfg := ReadConfigFile("speechgroup");
+var speech_cfg := ReadConfigFile("::speechgroup"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 
 function process_text(inspeech, mood, templatename)
 	var retval, wordgroup, elem, tmpword;

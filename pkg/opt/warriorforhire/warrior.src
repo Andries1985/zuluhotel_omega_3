@@ -490,10 +490,12 @@ function fight(opponent)
 		SYSEVENT_ENGAGED:
 			if (ev.source)
 				AddToHitList(ev);
-				if (ev.source != opponent)
-					if ( (Random(6)==1) or 
-					     (distance(ev.source,me) < distance(me, opponent)) )
-						opponent := ev.source;
+				// 2026-10-29: answer the owner's NPC hitting us, never retarget onto our own master (ZH2.5 1.1.5 port)
+				var attacker := ResolveAttacker(ev.source);
+				if ( (attacker != opponent) and (attacker.serial != masterserial) )
+					if ( (Random(6)==1) or
+					     (distance(attacker,me) < distance(me, opponent)) )
+						opponent := attacker;
 						SetOpponent( opponent );
 						turntoward( opponent );
 					endif
@@ -535,6 +537,24 @@ function AddToHitList(ev)
 	endforeach
 	hitlist.append(ev.source.serial);
 	SetObjProperty(me,"hitlist",hitlist);
+
+endfunction
+
+// 2026-10-29: damage by a pet or another warrior is credited to its owner, so DAMAGED/ENGAGED name
+// the owner instead of the mobile hitting us. If an NPC owned by the source is fighting us, answer
+// that NPC instead (ZH2.5 1.1.5 port)
+function ResolveAttacker(source)
+
+	if ( (!source) or (source.npctemplate) ) return source; endif
+	// 2026-10-31: a player who is fighting us directly needs no scan; the scan is for a pet or warrior's hit
+	if ( source.opponent.serial == me.serial ) return source; endif
+	foreach mob in ListMobilesNearLocation(me.x, me.y, me.z, 15, me.realm)
+		if ( (mob.npctemplate) and (mob.opponent.serial == me.serial) and
+		     (CInt(GetObjProperty(mob, "master")) == source.serial) )
+			return mob;
+		endif
+	endforeach
+	return source;
 
 endfunction
 
@@ -609,14 +629,14 @@ function ProcessMasterEvents(byref ev, byref wanders, byref next_wander)
 		wanders := 0;
 		next_wander := readgameclock()+60;
 		if ( (ev.source) and (!ev.source.dead) and (!guarding) )
-			Fight( ev.source );
+			Fight( ResolveAttacker(ev.source) );	// 2026-10-29: ZH2.5 1.1.5 port
 		endif
 	SYSEVENT_DAMAGED:
 		AddToHitList(ev);
 		wanders := 0;
 		next_wander := readgameclock()+60;
 		if ( (ev.source) and (!ev.source.dead) )
-			Fight( ev.source );
+			Fight( ResolveAttacker(ev.source) );	// 2026-10-29: ZH2.5 1.1.5 port
 		endif
 	SYSEVENT_ENTEREDAREA:
 		return;

@@ -429,12 +429,13 @@ function SelectMaterialFromCache(who)
 	endif
 
 	// Build list of keys with available qty > 0 (skip leases, lease-aware)
+	var lease_totals := GetLeaseTotals(df);	// 2026-10-29: leases summed once instead of rescanning the cache per key (ZH2.5 1.1.5 port)
 	var valid_keys := array{};
 	foreach key in all_keys
 		if(key[1, 3] == "RL#")
 			continue;
 		endif
-		var available := GetStoredAmount(df, key);
+		var available := GetStoredAmount(df, key, 0, lease_totals);
 		if(available > 0)
 			valid_keys.append(key);
 		endif
@@ -454,9 +455,10 @@ function SelectMaterialFromCache(who)
 			return 0;  // Cancelled
 		endif
 		valid_keys := filtered_keys;
+		lease_totals := 0;	// 2026-10-31: rebuilt after the category gump, leases may have moved while it was open
 	endif
 
-	return SelectMaterialFromList(who, access, valid_keys);
+	return SelectMaterialFromList(who, access, valid_keys, lease_totals);
 endfunction
 
 // Shows a category selection gump. Returns filtered keys for the selected category, or 0 on cancel.
@@ -582,11 +584,15 @@ function SelectMaterialCategory(who, df, valid_keys)
 endfunction
 
 // Shows material selection from a list of keys. Returns ResourceRequest or 0.
-function SelectMaterialFromList(who, access, valid_keys)
+// 2026-10-31: lease_totals from the caller when it has just built them; 0 builds them here
+function SelectMaterialFromList(who, access, valid_keys, lease_totals := 0)
 	// Sort by display name (BaseName CProp if available, else default name)
 	// Use string-concat sort: "name|||key" — sort as strings, then extract keys
 	var sort_strings := array{};
 	var df := access.df;
+	if( !lease_totals )
+		lease_totals := GetLeaseTotals(df);	// 2026-10-29: leases summed once for every row quantity (ZH2.5 1.1.5 port)
+	endif
 	foreach key in valid_keys
 		var ot := CInt(GetObjtypeFromKey(key));
 		var elem := df.FindElement(key);
@@ -679,7 +685,7 @@ function SelectMaterialFromList(who, access, valid_keys)
 		GFResizePic(gump, 18, row_y - 2, 9350, 465, 32);
 
 		var elem := df.FindElement(key);
-		var qty := GetStoredAmount(df, key);
+		var qty := GetStoredAmount(df, key, 0, lease_totals);
 		var objtype := CInt(elem.GetProp("objtype"));
 		var desc_info := GetItemDescriptor(objtype);
 

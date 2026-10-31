@@ -37,10 +37,13 @@ function ApplyTemplateRegen( who, field, vitalid )
 
 endfunction
 
-if(1)
+// 2026-10-29: this runs on every AI start. A Warrior for Hire dresses itself once (SetMeUp) and keeps what its
+// master gives it, so re-equipping its template here would hand out free items on each restart. Needed now that
+// "::npcdesc" below really reads config/npcdesc.cfg for package AIs (ZH2.5 1.1.5 port)
+if( !GetObjProperty(modnpc, "WarriorForHire") )
 	var equip_cfg := ReadConfigFile(":*:equip");
 	if( equip_cfg )
-	var npccfg := readconfigfile("npcdesc");
+	var npccfg := readconfigfile("::npcdesc");	// 2026-10-29: "::" so a package AI reads config/, not its own package config
 		var equip_elem := FindConfigelem(equip_cfg, npccfg[modnpc.npctemplate].equip);
 		if( equip_elem )
 			EquipFromTemplate(modnpc, npccfg[modnpc.npctemplate].equip);

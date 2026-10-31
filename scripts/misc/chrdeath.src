@@ -80,6 +80,8 @@ program chrdeath(corpse,ghost)
 	endif
 	EraseObjProperty( ghost, "KilledBy" );
 	EraseObjProperty( ghost, PROPID_MOBILE_KILLED_BY );
+	// 2026-10-29: read above, the corpse keeps its own copy. Left on the ghost it credited this killer at the next death that recorded none (ZH2.5 1.1.5 port)
+	EraseObjProperty( ghost, "KilledBySerial" );
 	EraseObjProperty( ghost, PROPID_MOBILE_GUARD_KILLED );
 	EraseObjProperty( ghost, PROPID_MOBILE_MAGIC_REFLECTION );
 	SetObjProperty( corpse, PROPID_CORPSE_CORPSE_OF, ghost.serial );

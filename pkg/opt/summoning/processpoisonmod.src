@@ -19,6 +19,7 @@ program processtempmods( parms )
 	var caster := parms[4];
 	var serial	:= who.serial;
 	var shuriken := parms[5];
+	var credit := parms[6];	// 2026-10-29: who gets the kill, set by SetPoison (ZH2.5 1.1.5 port)
 
 	if (IsInSafeArea(who) && !IsInBox(who, 5508, 5527, 1655, 1674))
 		return 0;
@@ -130,11 +131,13 @@ program processtempmods( parms )
 		var currPsnDmg := GetObjProperty(who, "psnDmg");
 		if(!currPsnDmg || (currPsnDmg < newPsnDmg) )
 			SetObjProperty(who, "psnDmg", newPsnDmg);
+			SetPoisonCredit(who, credit);	// 2026-10-29: credit moves only when a stronger poisoning lands (ZH2.5 1.1.5 port)
 		endif
 		set_critical(0);
 		return;
 	else
 		SetObjProperty(who, "psnDmg", newPsnDmg);
+		SetPoisonCredit(who, credit);	// 2026-10-29: fresh poisoning lands (ZH2.5 1.1.5 port)
 	endif
 
 	var duration := Cint(30);
@@ -167,23 +170,28 @@ program processtempmods( parms )
 
 	set_critical(0);
 			
+	// 2026-10-29: ticks go through PoisonTick -> ApplyTheDamage so a poison kill credits the poisoner
+	// (kill credit, champion/quest/loot). A Thief's poison pierces poison protection (PoisonProtected
+	// above), so its ticks ignore attack-type immunity as well (ZH2.5 1.1.5 port)
+	var tick_type := DMGID_POISON;
+	if( GetObjProperty( caster , CLASSEID_THIEF ) )
+		tick_type := tick_type + DMGID_NO_RESIST;
+	endif
+
 	var timer := 0;
 	repeat
 	
 	sleep(1);
 	
 	if(CInt(ReadGameClock() % 5) == 0)
-		if (Getobjproperty(who, "LottoDrops"))
-			StoreDamage(caster, who, Cint(GetObjProperty(who, "psnDmg")));
-		endif
-		ApplyRawDamage(who, Cint(GetObjProperty(who, "psnDmg")));
+		// 2026-10-29: StoreDamage now happens inside ApplyTheDamage (LottoDrops); the dead KilledBy write below is gone (ZH2.5 1.1.5 port)
+		PoisonTick(who, Cint(GetObjProperty(who, "psnDmg")), tick_type);
 	endif
 
 	timer := timer + 1;
 
 	if (GetHP(who) < 1)
-		SetObjProperty(who, "KilledBy", GetObjProperty(who, "PoisonedBy"));
-		ApplyRawDamage(who, 5);
+		PoisonTick(who, 5, tick_type);
 		break;
 	endif
 
@@ -215,3 +223,41 @@ program processtempmods( parms )
 	endif
 	
 endprogram
+
+
+// 2026-10-29: writes the poison credit only when a poisoning LANDS (fresh, or stronger than the current
+// psnDmg); a blocked, equal or weaker poisoning leaves it where it is. A landed poisoning with no
+// poisoner (trap, food, failed Poisoning, self) clears PoisonedBySerial so nobody is credited (ZH2.5 1.1.5 port)
+function SetPoisonCredit( who, credit )
+	if( credit.IsA(POLCLASS_MOBILE) and credit != who )
+		SetObjProperty(who, "PoisonedBy", credit.name);
+		SetObjProperty(who, "PoisonedBySerial", credit.serial);
+	else
+		EraseObjProperty(who, "PoisonedBy");	// 2026-10-29: death.src falls back to the name, so clear it too
+		EraseObjProperty(who, "PoisonedBySerial");
+	endif
+endfunction
+
+// 2026-10-29: one tick of poison damage. With a poisoner it goes through ApplyTheDamage (kill credit,
+// hitlist, a pet's master gets it); pvp_cut 0 because newPsnDmg above already carries the PvP factor
+// (ReducePoison / 0.6), so players must not be cut twice. No poisoner or self-poison stays raw (ZH2.5 1.1.5 port)
+function PoisonTick( who, dmg, tick_type )
+
+	var poisoner := 0;
+	var pserial := CInt(GetObjProperty(who, "PoisonedBySerial"));
+	if( pserial )
+		poisoner := SystemFindObjectBySerial(pserial, SYSFIND_SEARCH_OFFLINE_MOBILES);
+	endif
+
+	if( poisoner.IsA(POLCLASS_MOBILE) and poisoner != who )
+		return ApplyTheDamage(who, poisoner, dmg, tick_type, 0);
+	endif
+	// 2026-10-29: same attack-type immunity test ApplyTheDamage makes, so a poison-immune NPC is immune
+	// whether or not anyone gets the credit
+	dmg := CInt(dmg);
+	if( IsImmunedFromThisDamageType( who, dmg, tick_type ) )
+		return 0;
+	endif
+	return ApplyRawDamage(who, dmg);
+
+endfunction

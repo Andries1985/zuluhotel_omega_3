@@ -7,7 +7,7 @@ include ":spawnpoint:customnpc";
 	drop_anchor(me);
 
 	if (!me.backpack)
-		var npccfg := readconfigfile("npcdesc");
+		var npccfg := readconfigfile("::npcdesc"); // 2026-10-29: "::" so a package script reads config/, not its own package config (ZH2.5 1.1.5 port)
 		var newbackpack := CreateItemAtLocation( DEFAULT_LOCATION_ITEM_CREATION_X, DEFAULT_LOCATION_ITEM_CREATION_Y, DEFAULT_LOCATION_ITEM_CREATION_Z, 0xe75, 1, DEFAULT_LOCATION_ITEM_CREATION_R );
 		EquipItem(me, newbackpack);
 		if (npccfg[me.npctemplate].colorrange)
