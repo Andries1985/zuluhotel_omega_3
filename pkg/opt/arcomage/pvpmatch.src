@@ -427,19 +427,19 @@ function ArcoPvpRunGame( players, seats, rules, timed, byref watchers )
 	ArcoPvpDrawFor( st, st.active );
 	ArcoPvpBroadcast( st, players, seats, watchers );
 
-	var ev, step, absence;
+	var ev, turn_step, absence;	// 2026-10-31: was step, a reserved word to the current compiler
 	while( 1 )
-		step := "";
+		turn_step := "";
 		ev := wait_for_event( 1 );
 		if( ev )
 			case( ev.type )
 				"click":
 					if( ev.seat == st.active && ev.seq == st.seq )
-						step := ArcoPvpAct( st, ev.btn );
-						ArcoPvpDebug( "match " + CStr( GetPid() ) + ": click seat " + CStr( ev.seat ) + " seq " + CStr( ev.seq ) + " btn " + CStr( ev.btn ) + " -> " + step );
-						if( step == "invalid" )
+						turn_step := ArcoPvpAct( st, ev.btn );
+						ArcoPvpDebug( "match " + CStr( GetPid() ) + ": click seat " + CStr( ev.seat ) + " seq " + CStr( ev.seq ) + " btn " + CStr( ev.btn ) + " -> " + turn_step );
+						if( turn_step == "invalid" )
 							ArcoPvpSendTo( st, players[ev.seat], seats[ev.seat] );
-							step := "";
+							turn_step := "";
 						else
 							timeouts[ev.seat] := 0;
 						endif
@@ -459,19 +459,19 @@ function ArcoPvpRunGame( players, seats, rules, timed, byref watchers )
 			endcase
 		endif
 
-		if( step == "" && timed && ReadGameClock() >= st.deadline )
-			step := ArcoPvpTimeout( st, timeouts );
-			if( step == "forfeit" )
+		if( turn_step == "" && timed && ReadGameClock() >= st.deadline )
+			turn_step := ArcoPvpTimeout( st, timeouts );
+			if( turn_step == "forfeit" )
 				return struct{ "winner" := 3 - st.active, "reason" := names[st.active] + " ran out of time " + CStr( ARCO_PVP_MAX_TIMEOUTS ) + " times." };
 			endif
 		endif
 
-		if( step == "next" )
-			step := ArcoPvpStartTurn( st );
+		if( turn_step == "next" )
+			turn_step := ArcoPvpStartTurn( st );
 		endif
-		if( step == "over" )
+		if( turn_step == "over" )
 			return ArcoPvpOutcome( st );
-		elseif( step != "" )
+		elseif( turn_step != "" )
 			sides := st.sides;
 			if( !ArcoHasLegalMove( sides[st.active], st.discard_mode ) )
 				return struct{ "winner" := 3 - st.active, "reason" := names[st.active] + " had no card to play or discard." };

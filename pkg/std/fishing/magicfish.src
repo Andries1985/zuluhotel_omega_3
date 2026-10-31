@@ -235,7 +235,7 @@ program use_magicfish( who, fish )
 				SendSysMessage( who, "That effect cannot be applied to you right now, so the scroll was not used." );
 			endif
 			ReleaseItem( fish );
-			CanUseFish( who );
+			CanUseFish( who, cooldown_key );	// 2026-10-31: the refused path clears the same cooldown key
 			return;
 		endif
 
